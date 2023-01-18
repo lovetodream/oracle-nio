@@ -7,18 +7,21 @@
 
 import NIOCore
 import NIOPosix
+import Logging
 
 /// Defining the protocol used by the client when communicating with the database.
 public class OracleProtocol {
     let group: MultiThreadedEventLoopGroup
+    let logger: Logger
     var channel: Channel?
 
-    public init(group: MultiThreadedEventLoopGroup) {
+    public init(group: MultiThreadedEventLoopGroup, logger: Logger) {
         self.group = group
+        self.logger = logger
     }
 
     public func connectPhaseOne(connection: OracleConnection, address: SocketAddress) throws {
-        try self.connectTCP(address)
+        try self.connectTCP(address, logger: logger)
 
         let connectMessage: ConnectMessage = connection.createMessage()
         try self.process(message: connectMessage)
@@ -28,10 +31,14 @@ public class OracleProtocol {
 
     }
 
-    func connectTCP(_ address: SocketAddress) throws {
-        let bootstrap = ClientBootstrap(group: group).channelInitializer { channel in
-            channel.pipeline.addHandlers([OracleChannelHandler()])
-        }
+    func connectTCP(_ address: SocketAddress, logger: Logger) throws {
+        let bootstrap = ClientBootstrap(group: group)
+            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
+            .channelOption(ChannelOptions.connectTimeout, value: .none)
+            .channelInitializer { channel in
+                channel.pipeline.addHandlers([OracleChannelHandler(logger: logger)])
+            }
         self.channel = try bootstrap.connect(to: address).wait()
     }
 
@@ -45,21 +52,63 @@ public class OracleProtocol {
     }
 }
 
+struct TNSMessage {
+    let type: Constants.PacketType
+
+    init?(from buffer: ByteBuffer) {
+        guard
+            buffer.readableBytes >= PACKET_HEADER_SIZE,
+            let typeByte: UInt8 = buffer.getInteger(at: MemoryLayout<UInt32>.size),
+            let type = Constants.PacketType(rawValue: typeByte)
+        else {
+            return nil
+        }
+        self.type = type
+    }
+}
+
 class OracleChannelHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
     typealias OutboundIn = ByteBuffer
+    typealias OutboundOut = ByteBuffer
 
-    struct Response {}
-    struct Request {}
+    let logger: Logger
+
+    private var queue: [ByteBuffer]
+
+    var currentRequest: ByteBuffer? {
+        self.queue.first
+    }
+
+    init(logger: Logger) {
+        self.logger = logger
+        self.queue = []
+    }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         print(data)
+        let buffer = self.unwrapInboundIn(data)
+        guard let message = TNSMessage(from: buffer) else { return }
+        logger.trace("Response received: \(message.type)")
+        switch message.type {
+        case .resend:
+            guard let currentRequest else {
+                logger.warning("Received a resend response, but could not resend the last request.")
+                return
+            }
+            print(currentRequest)
+            context.writeAndFlush(self.wrapOutboundOut(currentRequest), promise: nil)
+        default:
+            fatalError("A handler for \(message.type) is not implemented")
+        }
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         print(data)
-        context.writeAndFlush(data, promise: nil)
-
+        let buffer = self.unwrapOutboundIn(data)
+        self.queue.append(buffer)
+        context.writeAndFlush(data, promise: promise)
+        logger.trace("Message sent")
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {

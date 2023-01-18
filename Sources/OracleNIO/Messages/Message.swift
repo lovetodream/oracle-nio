@@ -37,24 +37,30 @@ struct ConnectMessage: Message {
         self.connection = connection
         self.messageType = messageType
         self.errorInfo = nil
-        self.connectString = "//whitewolf.witchers.tech:1521/XEPDB1"
+        self.connectString = "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=xctest)(HOST=MacBook-Pro-von-Timo.local)(USER=timozacherl)))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
     }
 
     func get() -> ByteBuffer {
+        var serviceOptions = Constants.TNS_BASE_SERVICE_OPTIONS
         let connectFlags1: UInt32 = 0
-        let connectFlags2: UInt32 = 0
+        var connectFlags2: UInt32 = 0
+        if connection.capabilities.supportsOOB == true {
+            serviceOptions |= Constants.TNS_CAN_RECV_ATTENTION
+            connectFlags2 |= Constants.TNS_CHECK_OOB
+        }
+        let connectStringByteLength = self.connectString.lengthOfBytes(using: .utf8)
         var buffer = ByteBuffer()
-        buffer.startRequest(packetType: Constants.TNS_PACKET_TYPE_CONNECT)
+        buffer.startRequest(packetType: .connect)
         buffer.writeMultipleIntegers(
             Constants.TNS_VERSION_DESIRED,
             Constants.TNS_VERSION_MINIMUM,
-            Constants.TNS_BASE_SERVICE_OPTIONS,
+            serviceOptions,
             Constants.TNS_SDU,
             Constants.TNS_TDU,
             Constants.TNS_PROTOCOL_CHARACTERISTICS,
             UInt16(0), // line turnaround
             UInt16(1), // value of 1
-            UInt16(self.connectString.count)
+            UInt16(connectStringByteLength)
         )
         buffer.writeMultipleIntegers(
             UInt16(74), // offset to connect data
@@ -68,12 +74,13 @@ struct ConnectMessage: Message {
             connectFlags1,
             connectFlags2
         )
-        if self.connectString.count > Constants.TNS_MAX_CONNECT_DATA {
-            buffer.endRequest()
-            buffer.startRequest(packetType: Constants.TNS_PACKET_TYPE_DATA)
+        if connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA {
+            // TODO: this does not work yet
+            buffer.endRequest(packetType: .connect)
+            buffer.startRequest(packetType: .data)
         }
         buffer.writeString(self.connectString)
-        buffer.endRequest()
+        buffer.endRequest(packetType: connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA ? .data : .connect)
         return buffer
     }
 }

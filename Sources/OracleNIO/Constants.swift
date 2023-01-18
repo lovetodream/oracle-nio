@@ -10,15 +10,17 @@
 import Foundation
 
 enum Constants {
-    // MARK: Packet types
-    static let TNS_PACKET_TYPE_CONNECT: UInt8 = 1
-    static let TNS_PACKET_TYPE_ACCEPT = 2
-    static let TNS_PACKET_TYPE_REFUSE = 4
-    static let TNS_PACKET_TYPE_DATA: UInt8 = 6
-    static let TNS_PACKET_TYPE_RESEND = 11
-    static let TNS_PACKET_TYPE_MARKER = 12
-    static let TNS_PACKET_TYPE_CONTROL = 14
-    static let TNS_PACKET_TYPE_REDIRECT = 5
+    // MARK: TNS Packet Types
+    enum PacketType: UInt8 {
+        case connect = 1
+        case accept = 2
+        case refuse = 4
+        case data = 6
+        case resend = 11
+        case marker = 12
+        case control = 14
+        case redirect = 5
+    }
 
     // MARK: Packet flags
     static let TNS_PACKET_FLAG_TLS_RENEG = 0x08
@@ -516,7 +518,7 @@ enum Constants {
     static let TNS_PROTOCOL_CHARACTERISTICS: UInt16 = 0x4f98
     static let TNS_CONNECT_FLAGS: UInt16 = 0x8080
     static let TNS_CAN_RECV_ATTENTION: UInt16 = 0x0400
-    static let TNS_CHECK_OOB = 0x01
+    static let TNS_CHECK_OOB: UInt32 = 0x01
 
     // MARK: TTC functions
     static let TNS_FUNC_AUTH_PHASE_ONE = 118

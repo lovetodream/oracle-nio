@@ -36,7 +36,7 @@ public class OracleProtocol {
     }
 
     private func process(message: Message) throws {
-        try channel?.writeAndFlush(message.get()).wait()
+        try channel?.write(message.get()).wait()
 //        self.receivePacket()
     }
 
@@ -53,12 +53,17 @@ class OracleChannelHandler: ChannelDuplexHandler {
     struct Request {}
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        // todo
+        print(data)
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let request = self.unwrapOutboundIn(data)
+        print(data)
+        context.writeAndFlush(data, promise: nil)
 
+    }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        print(error)
     }
 
 }
@@ -66,23 +71,35 @@ class OracleChannelHandler: ChannelDuplexHandler {
 let PACKET_HEADER_SIZE = 8
 
 extension ByteBuffer {
-    mutating func startRequest(packetType: UInt8, dataFlags: UInt16 = 0) {
-        if packetType == Constants.TNS_PACKET_TYPE_DATA {
+    mutating func startRequest(packetType: Constants.PacketType, dataFlags: UInt16 = 0) {
+        self.reserveCapacity(PACKET_HEADER_SIZE)
+        self.moveWriterIndex(forwardBy: PACKET_HEADER_SIZE) // Placeholder for the header, which is set at the end of an request
+        if packetType == Constants.PacketType.data {
             self.writeInteger(dataFlags)
         }
     }
 }
 
 extension ByteBuffer {
-    func endRequest() {
-        if self.readerIndex > PACKET_HEADER_SIZE {
-            self.sendPacket(final: true)
-        }
+    mutating func endRequest(packetType: Constants.PacketType) {
+        self.sendPacket(packetType: packetType, final: true)
     }
 }
 
 extension ByteBuffer {
-    func sendPacket(final: Bool) {
-        
+    mutating func sendPacket(packetType: Constants.PacketType, capabilities: Capabilities? = nil, final: Bool) {
+        var position = 0
+        if capabilities?.protocolVersion ?? 0 >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+            self.setInteger(UInt32(self.readableBytes), at: position)
+        } else {
+            self.setInteger(UInt16(self.readableBytes), at: position)
+            self.setInteger(UInt16(0), at: position + MemoryLayout<UInt16>.size)
+        }
+        position += MemoryLayout<UInt32>.size
+        self.setInteger(packetType.rawValue, at: position)
+        position += MemoryLayout<UInt8>.size
+        self.setInteger(UInt8(0), at: position)
+        position += MemoryLayout<UInt8>.size
+        self.setInteger(UInt16(0), at: position)
     }
 }

@@ -23,7 +23,7 @@ public class OracleProtocol {
     public func connectPhaseOne(connection: OracleConnection, address: SocketAddress) throws {
         try self.connectTCP(address, logger: logger)
 
-        let connectMessage: ConnectMessage = connection.createMessage()
+        let connectMessage: ConnectRequest = connection.createMessage()
         try self.process(message: connectMessage)
     }
 
@@ -42,8 +42,8 @@ public class OracleProtocol {
         self.channel = try bootstrap.connect(to: address).wait()
     }
 
-    private func process(message: Message) throws {
-        try channel?.write(message.get()).wait()
+    private func process(message: TNSRequest) throws {
+        try channel?.write(message).wait()
 //        self.receivePacket()
     }
 
@@ -52,31 +52,16 @@ public class OracleProtocol {
     }
 }
 
-struct TNSMessage {
-    let type: Constants.PacketType
-
-    init?(from buffer: ByteBuffer) {
-        guard
-            buffer.readableBytes >= PACKET_HEADER_SIZE,
-            let typeByte: UInt8 = buffer.getInteger(at: MemoryLayout<UInt32>.size),
-            let type = Constants.PacketType(rawValue: typeByte)
-        else {
-            return nil
-        }
-        self.type = type
-    }
-}
-
 class OracleChannelHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
-    typealias OutboundIn = ByteBuffer
+    typealias OutboundIn = TNSRequest
     typealias OutboundOut = ByteBuffer
 
     let logger: Logger
 
-    private var queue: [ByteBuffer]
+    private var queue: [TNSRequest]
 
-    var currentRequest: ByteBuffer? {
+    var currentRequest: TNSRequest? {
         self.queue.first
     }
 
@@ -88,7 +73,7 @@ class OracleChannelHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         print(data)
         let buffer = self.unwrapInboundIn(data)
-        guard let message = TNSMessage(from: buffer) else { return }
+        guard var message = TNSMessage(from: buffer) else { return }
         logger.trace("Response received: \(message.type)")
         switch message.type {
         case .resend:
@@ -97,7 +82,13 @@ class OracleChannelHandler: ChannelDuplexHandler {
                 return
             }
             print(currentRequest)
-            context.writeAndFlush(self.wrapOutboundOut(currentRequest), promise: nil)
+            context.channel.write(currentRequest, promise: nil)
+        case .accept:
+            do {
+                try currentRequest?.processResponse(&message, from: context.channel)
+            } catch {
+                self.errorCaught(context: context, error: error)
+            }
         default:
             fatalError("A handler for \(message.type) is not implemented")
         }
@@ -105,9 +96,12 @@ class OracleChannelHandler: ChannelDuplexHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         print(data)
-        let buffer = self.unwrapOutboundIn(data)
-        self.queue.append(buffer)
-        context.writeAndFlush(data, promise: promise)
+        let messages = self.unwrapOutboundIn(data)
+        self.queue.append(messages)
+        for message in messages.get() {
+            context.write(self.wrapOutboundOut(message.packet), promise: nil)
+        }
+        context.flush()
         logger.trace("Message sent")
     }
 

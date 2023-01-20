@@ -3,7 +3,7 @@ public class OracleConnection {
 
     public init() {}
 
-    func createMessage<T: Message>() -> T {
+    func createMessage<T: TNSRequest>() -> T {
         T.initialize(from: self)
     }
 }

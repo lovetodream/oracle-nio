@@ -114,23 +114,23 @@ class OracleChannelHandler: ChannelDuplexHandler {
 let PACKET_HEADER_SIZE = 8
 
 extension ByteBuffer {
-    mutating func startRequest(packetType: Constants.PacketType, dataFlags: UInt16 = 0) {
+    mutating func startRequest(packetType: PacketType, dataFlags: UInt16 = 0) {
         self.reserveCapacity(PACKET_HEADER_SIZE)
         self.moveWriterIndex(forwardBy: PACKET_HEADER_SIZE) // Placeholder for the header, which is set at the end of an request
-        if packetType == Constants.PacketType.data {
+        if packetType == PacketType.data {
             self.writeInteger(dataFlags)
         }
     }
 }
 
 extension ByteBuffer {
-    mutating func endRequest(packetType: Constants.PacketType) {
+    mutating func endRequest(packetType: PacketType) {
         self.sendPacket(packetType: packetType, final: true)
     }
 }
 
 extension ByteBuffer {
-    mutating func sendPacket(packetType: Constants.PacketType, capabilities: Capabilities? = nil, final: Bool) {
+    mutating func sendPacket(packetType: PacketType, capabilities: Capabilities? = nil, final: Bool) {
         var position = 0
         if capabilities?.protocolVersion ?? 0 >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             self.setInteger(UInt32(self.readableBytes), at: position)

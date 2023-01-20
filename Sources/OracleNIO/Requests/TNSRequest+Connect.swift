@@ -56,7 +56,7 @@ struct ConnectRequest: TNSRequest {
             buffer.startRequest(packetType: .data)
         }
         buffer.writeString(self.connectString)
-        let finalPacketType: Constants.PacketType = connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA ? .data : .connect
+        let finalPacketType: PacketType = connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA ? .data : .connect
         buffer.endRequest(packetType: finalPacketType)
         messages.append(.init(type: finalPacketType, packet: buffer))
         return messages

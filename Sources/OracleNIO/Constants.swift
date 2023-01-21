@@ -354,7 +354,7 @@ enum Constants {
     static let TNS_ERR_ARRAY_DML_ERRORS = 24381
 
     // MARK: Message types
-    static let TNS_MSG_TYPE_PROTOCOL = 1
+    static let TNS_MSG_TYPE_PROTOCOL: UInt8 = 1
     static let TNS_MSG_TYPE_DATA_TYPES = 2
     static let TNS_MSG_TYPE_FUNCTION = 3
     static let TNS_MSG_TYPE_ERROR = 4
@@ -655,6 +655,135 @@ enum Constants {
 
     // MARK: DRCP release mode
     static let DRCP_DEAUTHENTICATE = 0x00000002
+
+}
+
+extension Constants {
+    // MARK: Mandated DB API constants
+    static let apilevel = "2.0"
+    static let threadsafety = 2
+    static let paramstyle = "named"
+
+    // MARK: Authentication modes
+    static let AUTH_MODE_DEFAULT = 0
+    static let AUTH_MODE_PRELIM = 0x00000008
+    static let AUTH_MODE_SYSASM = 0x00008000
+    static let AUTH_MODE_SYSBKP = 0x00020000
+    static let AUTH_MODE_SYSDBA = 0x00000002
+    static let AUTH_MODE_SYSDGD = 0x00040000
+    static let AUTH_MODE_SYSKMT = 0x00080000
+    static let AUTH_MODE_SYSOPER = 0x00000004
+    static let AUTH_MODE_SYSRAC = 0x00100000
+
+    // MARK: Pool "get" modes
+    static let POOL_GETMODE_WAIT = 0
+    static let POOL_GETMODE_NOWAIT = 1
+    static let POOL_GETMODE_FORCEGET = 2
+    static let POOL_GETMODE_TIMEDWAIT = 3
+
+    // MARK: AQ delivery modes
+    static let MSG_BUFFERED =  2
+    static let MSG_PERSISTENT = 1
+    static let MSG_PERSISTENT_OR_BUFFERED = 3
+
+    // MARK: AQ deque modes
+    static let DEQ_BROWSE = 1
+    static let DEQ_LOCKED = 2
+    static let DEQ_REMOVE = 3
+    static let DEQ_REMOVE_NODATA = 4
+
+    // MARK: AQ dequeue navigation modes
+    static let DEQ_FIRST_MSG = 1
+    static let DEQ_NEXT_MSG = 3
+    static let DEQ_NEXT_TRANSACTION = 2
+
+    // MARK: AQ dequeue visibility modes
+    static let DEQ_IMMEDIATE = 1
+    static let DEQ_ON_COMMIT = 2
+
+    // MARK: AQ dequeue wait modes
+    static let DEQ_NO_WAIT = 0
+    static let DEQ_WAIT_FOREVER = pow(2, 32) - 1
+
+    // MARK: AQ enqueue visibility modes
+    static let ENQ_IMMEDIATE = 1
+    static let ENQ_ON_COMMIT = 2
+
+    // MARK: AQ message states
+    static let MSG_EXPIRED = 3
+    static let MSG_PROCESSED = 2
+    static let MSG_READY = 0
+    static let MSG_WAITING = 1
+
+    // MARK: AQ other constants
+    static let MSG_NO_DELAY = 0
+    static let MSG_NO_EXPIRATION = -1
+
+    // MARK: Shutdown modes
+    static let DBSHUTDOWN_ABORT = 4
+    static let DBSHUTDOWN_FINAL = 5
+    static let DBSHUTDOWN_IMMEDIATE = 3
+    static let DBSHUTDOWN_TRANSACTIONAL = 1
+    static let DBSHUTDOWN_TRANSACTIONAL_LOCAL = 2
+
+    // MARK: Subscription grouping classes
+    static let SUBSCR_GROUPING_CLASS_NONE = 0
+    static let SUBSCR_GROUPING_CLASS_TIME = 1
+
+    // MARK: Subscription grouping types
+    static let SUBSCR_GROUPING_TYPE_SUMMARY = 1
+    static let SUBSCR_GROUPING_TYPE_LAST = 2
+
+    // MARK: Subscription namespaces
+    static let SUBSCR_NAMESPACE_AQ = 1
+    static let SUBSCR_NAMESPACE_DBCHANGE = 2
+
+    // MARK: Subscription protocols
+    static let SUBSCR_PROTO_HTTP = 3
+    static let SUBSCR_PROTO_MAIL = 1
+    static let SUBSCR_PROTO_CALLBACK = 0
+    static let SUBSCR_PROTO_SERVER = 2
+
+    // MARK: Subscription quality of service
+    static let SUBSCR_QOS_BEST_EFFORT = 0x10
+    static let SUBSCR_QOS_DEFAULT = 0
+    static let SUBSCR_QOS_DEREG_NFY = 0x02
+    static let SUBSCR_QOS_QUERY = 0x08
+    static let SUBSCR_QOS_RELIABLE = 0x01
+    static let SUBSCR_QOS_ROWIDS = 0x04
+
+    // MARK: Event types
+    static let EVENT_AQ = 100
+    static let EVENT_DEREG = 5
+    static let EVENT_NONE = 0
+    static let EVENT_OBJCHANGE = 6
+    static let EVENT_QUERYCHANGE = 7
+    static let EVENT_SHUTDOWN = 2
+    static let EVENT_SHUTDOWN_ANY = 3
+    static let EVENT_STARTUP = 1
+
+    // MARK: Operation codes
+    static let OPCODE_ALLOPS = 0
+    static let OPCODE_ALLROWS = 0x01
+    static let OPCODE_ALTER = 0x10
+    static let OPCODE_DELETE = 0x08
+    static let OPCODE_DROP = 0x20
+    static let OPCODE_INSERT = 0x02
+    static let OPCODE_UPDATE = 0x04
+
+    // MARK: Flags for tpc_begin()
+    static let TPC_BEGIN_JOIN = 0x00000002
+    static let TPC_BEGIN_NEW = 0x00000001
+    static let TPC_BEGIN_PROMOTE = 0x00000008
+    static let TPC_BEGIN_RESUME = 0x00000004
+
+    // MARK: Flags for tpc_end()
+    static let TPC_END_NORMAL = 0
+    static let TPC_END_SUSPEND = 0x00100000
+
+    // MARK: Basic configuration constants
+    static let DRIVER_NAME = "oracle-nio"
+    static let ENCODING = "UTF-8"
 
 }
 

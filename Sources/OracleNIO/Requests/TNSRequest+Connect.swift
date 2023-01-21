@@ -5,6 +5,7 @@ struct ConnectRequest: TNSRequest {
     var messageType: Int
     var errorInfo: OracleErrorInfo?
     var connectString: String
+    var onResponsePromise: EventLoopPromise<TNSMessage>?
 
     init(connection: OracleConnection, messageType: Int) {
         self.connection = connection
@@ -50,14 +51,14 @@ struct ConnectRequest: TNSRequest {
         )
         if connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA {
             // TODO: this does not work yet
-            buffer.endRequest(packetType: .connect)
+            buffer.endRequest(packetType: .connect, capabilities: connection.capabilities)
             messages.append(.init(type: .connect, packet: buffer))
             buffer = ByteBuffer()
-            buffer.startRequest(packetType: .data)
+            buffer.startRequest()
         }
         buffer.writeString(self.connectString)
         let finalPacketType: PacketType = connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA ? .data : .connect
-        buffer.endRequest(packetType: finalPacketType)
+        buffer.endRequest(packetType: finalPacketType, capabilities: connection.capabilities)
         messages.append(.init(type: finalPacketType, packet: buffer))
         return messages
     }
@@ -74,7 +75,6 @@ struct ConnectRequest: TNSRequest {
             }
             connection.capabilities.adjustForProtocol(version: protocolVersion, options: protocolOptions)
             connection.readyForAuthenticationPromise.succeed(Void())
-            print(connection.capabilities)
         default:
             fatalError("Unexpected response of type '\(message.type)' received for \(String(describing: self))")
         }

@@ -37,8 +37,8 @@ public class OracleConnection {
     }
 
     private func connectPhaseOne() {
-        let connectMessage: ConnectRequest = createMessage()
-        channel.write(connectMessage, promise: nil)
+        let request: ConnectRequest = createRequest()
+        channel.write(request, promise: nil)
     }
 
     private func connectPhaseTwo() throws {
@@ -50,8 +50,16 @@ public class OracleConnection {
             // TODO: Perform OOB Check
         }
 
-        let networkServicesMessage: NetworkServicesMessage = createMessage()
-        channel.write(networkServicesMessage, promise: nil)
+        var networkServicesRequest: NetworkServicesRequest = createRequest()
+        networkServicesRequest.onResponsePromise = eventLoop.makePromise()
+        channel.write(networkServicesRequest, promise: nil)
+        networkServicesRequest.onResponsePromise!.futureResult
+            .flatMap { _ in
+                var protocolRequest: ProtocolRequest = self.createRequest()
+                protocolRequest.onResponsePromise = self.eventLoop.makePromise()
+                self.channel.write(protocolRequest, promise: nil)
+                return protocolRequest.onResponsePromise!.futureResult
+            }
 //        let protocolMessage = connection.createMessage(ProtocolMessage)
 //        let dataTypesMessage = connection.createMessage(DataTypesMessage)
     }
@@ -76,7 +84,7 @@ public class OracleConnection {
         return bootstrap
     }
 
-    func createMessage<T: TNSRequest>() -> T {
+    func createRequest<T: TNSRequest>() -> T {
         T.initialize(from: self)
     }
 }

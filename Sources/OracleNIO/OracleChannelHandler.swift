@@ -23,20 +23,31 @@ class OracleChannelHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         print(data)
         let buffer = self.unwrapInboundIn(data)
-        guard var message = TNSMessage(from: buffer) else { return }
+        guard var message = TNSMessage(from: buffer), let currentRequest else {
+            logger.warning("Received a response, but we either couldn't get a message from it or the current request is nil.")
+            return
+        }
         logger.trace("Response received: \(message.type)")
+        queue.removeFirst()
+        logger.trace("Removed current request from queue.")
         switch message.type {
         case .resend:
-            guard let currentRequest else {
-                logger.warning("Received a resend response, but could not resend the last request.")
-                return
-            }
-            print(currentRequest)
             context.channel.write(currentRequest, promise: nil)
+            currentRequest.onResponsePromise?.succeed(message)
         case .accept:
             do {
-                try currentRequest?.processResponse(&message, from: context.channel)
+                try currentRequest.processResponse(&message, from: context.channel)
+                currentRequest.onResponsePromise?.succeed(message)
             } catch {
+                self.errorCaught(context: context, error: error)
+                currentRequest.onResponsePromise?.fail(error)
+            }
+        case .data:
+            do {
+                try currentRequest.processResponse(&message, from: context.channel)
+                currentRequest.onResponsePromise?.succeed(message)
+            } catch {
+                currentRequest.onResponsePromise?.fail(error)
                 self.errorCaught(context: context, error: error)
             }
         default:
@@ -65,7 +76,7 @@ class OracleChannelHandler: ChannelDuplexHandler {
 let PACKET_HEADER_SIZE = 8
 
 extension ByteBuffer {
-    mutating func startRequest(packetType: PacketType, dataFlags: UInt16 = 0) {
+    mutating func startRequest(packetType: PacketType = .data, dataFlags: UInt16 = 0) {
         self.reserveCapacity(PACKET_HEADER_SIZE)
         self.moveWriterIndex(forwardBy: PACKET_HEADER_SIZE) // Placeholder for the header, which is set at the end of an request
         if packetType == PacketType.data {
@@ -75,15 +86,15 @@ extension ByteBuffer {
 }
 
 extension ByteBuffer {
-    mutating func endRequest(packetType: PacketType) {
-        self.sendPacket(packetType: packetType, final: true)
+    mutating func endRequest(packetType: PacketType = .data, capabilities: Capabilities) {
+        self.sendPacket(packetType: packetType, capabilities: capabilities, final: true)
     }
 }
 
 extension ByteBuffer {
-    mutating func sendPacket(packetType: PacketType, capabilities: Capabilities? = nil, final: Bool) {
+    mutating func sendPacket(packetType: PacketType, capabilities: Capabilities, final: Bool) {
         var position = 0
-        if capabilities?.protocolVersion ?? 0 >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+        if capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             self.setInteger(UInt32(self.readableBytes), at: position)
         } else {
             self.setInteger(UInt16(self.readableBytes), at: position)

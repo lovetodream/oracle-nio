@@ -17,7 +17,7 @@ struct TNSMessage {
         self.packet = buffer
     }
 
-    init(type: PacketType, packet: ByteBuffer) {
+    init(type: PacketType = .data, packet: ByteBuffer) {
         self.type = type
         self.packet = packet
     }

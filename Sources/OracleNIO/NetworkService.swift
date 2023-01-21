@@ -3,16 +3,16 @@ import NIOCore
 protocol NetworkServiceProtocol {
     var dataSize: UInt16 { get }
     func writeData() -> ByteBuffer
-    func writeHeader(serviceNumber: UInt16, numberOfSubPackets: UInt16) -> ByteBuffer
+    func writeHeader(service: NetworkServiceType, numberOfSubPackets: UInt16) -> ByteBuffer
     func writeVersion() -> ByteBuffer
 }
 
 extension NetworkServiceProtocol {
     var dataSize: UInt16 { NetworkService.Constants.TNS_NETWORK_HEADER_SIZE }
 
-    func writeHeader(serviceNumber: UInt16, numberOfSubPackets: UInt16) -> ByteBuffer {
+    func writeHeader(service: NetworkServiceType, numberOfSubPackets: UInt16) -> ByteBuffer {
         var buffer = ByteBuffer()
-        buffer.writeMultipleIntegers(serviceNumber, numberOfSubPackets, UInt32(0))
+        buffer.writeMultipleIntegers(service.rawValue, numberOfSubPackets, UInt32(0))
         return buffer
     }
 
@@ -32,12 +32,7 @@ struct AuthenticationService: NetworkServiceProtocol {
 
     func writeData() -> ByteBuffer {
         var buffer = ByteBuffer()
-        buffer.writeImmutableBuffer(
-            self.writeHeader(
-                serviceNumber: NetworkService.Constants.TNS_NETWORK_SERVICE_AUTH,
-                numberOfSubPackets: 3
-            )
-        )
+        buffer.writeImmutableBuffer(self.writeHeader(service: .auth, numberOfSubPackets: 3))
         buffer.writeImmutableBuffer(self.writeVersion())
 
         // write auth type
@@ -62,12 +57,7 @@ struct DataIntegrityService: NetworkServiceProtocol {
 
     func writeData() -> ByteBuffer {
         var buffer = ByteBuffer()
-        buffer.writeImmutableBuffer(
-            self.writeHeader(
-                serviceNumber: NetworkService.Constants.TNS_NETWORK_SERVICE_DATA_INTEGRITY,
-                numberOfSubPackets: 2
-            )
-        )
+        buffer.writeImmutableBuffer(self.writeHeader(service: .dataIntegrity, numberOfSubPackets: 2))
         buffer.writeImmutableBuffer(self.writeVersion())
 
         // write options
@@ -85,12 +75,7 @@ struct EncryptionService: NetworkServiceProtocol {
 
     func writeData() -> ByteBuffer {
         var buffer = ByteBuffer()
-        buffer.writeImmutableBuffer(
-            self.writeHeader(
-                serviceNumber: NetworkService.Constants.TNS_NETWORK_SERVICE_ENCRYPTION,
-                numberOfSubPackets: 2
-            )
-        )
+        buffer.writeImmutableBuffer(self.writeHeader(service: .encryption, numberOfSubPackets: 2))
         buffer.writeImmutableBuffer(self.writeVersion())
 
         // write options
@@ -108,12 +93,7 @@ struct SupervisorService: NetworkServiceProtocol {
 
     func writeData() -> ByteBuffer {
         var buffer = ByteBuffer()
-        buffer.writeImmutableBuffer(
-            self.writeHeader(
-                serviceNumber: NetworkService.Constants.TNS_NETWORK_SERVICE_SUPERVISOR,
-                numberOfSubPackets: 3
-            )
-        )
+        buffer.writeImmutableBuffer(self.writeHeader(service: .supervisor, numberOfSubPackets: 3))
         buffer.writeImmutableBuffer(self.writeVersion())
 
         // write CID
@@ -130,12 +110,33 @@ struct SupervisorService: NetworkServiceProtocol {
             NetworkService.Constants.TNS_NETWORK_MAGIC,
             NetworkService.Constants.TNS_NETWORK_TYPE_UB2,
             UInt32(4),
-            NetworkService.Constants.TNS_NETWORK_SERVICE_SUPERVISOR,
-            NetworkService.Constants.TNS_NETWORK_SERVICE_AUTH,
-            NetworkService.Constants.TNS_NETWORK_SERVICE_ENCRYPTION,
-            NetworkService.Constants.TNS_NETWORK_SERVICE_DATA_INTEGRITY
+            NetworkServiceType.supervisor.rawValue,
+            NetworkServiceType.auth.rawValue,
+            NetworkServiceType.encryption.rawValue,
+            NetworkServiceType.dataIntegrity.rawValue
         )
         return buffer
+    }
+}
+
+/// TNS Network service numbers
+enum NetworkServiceType: UInt16, CustomStringConvertible {
+    case auth = 1
+    case encryption = 2
+    case dataIntegrity = 3
+    case supervisor = 4
+
+    var description: String {
+        switch self {
+        case .auth:
+            return "AUTH"
+        case .encryption:
+            return "ENCRYPTION"
+        case .dataIntegrity:
+            return "DATA_INTEGRITY"
+        case .supervisor:
+            return "SUPERVISOR"
+        }
     }
 }
 
@@ -154,12 +155,6 @@ enum NetworkService {
         static let TNS_NETWORK_TYPE_UB2: UInt16 = 3
         static let TNS_NETWORK_TYPE_VERSION: UInt16 = 5
         static let TNS_NETWORK_TYPE_STATUS: UInt16 = 6
-
-        // MARK: Network service numbers
-        static let TNS_NETWORK_SERVICE_AUTH: UInt16 = 1
-        static let TNS_NETWORK_SERVICE_ENCRYPTION: UInt16 = 2
-        static let TNS_NETWORK_SERVICE_DATA_INTEGRITY: UInt16 = 3
-        static let TNS_NETWORK_SERVICE_SUPERVISOR: UInt16 = 4
 
         // MARK: Network header sizes
         static let TNS_NETWORK_HEADER_SIZE: UInt16 = 4 + 2 + 4 + 2 + 1

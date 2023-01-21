@@ -32,6 +32,7 @@ struct OracleError: Error {
 
         // MARK: Error numbers that result in NotSupportedError
         case serverVersionNotSupported = 3010
+        case nCharCSNotSupported = 3012
 
         // MARK: Error numbers that result in DatabaseError
         case noCredentials = 4001
@@ -57,6 +58,8 @@ struct OracleError: Error {
                 return "Given index is out of range."
             case .serverVersionNotSupported:
                 return "Connections to this database server version are not supported by oracle-nio."
+            case .nCharCSNotSupported:
+                return "The national character set used by this database is not supported by oracle-nio."
             case .noCredentials:
                 return "No credentials specified."
             case .poolNoConnectionAvailable:

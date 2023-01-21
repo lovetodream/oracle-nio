@@ -11,6 +11,7 @@ protocol TNSRequest {
     func preprocess()
     func processResponse(_ message: inout TNSMessage, from channel: Channel) throws
     func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws
+    func defaultProcessResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws
     func postprocess()
     func processError(_ message: inout TNSMessage) -> OracleErrorInfo
     func processReturnParameters(_ message: inout TNSMessage)
@@ -32,6 +33,7 @@ extension TNSRequest {
 
     func processResponse(_ message: inout TNSMessage, from channel: Channel) throws {
         preprocess()
+        setReaderIndex(for: &message)
         message.packet.moveReaderIndex(forwardBy: 2) // skip data flags
         while message.packet.readableBytes > 0 {
             guard let messageTypeByte = message.packet.readInteger(as: UInt8.self), let messageType = MessageType(rawValue: messageTypeByte) else {
@@ -43,6 +45,10 @@ extension TNSRequest {
     }
 
     func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
+        try defaultProcessResponse(&message, of: type, from: channel)
+    }
+
+    func defaultProcessResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         switch type {
         case .error:
             throw self.processError(&message)
@@ -253,32 +259,3 @@ extension TNSRequest {
 //struct AuthMessage: TNSRequest {
 //
 //}
-
-struct ProtocolRequest: TNSRequest {
-    var connection: OracleConnection
-    var messageType: MessageType
-    var onResponsePromise: EventLoopPromise<TNSMessage>?
-
-    init(connection: OracleConnection, messageType: MessageType) {
-        self.connection = connection
-        self.messageType = messageType
-    }
-
-    func get() -> [TNSMessage] {
-        var buffer = ByteBuffer()
-        buffer.startRequest()
-        buffer.writeInteger(MessageType.protocol.rawValue)
-        buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
-        buffer.writeInteger(UInt8(0)) // "array" terminator
-        buffer.writeString(Constants.DRIVER_NAME)
-        buffer.writeInteger(UInt8(0)) // NULL terminator
-        buffer.endRequest(capabilities: connection.capabilities)
-        return [.init(packet: buffer)]
-    }
-
-    func processResponse(_ message: inout TNSMessage, from channel: Channel) throws {
-        setReaderIndex(for: &message)
-        message.packet.moveReaderIndex(forwardBy: 2)
-    }
-
-}

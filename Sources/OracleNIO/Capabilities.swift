@@ -9,8 +9,8 @@
 //
 
 struct Capabilities {
-    var protocolVersion: UInt16?
-    var supportsOOB: Bool?
+    var protocolVersion: UInt16 = 0
+    var supportsOOB = false
 
     init() {}
 

@@ -12,6 +12,7 @@ public class OracleConnection {
 
     public var eventLoop: EventLoop { channel.eventLoop }
 
+    var drcpEstablishSession = false
 
     init(channel: Channel, logger: Logger) {
         self.logger = logger
@@ -43,7 +44,7 @@ public class OracleConnection {
 
     private func connectPhaseTwo() throws {
         if capabilities.protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
-            throw OracleError.serverVersionNotSupported
+            throw OracleError.ErrorType.serverVersionNotSupported
         }
 
         if capabilities.supportsOOB && capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK {
@@ -86,5 +87,11 @@ public class OracleConnection {
 
     func createRequest<T: TNSRequest>() -> T {
         T.initialize(from: self)
+    }
+}
+
+extension OracleConnection {
+    func resetStatementCache() {
+        // TODO: reset cache
     }
 }

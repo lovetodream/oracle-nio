@@ -353,26 +353,6 @@ enum Constants {
     static let TNS_ERR_SESSION_SHUTDOWN = 12572
     static let TNS_ERR_ARRAY_DML_ERRORS = 24381
 
-    // MARK: Message types
-    static let TNS_MSG_TYPE_PROTOCOL: UInt8 = 1
-    static let TNS_MSG_TYPE_DATA_TYPES = 2
-    static let TNS_MSG_TYPE_FUNCTION = 3
-    static let TNS_MSG_TYPE_ERROR = 4
-    static let TNS_MSG_TYPE_ROW_HEADER = 6
-    static let TNS_MSG_TYPE_ROW_DATA = 7
-    static let TNS_MSG_TYPE_PARAMETER = 8
-    static let TNS_MSG_TYPE_STATUS = 9
-    static let TNS_MSG_TYPE_IO_VECTOR = 11
-    static let TNS_MSG_TYPE_LOB_DATA = 14
-    static let TNS_MSG_TYPE_WARNING = 15
-    static let TNS_MSG_TYPE_DESCRIBE_INFO = 16
-    static let TNS_MSG_TYPE_PIGGYBACK = 17
-    static let TNS_MSG_TYPE_FLUSH_OUT_BINDS = 19
-    static let TNS_MSG_TYPE_BIT_VECTOR = 21
-    static let TNS_MSG_TYPE_SERVER_SIDE_PIGGYBACK = 23
-    static let TNS_MSG_TYPE_ONEWAY_FN = 26
-    static let TNS_MSG_TYPE_IMPLICIT_RESULTSET = 27
-
     // MARK: Parameter keyword numbers
     static let TNS_KEYWORD_NUM_CURRENT_SCHEMA = 168
     static let TNS_KEYWORD_NUM_EDITION = 172
@@ -445,18 +425,8 @@ enum Constants {
     static let TNS_EXEC_OPTION_NO_COMPRESSED_FETCH = 0x40000
     static let TNS_EXEC_OPTION_BATCH_ERRORS = 0x80000
 
-    // MARK: Server side piggyback op codes
-    static let TNS_SERVER_PIGGYBACK_QUERY_CACHE_INVALIDATION = 1
-    static let TNS_SERVER_PIGGYBACK_OS_PID_MTS = 2
-    static let TNS_SERVER_PIGGYBACK_TRACE_EVENT = 3
-    static let TNS_SERVER_PIGGYBACK_SESS_RET = 4
-    static let TNS_SERVER_PIGGYBACK_SYNC = 5
-    static let TNS_SERVER_PIGGYBACK_LTXID = 7
-    static let TNS_SERVER_PIGGYBACK_AC_REPLAY_CONTEXT = 8
-    static let TNS_SERVER_PIGGYBACK_EXT_SYNC = 9
-
     // MARK: Session return constants
-    static let TNS_SESSGET_SESSION_CHANGED = 4
+    static let TNS_SESSGET_SESSION_CHANGED: UInt32 = 4
 
     // MARK: LOB operations
     static let TNS_LOB_OP_GET_LENGTH = 0x0001

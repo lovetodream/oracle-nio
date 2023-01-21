@@ -1,13 +1,11 @@
 struct NetworkServicesRequest: TNSRequest {
     var connection: OracleConnection
-    var messageType: Int
-    var errorInfo: OracleErrorInfo?
+    var messageType: MessageType
     var onResponsePromise: EventLoopPromise<TNSMessage>?
 
-    init(connection: OracleConnection, messageType: Int) {
+    init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
         self.messageType = messageType
-        self.errorInfo = nil
     }
 
     func get() -> [TNSMessage] {
@@ -40,12 +38,12 @@ struct NetworkServicesRequest: TNSRequest {
         message.packet.moveReaderIndex(forwardBy: 2) // data flags
         let temp32 = message.packet.readInteger(as: UInt32.self) // network magic number
         if temp32 != NetworkService.Constants.TNS_NETWORK_MAGIC {
-            throw OracleError.unexpectedData
+            throw OracleError.ErrorType.unexpectedData
         }
         message.packet.moveReaderIndex(forwardBy: 2) // length of packet
         message.packet.moveReaderIndex(forwardBy: 4) // version
         guard let numberOfServices = message.packet.readInteger(as: UInt16.self) else {
-            throw OracleError.unexpectedData
+            throw OracleError.ErrorType.unexpectedData
         }
         message.packet.moveReaderIndex(forwardBy: 1) // error flags
         for _ in 0..<numberOfServices {
@@ -54,7 +52,7 @@ struct NetworkServicesRequest: TNSRequest {
             let errorNumber = message.packet.readInteger(as: UInt32.self) ?? 0
             if errorNumber != 0 {
                 connection.logger.log(level: .error, "Listener refused connection", metadata: ["errorCode": "ORA-\(errorNumber)"])
-                throw OracleError.listenerRefusedConnection
+                throw OracleError.ErrorType.listenerRefusedConnection
             }
             for _ in 0..<numberOfSubPackets {
                 let dataLength = Int(message.packet.readInteger(as: UInt16.self) ?? 0)

@@ -63,9 +63,7 @@ struct ConnectRequest: TNSRequest {
     }
 
     func processResponse(_ message: inout TNSMessage, from channel: Channel) throws {
-        if message.packet.readerIndex < PACKET_HEADER_SIZE && message.packet.capacity >= PACKET_HEADER_SIZE {
-            message.packet.moveReaderIndex(to: PACKET_HEADER_SIZE)
-        }
+        setReaderIndex(for: &message)
         switch message.type {
         case .resend:
             channel.write(self, promise: nil)
@@ -75,6 +73,7 @@ struct ConnectRequest: TNSRequest {
                 throw MessageError.invalidResponse
             }
             connection.capabilities.adjustForProtocol(version: protocolVersion, options: protocolOptions)
+            connection.readyForAuthenticationPromise.succeed(Void())
             print(connection.capabilities)
         default:
             fatalError("Unexpected response of type '\(message.type)' received for \(String(describing: self))")

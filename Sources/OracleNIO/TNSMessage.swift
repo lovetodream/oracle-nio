@@ -1,5 +1,6 @@
 import NIOCore
 
+/// Message, which is sent to and received from Oracle.
 struct TNSMessage {
     let type: PacketType
     var packet: ByteBuffer

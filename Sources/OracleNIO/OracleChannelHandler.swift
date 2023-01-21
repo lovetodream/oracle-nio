@@ -1,56 +1,6 @@
-//
-//  Protocol.swift
-//  
-//
-//  Created by Timo Zacherl on 05.01.23.
-//
-
 import NIOCore
 import NIOPosix
 import Logging
-
-/// Defining the protocol used by the client when communicating with the database.
-public class OracleProtocol {
-    let group: MultiThreadedEventLoopGroup
-    let logger: Logger
-    var channel: Channel?
-
-    public init(group: MultiThreadedEventLoopGroup, logger: Logger) {
-        self.group = group
-        self.logger = logger
-    }
-
-    public func connectPhaseOne(connection: OracleConnection, address: SocketAddress) throws {
-        try self.connectTCP(address, logger: logger)
-
-        let connectMessage: ConnectRequest = connection.createMessage()
-        try self.process(message: connectMessage)
-    }
-
-    public func connectPhaseTwo() throws {
-
-    }
-
-    func connectTCP(_ address: SocketAddress, logger: Logger) throws {
-        let bootstrap = ClientBootstrap(group: group)
-            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-            .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
-            .channelOption(ChannelOptions.connectTimeout, value: .none)
-            .channelInitializer { channel in
-                channel.pipeline.addHandlers([OracleChannelHandler(logger: logger)])
-            }
-        self.channel = try bootstrap.connect(to: address).wait()
-    }
-
-    private func process(message: TNSRequest) throws {
-        try channel?.write(message).wait()
-//        self.receivePacket()
-    }
-
-    private func receivePacket() {
-
-    }
-}
 
 class OracleChannelHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
@@ -107,6 +57,7 @@ class OracleChannelHandler: ChannelDuplexHandler {
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         print(error)
+        context.fireErrorCaught(error)
     }
 
 }

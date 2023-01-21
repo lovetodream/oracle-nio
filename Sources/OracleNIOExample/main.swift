@@ -1,18 +1,12 @@
-//
-//  File.swift
-//  
-//
-//  Created by Timo Zacherl on 13.01.23.
-//
-
 import OracleNIO
 import Foundation
 
 var logger = Logger(label: "com.lovetodream.oraclenio")
 logger.logLevel = .trace
-let proto = OracleProtocol(group: .init(numberOfThreads: 1), logger: logger)
+let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 do {
-    try proto.connectPhaseOne(connection: OracleConnection(), address: .init(ipAddress: "192.168.1.22", port: 1521))
+    let connection = try OracleConnection.connect(to: .init(ipAddress: "192.168.1.22", port: 1521), logger: logger, on: group.next()).wait()
+    print(connection)
 } catch {
     print(error)
 }

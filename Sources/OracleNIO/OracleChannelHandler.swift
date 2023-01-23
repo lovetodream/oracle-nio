@@ -3,7 +3,7 @@ import NIOPosix
 import Logging
 
 class OracleChannelHandler: ChannelDuplexHandler {
-    typealias InboundIn = ByteBuffer
+    typealias InboundIn = TNSMessage
     typealias OutboundIn = TNSRequest
     typealias OutboundOut = ByteBuffer
 
@@ -21,10 +21,9 @@ class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        print(data)
-        let buffer = self.unwrapInboundIn(data)
-        guard var message = TNSMessage(from: buffer), let currentRequest else {
-            logger.warning("Received a response, but we either couldn't get a message from it or the current request is nil.")
+        var message = self.unwrapInboundIn(data)
+        guard let currentRequest else {
+            logger.warning("Received a response, but we couldn't get the current request.")
             return
         }
         logger.trace("Response received: \(message.type)")

@@ -10,6 +10,9 @@ public class OracleConnection {
         self.readyForAuthenticationPromise.futureResult
     }
 
+    private var decoderHandler: ByteToMessageHandler<TNSMessageDecoder>!
+    private var channelHandler: OracleChannelHandler
+
     public var eventLoop: EventLoop { channel.eventLoop }
 
     var drcpEstablishSession = false
@@ -18,13 +21,14 @@ public class OracleConnection {
         self.logger = logger
         self.channel = channel
         self.readyForAuthenticationPromise = self.channel.eventLoop.makePromise(of: Void.self)
+        self.channelHandler = OracleChannelHandler(logger: logger)
+        self.decoderHandler = ByteToMessageHandler(TNSMessageDecoder(connection: self))
     }
 
     func start() -> EventLoopFuture<Void> {
-        let channelHandler = OracleChannelHandler(logger: logger)
-
         do {
-            try channel.pipeline.syncOperations.addHandlers(channelHandler)
+            try channel.pipeline.syncOperations.addHandler(decoderHandler, position: .first)
+            try channel.pipeline.syncOperations.addHandlers(channelHandler, position: .after(decoderHandler))
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
@@ -32,7 +36,7 @@ public class OracleConnection {
         connectPhaseOne()
 
         return readyForAuthenticationFuture.flatMapThrowing { _ in
-            self.logger.log(level: .debug, "Server ready for authentication")
+            self.logger.debug("Server ready for authentication")
             try self.connectPhaseTwo()
         }
     }

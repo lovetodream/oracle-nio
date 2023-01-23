@@ -266,8 +266,8 @@ extension TNSRequest {
     }
 
     func setReaderIndex(for message: inout TNSMessage) {
-        if message.packet.readerIndex < PACKET_HEADER_SIZE && message.packet.capacity >= PACKET_HEADER_SIZE {
-            message.packet.moveReaderIndex(to: PACKET_HEADER_SIZE)
+        if message.packet.readerIndex < TNSMessage.headerSize && message.packet.capacity >= TNSMessage.headerSize {
+            message.packet.moveReaderIndex(to: TNSMessage.headerSize)
         }
     }
 }

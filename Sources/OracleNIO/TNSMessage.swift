@@ -2,6 +2,8 @@ import NIOCore
 
 /// Message, which is sent to and received from Oracle.
 struct TNSMessage {
+    static let headerSize = 8
+
     let type: PacketType
     let length: Int
     var packet: ByteBuffer
@@ -15,7 +17,7 @@ struct TNSMessage {
         }
         guard
             let length,
-            buffer.readableBytes >= PACKET_HEADER_SIZE,
+            buffer.readableBytes >= Self.headerSize,
             let typeByte: UInt8 = buffer.getInteger(at: MemoryLayout<UInt32>.size),
             let type = PacketType(rawValue: typeByte),
             let packet = buffer.readSlice(length: length)

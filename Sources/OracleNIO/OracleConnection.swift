@@ -74,7 +74,11 @@ public class OracleConnection {
             // TODO: authenticate
     }
 
-    public static func connect(to address: SocketAddress, logger: Logger, on eventLoop: EventLoop) -> EventLoopFuture<OracleConnection> {
+    public static func connect(
+        to address: SocketAddress,
+        logger: Logger,
+        on eventLoop: EventLoop
+    ) -> EventLoopFuture<OracleConnection> {
         eventLoop.flatSubmit {
             makeBootstrap(on: eventLoop).connect(to: address).flatMap { channel -> EventLoopFuture<OracleConnection> in
                 let connection = OracleConnection(channel: channel, logger: logger)

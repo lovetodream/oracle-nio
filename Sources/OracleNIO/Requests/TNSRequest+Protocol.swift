@@ -27,7 +27,8 @@ struct ProtocolRequest: TNSRequest {
                 let c = message.packet.readInteger(as: UInt8.self) ?? 0
                 if c == 0 { break }
             }
-            let charsetID = message.packet.readInteger(endianness: .little, as: UInt16.self) ?? Constants.TNS_CHARSET_UTF8
+            let charsetID = message.packet
+                .readInteger(endianness: .little, as: UInt16.self) ?? Constants.TNS_CHARSET_UTF8
             connection.capabilities.characterConversion = charsetID != Constants.TNS_CHARSET_UTF8
             message.packet.moveReaderIndex(forwardByBytes: 1) // skip server flags
             let numberOfElements = message.packet.readInteger(endianness: .little, as: UInt16.self) ?? 0

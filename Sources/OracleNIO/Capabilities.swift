@@ -23,18 +23,23 @@ struct Capabilities {
     init() {
         // Compile Capabilities
         self.compileCapabilities[Constants.TNS_CCAP_SQL_VERSION] = Constants.TNS_CCAP_SQL_VERSION_MAX
-        self.compileCapabilities[Constants.TNS_CCAP_LOGON_TYPES] = Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP | Constants.TNS_CCAP_O7LOGON | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER
+        self.compileCapabilities[Constants.TNS_CCAP_LOGON_TYPES] =
+            Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP |
+            Constants.TNS_CCAP_O7LOGON | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER
         self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = self.ttcFieldVersion
         self.compileCapabilities[Constants.TNS_CCAP_SERVER_DEFINE_CONV] = 1
-        self.compileCapabilities[Constants.TNS_CCAP_TTC1] = Constants.TNS_CCAP_FAST_BVEC | Constants.TNS_CCAP_END_OF_CALL_STATUS | Constants.TNS_CCAP_IND_RCD
-        self.compileCapabilities[Constants.TNS_CCAP_OCI1] = Constants.TNS_CCAP_FAST_SESSION_PROPAGATE | Constants.TNS_CCAP_APP_CTX_PIGGYBACK
+        self.compileCapabilities[Constants.TNS_CCAP_TTC1] =
+            Constants.TNS_CCAP_FAST_BVEC | Constants.TNS_CCAP_END_OF_CALL_STATUS | Constants.TNS_CCAP_IND_RCD
+        self.compileCapabilities[Constants.TNS_CCAP_OCI1] =
+            Constants.TNS_CCAP_FAST_SESSION_PROPAGATE | Constants.TNS_CCAP_APP_CTX_PIGGYBACK
         self.compileCapabilities[Constants.TNS_CCAP_TDS_VERSION] = Constants.TNS_CCAP_TDS_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_RPC_VERSION] = Constants.TNS_CCAP_RPC_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_RPC_SIG] = Constants.TNS_CCAP_RPC_SIG_VALUE
         self.compileCapabilities[Constants.TNS_CCAP_DBF_VERSION] = Constants.TNS_CCAP_DBF_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_LOB] = Constants.TNS_CCAP_LOB_UB8_SIZE | Constants.TNS_CCAP_LOB_ENCS
         self.compileCapabilities[Constants.TNS_CCAP_UB2_DTY] = 1
-        self.compileCapabilities[Constants.TNS_CCAP_TTC3] = Constants.TNS_CCAP_IMPLICIT_RESULTS | Constants.TNS_CCAP_BIG_CHUNK_CLR | Constants.TNS_CCAP_KEEP_OUT_ORDER
+        self.compileCapabilities[Constants.TNS_CCAP_TTC3] =
+            Constants.TNS_CCAP_IMPLICIT_RESULTS | Constants.TNS_CCAP_BIG_CHUNK_CLR | Constants.TNS_CCAP_KEEP_OUT_ORDER
         self.compileCapabilities[Constants.TNS_CCAP_TTC2] = Constants.TNS_CCAP_ZLNP
         self.compileCapabilities[Constants.TNS_CCAP_OCI2] = Constants.TNS_CCAP_DRCP
         self.compileCapabilities[Constants.TNS_CCAP_CLIENT_FN] = Constants.TNS_CCAP_CLIENT_FN_MAX

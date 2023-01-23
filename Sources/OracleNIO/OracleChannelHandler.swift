@@ -33,21 +33,13 @@ class OracleChannelHandler: ChannelDuplexHandler {
         case .resend:
             context.channel.write(currentRequest, promise: nil)
             currentRequest.onResponsePromise?.succeed(message)
-        case .accept:
+        case .accept, .data:
             do {
                 try currentRequest.processResponse(&message, from: context.channel)
                 currentRequest.onResponsePromise?.succeed(message)
             } catch {
                 self.errorCaught(context: context, error: error)
                 currentRequest.onResponsePromise?.fail(error)
-            }
-        case .data:
-            do {
-                try currentRequest.processResponse(&message, from: context.channel)
-                currentRequest.onResponsePromise?.succeed(message)
-            } catch {
-                currentRequest.onResponsePromise?.fail(error)
-                self.errorCaught(context: context, error: error)
             }
         default:
             fatalError("A handler for \(message.type) is not implemented")
@@ -55,7 +47,6 @@ class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        print(data)
         let messages = self.unwrapOutboundIn(data)
         self.queue.append(messages)
         for message in messages.get() {
@@ -66,7 +57,7 @@ class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
-        print(error)
+        logger.error("\(error.localizedDescription)")
         context.fireErrorCaught(error)
     }
 
@@ -75,9 +66,12 @@ class OracleChannelHandler: ChannelDuplexHandler {
 let PACKET_HEADER_SIZE = 8
 
 extension ByteBuffer {
+    /// Starts a new request with a placeholder for the header,
+    /// which is set at the end of the request via ``ByteBuffer.endRequest``,
+    /// and the data flags if they are required.
     mutating func startRequest(packetType: PacketType = .data, dataFlags: UInt16 = 0) {
         self.reserveCapacity(PACKET_HEADER_SIZE)
-        self.moveWriterIndex(forwardBy: PACKET_HEADER_SIZE) // Placeholder for the header, which is set at the end of an request
+        self.moveWriterIndex(forwardBy: PACKET_HEADER_SIZE)
         if packetType == PacketType.data {
             self.writeInteger(dataFlags)
         }

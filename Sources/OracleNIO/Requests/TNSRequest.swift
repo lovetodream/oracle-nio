@@ -36,7 +36,10 @@ extension TNSRequest {
         setReaderIndex(for: &message)
         message.packet.moveReaderIndex(forwardBy: 2) // skip data flags
         while message.packet.readableBytes > 0 {
-            guard let messageTypeByte = message.packet.readInteger(as: UInt8.self), let messageType = MessageType(rawValue: messageTypeByte) else {
+            guard
+                let messageTypeByte = message.packet.readInteger(as: UInt8.self),
+                let messageType = MessageType(rawValue: messageTypeByte)
+            else {
                 fatalError("Couldn't read single byte, but readableBytes is still bigger than 0.")
             }
             try self.processResponse(&message, of: messageType, from: channel)
@@ -57,14 +60,12 @@ extension TNSRequest {
         case .status:
             let callStatus = message.packet.readInteger(as: UInt32.self) ?? 0
             let endToEndSequenceNumber = message.packet.readInteger(as: UInt16.self) ?? 0
-            connection.logger.log(
-                level: .debug,
+            connection.logger.debug(
                 "Received call status: \(callStatus) with end to end sequence number \(endToEndSequenceNumber)"
             )
         case .warning:
             let warning = self.processWarning(&message)
-            connection.logger.log(
-                level: .warning,
+            connection.logger.warning(
                 "The oracle server sent a warning",
                 metadata: ["message": "\(warning.message ?? "empty")", "code": "\(warning.number)"]
             )
@@ -79,7 +80,7 @@ extension TNSRequest {
 
     func processError(_ message: inout TNSMessage) -> OracleErrorInfo {
         let callStatus = message.packet.readInteger(as: UInt32.self) ?? 0 // end of call status
-        connection.logger.log(level: .debug, "Call status received: \(callStatus)")
+        connection.logger.debug("Call status received: \(callStatus)")
         message.packet.moveReaderIndex(forwardByBytes: 2) // end to end seq#
         message.packet.moveReaderIndex(forwardByBytes: 4) // current row number
         message.packet.moveReaderIndex(forwardByBytes: 2) // error number
@@ -143,7 +144,9 @@ extension TNSRequest {
             message.packet.moveReaderIndex(forwardByBytes: 1) // ignore packet size
             for i in 0..<numberOfMessages {
                 message.packet.moveReaderIndex(forwardByBytes: 2) // skip chunk length
-                let errorMessage = message.packet.readString(with: Constants.TNS_CS_IMPLICIT)?.trimmingCharacters(in: .whitespaces)
+                let errorMessage = message.packet
+                    .readString(with: Constants.TNS_CS_IMPLICIT)?
+                    .trimmingCharacters(in: .whitespaces)
                 batch[Int(i)].message = errorMessage
                 message.packet.moveReaderIndex(forwardByBytes: 2) // ignore end marker
             }
@@ -153,10 +156,23 @@ extension TNSRequest {
         let rowCount = message.packet.readInteger(as: UInt64.self)
         let errorMessage: String?
         if number != 0 {
-            errorMessage = message.packet.readString(with: Constants.TNS_CS_IMPLICIT)?.trimmingCharacters(in: .whitespaces)
-        } else { errorMessage = nil }
+            errorMessage = message.packet
+                .readString(with: Constants.TNS_CS_IMPLICIT)?
+                .trimmingCharacters(in: .whitespaces)
+        } else {
+            errorMessage = nil
+        }
 
-        return OracleErrorInfo(number: number, cursorID: cursorID, position: errorPosition, rowCount: rowCount, isWarning: false, message: errorMessage, rowID: rowID, batchErrors: batch)
+        return OracleErrorInfo(
+            number: number,
+            cursorID: cursorID,
+            position: errorPosition,
+            rowCount: rowCount,
+            isWarning: false,
+            message: errorMessage,
+            rowID: rowID,
+            batchErrors: batch
+        )
     }
 
     func processReturnParameters(_ message: inout TNSMessage) {}

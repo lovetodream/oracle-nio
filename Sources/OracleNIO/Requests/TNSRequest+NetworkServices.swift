@@ -20,7 +20,11 @@ struct NetworkServicesRequest: TNSRequest {
         buffer.startRequest()
 
         // Write header
-        buffer.writeMultipleIntegers(NetworkService.Constants.TNS_NETWORK_MAGIC, UInt16(packetLength), NetworkService.Constants.TNS_NETWORK_VERSION, UInt16(NetworkService.all.count))
+        buffer.writeMultipleIntegers(
+            NetworkService.Constants.TNS_NETWORK_MAGIC,
+            UInt16(packetLength), NetworkService.Constants.TNS_NETWORK_VERSION,
+            UInt16(NetworkService.all.count)
+        )
         buffer.writeInteger(UInt8(0)) // flags
 
         // Write service data
@@ -51,7 +55,7 @@ struct NetworkServicesRequest: TNSRequest {
             let numberOfSubPackets = message.packet.readInteger(as: UInt16.self) ?? 0
             let errorNumber = message.packet.readInteger(as: UInt32.self) ?? 0
             if errorNumber != 0 {
-                connection.logger.log(level: .error, "Listener refused connection", metadata: ["errorCode": "ORA-\(errorNumber)"])
+                connection.logger.error("Listener refused connection", metadata: ["errorCode": "ORA-\(errorNumber)"])
                 throw OracleError.ErrorType.listenerRefusedConnection
             }
             for _ in 0..<numberOfSubPackets {

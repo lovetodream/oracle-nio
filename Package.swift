@@ -14,6 +14,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.46.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.13.1"),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.15.0"),
     ],
     targets: [
         .target(
@@ -25,6 +26,7 @@ let package = Package(
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
                 .product(name: "NIOTLS", package: "swift-nio"),
+                .product(name: "NIOExtras", package: "swift-nio-extras"),
             ]
         ),
         .executableTarget(name: "OracleNIOExample", dependencies: ["OracleNIO"]),

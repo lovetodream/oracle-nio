@@ -65,8 +65,13 @@ public class OracleConnection {
                 self.channel.write(protocolRequest, promise: nil)
                 return protocolRequest.onResponsePromise!.futureResult
             }
-//        let protocolMessage = connection.createMessage(ProtocolMessage)
-//        let dataTypesMessage = connection.createMessage(DataTypesMessage)
+            .flatMap { _ in
+                var dataTypesRequest: DataTypesRequest = self.createRequest()
+                dataTypesRequest.onResponsePromise = self.eventLoop.makePromise()
+                self.channel.write(dataTypesRequest, promise: nil)
+                return dataTypesRequest.onResponsePromise!.futureResult
+            }
+            // TODO: authenticate
     }
 
     public static func connect(to address: SocketAddress, logger: Logger, on eventLoop: EventLoop) -> EventLoopFuture<OracleConnection> {

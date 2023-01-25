@@ -3,6 +3,9 @@ struct ProtocolRequest: TNSRequest {
     var messageType: MessageType
     var onResponsePromise: EventLoopPromise<TNSMessage>?
 
+    var functionCode: UInt8 = 0 // unused
+    var currentSequenceNumber: UInt8 = 0 // unused
+
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
         self.messageType = messageType
@@ -20,7 +23,7 @@ struct ProtocolRequest: TNSRequest {
         return [.init(packet: buffer)]
     }
 
-    func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
+    mutating func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         if type == .protocol {
             message.packet.moveReaderIndex(forwardByBytes: 2) // skip protocol array
             while true { // skip server banner

@@ -17,6 +17,13 @@ public class OracleConnection {
 
     var drcpEstablishSession = false
 
+    // TODO: move this to a more appropriate place, like configuration maybe?
+    var username: String = "my_user"
+
+    var sessionID: Int?
+    var serialNumber: Int?
+    var serverVersion: OracleVersion?
+
     init(channel: Channel, logger: Logger) {
         self.logger = logger
         self.channel = channel
@@ -55,6 +62,10 @@ public class OracleConnection {
             // TODO: Perform OOB Check
         }
 
+        let connectDescription = Description(serviceName: "")
+        var connectParameters = ConnectParameters(defaultDescription: connectDescription, defaultAddress: Address(), descriptionList: DescriptionList(), mode: 0)
+        connectParameters.setPassword("my_passwor")
+
         var networkServicesRequest: NetworkServicesRequest = createRequest()
         networkServicesRequest.onResponsePromise = eventLoop.makePromise()
         channel.write(networkServicesRequest, promise: nil)
@@ -70,6 +81,19 @@ public class OracleConnection {
                 dataTypesRequest.onResponsePromise = self.eventLoop.makePromise()
                 self.channel.write(dataTypesRequest, promise: nil)
                 return dataTypesRequest.onResponsePromise!.futureResult
+            }
+            .flatMap { _ in
+                var authRequest: AuthRequest = self.createRequest()
+                authRequest.setParameters(connectParameters, with: connectDescription)
+                authRequest.onResponsePromise = self.eventLoop.makePromise()
+                self.channel.write(authRequest, promise: nil)
+                return authRequest.onResponsePromise!.futureResult.flatMap { message in
+                    if authRequest.resend {
+                        authRequest.onResponsePromise = self.eventLoop.makePromise()
+                        self.channel.write(authRequest, promise: nil)
+                    }
+                    return authRequest.onResponsePromise!.futureResult
+                }
             }
             // TODO: authenticate
     }

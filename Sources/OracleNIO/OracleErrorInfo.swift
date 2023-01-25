@@ -33,12 +33,14 @@ struct OracleError: Error {
         // MARK: Error numbers that result in NotSupportedError
         case serverVersionNotSupported = 3010
         case nCharCSNotSupported = 3012
+        case unsupportedVerifierType = 3015
 
         // MARK: Error numbers that result in DatabaseError
         case noCredentials = 4001
         case poolNoConnectionAvailable = 4005
         case arrayDMLRowCountsNotEnabled = 4006
         case connectionClosed = 4011
+        case invalidConnectDescriptor = 4017
         case invalidRefCursor = 4025
 
         // MARK: Error Numbers that result in InternalError
@@ -60,6 +62,8 @@ struct OracleError: Error {
                 return "Connections to this database server version are not supported by oracle-nio."
             case .nCharCSNotSupported:
                 return "The national character set used by this database is not supported by oracle-nio."
+            case .unsupportedVerifierType:
+                return "The configured password verifier type is not supported by oracle-nio."
             case .noCredentials:
                 return "No credentials specified."
             case .poolNoConnectionAvailable:
@@ -68,6 +72,8 @@ struct OracleError: Error {
                 return "Array DML row counts mode is not enabled."
             case .connectionClosed:
                 return "The database or network closed the connection."
+            case .invalidConnectDescriptor:
+                return "The connect descriptor is not valid."
             case .invalidRefCursor:
                 return "Invalid REF cursor: never opened in PL/SQL."
             case .typeUnknown:

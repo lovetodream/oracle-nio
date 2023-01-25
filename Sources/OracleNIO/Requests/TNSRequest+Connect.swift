@@ -1,4 +1,5 @@
 import NIOCore
+import class Foundation.ProcessInfo
 
 struct ConnectRequest: TNSRequest {
     var connection: OracleConnection
@@ -6,10 +7,13 @@ struct ConnectRequest: TNSRequest {
     var connectString: String
     var onResponsePromise: EventLoopPromise<TNSMessage>?
 
+    var functionCode: UInt8 = 0 // unused
+    var currentSequenceNumber: UInt8 = 0 // unused
+
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
         self.messageType = messageType
-        self.connectString = "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=xctest)(HOST=MacBook-Pro-von-Timo.local)(USER=timozacherl)))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
+        self.connectString = "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
     }
 
     func get() -> [TNSMessage] {

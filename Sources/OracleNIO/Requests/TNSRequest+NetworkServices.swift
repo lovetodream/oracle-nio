@@ -3,6 +3,9 @@ struct NetworkServicesRequest: TNSRequest {
     var messageType: MessageType
     var onResponsePromise: EventLoopPromise<TNSMessage>?
 
+    var functionCode: UInt8 = 0 // unused
+    var currentSequenceNumber: UInt8 = 0 // unused
+
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
         self.messageType = messageType

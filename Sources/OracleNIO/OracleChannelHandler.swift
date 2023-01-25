@@ -22,7 +22,7 @@ class OracleChannelHandler: ChannelDuplexHandler {
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var message = self.unwrapInboundIn(data)
-        guard let currentRequest else {
+        guard var currentRequest else {
             logger.warning("Received a response, but we couldn't get the current request.")
             return
         }
@@ -47,13 +47,18 @@ class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let messages = self.unwrapOutboundIn(data)
-        self.queue.append(messages)
-        for message in messages.get() {
-            context.write(self.wrapOutboundOut(message.packet), promise: nil)
+        do {
+            var messages = self.unwrapOutboundIn(data)
+            self.queue.append(messages)
+            for message in try messages.get() {
+                context.write(self.wrapOutboundOut(message.packet), promise: nil)
+            }
+            context.flush()
+            logger.trace("Message sent")
+        } catch {
+            logger.error("\(error.localizedDescription)")
+            context.fireErrorCaught(error)
         }
-        context.flush()
-        logger.trace("Message sent")
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {

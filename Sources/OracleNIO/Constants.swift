@@ -162,8 +162,8 @@ enum Constants {
     static let TNS_CHECK_OOB: UInt32 = 0x01
 
     // MARK: TTC functions
-    static let TNS_FUNC_AUTH_PHASE_ONE = 118
-    static let TNS_FUNC_AUTH_PHASE_TWO = 115
+    static let TNS_FUNC_AUTH_PHASE_ONE: UInt8 = 118
+    static let TNS_FUNC_AUTH_PHASE_TWO: UInt8 = 115
     static let TNS_FUNC_CLOSE_CURSORS = 105
     static let TNS_FUNC_COMMIT = 14
     static let TNS_FUNC_EXECUTE = 94
@@ -180,18 +180,18 @@ enum Constants {
     static let TNS_FUNC_SET_SCHEMA = 152
 
     // MARK: TTC authentication modes
-    static let TNS_AUTH_MODE_LOGON = 0x00000001
-    static let TNS_AUTH_MODE_CHANGE_PASSWORD = 0x00000002
-    static let TNS_AUTH_MODE_SYSDBA = 0x00000020
-    static let TNS_AUTH_MODE_SYSOPER = 0x00000040
-    static let TNS_AUTH_MODE_PRELIM = 0x00000080
-    static let TNS_AUTH_MODE_WITH_PASSWORD = 0x00000100
-    static let TNS_AUTH_MODE_SYSASM = 0x00400000
-    static let TNS_AUTH_MODE_SYSBKP = 0x01000000
-    static let TNS_AUTH_MODE_SYSDGD = 0x02000000
-    static let TNS_AUTH_MODE_SYSKMT = 0x04000000
-    static let TNS_AUTH_MODE_SYSRAC = 0x08000000
-    static let TNS_AUTH_MODE_IAM_TOKEN = 0x20000000
+    static let TNS_AUTH_MODE_LOGON: UInt32 = 0x00000001
+    static let TNS_AUTH_MODE_CHANGE_PASSWORD: UInt32 = 0x00000002
+    static let TNS_AUTH_MODE_SYSDBA: UInt32 = 0x00000020
+    static let TNS_AUTH_MODE_SYSOPER: UInt32 = 0x00000040
+    static let TNS_AUTH_MODE_PRELIM: UInt32 = 0x00000080
+    static let TNS_AUTH_MODE_WITH_PASSWORD: UInt32 = 0x00000100
+    static let TNS_AUTH_MODE_SYSASM: UInt32 = 0x00400000
+    static let TNS_AUTH_MODE_SYSBKP: UInt32 = 0x01000000
+    static let TNS_AUTH_MODE_SYSDGD: UInt32 = 0x02000000
+    static let TNS_AUTH_MODE_SYSKMT: UInt32 = 0x04000000
+    static let TNS_AUTH_MODE_SYSRAC: UInt32 = 0x08000000
+    static let TNS_AUTH_MODE_IAM_TOKEN: UInt32 = 0x20000000
 
     // MARK: Character sets and encodings
     static let TNS_CHARSET_UTF8: UInt16 = 873
@@ -267,14 +267,14 @@ enum Constants {
     static let TNS_RCAP_TTC_32K: UInt8 = 0x04
 
     // MARK: Verifier types
-    static let TNS_VERIFIER_TYPE_11G_1 = 0xb152
-    static let TNS_VERIFIER_TYPE_11G_2 = 0x1b25
-    static let TNS_VERIFIER_TYPE_12C = 0x4815
+    static let TNS_VERIFIER_TYPE_11G_1: UInt32 = 0xb152
+    static let TNS_VERIFIER_TYPE_11G_2: UInt32 = 0x1b25
+    static let TNS_VERIFIER_TYPE_12C: UInt32 = 0x4815
 
     // MARK: Other constants
     static let TNS_MAX_SHORT_LENGTH = 252
     static let TNS_ESCAPE_CHAR = 253
-    static let TNS_LONG_LENGTH_INDICATOR = 254
+    static let TNS_LONG_LENGTH_INDICATOR: UInt8 = 254
     static let TNS_NULL_LENGTH_INDICATOR = 255
     static let TNS_MAX_ROWID_LENGTH = 18
     static let TNS_DURATION_MID = 0x80000000
@@ -297,11 +297,6 @@ enum Constants {
     static let TNS_BASE64_ALPHABET_ARRAY = TNS_ALPHABET_DATA?.base64EncodedData()
     static let TNS_EXTENT_OID = Data(hex: "00000000000000000000000000010001")
 
-    // MARK: Purity types
-    static let PURITY_DEFAULT = 0
-    static let PURITY_NEW = 1
-    static let PURITY_SELF = 2
-
     // MARK: Timezone offsets
     static let TZ_HOUR_OFFSET = 20
     static let TZ_MINUTE_OFFSET = 60
@@ -316,17 +311,6 @@ extension Constants {
     static let apilevel = "2.0"
     static let threadsafety = 2
     static let paramstyle = "named"
-
-    // MARK: Authentication modes
-    static let AUTH_MODE_DEFAULT = 0
-    static let AUTH_MODE_PRELIM = 0x00000008
-    static let AUTH_MODE_SYSASM = 0x00008000
-    static let AUTH_MODE_SYSBKP = 0x00020000
-    static let AUTH_MODE_SYSDBA = 0x00000002
-    static let AUTH_MODE_SYSDGD = 0x00040000
-    static let AUTH_MODE_SYSKMT = 0x00080000
-    static let AUTH_MODE_SYSOPER = 0x00000004
-    static let AUTH_MODE_SYSRAC = 0x00100000
 
     // MARK: Pool "get" modes
     static let POOL_GETMODE_WAIT = 0
@@ -436,20 +420,9 @@ extension Constants {
 
     // MARK: Basic configuration constants
     static let DRIVER_NAME = "oracle-nio"
+    static let VERSION_TUPLE = (major: 1, minor: 0, patch: 0)
+    static let VERSION_CODE = VERSION_TUPLE.major << 24 | VERSION_TUPLE.minor << 20 | VERSION_TUPLE.patch << 12
+    static let VERSION = "\(VERSION_TUPLE.major).\(VERSION_TUPLE.minor).\(VERSION_TUPLE.patch)"
     static let ENCODING = "UTF-8"
 
-}
-
-extension Data {
-    init?(hex: String) {
-        guard hex.count.isMultiple(of: 2) else { return nil }
-
-        let chars = hex.map { $0 }
-        let bytes = stride(from: 0, to: chars.count, by: 2)
-            .map { String(chars[$0]) + String(chars[$0 + 1]) }
-            .compactMap { UInt8($0, radix: 16) }
-
-        guard hex.count / bytes.count == 2 else { return nil }
-        self.init(bytes)
-    }
 }

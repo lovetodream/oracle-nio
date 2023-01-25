@@ -318,8 +318,8 @@ final class AuthRequest: TNSRequest {
     func initializeHooks() {
         self.functionCode = Constants.TNS_FUNC_AUTH_PHASE_ONE
         self.sessionData = [:]
-        if !connection.username.isEmpty {
-            self.username = connection.username.data(using: .utf8)?.bytes
+        if !connection.configuration.username.isEmpty {
+            self.username = connection.configuration.username.data(using: .utf8)?.bytes
             self.usernameLength = username?.count
         }
         self.resend = true

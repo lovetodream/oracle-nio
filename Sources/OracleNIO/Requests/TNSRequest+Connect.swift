@@ -1,10 +1,9 @@
 import NIOCore
-import class Foundation.ProcessInfo
 
 struct ConnectRequest: TNSRequest {
     var connection: OracleConnection
     var messageType: MessageType
-    var connectString: String
+    var connectString: String?
     var onResponsePromise: EventLoopPromise<TNSMessage>?
 
     var functionCode: UInt8 = 0 // unused
@@ -13,10 +12,10 @@ struct ConnectRequest: TNSRequest {
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
         self.messageType = messageType
-        self.connectString = "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
     }
 
     func get() -> [TNSMessage] {
+        guard let connectString else { preconditionFailure("ConnectString needs to be set before getting the messages") }
         var serviceOptions = Constants.TNS_BASE_SERVICE_OPTIONS
         let connectFlags1: UInt32 = 0
         var connectFlags2: UInt32 = 0
@@ -24,7 +23,7 @@ struct ConnectRequest: TNSRequest {
             serviceOptions |= Constants.TNS_CAN_RECV_ATTENTION
             connectFlags2 |= Constants.TNS_CHECK_OOB
         }
-        let connectStringByteLength = self.connectString.lengthOfBytes(using: .utf8)
+        let connectStringByteLength = connectString.lengthOfBytes(using: .utf8)
         var messages = [TNSMessage]()
         var buffer = ByteBuffer()
         buffer.startRequest(packetType: .connect)
@@ -58,7 +57,7 @@ struct ConnectRequest: TNSRequest {
             buffer = ByteBuffer()
             buffer.startRequest()
         }
-        buffer.writeString(self.connectString)
+        buffer.writeString(connectString)
         let finalPacketType: PacketType = connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA ? .data : .connect
         buffer.endRequest(packetType: finalPacketType, capabilities: connection.capabilities)
         messages.append(.init(type: finalPacketType, packet: buffer))

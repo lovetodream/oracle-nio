@@ -1,7 +1,24 @@
 import NIOCore
+import class Foundation.ProcessInfo
 
 public class OracleConnection {
+    public struct Configuration {
+        var address: SocketAddress
+        var serviceName: String
+        var username: String
+        var password: String
+        //  "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
+
+        public init(address: SocketAddress, serviceName: String, username: String, password: String) {
+            self.address = address
+            self.serviceName = serviceName
+            self.username = username
+            self.password = password
+        }
+    }
+
     var capabilities = Capabilities()
+    let configuration: Configuration
     let channel: Channel
     let logger: Logger
 
@@ -17,14 +34,12 @@ public class OracleConnection {
 
     var drcpEstablishSession = false
 
-    // TODO: move this to a more appropriate place, like configuration maybe?
-    var username: String = "my_user"
-
     var sessionID: Int?
     var serialNumber: Int?
     var serverVersion: OracleVersion?
 
-    init(channel: Channel, logger: Logger) {
+    init(configuration: OracleConnection.Configuration, channel: Channel, logger: Logger) {
+        self.configuration = configuration
         self.logger = logger
         self.channel = channel
         self.readyForAuthenticationPromise = self.channel.eventLoop.makePromise(of: Void.self)
@@ -49,7 +64,11 @@ public class OracleConnection {
     }
 
     private func connectPhaseOne() {
-        let request: ConnectRequest = createRequest()
+        guard let ipAddress = configuration.address.ipAddress, let port = configuration.address.port else {
+            preconditionFailure("Configuration Address needs to include ip address and port")
+        }
+        var request: ConnectRequest = createRequest()
+        request.connectString = "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=\(configuration.serviceName.uppercased()))(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=\(ipAddress))(PORT=\(port))))"
         channel.write(request, promise: nil)
     }
 
@@ -62,9 +81,9 @@ public class OracleConnection {
             // TODO: Perform OOB Check
         }
 
-        let connectDescription = Description(serviceName: "")
+        let connectDescription = Description(serviceName: configuration.serviceName)
         var connectParameters = ConnectParameters(defaultDescription: connectDescription, defaultAddress: Address(), descriptionList: DescriptionList(), mode: 0)
-        connectParameters.setPassword("my_passwor")
+        connectParameters.setPassword(configuration.password)
 
         var networkServicesRequest: NetworkServicesRequest = createRequest()
         networkServicesRequest.onResponsePromise = eventLoop.makePromise()
@@ -99,13 +118,13 @@ public class OracleConnection {
     }
 
     public static func connect(
-        to address: SocketAddress,
+        using configuration: OracleConnection.Configuration,
         logger: Logger,
         on eventLoop: EventLoop
     ) -> EventLoopFuture<OracleConnection> {
         eventLoop.flatSubmit {
-            makeBootstrap(on: eventLoop).connect(to: address).flatMap { channel -> EventLoopFuture<OracleConnection> in
-                let connection = OracleConnection(channel: channel, logger: logger)
+            makeBootstrap(on: eventLoop).connect(to: configuration.address).flatMap { channel -> EventLoopFuture<OracleConnection> in
+                let connection = OracleConnection(configuration: configuration, channel: channel, logger: logger)
                 return connection.start().map { _ in connection }
             }
         }

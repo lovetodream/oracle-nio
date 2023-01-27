@@ -21,6 +21,6 @@ func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throw
 }
 
 func getDerivedKey(key: [UInt8], salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
-    let kdf = try PKCS5.PBKDF2(password: key, salt: salt, iterations: iterations, keyLength: length, variant: .sha2(.sha224))
+    let kdf = try PKCS5.PBKDF2(password: key, salt: salt, iterations: iterations, keyLength: length, variant: .sha2(.sha512))
     return try kdf.calculate()
 }

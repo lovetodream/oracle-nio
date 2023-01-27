@@ -476,7 +476,7 @@ final class AuthRequest: TNSRequest {
             self.functionCode = Constants.TNS_FUNC_AUTH_PHASE_TWO
         } else {
             guard
-                let sessionIDStr = self.sessionData["SESSION_ID"],
+                let sessionIDStr = self.sessionData["AUTH_SESSION_ID"],
                 let sessionID = Int(sessionIDStr),
                 let serialNumberStr = self.sessionData["AUTH_SERIAL_NUM"],
                 let serialNumber = Int(serialNumberStr)

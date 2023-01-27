@@ -16,11 +16,12 @@ struct ConnectRequest: TNSRequest {
 
     func get() -> [TNSMessage] {
         guard let connectString else { preconditionFailure("ConnectString needs to be set before getting the messages") }
-        var serviceOptions = Constants.TNS_BASE_SERVICE_OPTIONS
+        var serviceOptions = Constants.TNS_GSO_DONT_CARE
         let connectFlags1: UInt32 = 0
         var connectFlags2: UInt32 = 0
+        let nsiFlags: UInt8 = Constants.TNS_NSI_SUPPORT_SECURITY_RENEG | Constants.TNS_NSI_DISABLE_NA
         if connection.capabilities.supportsOOB == true {
-            serviceOptions |= Constants.TNS_CAN_RECV_ATTENTION
+            serviceOptions |= Constants.TNS_GSO_CAN_RECV_ATTENTION
             connectFlags2 |= Constants.TNS_CHECK_OOB
         }
         let connectStringByteLength = connectString.lengthOfBytes(using: .utf8)
@@ -41,7 +42,8 @@ struct ConnectRequest: TNSRequest {
         buffer.writeMultipleIntegers(
             UInt16(74), // offset to connect data
             UInt32(0), // max receivable data
-            Constants.TNS_CONNECT_FLAGS,
+            nsiFlags,
+            nsiFlags,
             UInt64(0), // obsolete
             UInt64(0), // obsolete
             UInt64(0), // obsolete

@@ -52,7 +52,7 @@ struct Capabilities {
 
     mutating func adjustForProtocol(version: UInt16, options: UInt16) {
         self.protocolVersion = version
-        self.supportsOOB = options & Constants.TNS_CAN_RECV_ATTENTION != 0
+        self.supportsOOB = options & Constants.TNS_GSO_CAN_RECV_ATTENTION != 0
     }
 
     mutating func adjustForServerCompileCapabilities(_ serverCapabilities: [UInt8]) {

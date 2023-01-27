@@ -154,11 +154,14 @@ enum Constants {
     static let TNS_CONTROL_TYPE_INBAND_NOTIFICATION = 8
     static let TNS_CONTROL_TYPE_RESET_OOB = 9
 
+    // MARK: Connect flags
+    static let TNS_GSO_DONT_CARE: UInt16 = 0x0001
+    static let TNS_GSO_CAN_RECV_ATTENTION: UInt16 = 0x0400
+    static let TNS_NSI_DISABLE_NA: UInt8 = 0x04
+    static let TNS_NSI_SUPPORT_SECURITY_RENEG: UInt8 = 0x80
+
     // MARK: Other connection constants
-    static let TNS_BASE_SERVICE_OPTIONS: UInt16 = 0x801
     static let TNS_PROTOCOL_CHARACTERISTICS: UInt16 = 0x4f98
-    static let TNS_CONNECT_FLAGS: UInt16 = 0x8080
-    static let TNS_CAN_RECV_ATTENTION: UInt16 = 0x0400
     static let TNS_CHECK_OOB: UInt32 = 0x01
 
     // MARK: TTC functions

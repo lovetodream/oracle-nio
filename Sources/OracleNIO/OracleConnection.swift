@@ -85,16 +85,10 @@ public class OracleConnection {
         var connectParameters = ConnectParameters(defaultDescription: connectDescription, defaultAddress: Address(), descriptionList: DescriptionList(), mode: 0)
         connectParameters.setPassword(configuration.password)
 
-        var networkServicesRequest: NetworkServicesRequest = createRequest()
-        networkServicesRequest.onResponsePromise = eventLoop.makePromise()
-        channel.write(networkServicesRequest, promise: nil)
-        networkServicesRequest.onResponsePromise!.futureResult
-            .flatMap { _ in
-                var protocolRequest: ProtocolRequest = self.createRequest()
-                protocolRequest.onResponsePromise = self.eventLoop.makePromise()
-                self.channel.write(protocolRequest, promise: nil)
-                return protocolRequest.onResponsePromise!.futureResult
-            }
+        var protocolRequest: ProtocolRequest = self.createRequest()
+        protocolRequest.onResponsePromise = self.eventLoop.makePromise()
+        self.channel.write(protocolRequest, promise: nil)
+        protocolRequest.onResponsePromise!.futureResult
             .flatMap { _ in
                 var dataTypesRequest: DataTypesRequest = self.createRequest()
                 dataTypesRequest.onResponsePromise = self.eventLoop.makePromise()

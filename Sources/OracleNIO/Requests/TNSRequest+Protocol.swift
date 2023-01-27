@@ -23,7 +23,7 @@ struct ProtocolRequest: TNSRequest {
         return [.init(packet: buffer)]
     }
 
-    mutating func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
+    func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         if type == .protocol {
             message.packet.moveReaderIndex(forwardByBytes: 2) // skip protocol array
             while true { // skip server banner

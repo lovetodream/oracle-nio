@@ -96,7 +96,7 @@ public class OracleConnection {
                 return dataTypesRequest.onResponsePromise!.futureResult
             }
             .flatMap { _ in
-                var authRequest: AuthRequest = self.createRequest()
+                let authRequest: AuthRequest = self.createRequest()
                 authRequest.setParameters(connectParameters, with: connectDescription)
                 authRequest.onResponsePromise = self.eventLoop.makePromise()
                 self.channel.write(authRequest, promise: nil)

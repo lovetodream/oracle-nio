@@ -57,9 +57,13 @@ public class OracleConnection {
 
         connectPhaseOne()
 
-        return readyForAuthenticationFuture.flatMapThrowing { _ in
+        return readyForAuthenticationFuture.flatMapWithEventLoop { _, eventLoop in
             self.logger.debug("Server ready for authentication")
-            try self.connectPhaseTwo()
+            do {
+                return try self.connectPhaseTwo()
+            } catch {
+                return eventLoop.makeFailedFuture(error)
+            }
         }
     }
 
@@ -72,7 +76,7 @@ public class OracleConnection {
         channel.write(request, promise: nil)
     }
 
-    private func connectPhaseTwo() throws {
+    private func connectPhaseTwo() throws -> EventLoopFuture<Void> {
         if capabilities.protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
             throw OracleError.ErrorType.serverVersionNotSupported
         }
@@ -88,7 +92,7 @@ public class OracleConnection {
         var protocolRequest: ProtocolRequest = self.createRequest()
         protocolRequest.onResponsePromise = self.eventLoop.makePromise()
         self.channel.write(protocolRequest, promise: nil)
-        protocolRequest.onResponsePromise!.futureResult
+        return protocolRequest.onResponsePromise!.futureResult
             .flatMap { _ in
                 var dataTypesRequest: DataTypesRequest = self.createRequest()
                 dataTypesRequest.onResponsePromise = self.eventLoop.makePromise()
@@ -108,7 +112,9 @@ public class OracleConnection {
                     return authRequest.onResponsePromise!.futureResult
                 }
             }
-            // TODO: authenticate
+            .flatMap { _ in
+                self.eventLoop.makeSucceededVoidFuture()
+            }
     }
 
     public static func connect(

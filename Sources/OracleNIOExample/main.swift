@@ -14,7 +14,7 @@ let serviceName = env("ORA_SERVICE_NAME") ?? "XEPDB1"
 let username = env("ORA_USERNAME") ?? "my_user"
 let password = env("ORA_PASSWORD") ?? "my_passwor"
 do {
-    _ = try OracleConnection.connect(
+    let connection = try OracleConnection.connect(
         using: .init(
             address: .init(ipAddress: ipAddress, port: port),
             serviceName: serviceName,
@@ -24,6 +24,7 @@ do {
         logger: logger,
         on: group.next()
     ).wait()
+    try connection.query("select sysdate from dual")
 } catch {
     print(error)
 }

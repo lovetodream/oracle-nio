@@ -7,15 +7,19 @@ public class OracleConnection {
         var serviceName: String
         var username: String
         var password: String
+        var autocommit: Bool
         //  "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
 
-        public init(address: SocketAddress, serviceName: String, username: String, password: String) {
+        public init(address: SocketAddress, serviceName: String, username: String, password: String, autocommit: Bool = false) {
             self.address = address
             self.serviceName = serviceName
             self.username = username
             self.password = password
+            self.autocommit = autocommit
         }
     }
+
+    var autocommit: Bool { configuration.autocommit }
 
     var capabilities = Capabilities()
     let configuration: Configuration
@@ -143,6 +147,12 @@ public class OracleConnection {
 
     func createRequest<T: TNSRequest>() -> T {
         T.initialize(from: self)
+    }
+
+    public func query(_ sql: String) throws {
+        let request: ExecuteRequest = createRequest()
+        try request.cursor = Cursor(statement: Statement(sql, characterConversion: capabilities.characterConversion), prefetchRows: 2, fetchArraySize: 0, fetchVariables: [])
+        channel.write(request, promise: nil)
     }
 }
 

@@ -41,6 +41,9 @@ class OracleChannelHandler: ChannelDuplexHandler {
                 self.errorCaught(context: context, error: error)
                 currentRequest.onResponsePromise?.fail(error)
             }
+        case .marker:
+            let marker = MarkerRequest(connection: currentRequest.connection, messageType: .protocol)
+            context.channel.write(marker, promise: nil)
         default:
             fatalError("A handler for \(message.type) is not implemented")
         }

@@ -37,9 +37,16 @@ struct OracleError: Error {
 
         // MARK: Error numbers that result in DatabaseError
         case noCredentials = 4001
+        case oracleNumberNoRepresentation = 4003
+        case invalidNumber = 4004
         case poolNoConnectionAvailable = 4005
         case arrayDMLRowCountsNotEnabled = 4006
         case connectionClosed = 4011
+        case numberWithInvalidExponent = 4012
+        case numberStringOfZeroLength = 4013
+        case numberStringTooLong = 4014
+        case numberWithEmptyExponent = 4015
+        case contentInvalidAfterNumber = 4016
         case invalidConnectDescriptor = 4017
         case invalidRefCursor = 4025
 
@@ -66,12 +73,26 @@ struct OracleError: Error {
                 return "The configured password verifier type is not supported by oracle-nio."
             case .noCredentials:
                 return "No credentials specified."
+            case .oracleNumberNoRepresentation:
+                return "Value cannot be represented as an Oracle number."
+            case .invalidNumber:
+                return "Invalid number."
             case .poolNoConnectionAvailable:
                 return "Timed out waiting for the connection pool to return a connection."
             case .arrayDMLRowCountsNotEnabled:
                 return "Array DML row counts mode is not enabled."
             case .connectionClosed:
                 return "The database or network closed the connection."
+            case .numberWithInvalidExponent:
+                return "Invalid number: invalid exponent"
+            case .numberStringOfZeroLength:
+                return "Invalid number: zero length string."
+            case .numberStringTooLong:
+                return "Invalid number: string too long."
+            case .numberWithEmptyExponent:
+                return "Invalid number: empty exponent"
+            case .contentInvalidAfterNumber:
+                return "Invalid number (content after number)"
             case .invalidConnectDescriptor:
                 return "The connect descriptor is not valid."
             case .invalidRefCursor:

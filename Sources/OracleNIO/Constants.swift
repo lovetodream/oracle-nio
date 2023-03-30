@@ -19,7 +19,7 @@ enum Constants {
 
     // MARK: Marker types
     static let TNS_MARKER_TYPE_BREAK = 1
-    static let TNS_MARKER_TYPE_RESET = 2
+    static let TNS_MARKER_TYPE_RESET: UInt8 = 2
     static let TNS_MARKER_TYPE_INTERRUPT = 3
 
     // MARK: Charset forms
@@ -40,8 +40,8 @@ enum Constants {
     static let TNS_KEYWORD_NUM_EDITION = 172
 
     // MARK: Bind flags
-    static let TNS_BIND_USE_INDICATORS = 0x0001
-    static let TNS_BIND_ARRAY = 0x0040
+    static let TNS_BIND_USE_INDICATORS: UInt8 = 0x0001
+    static let TNS_BIND_ARRAY: UInt8 = 0x0040
 
     // MARK: Bind directions
     static let TNS_BIND_DIR_OUTPUT = 16
@@ -60,7 +60,7 @@ enum Constants {
     static let TNS_OBJ_ATOMIC_NULL = 253
     static let TNS_OBJ_NON_NULL_OID = 0x02
     static let TNS_OBJ_HAS_EXTENT_OID = 0x08
-    static let TNS_OBJ_TOP_LEVEL = 0x01
+    static let TNS_OBJ_TOP_LEVEL: UInt32 = 0x01
     static let TNS_OBJ_HAS_INDEXES = 0x10
 
     // MARK: Database object collection types
@@ -92,20 +92,20 @@ enum Constants {
     static let TNS_XML_TYPE_FLAG_SKIP_NEXT_4 = 0x100000
 
     // MARK: Execute options
-    static let TNS_EXEC_OPTION_PARSE = 0x01
-    static let TNS_EXEC_OPTION_BIND = 0x08
-    static let TNS_EXEC_OPTION_letINE = 0x10
-    static let TNS_EXEC_OPTION_EXECUTE = 0x20
-    static let TNS_EXEC_OPTION_FETCH = 0x40
-    static let TNS_EXEC_OPTION_COMMIT = 0x100
+    static let TNS_EXEC_OPTION_PARSE: UInt32 = 0x01
+    static let TNS_EXEC_OPTION_BIND: UInt32 = 0x08
+    static let TNS_EXEC_OPTION_DEFINE: UInt32 = 0x10
+    static let TNS_EXEC_OPTION_EXECUTE: UInt32 = 0x20
+    static let TNS_EXEC_OPTION_FETCH: UInt32 = 0x40
+    static let TNS_EXEC_OPTION_COMMIT: UInt32 = 0x100
     static let TNS_EXEC_OPTION_COMMIT_REEXECUTE = 0x1
-    static let TNS_EXEC_OPTION_PLSQL_BIND = 0x400
-    static let TNS_EXEC_OPTION_DML_ROWCOUNTS = 0x4000
-    static let TNS_EXEC_OPTION_NOT_PLSQL = 0x8000
-    static let TNS_EXEC_OPTION_IMPLICIT_RESULTSET = 0x8000
-    static let TNS_EXEC_OPTION_DESCRIBE = 0x20000
+    static let TNS_EXEC_OPTION_PLSQL_BIND: UInt32 = 0x400
+    static let TNS_EXEC_OPTION_DML_ROWCOUNTS: UInt32 = 0x4000
+    static let TNS_EXEC_OPTION_NOT_PLSQL: UInt32 = 0x8000
+    static let TNS_EXEC_OPTION_IMPLICIT_RESULTSET: UInt32 = 0x8000
+    static let TNS_EXEC_OPTION_DESCRIBE: UInt32 = 0x20000
     static let TNS_EXEC_OPTION_NO_COMPRESSED_FETCH = 0x40000
-    static let TNS_EXEC_OPTION_BATCH_ERRORS = 0x80000
+    static let TNS_EXEC_OPTION_BATCH_ERRORS: UInt32 = 0x80000
 
     // MARK: Session return constants
     static let TNS_SESSGET_SESSION_CHANGED: UInt32 = 4
@@ -135,6 +135,7 @@ enum Constants {
 
     // MARK: Other LOB constants
     static let TNS_LOB_OPEN_READ_WRITE = 2
+    static let TNS_LOB_PREFETCH_FLAG: UInt32 = 0x2000000
 
     // MARK: End-to-End metrics
     static let TNS_END_TO_END_ACTION = 0x0010
@@ -169,15 +170,15 @@ enum Constants {
     static let TNS_FUNC_AUTH_PHASE_TWO: UInt8 = 115
     static let TNS_FUNC_CLOSE_CURSORS = 105
     static let TNS_FUNC_COMMIT = 14
-    static let TNS_FUNC_EXECUTE = 94
+    static let TNS_FUNC_EXECUTE: UInt8 = 94
     static let TNS_FUNC_FETCH = 5
     static let TNS_FUNC_LOB_OP = 96
     static let TNS_FUNC_LOGOFF = 9
     static let TNS_FUNC_PING = 147
     static let TNS_FUNC_ROLLBACK = 15
     static let TNS_FUNC_SET_END_TO_END_ATTR = 135
-    static let TNS_FUNC_REEXECUTE = 4
-    static let TNS_FUNC_REEXECUTE_AND_FETCH = 78
+    static let TNS_FUNC_REEXECUTE: UInt8 = 4
+    static let TNS_FUNC_REEXECUTE_AND_FETCH: UInt8 = 78
     static let TNS_FUNC_SESSION_GET = 162
     static let TNS_FUNC_SESSION_RELEASE = 163
     static let TNS_FUNC_SET_SCHEMA = 152
@@ -276,7 +277,7 @@ enum Constants {
 
     // MARK: Other constants
     static let TNS_MAX_SHORT_LENGTH = 252
-    static let TNS_ESCAPE_CHAR = 253
+    static let TNS_ESCAPE_CHAR: UInt8 = 253
     static let TNS_LONG_LENGTH_INDICATOR: UInt8 = 254
     static let TNS_NULL_LENGTH_INDICATOR = 255
     static let TNS_MAX_ROWID_LENGTH = 18
@@ -284,14 +285,14 @@ enum Constants {
     static let TNS_DURATION_OFFSET = 60
     static let TNS_DURATION_SESSION = 10
     static let TNS_MIN_LONG_LENGTH = 0x8000
-    static let TNS_MAX_LONG_LENGTH = 0x7fffffff
+    static let TNS_MAX_LONG_LENGTH: UInt32 = 0x7fffffff
     static let TNS_SDU: UInt16 = 8192
     static let TNS_TDU: UInt16 = 65535
     static let TNS_MAX_CURSORS_TO_CLOSE = 500
     static let TNS_TXN_IN_PROGRESS = 0x00000002
     static let TNS_MAX_CONNECT_DATA = 230
     static let TNS_CHUNK_SIZE = 32767
-    static let TNS_MAX_UROWID_LENGTH = 5267
+    static let TNS_MAX_UROWID_LENGTH: UInt32 = 5267
 
     // MARK: Base 64 encoding alphabet
     private static let TNS_ALPHABET_DATA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

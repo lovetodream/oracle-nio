@@ -63,4 +63,23 @@ extension ByteBuffer {
             self.writeInteger(integer)
         }
     }
+
+    mutating func writeUB8(_ integer: UInt64) {
+        switch integer {
+        case 0:
+            self.writeInteger(UInt8(0))
+        case 1...UInt64(UInt8.max):
+            self.writeInteger(UInt8(1))
+            self.writeInteger(UInt8(integer))
+        case (UInt64(UInt8.max) + 1)...UInt64(UInt16.max):
+            self.writeInteger(UInt8(2))
+            self.writeInteger(UInt16(integer))
+        case (UInt64(UInt16.max) + 1)...UInt64(UInt32.max):
+            self.writeInteger(UInt8(4))
+            self.writeInteger(UInt32(integer))
+        default:
+            self.writeInteger(UInt8(8))
+            self.writeInteger(integer)
+        }
+    }
 }

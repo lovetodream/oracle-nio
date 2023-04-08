@@ -1,6 +1,20 @@
 import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
+    mutating func skipUB1() {
+        self.moveReaderIndex(forwardByBytes: 1)
+    }
+
+    mutating func readUB1() -> UInt8? {
+        readInteger(as: UInt8.self)
+    }
+
+    mutating func skipUB2() {
+        guard let length = readUBLength() else { return }
+        guard length <= 2 else { fatalError() }
+        self.moveReaderIndex(forwardByBytes: Int(length))
+    }
+
     mutating func readUB2() -> UInt16? {
         guard let length = readUBLength() else { return nil }
         switch length {
@@ -37,7 +51,7 @@ extension ByteBuffer {
         self.moveReaderIndex(forwardByBytes: Int(length))
     }
 
-    private mutating func readUBLength() -> UInt8? {
+    mutating func readUBLength() -> UInt8? {
         guard let first = self.readBytes(length: 1)?.first else { return nil }
         let length: UInt8
         if first & 0x80 != 0 {
@@ -80,6 +94,24 @@ extension ByteBuffer {
         default:
             self.writeInteger(UInt8(8))
             self.writeInteger(integer)
+        }
+    }
+}
+
+extension ByteBuffer {
+    /// Skip a number of bytes that may or may not be chunked in the buffer.
+    /// The first byte gives the length. If the length is
+    /// TNS_LONG_LENGTH_INDICATOR, however, chunks are read and discarded.
+    mutating func skipRawBytesChunked() {
+        guard let length = readUB1() else { return }
+        if length != Constants.TNS_LONG_LENGTH_INDICATOR {
+            moveReaderIndex(forwardByBytes: Int(length))
+        } else {
+            while true {
+                guard let tmp = self.readUB4() else { break }
+                if tmp == 0 { break }
+                moveReaderIndex(forwardByBytes: Int(tmp))
+            }
         }
     }
 }

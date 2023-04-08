@@ -50,6 +50,8 @@ struct Statement {
     var bindInfoDict: Dictionary<String, [BindInfo]> = [:]
     var requiresFullExecute = false
     var requiresDefine = false
+    var fetchVariables: [Variable]?
+    var numberOfColumns: UInt32?
 
     init(_ sql: String, characterConversion: Bool) throws {
         self.sql = sql

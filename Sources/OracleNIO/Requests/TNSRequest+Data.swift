@@ -1,11 +1,15 @@
 import NIOCore
 
-protocol TNSRequestWithData: TNSRequest {
+protocol TNSRequestWithData: TNSRequest, AnyObject {
     var cursor: Cursor? { get set }
     var offset: UInt32 { get }
     var parseOnly: Bool { get }
     var arrayDMLRowCounts: Bool { get }
     var numberOfExecutions: UInt32 { get }
+    var inFetch: Bool { get set }
+    var flushOutBinds: Bool { get set }
+    var bitVector: [UInt8]? { get set }
+    var outVariables: [Variable]? { get set }
     func writeColumnMetadata(to buffer: inout ByteBuffer, with bindVariables: [Variable])
     func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo])
     func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32)
@@ -16,6 +20,16 @@ protocol TNSRequestWithData: TNSRequest {
 }
 
 extension TNSRequestWithData {
+
+    func adjustFetchInfo(previousVariable: Variable, fetchInfo: inout FetchInfo) throws {
+        if fetchInfo.dbType.oracleType == .clob && [DataType.Value.char, .varchar, .long].contains(previousVariable.dbType.oracleType) {
+            let type = DataType.Value.long
+            fetchInfo.dbType = try DBType.fromORATypeAndCSFRM(typeNumber: UInt8(type.rawValue), csfrm: previousVariable.dbType.csfrm)
+        } else if fetchInfo.dbType.oracleType == .blob && [DataType.Value.raw, .longRAW].contains(previousVariable.dbType.oracleType) {
+            let type = DataType.Value.longRAW
+            fetchInfo.dbType = try DBType.fromORATypeAndCSFRM(typeNumber: UInt8(type.rawValue), csfrm: previousVariable.dbType.csfrm)
+        }
+    }
 
     // MARK: Write Request
 
@@ -35,7 +49,7 @@ extension TNSRequestWithData {
             if oracleType == .blob || oracleType == .clob {
                 contFlag = Constants.TNS_LOB_PREFETCH_FLAG
             }
-            buffer.writeInteger(UInt8(oracleType.rawValue))
+            buffer.writeInteger(UInt8(oracleType?.rawValue ?? 0))
             buffer.writeInteger(flag)
             // precision and scale are always written as zero as the server
             // expects that and complains if any other value is sent!
@@ -115,7 +129,7 @@ extension TNSRequestWithData {
             variable = bindInfo.variable
             guard let variable else { continue }
             if variable.isArray {
-                numberOfElements = variable.numberOfElementsInArray
+                numberOfElements = variable.numberOfElementsInArray ?? 0
                 buffer.writeUB4(numberOfElements)
                 for value in variable.values.prefix(Int(numberOfElements)) {
                     self.writeBindParameterColumn(to: &buffer, variable: variable, value: value)
@@ -159,7 +173,167 @@ extension TNSRequestWithData {
     }
 
     func preprocessQuery() {
+        guard let cursor else {
+            preconditionFailure()
+        }
+
+        // Set values to indicate the start of a new fetch operation
+        self.inFetch = true
+        cursor.moreRowsToFetch = true
+        cursor.bufferRowCount = 0
+        cursor.bufferIndex = 0
+
+        // if no fetch variables exist, nothing further to do at this point.
+        // The processing that follows will take the metadata returned by
+        // the server and use it to create new fetch variables
+        if cursor.fetchVariables.isEmpty { return }
+
         // TODO
+    }
+
+    func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
+        switch type {
+        case .rowHeader:
+            try self.processRowHeader(&message)
+        case .rowData:
+            fatalError()
+//            self.processRowData(message)
+        case .flushOutBinds:
+            self.flushOutBinds = true
+        case .describeInfo:
+            message.packet.skipRawBytesChunked()
+            try self.processDescribeInfo(&message)
+            self.outVariables = self.cursor?.fetchVariables
+        case .error:
+            fatalError()
+//            self.processErrorInfo(message)
+        case .bitVector:
+            fatalError()
+//            self.processBitVector(message)
+        case .ioVector:
+            fatalError()
+//            self.processIOVector(message)
+        case .implicitResultset:
+            fatalError()
+//            self.processImplicitResult(message)
+        default:
+            try self.defaultProcessResponse(&message, of: type, from: channel)
+        }
+    }
+
+    func processRowHeader(_ message: inout TNSMessage) throws {
+        message.packet.skipUB1() // flags
+        message.packet.skipUB2() // number of requests
+        message.packet.skipUB4() // iteration number
+        message.packet.skipUB4() // number of iterations
+        message.packet.skipUB2() // buffer length
+        if let numberOfBytes = message.packet.readUB4(), numberOfBytes > 0 {
+            message.packet.skipUB1() // skip repeated length
+            try self.getBitVector(&message, size: numberOfBytes)
+        }
+        if let numberOfBytes = message.packet.readUB4(), numberOfBytes > 0 {
+            message.packet.skipRawBytesChunked() // rxhrid
+        }
+    }
+
+    func processDescribeInfo(_ message: inout TNSMessage) throws {
+        guard let cursor else { preconditionFailure() }
+        message.packet.skipUB4() // max row size
+        cursor.numberOfColumns = message.packet.readUB4() ?? 0
+        let previousFetchVariables = cursor.fetchVariables
+        if cursor.numberOfColumns > 0 {
+            message.packet.skipUB1()
+        }
+        for i in 0..<cursor.numberOfColumns {
+            var fetchInfo = try self.processColumnInfo(&message)
+            if !previousFetchVariables.isEmpty && i < previousFetchVariables.count {
+                try adjustFetchInfo(previousVariable: previousFetchVariables[Int(i)], fetchInfo: &fetchInfo)
+            }
+            cursor.createFetchVariable(fetchInfo: fetchInfo, position: Int(i))
+        }
+        let numberOfBytes = message.packet.readUB4()
+        if numberOfBytes ?? 0 > 0 {
+            message.packet.skipRawBytesChunked() // current date
+        }
+        message.packet.skipUB4() // dcbflag
+        message.packet.skipUB4() // dcbmdbz
+        message.packet.skipUB4() // dcbmnpr
+        message.packet.skipUB4() // dcbmxpr
+        if message.packet.readUB4() ?? 0 > 0 {
+            message.packet.skipRawBytesChunked() // dcbqcky
+        }
+        cursor.statement.fetchVariables = cursor.fetchVariables
+        cursor.statement.numberOfColumns = cursor.numberOfColumns
+    }
+
+    func processColumnInfo(_ message: inout TNSMessage) throws -> FetchInfo {
+        guard let dataType = message.packet.readUB1() else {
+            preconditionFailure()
+        }
+        message.packet.skipUB1() // flags
+        let precision = message.packet.readSB1() ?? 0
+        let scale: Int16
+        if dataType == DataType.Value.number.rawValue || dataType == DataType.Value.intervalDS.rawValue || dataType == DataType.Value.timestamp.rawValue || dataType == DataType.Value.timestampLTZ.rawValue || dataType == DataType.Value.timestampTZ.rawValue {
+            scale = message.packet.readSB2() ?? 0
+        } else {
+            scale = Int16(message.packet.readSB1() ?? 0)
+        }
+        let bufferSize = message.packet.readUB4() ?? 0
+        message.packet.skipUB4() // max number of array elements
+        message.packet.skipUB4() // cont flags
+        let numberOfBytes = message.packet.readUB1() ?? 0 // OID
+        if numberOfBytes > 0 {
+            let oid = message.packet.readBytes()
+        }
+        message.packet.skipUB2() // version
+        message.packet.skipUB2() // character set id
+        let csfrm = message.packet.readUB1() // character set form
+        let dbType = try DBType.fromORATypeAndCSFRM(typeNumber: dataType, csfrm: csfrm)
+        let size = message.packet.readUB4() ?? 0
+        var fetchInfo = FetchInfo(
+            precision: Int16(precision),
+            scale: scale,
+            bufferSize: bufferSize,
+            size: size,
+            nullsAllowed: false, // will be populated later
+            name: "", // will be populated later
+            dbType: dbType
+        )
+        if dataType == DataType.Value.raw.rawValue {
+            fetchInfo.size = fetchInfo.bufferSize
+        }
+        if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
+            message.packet.skipUB4() // oaccolid
+        }
+        let nullsAllowed = message.packet.readUB1() ?? 0
+        fetchInfo.nullsAllowed = nullsAllowed != 0
+        message.packet.skipUB1() // v7 length of name
+        if message.packet.readUB4() ?? 0 > 0 {
+            fetchInfo.name = message.packet.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+        }
+        if message.packet.readUB4() ?? 0 > 0 {
+            let schema = message.packet.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+        }
+        if message.packet.readUB4() ?? 0 > 0 {
+            let name = message.packet.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+        }
+        message.packet.skipUB2() // column position
+        message.packet.skipUB4() // uds flag
+        if dataType == DataType.Value.intNamed.rawValue {
+            // TODO
+            connection.logger.warning("INT NAMED not implemented")
+        }
+        return fetchInfo
+    }
+
+    /// Gets the bit vector from the buffer and stores it for later use by the
+    /// row processing code. Since it is possible that the packet buffer may be
+    /// overwritten by subsequent packet retrieval, the bit vector must be
+    /// copied.
+    func getBitVector(_ message: inout TNSMessage, size: UInt32) throws {
+        if self.bitVector == nil, let bytes = message.packet.readBytes(length: Int(size)) {
+            self.bitVector = bytes
+        }
     }
 }
 
@@ -175,8 +349,12 @@ final class ExecuteRequest: TNSRequestWithData {
     var offset: UInt32 = 0
     var parseOnly = false
     var batchErrors = false
-    var arrayDMLRowCounts: Bool = false
+    var arrayDMLRowCounts = false
     var numberOfExecutions: UInt32 = 0
+    var inFetch = false
+    var flushOutBinds = false
+    var bitVector: [UInt8]? = nil
+    var outVariables: [Variable]? = nil
 
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
@@ -216,7 +394,7 @@ final class ExecuteRequest: TNSRequestWithData {
         var dmlOptions: UInt32 = 0
         var numberOfParameters: UInt32 = 0
         var numberOfIterations: UInt32 = 1
-        guard var cursor else {
+        guard let cursor else {
             preconditionFailure()
         }
         let statement = cursor.statement

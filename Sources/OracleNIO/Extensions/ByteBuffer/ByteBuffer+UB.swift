@@ -51,6 +51,24 @@ extension ByteBuffer {
         self.moveReaderIndex(forwardByBytes: Int(length))
     }
 
+    mutating func readUB8() -> UInt64? {
+        guard let length = readUBLength() else { return nil }
+        switch length {
+        case 0:
+            return 0
+        case 1:
+            return self.readInteger(as: UInt8.self).map(UInt64.init)
+        case 2:
+            return self.readInteger(as: UInt16.self).map(UInt64.init)
+        case 4:
+            return self.readInteger(as: UInt32.self).map(UInt64.init)
+        case 8:
+            return self.readInteger(as: UInt64.self)
+        default:
+            fatalError()
+        }
+    }
+
     mutating func readUBLength() -> UInt8? {
         guard let first = self.readBytes(length: 1)?.first else { return nil }
         let length: UInt8

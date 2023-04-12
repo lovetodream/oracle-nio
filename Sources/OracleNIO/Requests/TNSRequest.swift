@@ -37,7 +37,7 @@ extension TNSRequest {
         preprocess()
         setReaderIndex(for: &message)
         message.packet.moveReaderIndex(forwardBy: 2) // skip data flags
-        if message.packet.readableBytes > 0 {
+        while message.packet.readableBytes > 0 {
             guard
                 let messageTypeByte = message.packet.readInteger(as: UInt8.self),
                 let messageType = MessageType(rawValue: messageTypeByte)
@@ -57,7 +57,8 @@ extension TNSRequest {
         connection.logger.trace("Response has message type: \(type)")
         switch type {
         case .error:
-            throw self.processError(&message)
+            let error = self.processError(&message)
+            connection.logger.warning("Oracle Error occurred: \(error)")
         case .parameter:
             self.processReturnParameters(&message)
         case .status:
@@ -83,42 +84,42 @@ extension TNSRequest {
     func postprocess() {}
 
     func processError(_ message: inout TNSMessage) -> OracleErrorInfo {
-        let callStatus = message.packet.readInteger(as: UInt32.self) ?? 0 // end of call status
+        let callStatus = message.packet.readUB4() ?? 0 // end of call status
         connection.logger.debug("Call status received: \(callStatus)")
-        message.packet.moveReaderIndex(forwardByBytes: 2) // end to end seq#
-        message.packet.moveReaderIndex(forwardByBytes: 4) // current row number
-        message.packet.moveReaderIndex(forwardByBytes: 2) // error number
-        message.packet.moveReaderIndex(forwardByBytes: 2) // array elem error
-        message.packet.moveReaderIndex(forwardByBytes: 2) // array elem error
-        let cursorID = message.packet.readInteger(as: UInt16.self) // cursor id
-        let errorPosition = message.packet.readInteger(as: UInt16.self) // error position
-        message.packet.moveReaderIndex(forwardByBytes: 1) // sql type
-        message.packet.moveReaderIndex(forwardByBytes: 1) // fatal?
-        message.packet.moveReaderIndex(forwardByBytes: 2) // flags
-        message.packet.moveReaderIndex(forwardByBytes: 2) // user cursor options
-        message.packet.moveReaderIndex(forwardByBytes: 1) // UDI parameter
-        message.packet.moveReaderIndex(forwardByBytes: 1) // warning flag
+        message.packet.skipUB2() // end to end seq#
+        message.packet.skipUB4() // current row number
+        message.packet.skipUB2() // error number
+        message.packet.skipUB2() // array elem error
+        message.packet.skipUB2() // array elem error
+        let cursorID = message.packet.readUB2() // cursor id
+        let errorPosition = message.packet.readUB2() // error position
+        message.packet.skipUB1() // sql type
+        message.packet.skipUB1() // fatal?
+        message.packet.skipUB2() // flags
+        message.packet.skipUB2() // user cursor options
+        message.packet.skipUB1() // UDI parameter
+        message.packet.skipUB1() // warning flag
         let rowID = RowID.read(from: &message)
-        message.packet.moveReaderIndex(forwardByBytes: 4) // OS error
-        message.packet.moveReaderIndex(forwardByBytes: 1) // statement number
-        message.packet.moveReaderIndex(forwardByBytes: 1) // call number
-        message.packet.moveReaderIndex(forwardByBytes: 2) // padding
-        message.packet.moveReaderIndex(forwardByBytes: 4) // success iters
-        let numberOfBytes = message.packet.readInteger(as: UInt32.self) ?? 0 // oerrdd (logical rowID)
+        message.packet.skipUB4() // OS error
+        message.packet.skipUB1() // statement number
+        message.packet.skipUB1() // call number
+        message.packet.skipUB2() // padding
+        message.packet.skipUB4() // success iters
+        let numberOfBytes = message.packet.readUB4() ?? 0 // oerrdd (logical rowID)
         if numberOfBytes > 0 {
-            message.skipChunk()
+            message.packet.skipRawBytesChunked()
         }
 
         // batch error codes
-        let numberOfCodes = message.packet.readInteger(as: UInt16.self) ?? 0 // batch error codes array
+        let numberOfCodes = message.packet.readUB2() ?? 0 // batch error codes array
         var batch = [OracleError]()
         if numberOfCodes > 0 {
-            let firstByte = message.packet.readInteger(as: UInt8.self) ?? 0
+            let firstByte = message.packet.readUB1() ?? 0
             for _ in 0..<numberOfCodes {
                 if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
-                    message.packet.moveReaderIndex(forwardByBytes: 4) // chunk length ignored
+                    message.packet.skipUB4() // chunk length ignored
                 }
-                guard let errorCode = message.packet.readInteger(as: UInt16.self) else { continue }
+                guard let errorCode = message.packet.readUB2() else { continue }
                 batch.append(.init(code: Int(errorCode)))
             }
             if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
@@ -127,14 +128,14 @@ extension TNSRequest {
         }
 
         // batch error offsets
-        let numberOfOffsets = message.packet.readInteger(as: UInt16.self) ?? 0 // batch error row offset array
+        let numberOfOffsets = message.packet.readUB2() ?? 0 // batch error row offset array
         if numberOfOffsets > 0 {
-            let firstByte = message.packet.readInteger(as: UInt8.self) ?? 0
+            let firstByte = message.packet.readUB1() ?? 0
             for i in 0..<numberOfOffsets {
                 if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
-                    message.packet.moveReaderIndex(forwardByBytes: 4) // chunked length ignored
+                    message.packet.skipUB4() // chunked length ignored
                 }
-                let offset = message.packet.readInteger(as: UInt32.self) ?? 0
+                let offset = message.packet.readUB4() ?? 0
                 batch[Int(i)].offset = Int(offset)
             }
             if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
@@ -143,11 +144,11 @@ extension TNSRequest {
         }
 
         // batch error messages
-        let numberOfMessages = message.packet.readInteger(as: UInt16.self) ?? 0 // batch error messages array
+        let numberOfMessages = message.packet.readUB2() ?? 0 // batch error messages array
         if numberOfMessages > 0 {
             message.packet.moveReaderIndex(forwardByBytes: 1) // ignore packet size
             for i in 0..<numberOfMessages {
-                message.packet.moveReaderIndex(forwardByBytes: 2) // skip chunk length
+                message.packet.skipUB2() // skip chunk length
                 let errorMessage = message.packet
                     .readString(with: Constants.TNS_CS_IMPLICIT)?
                     .trimmingCharacters(in: .whitespaces)
@@ -156,8 +157,8 @@ extension TNSRequest {
             }
         }
 
-        let number = message.packet.readInteger(as: UInt32.self) ?? 0
-        let rowCount = message.packet.readInteger(as: UInt64.self)
+        let number = message.packet.readUB4() ?? 0
+        let rowCount = message.packet.readUB8()
         let errorMessage: String?
         if number != 0 {
             errorMessage = message.packet

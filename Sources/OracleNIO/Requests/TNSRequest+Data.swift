@@ -196,8 +196,7 @@ extension TNSRequestWithData {
         case .rowHeader:
             try self.processRowHeader(&message)
         case .rowData:
-            fatalError()
-//            self.processRowData(message)
+            try self.processRowData(&message)
         case .flushOutBinds:
             self.flushOutBinds = true
         case .describeInfo:
@@ -324,6 +323,17 @@ extension TNSRequestWithData {
             connection.logger.warning("INT NAMED not implemented")
         }
         return fetchInfo
+    }
+
+    func processRowData(_ message: inout TNSMessage) throws {
+        self.outVariables?.updateEachEnumerated { index, variable in
+            if variable.isArray {
+                variable.numberOfElementsInArray = message.packet.readUB4() ?? 0
+                for position in 0..<variable.numberOfElementsInArray! {
+                    // TODO
+                }
+            }
+        }
     }
 
     /// Gets the bit vector from the buffer and stores it for later use by the
@@ -555,5 +565,20 @@ final class ExecuteRequest: TNSRequestWithData {
         buffer.writeInteger(self.functionCode)
         buffer.writeSequenceNumber(with: self.currentSequenceNumber)
         self.currentSequenceNumber += 1
+    }
+}
+
+
+extension MutableCollection {
+    mutating func updateEach(_ update: (inout Element) ->  Void) {
+        for i in indices {
+            update(&self[i])
+        }
+    }
+
+    mutating func updateEachEnumerated(_ update: (Index, inout Element) -> Void) {
+        for i in indices {
+            update(i, &self[i])
+        }
     }
 }

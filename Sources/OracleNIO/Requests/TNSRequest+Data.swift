@@ -10,6 +10,7 @@ protocol TNSRequestWithData: TNSRequest, AnyObject {
     var flushOutBinds: Bool { get set }
     var bitVector: [UInt8]? { get set }
     var outVariables: [Variable]? { get set }
+    var processedError: Bool { get set }
     func writeColumnMetadata(to buffer: inout ByteBuffer, with bindVariables: [Variable])
     func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo])
     func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32)
@@ -20,6 +21,14 @@ protocol TNSRequestWithData: TNSRequest, AnyObject {
 }
 
 extension TNSRequestWithData {
+
+    func didProcessError() {
+        processedError = true
+    }
+
+    func hasMoreData(_ message: inout TNSMessage) -> Bool {
+        !processedError && !flushOutBinds
+    }
 
     func adjustFetchInfo(previousVariable: Variable, fetchInfo: inout FetchInfo) throws {
         if fetchInfo.dbType.oracleType == .clob && [DataType.Value.char, .varchar, .long].contains(previousVariable.dbType.oracleType) {
@@ -365,6 +374,7 @@ final class ExecuteRequest: TNSRequestWithData {
     var flushOutBinds = false
     var bitVector: [UInt8]? = nil
     var outVariables: [Variable]? = nil
+    var processedError = false
 
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection

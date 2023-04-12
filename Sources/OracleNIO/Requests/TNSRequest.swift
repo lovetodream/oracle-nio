@@ -19,6 +19,8 @@ protocol TNSRequest {
     func processReturnParameters(_ message: inout TNSMessage)
     func processWarning(_ message: inout TNSMessage) -> OracleErrorInfo
     func processServerSidePiggyback(_ message: inout TNSMessage)
+    func didProcessError()
+    func hasMoreData(_ message: inout TNSMessage) -> Bool
     /// Set readerIndex for message to prepare for ``processResponse``.
     func setReaderIndex(for message: inout TNSMessage)
 }
@@ -37,7 +39,7 @@ extension TNSRequest {
         preprocess()
         setReaderIndex(for: &message)
         message.packet.moveReaderIndex(forwardBy: 2) // skip data flags
-        while message.packet.readableBytes > 0 {
+        while hasMoreData(&message) {
             guard
                 let messageTypeByte = message.packet.readInteger(as: UInt8.self),
                 let messageType = MessageType(rawValue: messageTypeByte)
@@ -109,6 +111,7 @@ extension TNSRequest {
         if numberOfBytes > 0 {
             message.packet.skipRawBytesChunked()
         }
+        didProcessError()
 
         // batch error codes
         let numberOfCodes = message.packet.readUB2() ?? 0 // batch error codes array
@@ -270,6 +273,12 @@ extension TNSRequest {
             message.packet.moveReaderIndex(forwardByBytes: 4)
             message.packet.moveReaderIndex(forwardByBytes: 2)
         }
+    }
+
+    func didProcessError() { }
+
+    func hasMoreData(_ message: inout TNSMessage) -> Bool {
+        message.packet.readableBytes > 0
     }
 
     func setReaderIndex(for message: inout TNSMessage) {

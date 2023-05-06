@@ -125,7 +125,7 @@ enum Constants {
 
     // MARK: LOB locator constants
     static let TNS_LOB_LOCATOR_OFFSET_FLAG_3 = 6
-    static let TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET = 0x80
+    static let TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET: UInt8 = 0x80
 
     // MARK: Temporary and Abstract LOB constants
     static let TNS_LOB_ABSTRACT_POS = 4
@@ -136,6 +136,45 @@ enum Constants {
     // MARK: Other LOB constants
     static let TNS_LOB_OPEN_READ_WRITE = 2
     static let TNS_LOB_PREFETCH_FLAG: UInt32 = 0x2000000
+
+    // MARK: Base JSON constants
+    static let TNS_JSON_MAX_LENGTH = 32 * 1024 * 1024
+    static let TNS_JSON_MAGIC_BYTE_1 = 0xff
+    static let TNS_JSON_MAGIC_BYTE_2 = 0x4a        // 'J'
+    static let TNS_JSON_MAGIC_BYTE_3 = 0x5a        // 'Z'
+    static let TNS_JSON_VERSION = 1
+    static let TNS_JSON_FLAG_HASH_ID_UINT8: UInt16 = 0x0100
+    static let TNS_JSON_FLAG_HASH_ID_UINT16: UInt16 = 0x0200
+    static let TNS_JSON_FLAG_NUM_FNAMES_UINT16: UInt16 = 0x0400
+    static let TNS_JSON_FLAG_FNAMES_SEG_UINT32: UInt16 = 0x0800
+    static let TNS_JSON_FLAG_TINY_NODES_STAT = 0x2000
+    static let TNS_JSON_FLAG_TREE_SEG_UINT32: UInt16 = 0x1000
+    static let TNS_JSON_FLAG_REL_OFFSET_MODE = 0x01
+    static let TNS_JSON_FLAG_INLINE_LEAF = 0x02
+    static let TNS_JSON_FLAG_LEN_IN_PCODE = 0x04
+    static let TNS_JSON_FLAG_NUM_FNAMES_UINT32: UInt16 = 0x08
+    static let TNS_JSON_FLAG_IS_SCALAR: UInt16 = 0x10
+
+    // MARK: JSON data types
+    static let TNS_JSON_TYPE_NULL: UInt8 = 0x30
+    static let TNS_JSON_TYPE_TRUE: UInt8 = 0x31
+    static let TNS_JSON_TYPE_FALSE: UInt8 = 0x32
+    static let TNS_JSON_TYPE_STRING_LENGTH_UINT8: UInt8 = 0x33
+    static let TNS_JSON_TYPE_NUMBER_LENGTH_UINT8: UInt8 = 0x34
+    static let TNS_JSON_TYPE_BINARY_DOUBLE: UInt8 = 0x36
+    static let TNS_JSON_TYPE_STRING_LENGTH_UINT16: UInt8 = 0x37
+    static let TNS_JSON_TYPE_STRING_LENGTH_UINT32: UInt8 = 0x38
+    static let TNS_JSON_TYPE_TIMESTAMP: UInt8 = 0x39
+    static let TNS_JSON_TYPE_BINARY_LENGTH_UINT16: UInt8 = 0x3a
+    static let TNS_JSON_TYPE_BINARY_LENGTH_UINT32: UInt8 = 0x3b
+    static let TNS_JSON_TYPE_DATE: UInt8 = 0x3c
+    static let TNS_JSON_TYPE_INTERVAL_YM: UInt8 = 0x3d
+    static let TNS_JSON_TYPE_INTERVAL_DS: UInt8 = 0x3e
+    static let TNS_JSON_TYPE_TIMESTAMP_TZ: UInt8 = 0x7c
+    static let TNS_JSON_TYPE_TIMESTAMP7: UInt8 = 0x7d
+    static let TNS_JSON_TYPE_BINARY_FLOAT: UInt8 = 0x7f
+    static let TNS_JSON_TYPE_OBJECT = 0x84
+    static let TNS_JSON_TYPE_ARRAY = 0xc0
 
     // MARK: End-to-End metrics
     static let TNS_END_TO_END_ACTION = 0x0010
@@ -281,8 +320,8 @@ enum Constants {
     static let TNS_LONG_LENGTH_INDICATOR: UInt8 = 254
     static let TNS_NULL_LENGTH_INDICATOR = 255
     static let TNS_MAX_ROWID_LENGTH = 18
-    static let TNS_DURATION_MID = 0x80000000
-    static let TNS_DURATION_OFFSET = 60
+    static let TNS_DURATION_MID: UInt32 = 0x80000000
+    static let TNS_DURATION_OFFSET: UInt8 = 60
     static let TNS_DURATION_SESSION = 10
     static let TNS_MIN_LONG_LENGTH = 0x8000
     static let TNS_MAX_LONG_LENGTH: UInt32 = 0x7fffffff
@@ -293,12 +332,13 @@ enum Constants {
     static let TNS_MAX_CONNECT_DATA = 230
     static let TNS_CHUNK_SIZE = 32767
     static let TNS_MAX_UROWID_LENGTH: UInt32 = 5267
+    static let TNS_HAS_REGION_ID: UInt8 = 0x80
 
     // MARK: Base 64 encoding alphabet
     private static let TNS_ALPHABET_DATA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        .data(using: .utf8)
-    static let TNS_BASE64_ALPHABET = TNS_ALPHABET_DATA?.base64EncodedString()
-    static let TNS_BASE64_ALPHABET_ARRAY = TNS_ALPHABET_DATA?.base64EncodedData()
+        .data(using: .utf8)!
+    static let TNS_BASE64_ALPHABET = TNS_ALPHABET_DATA.base64EncodedString()
+    static let TNS_BASE64_ALPHABET_ARRAY = TNS_ALPHABET_DATA.base64EncodedData()
     static let TNS_EXTENT_OID = Data(hex: "00000000000000000000000000010001")
 
     // MARK: Timezone offsets

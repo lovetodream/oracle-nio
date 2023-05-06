@@ -32,12 +32,17 @@ struct OracleError: Error {
 
         // MARK: Error numbers that result in NotSupportedError
         case oracleTypeNotSupported = 3006
+        case dbTypeNotSupported = 3007
         case serverVersionNotSupported = 3010
         case nCharCSNotSupported = 3012
         case unsupportedVerifierType = 3015
+        case osonNodeTypeNotSupported = 3019
+        case osonVersionNotSupported = 3021
+        case namedTimeZoneNotSupported = 3022
 
         // MARK: Error numbers that result in DatabaseError
         case noCredentials = 4001
+        case columnTruncated = 4002
         case oracleNumberNoRepresentation = 4003
         case invalidNumber = 4004
         case poolNoConnectionAvailable = 4005
@@ -68,14 +73,24 @@ struct OracleError: Error {
                 return "Given index is out of range."
             case .oracleTypeNotSupported:
                 return "Oracle data type is not supported by oracle-nio."
+            case .dbTypeNotSupported:
+                return "Database type is not supported by oracle-nio."
             case .serverVersionNotSupported:
                 return "Connections to this database server version are not supported by oracle-nio."
             case .nCharCSNotSupported:
                 return "The national character set used by this database is not supported by oracle-nio."
             case .unsupportedVerifierType:
                 return "The configured password verifier type is not supported by oracle-nio."
+            case .osonNodeTypeNotSupported:
+                return "OSON node type is not supported by oracle-nio."
+            case .osonVersionNotSupported:
+                return "OSON version is not supported by oracle-nio."
+            case .namedTimeZoneNotSupported:
+                return "Named Time Zones are not supported by oracle-nio."
             case .noCredentials:
                 return "No credentials specified."
+            case .columnTruncated:
+                return "Column truncated."
             case .oracleNumberNoRepresentation:
                 return "Value cannot be represented as an Oracle number."
             case .invalidNumber:

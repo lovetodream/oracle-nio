@@ -1,16 +1,32 @@
 struct RowID {
-    let rba: UInt32
-    let partitionID: UInt16
-    let blockNumber: UInt32
-    let slotNumber: UInt16
+    var rba: UInt32 = 0
+    var partitionID: UInt16 = 0
+    var blockNumber: UInt32 = 0
+    var slotNumber: UInt16 = 0
 
     static func read(from message: inout TNSMessage) -> RowID? {
-        let rba = message.packet.readInteger(as: UInt32.self)
-        let partitionID = message.packet.readInteger(as: UInt16.self)
-        message.packet.moveReaderIndex(forwardByBytes: 1)
-        let blockNumber = message.packet.readInteger(as: UInt32.self)
-        let slotNumber = message.packet.readInteger(as: UInt16.self)
-        guard let rba, let partitionID, let blockNumber, let slotNumber else { return nil }
-        return RowID(rba: rba, partitionID: partitionID, blockNumber: blockNumber, slotNumber: slotNumber)
+        return message.packet.readRowID()
+    }
+
+    func string() -> String? {
+        if rba != 0 || partitionID != 0 || blockNumber != 0 || slotNumber != 0 {
+            var buffer = [UInt8](repeating: 0, count: Constants.TNS_MAX_ROWID_LENGTH)
+            var offset = 0
+            offset = convertBase64(buffer: &buffer, value: Int(rba), size: 6, offset: offset)
+            offset = convertBase64(buffer: &buffer, value: Int(partitionID), size: 3, offset: offset)
+            offset = convertBase64(buffer: &buffer, value: Int(blockNumber), size: 6, offset: offset)
+            offset = convertBase64(buffer: &buffer, value: Int(slotNumber), size: 3, offset: offset)
+            return String(cString: buffer)
+        }
+        return nil
+    }
+
+    private func convertBase64(buffer: inout [UInt8], value: Int, size: Int, offset: Int) -> Int {
+        var value = value
+        for i in 0..<size {
+            buffer[offset + size - i - 1] = Constants.TNS_BASE64_ALPHABET_ARRAY[value & 0x3f]
+            value = value >> 6
+        }
+        return offset + size
     }
 }

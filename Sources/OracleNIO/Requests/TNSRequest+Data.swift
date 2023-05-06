@@ -11,6 +11,7 @@ protocol TNSRequestWithData: TNSRequest, AnyObject {
     var bitVector: [UInt8]? { get set }
     var outVariables: [Variable]? { get set }
     var processedError: Bool { get set }
+    var rowIndex: UInt32 { get set }
     func writeColumnMetadata(to buffer: inout ByteBuffer, with bindVariables: [Variable])
     func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo])
     func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32)
@@ -244,8 +245,8 @@ extension TNSRequestWithData {
         }
     }
 
-    func processDescribeInfo(_ message: inout TNSMessage) throws {
-        guard let cursor else { preconditionFailure() }
+    func processDescribeInfo(_ message: inout TNSMessage, cursor: Cursor? = nil) throws {
+        guard let cursor = cursor ?? self.cursor else { preconditionFailure() }
         message.packet.skipUB4() // max row size
         cursor.numberOfColumns = message.packet.readUB4() ?? 0
         let previousFetchVariables = cursor.fetchVariables
@@ -335,14 +336,128 @@ extension TNSRequestWithData {
     }
 
     func processRowData(_ message: inout TNSMessage) throws {
-        self.outVariables?.updateEachEnumerated { index, variable in
+        guard let cursor else { preconditionFailure() }
+        var value: Any?
+        var values: [Any?] = []
+        try self.outVariables?.updateEachEnumeratedThrowing { index, variable in
             if variable.isArray {
                 variable.numberOfElementsInArray = message.packet.readUB4() ?? 0
                 for position in 0..<variable.numberOfElementsInArray! {
-                    // TODO
+                    value = try self.processColumnData(&message, variable: variable, position: position)
+                    variable.values[Int(position)] = value
+                }
+            } else if cursor.statement.isReturning == true {
+                let numberOfRows = message.packet.readUB4() ?? 0
+                values = [Any?](repeating: nil, count: Int(numberOfRows))
+                for i in 0..<numberOfRows {
+                    values[Int(i)] = try processColumnData(&message, variable: variable, position: i)
+                }
+                variable.values[Int(rowIndex)] = value
+            } else if isDuplicateData(columnNumber: UInt32(index)) {
+                if rowIndex == 0 {
+                    value = variable.lastRawValue
+                } else {
+                    value = variable.values[cursor.lastRowIndex]
+                }
+                variable.values[Int(rowIndex)] = value
+            } else {
+                value = try self.processColumnData(&message, variable: variable, position: rowIndex)
+            }
+            variable.values[Int(rowIndex)] = value
+        }
+        rowIndex += 1
+        if inFetch {
+            cursor.lastRowIndex = Int(rowIndex - 1)
+            cursor.bufferRowCount = Int(rowIndex)
+            bitVector = nil
+        }
+    }
+
+    func processColumnData(_ message: inout TNSMessage, variable: Variable, position: UInt32) throws -> Any? {
+        var oracleType: DataType.Value?
+        let csfrm: UInt8
+        let bufferSize: UInt32
+        if let fetchInfo = variable.fetchInfo {
+            oracleType = fetchInfo.dbType.oracleType
+            csfrm = fetchInfo.dbType.csfrm
+            bufferSize = fetchInfo.bufferSize
+        } else {
+            oracleType = variable.dbType.oracleType
+            csfrm = variable.dbType.csfrm
+            bufferSize = variable.bufferSize
+        }
+        if variable.bypassDecode {
+            oracleType = .raw
+        }
+        var columnValue: Any? // TODO: Create type for this
+        if bufferSize == 0 && inFetch && ![DataType.Value.long, .longRAW, .uRowID].contains(oracleType) {
+            columnValue = nil
+        } else if [DataType.Value.varchar, .char, .long].contains(oracleType) {
+            if csfrm == Constants.TNS_CS_NCHAR {
+                try connection.capabilities.checkNCharsetID()
+            }
+            columnValue = message.packet.readString(with: Int(csfrm))
+        } else if [DataType.Value.raw, .longRAW].contains(oracleType) {
+            columnValue = message.packet.readBytes()
+        } else if oracleType == .number {
+            columnValue = message.packet.readOracleNumber()
+        } else if [DataType.Value.date, .timestamp, .timestampLTZ, .timestampTZ].contains(oracleType) {
+            columnValue = try message.packet.readDate()
+        } else if oracleType == .rowID {
+            if !inFetch {
+                columnValue = message.packet.readString(with: Constants.TNS_CS_IMPLICIT)
+            } else {
+                let length = message.packet.readUB1() ?? 0
+                if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
+                    columnValue = nil
+                } else {
+                    columnValue = message.packet.readRowID()
                 }
             }
+        } else if oracleType == .uRowID {
+            if !inFetch {
+                columnValue = message.packet.readString(with: Constants.TNS_CS_IMPLICIT)
+            } else {
+                columnValue = message.packet.readUniversalRowID()
+            }
+        } else if oracleType == .binaryDouble {
+            columnValue = message.packet.readBinaryDouble()
+        } else if oracleType == .binaryFloat {
+            columnValue = message.packet.readBinaryFloat()
+        } else if oracleType == .binaryInteger {
+            columnValue = message.packet.readOracleNumber().map(Int.init(_:))
+        } else if oracleType == .cursor {
+            message.packet.skipUB1() // length (fixed value)
+            if !inFetch {
+                columnValue = variable.values[Int(position)]
+            }
+            let cursor = try createCursorFromDescribe(&message)
+            cursor.statement.cursorID = message.packet.readUB2() ?? 0
+            columnValue = cursor
+        } else if oracleType == .boolean {
+            columnValue = message.packet.readBool()
+        } else if oracleType == .intervalDS {
+            columnValue = message.packet.readIntervalDS()
+        } else if [DataType.Value.clob, .blob].contains(oracleType) {
+            columnValue = message.packet.readLOBWithLength(connection: connection, dbType: variable.dbType)
+        } else if oracleType == .json {
+            columnValue = try message.packet.readOSON()
+        } else {
+            throw OracleError.ErrorType.dbTypeNotSupported
         }
+
+        if !inFetch {
+            let actualNumberOfBytes = message.packet.readSB4()
+            if let actualNumberOfBytes, actualNumberOfBytes < 0, oracleType == .boolean {
+                columnValue = nil
+            } else if actualNumberOfBytes != 0 && columnValue != nil {
+                throw OracleError.ErrorType.columnTruncated
+            }
+        } else if oracleType == .long || oracleType == .longRAW {
+            message.packet.skipSB4() // null indicator
+            message.packet.skipUB4() // return code
+        }
+        return columnValue
     }
 
     /// Gets the bit vector from the buffer and stores it for later use by the
@@ -353,6 +468,28 @@ extension TNSRequestWithData {
         if self.bitVector == nil, let bytes = message.packet.readBytes(length: Int(size)) {
             self.bitVector = bytes
         }
+    }
+
+    private func createCursorFromDescribe(_ message: inout TNSMessage) throws -> Cursor {
+        let cursor = try Cursor(statement: Statement(characterConversion: connection.capabilities.characterConversion), fetchArraySize: 0, fetchVariables: [])
+        try self.processDescribeInfo(&message, cursor: cursor)
+        cursor.fetchArraySize = UInt32(cursor.arraySize) + cursor.prefetchRows
+        cursor.moreRowsToFetch = true
+        cursor.statement.isQuery = true
+        cursor.statement.requiresFullExecute = true
+        return cursor
+    }
+
+    /// Returns a boolean indicating if the given column contains data
+    /// duplicated from the previous row. When duplicate data exists, the
+    /// server sends a bit vector. Bits that are set indicate that data is sent
+    /// with the row data; bits that are not set indicate that data should be
+    /// duplicated from the previous row.
+    private func isDuplicateData(columnNumber: UInt32) -> Bool {
+        guard let bitVector else { return false }
+        let byteNumber = columnNumber / 8
+        let bitNumber = columnNumber % 8
+        return bitVector[Int(byteNumber)] & (1 << bitNumber) == 0
     }
 }
 
@@ -375,6 +512,7 @@ final class ExecuteRequest: TNSRequestWithData {
     var bitVector: [UInt8]? = nil
     var outVariables: [Variable]? = nil
     var processedError = false
+    var rowIndex: UInt32 = 0
 
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
@@ -586,9 +724,21 @@ extension MutableCollection {
         }
     }
 
+    mutating func updateEachThrowing(_ update: (inout Element) throws ->  Void) throws {
+        for i in indices {
+            try update(&self[i])
+        }
+    }
+
     mutating func updateEachEnumerated(_ update: (Index, inout Element) -> Void) {
         for i in indices {
             update(i, &self[i])
+        }
+    }
+
+    mutating func updateEachEnumeratedThrowing(_ update: (Index, inout Element) throws -> Void) throws {
+        for i in indices {
+            try update(i, &self[i])
         }
     }
 }

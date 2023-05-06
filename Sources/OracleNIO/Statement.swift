@@ -37,10 +37,10 @@ struct BindInfo {
 }
 
 struct Statement {
-    var sql: String
+    var sql: String = ""
     var sqlBytes: [UInt8] = []
     var sqlLength: UInt32 = 0
-    let cursorID: UInt16 = 0
+    var cursorID: UInt16 = 0
     var isQuery = false
     var isPlSQL = false
     var isDML = false
@@ -53,7 +53,7 @@ struct Statement {
     var fetchVariables: [Variable]?
     var numberOfColumns: UInt32?
 
-    init(_ sql: String, characterConversion: Bool) throws {
+    init(_ sql: String = "", characterConversion: Bool) throws {
         self.sql = sql
         try prepare(sql: sql, characterConversion: characterConversion)
     }

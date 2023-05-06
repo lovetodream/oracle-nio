@@ -1,14 +1,16 @@
 class Cursor {
     var statement: Statement
-    var prefetchRows: UInt32
+    var prefetchRows: UInt32 = 2
+    var arraySize = 100
     var fetchArraySize: UInt32
     var fetchVariables: [Variable]
     var moreRowsToFetch = false
     var bufferRowCount = 0
     var bufferIndex = 0
     var numberOfColumns: UInt32 = 0
+    var lastRowIndex = 0
 
-    init(statement: Statement, prefetchRows: UInt32, fetchArraySize: UInt32, fetchVariables: [Variable]) {
+    init(statement: Statement, prefetchRows: UInt32 = 2, fetchArraySize: UInt32, fetchVariables: [Variable]) {
         self.statement = statement
         self.prefetchRows = prefetchRows
         self.fetchArraySize = fetchArraySize
@@ -29,11 +31,7 @@ class Cursor {
         )
 
         let dbType = variable.dbType.number
-        if dbType == .number {
-            if variable.scale == 0 || (variable.scale == -127 && variable.precision == 0) {
-                variable.preferredNumberType = .int
-            }
-        } else if !Defaults.fetchLobs {
+        if !Defaults.fetchLobs {
             if dbType == .blob {
                 variable.dbType = .longRAW
             } else if dbType == .clob {

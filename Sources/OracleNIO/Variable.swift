@@ -10,9 +10,10 @@ struct Variable {
     var precision: Int16
     var scale: Int16
     var nullsAllowed: Bool
-    var fetchInfo: FetchInfo
+    var fetchInfo: FetchInfo? 
     var values: [Any?]
-    var preferredNumberType: DatabaseNumericType?
+    var bypassDecode: Bool = false
+    var lastRawValue: Any?
 
     mutating func finalizeInitialization() {
         self.values = .init(repeating: nil, count: Int(numberOfElements))

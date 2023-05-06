@@ -69,6 +69,12 @@ extension ByteBuffer {
         }
     }
 
+    mutating func skipUB8() {
+        guard let length = readUBLength() else { return }
+        guard length <= 8 else { fatalError() }
+        self.moveReaderIndex(forwardByBytes: Int(length))
+    }
+
     mutating func readUBLength() -> UInt8? {
         guard let first = self.readBytes(length: 1)?.first else { return nil }
         let length: UInt8

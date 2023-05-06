@@ -41,6 +41,8 @@ public class OracleConnection {
     var sessionID: Int?
     var serialNumber: Int?
     var serverVersion: OracleVersion?
+    var currentSchema: String?
+    var edition: String?
 
     init(configuration: OracleConnection.Configuration, channel: Channel, logger: Logger) {
         self.configuration = configuration

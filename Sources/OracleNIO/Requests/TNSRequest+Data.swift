@@ -460,6 +460,48 @@ extension TNSRequestWithData {
         return columnValue
     }
 
+    func processReturnParameters(_ message: inout TNSMessage) {
+        var numberOfParameters = message.packet.readUB2() ?? 0 // al8o4l (ignored)
+        for _ in 0..<numberOfParameters {
+            message.packet.skipUB4()
+        }
+        var numberOfBytes = message.packet.readUB2() ?? 0 // al8txl (ignored)
+        if numberOfBytes > 0 {
+            message.packet.moveReaderIndex(forwardByBytes: Int(numberOfBytes))
+        }
+        numberOfParameters = message.packet.readUB2() ?? 0 // number of key/value pairs
+        for _ in 0..<numberOfParameters {
+            var numberOfBytes = message.packet.readUB2() ?? 0 // key
+            var keyValue: [UInt8]? = nil
+            if numberOfBytes > 0 {
+                keyValue = message.packet.readBytes()
+            }
+            numberOfBytes = message.packet.readUB2() ?? 0 // value
+            if numberOfBytes > 0 {
+                message.packet.skipRawBytesChunked()
+            }
+            let keywordNumber = message.packet.readUB2() ?? 0 // keyword number
+            if keywordNumber == Constants.TNS_KEYWORD_NUM_CURRENT_SCHEMA, let keyValue {
+                connection.currentSchema = String(cString: keyValue)
+            } else if keywordNumber == Constants.TNS_KEYWORD_NUM_EDITION, let keyValue {
+                connection.edition = String(cString: keyValue)
+            }
+        }
+        numberOfBytes = message.packet.readUB2() ?? 0
+        if numberOfBytes > 0 {
+            message.packet.moveReaderIndex(forwardByBytes: Int(numberOfBytes))
+        }
+        if arrayDMLRowCounts {
+            let numberOfRows = message.packet.readUB4() ?? 0
+            var rowCounts = [UInt64]()
+            cursor?.dmlRowCounts = []
+            for _ in 0..<numberOfRows {
+                let rowCount = message.packet.readUB8() ?? 0
+                rowCounts.append(rowCount)
+            }
+        }
+    }
+
     /// Gets the bit vector from the buffer and stores it for later use by the
     /// row processing code. Since it is possible that the packet buffer may be
     /// overwritten by subsequent packet retrieval, the bit vector must be

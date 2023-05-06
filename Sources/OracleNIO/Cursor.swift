@@ -9,6 +9,7 @@ class Cursor {
     var bufferIndex = 0
     var numberOfColumns: UInt32 = 0
     var lastRowIndex = 0
+    var dmlRowCounts: [Int] = []
 
     init(statement: Statement, prefetchRows: UInt32 = 2, fetchArraySize: UInt32, fetchVariables: [Variable]) {
         self.statement = statement

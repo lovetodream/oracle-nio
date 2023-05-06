@@ -10,6 +10,9 @@ class Cursor {
     var numberOfColumns: UInt32 = 0
     var lastRowIndex = 0
     var dmlRowCounts: [Int] = []
+    var rowCount: UInt64?
+    var lastRowID: RowID?
+    var batchErrors: [OracleError]?
 
     init(statement: Statement, prefetchRows: UInt32 = 2, fetchArraySize: UInt32, fetchVariables: [Variable]) {
         self.statement = statement

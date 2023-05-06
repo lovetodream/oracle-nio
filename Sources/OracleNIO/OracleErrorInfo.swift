@@ -139,3 +139,82 @@ struct OracleError: Error {
         24338: .invalidRefCursor,
     ]
 }
+
+let INTEGRITY_ERROR_CODES: [Int32] = [
+        1,          // unique constraint violated
+        1400,       // cannot insert NULL
+        1438,       // value larger than specified precision
+        2290,       // check constraint violated
+        2291,       // integrity constraint violated - parent key not found
+        2292,       // integrity constraint violated - child record found
+        21525,      // attribute or collection element violated its constraints
+        40479,      // internal JSON serializer error
+        0
+]
+
+let INTERFACE_ERROR_CODES: [Int32] = [
+        24422,
+        0
+]
+
+let OPERATIONAL_ERROR_CODES: [Int32] = [
+        22,         // invalid session ID; access denied
+        378,        // buffer pools cannot be created as specified
+        600,        // internal error code
+        602,        // internal programming exception
+        603,        // ORACLE server session terminated by fatal error
+        604,        // error occurred at recursive SQL level
+        609,        // could not attach to incoming connection
+        1012,       // not logged on
+        1013,       // user requested cancel of current operation
+        1033,       // ORACLE initialization or shutdown in progress
+        1034,       // ORACLE not available
+        1041,       // internal error. hostdef extension doesn't exist
+        1043,       // user side memory corruption
+        1089,       // immediate shutdown or close in progress
+        1090,       // shutdown in progress - connection is not permitted
+        1092,       // ORACLE instance terminated. Disconnection forced
+        3111,       // break received on communication channel
+        3113,       // end-of-file on communication channel
+        3114,       // not connected to ORACLE
+        3122,       // attempt to close ORACLE-side window on user side
+        3135,       // connection lost contact
+        12153,      // TNS:not connected
+        12203,      // TNS:unable to connect to destination
+        12500,      // TNS:listener failed to start a dedicated server process
+        12571,      // TNS:packet writer failure
+        27146,      // post/wait initialization failed
+        28511,      // lost RPC connection to heterogeneous remote agent
+        0
+]
+
+func isCodeInArray(_ code: Int32, _ array: [Int32]) -> Bool {
+    var ix = 0
+    while ix < array.count {
+        if array[ix] == code {
+            return true
+        }
+        ix += 1
+    }
+    return false
+}
+
+enum OracleErrorType: Error {
+    case integrityError
+    case operationalError
+    case interfaceError
+    case databaseError
+}
+
+func getExceptionClass(for code: Int32) -> OracleErrorType {
+    if isCodeInArray(code, INTEGRITY_ERROR_CODES) {
+        return .integrityError
+    }
+    if isCodeInArray(code, OPERATIONAL_ERROR_CODES) {
+        return .operationalError
+    }
+    if isCodeInArray(code, INTERFACE_ERROR_CODES) {
+        return .interfaceError
+    }
+    return .databaseError
+}

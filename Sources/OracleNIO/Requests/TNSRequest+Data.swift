@@ -214,8 +214,9 @@ extension TNSRequestWithData {
             try self.processDescribeInfo(&message)
             self.outVariables = self.cursor?.fetchVariables
         case .error:
-            fatalError()
-//            self.processErrorInfo(message)
+            if let error = try self.processErrorInfo(&message) {
+                connection.logger.warning("Oracle Error occurred: \(error)")
+            }
         case .bitVector:
             fatalError()
 //            self.processBitVector(message)
@@ -500,6 +501,40 @@ extension TNSRequestWithData {
                 rowCounts.append(rowCount)
             }
         }
+    }
+
+    func processErrorInfo(_ message: inout TNSMessage) throws -> OracleErrorInfo? {
+        guard let cursor else { preconditionFailure() }
+        var errorOccured = true
+        var error = processError(&message)
+        cursor.statement.cursorID = error.cursorID ?? 0
+        if !cursor.statement.isPlSQL && !inFetch {
+            cursor.rowCount = error.rowCount
+        }
+        cursor.lastRowID = error.rowID
+        cursor.batchErrors = error.batchErrors
+        if error.number == Constants.TNS_ERR_NO_DATA_FOUND {
+            error.number = 0
+            cursor.moreRowsToFetch = false
+            errorOccured = false
+        } else if error.number == Constants.TNS_ERR_ARRAY_DML_ERRORS {
+            error.number = 0
+            cursor.moreRowsToFetch = false
+            errorOccured = false
+        } else if error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST {
+            try connection.addCursorToClose(cursor.statement)
+            cursor.statement.cursorID = 0
+        } else if error.number != 0 && error.cursorID != 0 {
+            let exception = getExceptionClass(for: Int32(error.number))
+            if exception != .integrityError {
+                try connection.addCursorToClose(cursor.statement)
+                cursor.statement.cursorID = 0
+            }
+        }
+        if errorOccured {
+            return error
+        }
+        return nil
     }
 
     /// Gets the bit vector from the buffer and stores it for later use by the

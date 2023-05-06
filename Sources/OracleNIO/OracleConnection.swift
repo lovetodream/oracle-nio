@@ -44,6 +44,8 @@ public class OracleConnection {
     var currentSchema: String?
     var edition: String?
 
+    private var cursorsToClose: [UInt16]?
+
     init(configuration: OracleConnection.Configuration, channel: Channel, logger: Logger) {
         self.configuration = configuration
         self.logger = logger
@@ -161,5 +163,16 @@ public class OracleConnection {
 extension OracleConnection {
     func resetStatementCache() {
         // TODO: reset cache
+    }
+
+    func addCursorToClose(_ statement: Statement) throws {
+        if cursorsToClose?.count == Constants.TNS_MAX_CURSORS_TO_CLOSE {
+            throw CursorCloseError.tooManyCursorsToClose
+        }
+        cursorsToClose?.append(statement.cursorID)
+    }
+
+    enum CursorCloseError: Error {
+        case tooManyCursorsToClose
     }
 }

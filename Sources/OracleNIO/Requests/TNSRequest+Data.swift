@@ -537,6 +537,10 @@ extension TNSRequestWithData {
         return nil
     }
 
+    func postprocess() { }
+
+    // MARK: Helper
+
     /// Gets the bit vector from the buffer and stores it for later use by the
     /// row processing code. Since it is possible that the packet buffer may be
     /// overwritten by subsequent packet retrieval, the bit vector must be
@@ -785,7 +789,7 @@ final class ExecuteRequest: TNSRequestWithData {
 
     private func writeReexecuteMessage(to buffer: inout ByteBuffer) {}
 
-    private func writeFunctionCode(to buffer: inout ByteBuffer) {
+    func writeFunctionCode(to buffer: inout ByteBuffer) {
         buffer.writeInteger(self.messageType.rawValue)
         buffer.writeInteger(self.functionCode)
         buffer.writeSequenceNumber(with: self.currentSequenceNumber)

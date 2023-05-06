@@ -24,7 +24,8 @@ do {
         logger: logger,
         on: group.next()
     ).wait()
-    try connection.query("select sysdate from dual")
+//    try connection.query("select sysdate from dual")
+    try connection.close().wait()
 } catch {
     print(error)
 }

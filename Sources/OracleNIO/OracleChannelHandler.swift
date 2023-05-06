@@ -8,6 +8,7 @@ class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundOut = ByteBuffer
 
     let logger: Logger
+    var connection: OracleConnection!
 
     private var queue: [TNSRequest]
 
@@ -67,6 +68,18 @@ class OracleChannelHandler: ChannelDuplexHandler {
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         logger.error("\(error.localizedDescription)")
         context.fireErrorCaught(error)
+    }
+
+    func close(context: ChannelHandlerContext, mode: CloseMode, promise: EventLoopPromise<Void>?) {
+        logger.trace("Close triggered by upstream")
+        guard mode == .all else {
+            promise?.fail(ChannelError.operationUnsupported)
+            return
+        }
+        _ = context.channel.write(LogoffRequest(connection: connection, messageType: .function))
+            .map {
+            context.channel.write(CloseRequest(connection: self.connection, messageType: .function), promise: promise)
+        }
     }
 
 }

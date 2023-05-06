@@ -23,6 +23,7 @@ protocol TNSRequest {
     func hasMoreData(_ message: inout TNSMessage) -> Bool
     /// Set readerIndex for message to prepare for ``processResponse``.
     func setReaderIndex(for message: inout TNSMessage)
+    func writeFunctionCode(to buffer: inout ByteBuffer)
 }
 
 extension TNSRequest {
@@ -41,10 +42,14 @@ extension TNSRequest {
         message.packet.moveReaderIndex(forwardBy: 2) // skip data flags
         while hasMoreData(&message) {
             guard
-                let messageTypeByte = message.packet.readInteger(as: UInt8.self),
-                let messageType = MessageType(rawValue: messageTypeByte)
+                let messageTypeByte = message.packet.readInteger(as: UInt8.self)
             else {
+                print(message.packet.readableBytes)
+                print(message.packet.readString(length: message.packet.readableBytes))
                 fatalError("Couldn't read single byte, but readableBytes is still bigger than 0.")
+            }
+            guard let messageType = MessageType(rawValue: messageTypeByte) else {
+                throw OracleError.ErrorType.typeUnknown
             }
             try self.processResponse(&message, of: messageType, from: channel)
         }
@@ -284,6 +289,15 @@ extension TNSRequest {
     func setReaderIndex(for message: inout TNSMessage) {
         if message.packet.readerIndex < TNSMessage.headerSize && message.packet.capacity >= TNSMessage.headerSize {
             message.packet.moveReaderIndex(to: TNSMessage.headerSize)
+        }
+    }
+
+    func writeFunctionCode(to buffer: inout ByteBuffer) {
+        buffer.writeInteger(messageType.rawValue)
+        buffer.writeInteger(functionCode)
+        buffer.writeSequenceNumber()
+        if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
+            buffer.writeUB8(0) // token number
         }
     }
 }

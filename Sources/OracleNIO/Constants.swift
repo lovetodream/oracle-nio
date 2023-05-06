@@ -15,7 +15,7 @@ enum Constants {
     static let TNS_PACKET_FLAG_TLS_RENEG = 0x08
 
     // MARK: Data flags
-    static let TNS_DATA_FLAGS_EOF = 0x0040
+    static let TNS_DATA_FLAGS_EOF: UInt16 = 0x0040
 
     // MARK: Marker types
     static let TNS_MARKER_TYPE_BREAK = 1
@@ -212,7 +212,7 @@ enum Constants {
     static let TNS_FUNC_EXECUTE: UInt8 = 94
     static let TNS_FUNC_FETCH = 5
     static let TNS_FUNC_LOB_OP = 96
-    static let TNS_FUNC_LOGOFF = 9
+    static let TNS_FUNC_LOGOFF: UInt8 = 9
     static let TNS_FUNC_PING = 147
     static let TNS_FUNC_ROLLBACK = 15
     static let TNS_FUNC_SET_END_TO_END_ATTR = 135
@@ -275,7 +275,9 @@ enum Constants {
     static let TNS_CCAP_FIELD_VERSION_20_1 = 14
     static let TNS_CCAP_FIELD_VERSION_20_1_EXT_1 = 15
     static let TNS_CCAP_FIELD_VERSION_21_1 = 16
-    static let TNS_CCAP_FIELD_VERSION_MAX: UInt8 = 16
+    static let TNS_CCAP_FIELD_VERSION_23_1 = 17
+    static let TNS_CCAP_FIELD_VERSION_23_1_EXT_1 = 18
+    static let TNS_CCAP_FIELD_VERSION_MAX: UInt8 = 18
     static let TNS_CCAP_O5LOGON: UInt8 = 8
     static let TNS_CCAP_O5LOGON_NP: UInt8 = 2
     static let TNS_CCAP_O7LOGON: UInt8 = 32

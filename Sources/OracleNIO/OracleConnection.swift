@@ -26,6 +26,14 @@ public class OracleConnection {
     let channel: Channel
     let logger: Logger
 
+    public var closeFuture: EventLoopFuture<Void> {
+        channel.closeFuture
+    }
+
+    public var isClosed: Bool {
+        !self.channel.isActive
+    }
+
     var readyForAuthenticationPromise: EventLoopPromise<Void>
     var readyForAuthenticationFuture: EventLoopFuture<Void> {
         self.readyForAuthenticationPromise.futureResult
@@ -54,8 +62,12 @@ public class OracleConnection {
         self.channelHandler = OracleChannelHandler(logger: logger)
         self.decoderHandler = ByteToMessageHandler(TNSMessageDecoder(connection: self))
     }
+    deinit {
+        assert(isClosed, "OracleConnection deinitialized before being closed.")
+    }
 
     func start() -> EventLoopFuture<Void> {
+        channelHandler.connection = self
         do {
             try channel.pipeline.syncOperations.addHandler(decoderHandler, position: .first)
             try channel.pipeline.syncOperations.addHandlers(channelHandler, position: .after(decoderHandler))
@@ -147,6 +159,13 @@ public class OracleConnection {
             .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
             .channelOption(ChannelOptions.connectTimeout, value: .none)
         return bootstrap
+    }
+
+    public func close() -> EventLoopFuture<Void> {
+        guard !isClosed else { return eventLoop.makeSucceededVoidFuture() }
+
+        channel.close(mode: .all, promise: nil)
+        return closeFuture
     }
 
     func createRequest<T: TNSRequest>() -> T {

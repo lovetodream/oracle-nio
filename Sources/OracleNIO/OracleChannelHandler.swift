@@ -76,9 +76,11 @@ class OracleChannelHandler: ChannelDuplexHandler {
             promise?.fail(ChannelError.operationUnsupported)
             return
         }
-        _ = context.channel.write(LogoffRequest(connection: connection, messageType: .function))
-            .map {
-            context.channel.write(CloseRequest(connection: self.connection, messageType: .function), promise: promise)
+        var logoffRequest = LogoffRequest(connection: connection, messageType: .function)
+        logoffRequest.onResponsePromise = context.eventLoop.makePromise()
+        context.channel.write(logoffRequest, promise: nil)
+        _ = logoffRequest.onResponsePromise!.futureResult.flatMap { _ in
+            context.channel.write(CloseRequest(connection: self.connection, messageType: .function))
         }
     }
 

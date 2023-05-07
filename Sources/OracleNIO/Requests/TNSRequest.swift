@@ -44,11 +44,13 @@ extension TNSRequest {
             guard
                 let messageTypeByte = message.packet.readInteger(as: UInt8.self)
             else {
-                print(message.packet.readableBytes)
-                print(message.packet.readString(length: message.packet.readableBytes))
                 fatalError("Couldn't read single byte, but readableBytes is still bigger than 0.")
             }
             guard let messageType = MessageType(rawValue: messageTypeByte) else {
+                if messageTypeByte == 0 {
+                    postprocess()
+                    return
+                }
                 throw OracleError.ErrorType.typeUnknown
             }
             try self.processResponse(&message, of: messageType, from: channel)

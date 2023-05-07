@@ -668,9 +668,9 @@ final class ExecuteRequest: TNSRequestWithData {
                 }
             }
         }
-        if !statement.isPlSQL {
+        if !statement.isPlSQL && !parseOnly {
             options |= Constants.TNS_EXEC_OPTION_NOT_PLSQL
-        } else if numberOfParameters > 0 {
+        } else if statement.isPlSQL && numberOfParameters > 0 {
             options |= Constants.TNS_EXEC_OPTION_PLSQL_BIND
         }
         if numberOfParameters > 0 {

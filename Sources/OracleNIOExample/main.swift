@@ -19,13 +19,19 @@ do {
             address: .init(ipAddress: ipAddress, port: port),
             serviceName: serviceName,
             username: username,
-            password: password
+            password: password,
+            autocommit: true
         ),
         logger: logger,
         on: group.next()
     ).wait()
 //    try connection.query("select sysdate from dual")
-    try connection.close().wait()
+//    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')")
+//    try connection.query("update \"test\" set \"value\" = '\(UUID().uuidString)'")
+    try connection.query("delete from \"test\"")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+        try! connection.close().wait()
+    }
 } catch {
     print(error)
 }

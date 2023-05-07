@@ -174,6 +174,7 @@ public class OracleConnection {
 
     public func query(_ sql: String) throws {
         let request: ExecuteRequest = createRequest()
+        request.numberOfExecutions = 1
         try request.cursor = Cursor(statement: Statement(sql, characterConversion: capabilities.characterConversion), prefetchRows: 2, fetchArraySize: 0, fetchVariables: [])
         channel.write(request, promise: nil)
     }

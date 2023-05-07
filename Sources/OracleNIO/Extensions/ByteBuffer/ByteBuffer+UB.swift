@@ -38,6 +38,9 @@ extension ByteBuffer {
             return self.readInteger(as: UInt8.self).map(UInt32.init(_:))
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt32.init(_:))
+        case 3:
+            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
+            return UInt32(bytes[0]) << 16 | UInt32(bytes[1]) << 8 | UInt32(bytes[2])
         case 4:
             return self.readInteger(as: UInt32.self)
         default:
@@ -60,6 +63,9 @@ extension ByteBuffer {
             return self.readInteger(as: UInt8.self).map(UInt64.init)
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt64.init)
+        case 3:
+            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
+            return UInt64(bytes[0]) << 16 | UInt64(bytes[1]) << 8 | UInt64(bytes[2])
         case 4:
             return self.readInteger(as: UInt32.self).map(UInt64.init)
         case 8:

@@ -53,7 +53,6 @@ struct ConnectRequest: TNSRequest {
             connectFlags2
         )
         if connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA {
-            // TODO: this does not work yet
             buffer.endRequest(packetType: .connect, capabilities: connection.capabilities)
             messages.append(.init(type: .connect, packet: buffer))
             buffer = ByteBuffer()

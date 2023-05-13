@@ -25,10 +25,14 @@ do {
         logger: logger,
         on: group.next()
     ).wait()
-//    try connection.query("select sysdate from dual")
-//    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')")
-//    try connection.query("update \"test\" set \"value\" = '\(UUID().uuidString)'")
-    try connection.query("delete from \"test\"")
+//    try connection.query("select sysdate from dual") // SELECT
+//    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT
+//    try connection.query("update \"test\" set \"value\" = '\(UUID().uuidString)'") // UPDATE
+//    try connection.query("delete from \"test\"") // DELETE
+//    try connection.query("begin insert into \"test\" (\"value\") values ('\(UUID().uuidString)'); end;") // PLSQL
+//    try connection.query("create table test2(value varchar2(250))") // CREATE TABLE
+//    try connection.query("alter table test2 add value2 varchar2(250)") // ALTER TABLE
+//    try connection.query("drop table test2") // DROP TABLE
     DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
         try! connection.close().wait()
     }

@@ -1,15 +1,5 @@
 import RegexBuilder
 
-/// Named binds.
-///
-/// Rules for named binds:
-/// 1. Quoted and non-quoted bind names are allowed.
-/// 2. Quoted binds can contain any characters.
-/// 3. Non-quoted binds must begin with an alphabet character.
-/// 4. Non-quoted binds can only contain alphanumeric characters, the underscore, the dollar sign and the pound sign.
-/// 5. Non-quoted binds cannot be Oracle Database Reserved Names (Server handles this case and returns an appropriate error).
-// TODO: not yet possible using Swift Regex, because Lookbehind is not supported as of now
-//let BIND_PATTERN = try! Regex("(?<!\"\\:)(?<=\\:)\\s*(\"[^\\\"]*\"|[^\\W\\d_][\\w\\$#]*|\\d+)")
 let BIND_PATTERN = Regex {
     ":"
     Capture {
@@ -56,7 +46,6 @@ class Statement {
     var isDDL = false
     var isReturning = false
     var bindInfoList: Array<BindInfo> = []
-    var bindInfoDict: Dictionary<String, [BindInfo]> = [:]
     var requiresFullExecute = false
     var requiresDefine = false
     var fetchVariables: [Variable]?
@@ -66,30 +55,6 @@ class Statement {
         self.sql = sql
         try prepare(sql: sql, characterConversion: characterConversion)
     }
-
-    /// Add bind information to the statement by examining the passed SQL for bind variable names.
-//    mutating func addBinds(sql: String, isReturnBind: Bool) throws {
-        // TODO: not yet possible using Swift Regex
-//        for match in sql.matches(of: BIND_PATTERN) {
-//            guard var name = match.first?.value as? String else { continue }
-//            if name.first == "\"" && name.last == "\"" {
-//                name.removeFirst()
-//                name.removeLast()
-//            } else {
-//                name = name.uppercased()
-//            }
-//            if self.isPlSQL && bindInfoDict.keys.contains(name) {
-//                continue
-//            }
-//            let info = BindInfo(name: name, isReturnBind: isReturnBind)
-//            self.bindInfoList.append(info)
-//            if bindInfoDict.keys.contains(info.bindName) {
-//                bindInfoDict[info.bindName]?.append(info)
-//            } else {
-//                bindInfoDict[info.bindName] = [info]
-//            }
-//        }
-//    }
 
     func addBinds(sql: String, isReturnBind: Bool) throws {
         for match in sql.matches(of: BIND_PATTERN) {
@@ -136,7 +101,6 @@ class Statement {
         }
 
         // create empty list (bind by position) and dict (bind by name)
-        self.bindInfoDict = [:]
         self.bindInfoList = []
 
         // Strip single/multiline comments and strings from the sql statement to ease searching for bind variables.

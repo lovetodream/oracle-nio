@@ -16,6 +16,7 @@ struct Capabilities {
     var runtimeCapabilities = [UInt8](repeating: 0, count: Constants.TNS_RCAP_MAX)
     var characterConversion = false
     var supportsOOB = false
+    var maxStringSize: UInt32 = 0
 
     // MARK: Compile Capabilities
     var ttcFieldVersion: UInt8 = Constants.TNS_CCAP_FIELD_VERSION_MAX
@@ -62,7 +63,13 @@ struct Capabilities {
         }
     }
 
-    mutating func adjustForServerRuntimeCapabilities(_ serverCapabilities: [UInt8]) {}
+    mutating func adjustForServerRuntimeCapabilities(_ serverCapabilities: [UInt8]) {
+        if (serverCapabilities[Constants.TNS_RCAP_TTC] & Constants.TNS_RCAP_TTC_32K) != 0 {
+            self.maxStringSize = 32767
+        } else {
+            self.maxStringSize = 4000
+        }
+    }
 
     func checkNCharsetID() throws {
         if self.nCharsetID != Constants.TNS_CHARSET_UTF16 {

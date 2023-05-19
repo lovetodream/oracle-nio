@@ -54,37 +54,47 @@ struct DBType {
         return dbType
     }
 
+    static let binaryInteger = DBType(number: .binaryInteger, name: "DB_TYPE_BINARY_INTEGER", oracleName: "BINARY_INTEGER", oracleType: .init(rawValue: 3)!, bufferSizeFactor: 22)
+    static let blob = DBType(number: .blob, name: "DB_TYPE_BLOB", oracleName: "BLOB", oracleType: .init(rawValue: 113)!, bufferSizeFactor: 112)
+    static let boolean = DBType(number: .boolean, name: "DB_TYPE_BOOLEAN", oracleName: "BOOLEAN", oracleType: .init(rawValue: 252)!, bufferSizeFactor: 4)
+    static let clob = DBType(number: .clob, name: "DB_TYPE_CLOB", oracleName: "CLOB", oracleType: .init(rawValue: 112)!, csfrm: 1, bufferSizeFactor: 112)
+    static let date = DBType(number: .date, name: "DB_TYPE_DATE", oracleName: "DATE", oracleType: .init(rawValue: 12)!, bufferSizeFactor: 7)
+    static let intervalDS = DBType(number: .intervalDS, name: "DB_TYPE_INTERVAL_DS", oracleName: "INTERVAL DAY TO SECOND", oracleType: .init(rawValue: 183)!, bufferSizeFactor: 11)
+    static let number = DBType(number: .number, name: "DB_TYPE_NUMBER", oracleName: "NUMBER", oracleType: .init(rawValue: 2)!, bufferSizeFactor: 22)
     static let long = DBType(number: .longVarchar, name: "DB_TYPE_LONG", oracleName: "LONG", oracleType: .init(rawValue: 8)!, csfrm: 1, bufferSizeFactor: 2147483647)
     static let longNVarchar = DBType(number: .longNVarchar, name: "DB_TYPE_LONG_NVARCHAR", oracleName: "LONG NVARCHAR", oracleType: .init(rawValue: 8)!, csfrm: 2, bufferSizeFactor: 2147483647)
     static let longRAW = DBType(number: .longRAW, name: "DB_TYPE_LONG_RAW", oracleName: "LONG RAW", oracleType: .init(rawValue: 24)!, bufferSizeFactor: 2147483647)
+    static let nCLOB = DBType(number: .nCLOB, name: "DB_TYPE_NCLOB", oracleName: "NCLOB", oracleType: .init(rawValue: 112)!, csfrm: 2, bufferSizeFactor: 112)
+    static let raw = DBType(number: .raw, name: "DB_TYPE_RAW", oracleName: "RAW", oracleType: .init(rawValue: 23)!, defaultSize: 4000, bufferSizeFactor: 1)
+    static let varchar = DBType(number: .varchar, name: "DB_TYPE_VARCHAR", oracleName: "VARCHAR2", oracleType: .init(rawValue: 1)!, defaultSize: 4000, csfrm: 1, bufferSizeFactor: 4)
 
     static let supported = [
         DBType(number: .bFile, name: "DB_TYPE_BFILE", oracleName: "BFILE", oracleType: .init(rawValue: 114)!),
         DBType(number: .binaryDouble, name: "DB_TYPE_BINARY_DOUBLE", oracleName: "BINARY_DOUBLE", oracleType: .init(rawValue: 101)!, bufferSizeFactor: 8),
         DBType(number: .binaryFloat, name: "DB_TYPE_BINARY_FLOAT", oracleName: "BINARY_FLOAT", oracleType: .init(rawValue: 100)!, bufferSizeFactor: 4),
-        DBType(number: .binaryInteger, name: "DB_TYPE_BINARY_INTEGER", oracleName: "BINARY_INTEGER", oracleType: .init(rawValue: 3)!, bufferSizeFactor: 22),
-        DBType(number: .blob, name: "DB_TYPE_BLOB", oracleName: "BLOB", oracleType: .init(rawValue: 113)!, bufferSizeFactor: 112),
-        DBType(number: .boolean, name: "DB_TYPE_BOOLEAN", oracleName: "BOOLEAN", oracleType: .init(rawValue: 252)!, bufferSizeFactor: 4),
+        .binaryInteger,
+        .blob,
+        .boolean,
         DBType(number: .char, name: "DB_TYPE_CHAR", oracleName: "CHAR", oracleType: .init(rawValue: 96)!, defaultSize: 2000, csfrm: 1, bufferSizeFactor: 4),
-        DBType(number: .clob, name: "DB_TYPE_CLOB", oracleName: "CLOB", oracleType: .init(rawValue: 112)!, csfrm: 1, bufferSizeFactor: 112),
+        .clob,
         DBType(number: .cursor, name: "DB_TYPE_CURSOR", oracleName: "CURSOR", oracleType: .init(rawValue: 102)!, bufferSizeFactor: 4),
-        DBType(number: .date, name: "DB_TYPE_DATE", oracleName: "DATE", oracleType: .init(rawValue: 12)!, bufferSizeFactor: 7),
-        DBType(number: .intervalDS, name: "DB_TYPE_INTERVAL_DS", oracleName: "INTERVAL DAY TO SECOND", oracleType: .init(rawValue: 183)!, bufferSizeFactor: 11),
+        .date,
+        .intervalDS,
         DBType(number: .intervalYM, name: "DB_TYPE_INTERVAL_YM", oracleName: "INTERVAL YEAR TO MONTH", oracleType: .init(rawValue: 182)!),
         DBType(number: .json, name: "DB_TYPE_JSON", oracleName: "JSON", oracleType: .init(rawValue: 119)!),
         long, longNVarchar, longRAW,
         DBType(number: .nChar, name: "DB_TYPE_NCHAR", oracleName: "NCHAR", oracleType: .init(rawValue: 96)!, defaultSize: 2000, csfrm: 2, bufferSizeFactor: 4),
-        DBType(number: .nCLOB, name: "DB_TYPE_NCLOB", oracleName: "NCLOB", oracleType: .init(rawValue: 112)!, csfrm: 2, bufferSizeFactor: 112),
-        DBType(number: .number, name: "DB_TYPE_NUMBER", oracleName: "NUMBER", oracleType: .init(rawValue: 2)!, bufferSizeFactor: 22),
+        .nCLOB,
+        .number,
         DBType(number: .nVarchar, name: "DB_TYPE_NVARCHAR", oracleName: "NVARCHAR2", oracleType: .init(rawValue: 1)!, defaultSize: 4000, csfrm: 2, bufferSizeFactor: 4),
         DBType(number: .object, name: "DB_TYPE_OBJECT", oracleName: "OBJECT", oracleType: .init(rawValue: 109)!),
-           DBType(number: .raw, name: "DB_TYPE_RAW", oracleName: "RAW", oracleType: .init(rawValue: 23)!, defaultSize: 4000, bufferSizeFactor: 1),
+        .raw,
         DBType(number: .rowID, name: "DB_TYPE_ROWID", oracleName: "ROWID", oracleType: .init(rawValue: 11)!, bufferSizeFactor: 18),
         DBType(number: .timestamp, name: "DB_TYPE_TIMESTAMP", oracleName: "TIMESTAMP", oracleType: .init(rawValue: 180)!, bufferSizeFactor: 11),
         DBType(number: .timestampLTZ, name: "DB_TYPE_TIMESTAMP_LTZ", oracleName: "TIMESTAMP WITH LOCAL TZ", oracleType: .init(rawValue: 231)!, bufferSizeFactor: 11),
         DBType(number: .timestampTZ, name: "DB_TYPE_TIMESTAMP_TZ", oracleName: "TIMESTAMP WITH TZ", oracleType: .init(rawValue: 181)!, bufferSizeFactor: 13),
         DBType(number: .unknown, name: "DB_TYPE_UNKNOWN", oracleName: "UNKNOWN"),
         DBType(number: .uRowID, name: "DB_TYPE_UROWID", oracleName: "UROWID", oracleType: .init(rawValue: 208)!),
-        DBType(number: .varchar, name: "DB_TYPE_VARCHAR", oracleName: "VARCHAR2", oracleType: .init(rawValue: 1)!, defaultSize: 4000, csfrm: 1, bufferSizeFactor: 4)
+        .varchar
     ]
 }

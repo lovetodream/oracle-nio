@@ -114,17 +114,19 @@ enum Constants {
     static let TNS_LOB_OP_GET_LENGTH = 0x0001
     static let TNS_LOB_OP_READ = 0x0002
     static let TNS_LOB_OP_TRIM = 0x0020
-    static let TNS_LOB_OP_WRITE = 0x0040
+    static let TNS_LOB_OP_WRITE: UInt32 = 0x0040
     static let TNS_LOB_OP_GET_CHUNK_SIZE = 0x4000
-    static let TNS_LOB_OP_CREATE_TEMP = 0x0110
-    static let TNS_LOB_OP_FREE_TEMP = 0x0111
+    static let TNS_LOB_OP_CREATE_TEMP: UInt32 = 0x0110
+    static let TNS_LOB_OP_FREE_TEMP: UInt32 = 0x0111
     static let TNS_LOB_OP_OPEN = 0x8000
     static let TNS_LOB_OP_CLOSE = 0x10000
     static let TNS_LOB_OP_IS_OPEN = 0x11000
-    static let TNS_LOB_OP_ARRAY = 0x80000
+    static let TNS_LOB_OP_ARRAY: UInt32 = 0x80000
 
     // MARK: LOB locator constants
+    static let TNS_LOB_LOCATOR_OFFSET_FLAG_1 = 4
     static let TNS_LOB_LOCATOR_OFFSET_FLAG_3 = 6
+    static let TNS_LOB_LOCATOR_OFFSET_FLAG_4 = 7
     static let TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET: UInt8 = 0x80
 
     // MARK: Temporary and Abstract LOB constants
@@ -133,12 +135,24 @@ enum Constants {
     static let TNS_LOB_TEMP_VALUE = 0x01
     static let TNS_LOB_ABSTRACT_VALUE = 0x40
 
+    // MARK: LOB locator flags (byte 1)
+    static let TNS_LOB_LOCATOR_FLAGS_BLOB = 0x01
+    static let TNS_LOB_LOCATOR_FLAGS_VALUE_BASED = 0x20
+    static let TNS_LOB_LOCATOR_FLAGS_ABSTRACT: UInt8 = 0x40
+
+    // MARK: LOB locator flags (byte 2)
+    static let TNS_LOB_LOCATOR_FLAGS_INIT = 0x08
+
+    // MARK: LOB locator flags (byte 4)
+    static let TNS_LOB_LOCATOR_FLAGS_TEMP: UInt8 = 0x01
+    static let TNS_LOB_LOCATOR_FLAGS_VAR_LENGTH_CHARSET = 0x80
+
     // MARK: Other LOB constants
     static let TNS_LOB_OPEN_READ_WRITE = 2
     static let TNS_LOB_PREFETCH_FLAG: UInt32 = 0x2000000
 
     // MARK: Base JSON constants
-    static let TNS_JSON_MAX_LENGTH = 32 * 1024 * 1024
+    static let TNS_JSON_MAX_LENGTH: UInt32 = 32 * 1024 * 1024
     static let TNS_JSON_MAGIC_BYTE_1 = 0xff
     static let TNS_JSON_MAGIC_BYTE_2 = 0x4a        // 'J'
     static let TNS_JSON_MAGIC_BYTE_3 = 0x5a        // 'Z'
@@ -207,11 +221,11 @@ enum Constants {
     // MARK: TTC functions
     static let TNS_FUNC_AUTH_PHASE_ONE: UInt8 = 118
     static let TNS_FUNC_AUTH_PHASE_TWO: UInt8 = 115
-    static let TNS_FUNC_CLOSE_CURSORS = 105
+    static let TNS_FUNC_CLOSE_CURSORS: UInt8 = 105
     static let TNS_FUNC_COMMIT = 14
     static let TNS_FUNC_EXECUTE: UInt8 = 94
     static let TNS_FUNC_FETCH = 5
-    static let TNS_FUNC_LOB_OP = 96
+    static let TNS_FUNC_LOB_OP: UInt8 = 96
     static let TNS_FUNC_LOGOFF: UInt8 = 9
     static let TNS_FUNC_PING = 147
     static let TNS_FUNC_ROLLBACK = 15
@@ -324,7 +338,7 @@ enum Constants {
     static let TNS_MAX_ROWID_LENGTH = 18
     static let TNS_DURATION_MID: UInt32 = 0x80000000
     static let TNS_DURATION_OFFSET: UInt8 = 60
-    static let TNS_DURATION_SESSION = 10
+    static let TNS_DURATION_SESSION: Int64 = 10
     static let TNS_MIN_LONG_LENGTH = 0x8000
     static let TNS_MAX_LONG_LENGTH: UInt32 = 0x7fffffff
     static let TNS_SDU: UInt16 = 8192
@@ -344,8 +358,8 @@ enum Constants {
     static let TNS_EXTENT_OID = Data(hex: "00000000000000000000000000010001")
 
     // MARK: Timezone offsets
-    static let TZ_HOUR_OFFSET = 20
-    static let TZ_MINUTE_OFFSET = 60
+    static let TZ_HOUR_OFFSET: UInt8 = 20
+    static let TZ_MINUTE_OFFSET: UInt8 = 60
 
     // MARK: DRCP release mode
     static let DRCP_DEAUTHENTICATE = 0x00000002

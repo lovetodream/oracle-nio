@@ -47,6 +47,8 @@ struct OracleError: Error {
         case invalidNumber = 4004
         case poolNoConnectionAvailable = 4005
         case arrayDMLRowCountsNotEnabled = 4006
+        case wrongNumberOfPositionalBinds = 4009
+        case missingBindValue = 4010
         case connectionClosed = 4011
         case numberWithInvalidExponent = 4012
         case numberStringOfZeroLength = 4013
@@ -99,6 +101,10 @@ struct OracleError: Error {
                 return "Timed out waiting for the connection pool to return a connection."
             case .arrayDMLRowCountsNotEnabled:
                 return "Array DML row counts mode is not enabled."
+            case .wrongNumberOfPositionalBinds:
+                return "Amount of binds is not matching amount of values."
+            case .missingBindValue:
+                return "A bind variable is missing in the statement."
             case .connectionClosed:
                 return "The database or network closed the connection."
             case .numberWithInvalidExponent:

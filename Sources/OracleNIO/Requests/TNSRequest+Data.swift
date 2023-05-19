@@ -1,4 +1,5 @@
 import NIOCore
+import struct Foundation.Date
 
 protocol TNSRequestWithData: TNSRequest, AnyObject {
     var cursor: Cursor? { get set }
@@ -13,9 +14,9 @@ protocol TNSRequestWithData: TNSRequest, AnyObject {
     var processedError: Bool { get set }
     var rowIndex: UInt32 { get set }
     func writeColumnMetadata(to buffer: inout ByteBuffer, with bindVariables: [Variable])
-    func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo])
-    func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32)
-    func writeBindParameterColumn(to buffer: inout ByteBuffer, variable: Variable, value: Any?)
+    func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo]) throws
+    func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32) throws
+    func writeBindParameterColumn(to buffer: inout ByteBuffer, variable: Variable, value: Any?) throws
     func writePiggybacks(to buffer: inout ByteBuffer)
     /// Actions that takes place before query data is processed.
     func preprocessQuery()
@@ -56,8 +57,13 @@ extension TNSRequestWithData {
                 flag |= Constants.TNS_BIND_ARRAY
             }
             var contFlag: UInt32 = 0
+            var lobPrefetchLength: UInt32 = 0
             if oracleType == .blob || oracleType == .clob {
                 contFlag = Constants.TNS_LOB_PREFETCH_FLAG
+            } else if oracleType == .json {
+                contFlag = Constants.TNS_LOB_PREFETCH_FLAG
+                bufferSize = Constants.TNS_JSON_MAX_LENGTH
+                lobPrefetchLength = Constants.TNS_JSON_MAX_LENGTH
             }
             buffer.writeInteger(UInt8(oracleType?.rawValue ?? 0))
             buffer.writeInteger(flag)
@@ -65,7 +71,7 @@ extension TNSRequestWithData {
             // expects that and complains if any other value is sent!
             buffer.writeInteger(UInt8(0))
             buffer.writeInteger(UInt8(0))
-            if bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+            if bufferSize > connection.capabilities.maxStringSize {
                 buffer.writeUB4(Constants.TNS_MAX_LONG_LENGTH)
             } else {
                 buffer.writeUB4(bufferSize)
@@ -89,48 +95,35 @@ extension TNSRequestWithData {
                 buffer.writeUB4(0)
             }
             buffer.writeInteger(variable.dbType.csfrm)
-            buffer.writeUB4(0) // max chars (not used)
+            buffer.writeUB4(lobPrefetchLength) // max chars (LOB prefetch)
             if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
                 buffer.writeUB4(0) // oaccolid
             }
         }
     }
 
-    func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo]) {
-        var returningOnly = true
-        var allValuesAreNull = true
+    func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo]) throws {
+        var hasData = false
         var bindVariables = [Variable]()
         for bindInfo in parameters {
             if !bindInfo.isReturnBind {
-                returningOnly = false
-            }
-            if let bindValues = bindInfo.variable?.values {
-                for value in bindValues where value != nil {
-                    allValuesAreNull = false
-                    break
-                }
+                hasData = true
             }
             guard let variable = bindInfo.variable else { continue }
             bindVariables.append(variable)
         }
         self.writeColumnMetadata(to: &buffer, with: bindVariables)
 
-        // plsql batch executions without bind values
-        if cursor?.statement.isPlSQL == true && self.numberOfExecutions > 1 && !allValuesAreNull {
-            buffer.writeInteger(MessageType.rowData.rawValue)
-            buffer.writeInteger(Constants.TNS_ESCAPE_CHAR)
-            buffer.writeInteger(UInt8(1))
-        }
         // write parameter values unless statement contains only return binds
-        else if !returningOnly {
+        if hasData {
             for i in 0..<numberOfExecutions {
                 buffer.writeInteger(MessageType.rowData.rawValue)
-                self.writeBindParameterRow(to: &buffer, with: parameters, at: i)
+                try self.writeBindParameterRow(to: &buffer, with: parameters, at: i)
             }
         }
     }
 
-    func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32) {
+    func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32) throws {
         let offset = self.offset
         var variable: Variable?
         var numberOfElements: UInt32
@@ -142,31 +135,161 @@ extension TNSRequestWithData {
                 numberOfElements = variable.numberOfElementsInArray ?? 0
                 buffer.writeUB4(numberOfElements)
                 for value in variable.values.prefix(Int(numberOfElements)) {
-                    self.writeBindParameterColumn(to: &buffer, variable: variable, value: value)
+                    try self.writeBindParameterColumn(to: &buffer, variable: variable, value: value)
                 }
             } else {
-                if variable.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+                if self.cursor?.statement.isPlSQL == false && variable.bufferSize > connection.capabilities.maxStringSize {
                     foundLong = true
                     continue
                 }
-                self.writeBindParameterColumn(to: &buffer, variable: variable, value: variable.values[Int(position + offset)])
+                try self.writeBindParameterColumn(to: &buffer, variable: variable, value: variable.values[Int(position + offset)])
             }
         }
 
         if foundLong {
             for bindInfo in parameters where !bindInfo.isReturnBind {
-                guard let variable = bindInfo.variable, variable.bufferSize >= Constants.TNS_MIN_LONG_LENGTH else { continue }
-                self.writeBindParameterColumn(to: &buffer, variable: variable, value: variable.values[Int(position + offset)])
+                guard let variable = bindInfo.variable, variable.bufferSize > connection.capabilities.maxStringSize else { continue }
+                try self.writeBindParameterColumn(to: &buffer, variable: variable, value: variable.values[Int(position + offset)])
             }
         }
     }
 
-    func writeBindParameterColumn(to buffer: inout ByteBuffer, variable: Variable, value: Any?) {
-        // TODO
+    func writeBindParameterColumn(to buffer: inout ByteBuffer, variable: Variable, value: Any?) throws {
+        if value == nil {
+            if variable.dbType.oracleType == .boolean {
+                buffer.writeInteger(Constants.TNS_ESCAPE_CHAR)
+                buffer.writeInteger(UInt8(1))
+            } else if variable.dbType.oracleType == .intNamed {
+                buffer.writeUB4(0) // TOID
+                buffer.writeUB4(0) // OID
+                buffer.writeUB4(0) // snapshot
+                buffer.writeUB4(0) // version
+                buffer.writeUB4(0) // packed data length
+                buffer.writeUB4(Constants.TNS_OBJ_TOP_LEVEL) // flags
+            } else {
+                buffer.writeInteger(UInt8(0))
+            }
+        } else if [.varchar, .char, .long].contains(variable.dbType.oracleType), let value = value as? String {
+            let tmpBytes: [UInt8]
+            if variable.dbType.csfrm == Constants.TNS_CS_IMPLICIT {
+                tmpBytes = value.bytes
+            } else {
+                try connection.capabilities.checkNCharsetID()
+                tmpBytes = value.data(using: .utf16)?.bytes ?? []
+            }
+            buffer.writeBytesAndLength(tmpBytes)
+        } else if [.raw, .longRAW].contains(variable.dbType.oracleType), let value = value as? [UInt8] {
+            buffer.writeBytesAndLength(value)
+        } else if [.number, .binaryInteger].contains(variable.dbType.oracleType) {
+            let tmpBytes: [UInt8]
+            if let value = value as? Bool {
+                tmpBytes = [value ? 1 : 0]
+            } else {
+                tmpBytes = String(value as! Int).bytes // TODO: more robust
+            }
+            try buffer.writeOracleNumber(tmpBytes)
+        } else if [.date, .timestamp, .timestampTZ, .timestampLTZ].contains(variable.dbType.oracleType), let value = value as? Date {
+            buffer.writeOracleDate(value, length: UInt8(variable.dbType.bufferSizeFactor))
+        } else if variable.dbType.oracleType == .binaryDouble, let value = value as? Double {
+            buffer.writeBinaryDouble(value)
+        } else if variable.dbType.oracleType == .binaryFloat, let value = value as? Float {
+            buffer.writeBinaryFloat(value)
+        } else if variable.dbType.oracleType == .cursor, let value = value as? Cursor {
+            if value.statement.cursorID == 0 {
+                buffer.writeInteger(UInt8(1))
+                buffer.writeInteger(UInt8(0))
+            } else {
+                buffer.writeUB4(1)
+                buffer.writeUB4(UInt32(value.statement.cursorID))
+            }
+        } else if variable.dbType.oracleType == .boolean, let value = value as? Bool {
+            buffer.writeBool(value)
+        } else if variable.dbType.oracleType == .intervalDS, let value = value as? Double {
+            buffer.writeIntervalDS(value)
+        } else if [.blob, .clob].contains(variable.dbType.oracleType), let value = value as? LOB {
+            buffer.writeLOBWithLength(value)
+        } else if [.rowID, .uRowID].contains(variable.dbType.oracleType), let value = value as? String {
+            let tempBytes = value.bytes
+            buffer.writeBytesAndLength(tempBytes)
+        } else if variable.dbType.oracleType == .intNamed {
+            throw OracleError.ErrorType.dbTypeNotSupported
+        } else if variable.dbType.oracleType == .json {
+            try buffer.writeOSON()
+        } else {
+            throw OracleError.ErrorType.dbTypeNotSupported
+        }
     }
 
     func writePiggybacks(to buffer: inout ByteBuffer) {
-        // TODO
+        if self.connection.cursorsToClose?.isEmpty == false, !connection.drcpEstablishSession {
+            self.writeCloseCursorsPiggyback(to: &buffer)
+        }
+        if self.connection.tempLOBsTotalSize > 0 {
+            self.writeCloseTempLOBsPiggyback(to: &buffer)
+        }
+    }
+
+    func writePiggybackCode(to buffer: inout ByteBuffer, code: UInt8) {
+        buffer.writeInteger(UInt8(MessageType.piggyback.rawValue))
+        buffer.writeInteger(UInt8(code))
+        buffer.writeSequenceNumber()
+        if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
+            buffer.writeUB8(0) // token number
+        }
+    }
+
+    func writeCloseCursorsPiggyback(to buffer: inout ByteBuffer) {
+        self.writePiggybackCode(to: &buffer, code: Constants.TNS_FUNC_CLOSE_CURSORS)
+        buffer.writeInteger(UInt8(1)) // pointer
+        buffer.writeUB4(UInt32(self.connection.cursorsToClose!.count))
+        guard let cursorIDs = self.connection.cursorsToClose else { return }
+        for cursorID in cursorIDs {
+            buffer.writeUB4(UInt32(cursorID))
+        }
+        self.connection.cursorsToClose = nil
+    }
+
+    func writeCloseTempLOBsPiggyback(to buffer: inout ByteBuffer) {
+        guard let lobs = self.connection.tempLOBsToClose else {
+            self.connection.tempLOBsTotalSize = 0
+            return
+        }
+
+        self.writePiggybackCode(to: &buffer, code: Constants.TNS_FUNC_LOB_OP)
+        let opCode = Constants.TNS_LOB_OP_FREE_TEMP | Constants.TNS_LOB_OP_ARRAY
+
+        // temp lob data
+        buffer.writeInteger(UInt8(1)) // pointer
+        buffer.writeUB4(UInt32(self.connection.tempLOBsTotalSize))
+        buffer.writeInteger(UInt8(0)) // destination lob locator
+        buffer.writeUB4(0)
+        buffer.writeUB4(0) // source lob locator
+        buffer.writeUB4(0)
+        buffer.writeInteger(UInt8(0)) // source lob offset
+        buffer.writeInteger(UInt8(0)) // destination lob offset
+        buffer.writeInteger(UInt8(0)) // charset
+        buffer.writeUB4(opCode)
+        buffer.writeInteger(UInt8(0)) // scn
+        buffer.writeUB4(0) // losbscn
+        buffer.writeUB8(0) // lobscnl
+        buffer.writeUB8(0)
+        buffer.writeInteger(UInt8(0))
+
+        // array lob fields
+        buffer.writeInteger(UInt8(0))
+        buffer.writeUB4(0)
+        buffer.writeInteger(UInt8(0))
+        buffer.writeUB4(0)
+        buffer.writeInteger(UInt8(0))
+        buffer.writeUB4(0)
+
+        for lob in lobs {
+            buffer.writeBytes(lob)
+        }
+
+        // reset values
+        self.connection.tempLOBsToClose = nil
+        self.connection.tempLOBsTotalSize = 0
     }
 
     // MARK: Process Response
@@ -176,7 +299,11 @@ extension TNSRequestWithData {
             preconditionFailure()
         }
         if statement.isReturning && !parseOnly {
-            // TODO
+            self.outVariables = []
+            for bindInfo in statement.bindInfoList where bindInfo.isReturnBind {
+                guard let variable = bindInfo.variable else { continue }
+                self.outVariables?.append(variable)
+            }
         } else if statement.isQuery {
             self.preprocessQuery()
         }
@@ -198,7 +325,16 @@ extension TNSRequestWithData {
         // the server and use it to create new fetch variables
         if cursor.fetchVariables.isEmpty { return }
 
-        // TODO
+        // the list of output variables is equivalent to the fetch variables
+        self.outVariables = cursor.fetchVariables
+
+        // resize fetch variables, if necessary, to allow room in each variable for the fetch array size
+        outVariables?.updateEach { variable in
+            guard variable.numberOfElements < cursor.fetchArraySize else { return }
+            let numberOfValues = cursor.fetchArraySize - variable.numberOfElements
+            variable.numberOfElements = cursor.fetchArraySize
+            variable.values.append(contentsOf: [Any?](repeating: nil, count: Int(numberOfValues)))
+        }
     }
 
     func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
@@ -617,7 +753,7 @@ final class ExecuteRequest: TNSRequestWithData {
             self.writeReexecuteMessage(to: &buffer)
         } else {
             self.functionCode = Constants.TNS_FUNC_EXECUTE
-            self.writeExecuteMessage(&buffer)
+            try self.writeExecuteMessage(&buffer)
         }
 
         buffer.endRequest(capabilities: connection.capabilities)
@@ -628,7 +764,7 @@ final class ExecuteRequest: TNSRequestWithData {
 
     // MARK: Private methods
 
-    private func writeExecuteMessage(_ buffer: inout ByteBuffer) {
+    private func writeExecuteMessage(_ buffer: inout ByteBuffer) throws {
         var options: UInt32 = 0
         var dmlOptions: UInt32 = 0
         var numberOfParameters: UInt32 = 0
@@ -783,7 +919,7 @@ final class ExecuteRequest: TNSRequestWithData {
         if statement.requiresDefine {
             self.writeColumnMetadata(to: &buffer, with: cursor.fetchVariables)
         } else if numberOfParameters > 0 {
-            self.writeBindParameters(to: &buffer, with: parameters)
+            try self.writeBindParameters(to: &buffer, with: parameters)
         }
     }
 

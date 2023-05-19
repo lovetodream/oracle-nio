@@ -10,4 +10,8 @@ extension ByteBuffer {
         var decoder = OSONDecoder()
         return try decoder.decode(data)
     }
+
+    mutating func writeOSON() throws {
+        throw OracleError.ErrorType.dbTypeNotSupported
+    }
 }

@@ -51,8 +51,10 @@ public class OracleConnection {
     var serverVersion: OracleVersion?
     var currentSchema: String?
     var edition: String?
+    var tempLOBsTotalSize = 0
+    var tempLOBsToClose: [[UInt8]]? = nil
 
-    private var cursorsToClose: [UInt16]?
+    var cursorsToClose: [UInt16]?
 
     init(configuration: OracleConnection.Configuration, channel: Channel, logger: Logger) {
         self.configuration = configuration
@@ -172,10 +174,15 @@ public class OracleConnection {
         T.initialize(from: self)
     }
 
-    public func query(_ sql: String) throws {
+    public func query(_ sql: String, binds: [Any] = []) throws {
+        let cursor = try Cursor(statement: Statement(sql, characterConversion: capabilities.characterConversion), prefetchRows: 2, fetchArraySize: 0, fetchVariables: [])
+        if !binds.isEmpty {
+            cursor.bind(values: binds)
+        }
+        try cursor.preprocessExecute(connection: self)
         let request: ExecuteRequest = createRequest()
         request.numberOfExecutions = 1
-        try request.cursor = Cursor(statement: Statement(sql, characterConversion: capabilities.characterConversion), prefetchRows: 2, fetchArraySize: 0, fetchVariables: [])
+        request.cursor = cursor
         channel.write(request, promise: nil)
     }
 }

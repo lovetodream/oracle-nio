@@ -25,15 +25,22 @@ do {
         logger: logger,
         on: group.next()
     ).wait()
-//    try connection.query("select sysdate from dual") // SELECT
-//    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT
-//    try connection.query("update \"test\" set \"value\" = '\(UUID().uuidString)'") // UPDATE
-//    try connection.query("delete from \"test\"") // DELETE
-//    try connection.query("begin insert into \"test\" (\"value\") values ('\(UUID().uuidString)'); end;") // PLSQL
-//    try connection.query("create table test2(value varchar2(250))") // CREATE TABLE
-//    try connection.query("alter table test2 add value2 varchar2(250)") // ALTER TABLE
-//    try connection.query("drop table test2") // DROP TABLE
-    DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+    do {
+        //    try connection.query("select sysdate from dual") // SELECT
+        //    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT
+        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: [UUID().uuidString]) // INSERT
+//        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: ["1"]) // INSERT
+//        try connection.query("insert into \"test\" (\"value\") values ('1')") // INSERT
+        //    try connection.query("update \"test\" set \"value\" = '\(UUID().uuidString)'") // UPDATE
+        //    try connection.query("delete from \"test\"") // DELETE
+        //    try connection.query("begin insert into \"test\" (\"value\") values ('\(UUID().uuidString)'); end;") // PLSQL
+        //    try connection.query("create table test2(value varchar2(250))") // CREATE TABLE
+        //    try connection.query("alter table test2 add value2 varchar2(250)") // ALTER TABLE
+        //    try connection.query("drop table test2") // DROP TABLE
+    } catch {
+        print(error)
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
         try! connection.close().wait()
     }
 } catch {

@@ -1,3 +1,5 @@
+import RegexBuilder
+
 /// Named binds.
 ///
 /// Rules for named binds:
@@ -8,6 +10,13 @@
 /// 5. Non-quoted binds cannot be Oracle Database Reserved Names (Server handles this case and returns an appropriate error).
 // TODO: not yet possible using Swift Regex, because Lookbehind is not supported as of now
 //let BIND_PATTERN = try! Regex("(?<!\"\\:)(?<=\\:)\\s*(\"[^\\\"]*\"|[^\\W\\d_][\\w\\$#]*|\\d+)")
+let BIND_PATTERN = Regex {
+    ":"
+    Capture {
+      OneOrMore(.digit)
+    }
+  }
+
 
 /// Pattern used for detecting a DML returning clause.
 ///
@@ -22,7 +31,7 @@ struct BindInfo {
     var numberOfElements: UInt32?
     var oracleTypeNumber: UInt8?
     var bufferSize: UInt32?
-    var prevision: Int16?
+    var precision: Int16?
     var bindDir: UInt8?
     var size: UInt32?
     var isArray: Bool?
@@ -36,7 +45,7 @@ struct BindInfo {
     }
 }
 
-struct Statement {
+class Statement {
     var sql: String = ""
     var sqlBytes: [UInt8] = []
     var sqlLength: UInt32 = 0
@@ -59,7 +68,7 @@ struct Statement {
     }
 
     /// Add bind information to the statement by examining the passed SQL for bind variable names.
-    mutating func addBinds(sql: String, isReturnBind: Bool) throws {
+//    mutating func addBinds(sql: String, isReturnBind: Bool) throws {
         // TODO: not yet possible using Swift Regex
 //        for match in sql.matches(of: BIND_PATTERN) {
 //            guard var name = match.first?.value as? String else { continue }
@@ -80,10 +89,18 @@ struct Statement {
 //                bindInfoDict[info.bindName] = [info]
 //            }
 //        }
+//    }
+
+    func addBinds(sql: String, isReturnBind: Bool) throws {
+        for match in sql.matches(of: BIND_PATTERN) {
+            let name = match.1
+            let info = BindInfo(name: String(name), isReturnBind: isReturnBind)
+            self.bindInfoList.append(info)
+        }
     }
 
     /// Determine the type of the SQL statement by examining the first keyword found in the statement.
-    mutating func determineStatementType(sql: String) {
+    func determineStatementType(sql: String) {
         var fragment = sql.trimmingCharacters(in: .whitespacesAndNewlines)
         if fragment.first == "(" {
             fragment.removeFirst()
@@ -107,7 +124,7 @@ struct Statement {
     /// Prepare the SQL for execution by determining the list of bind names that are found within it. The length of the SQL text is also calculated
     /// at this time. If the character sets of the client and server are identical, the length is calculated in bytes; otherwise, the length is
     /// calculated in characters.
-    mutating func prepare(sql: String, characterConversion: Bool) throws {
+    func prepare(sql: String, characterConversion: Bool) throws {
         // retain normalized SQL (as string and bytes) as well as the length
         var sql = sql
         self.sql = sql
@@ -156,7 +173,30 @@ struct Statement {
         }
     }
 
-    func setVariable(bindInfo: BindInfo, variable: Variable, cursor: Cursor) {
-        // TODO
+    func setVariable(bindInfo: inout BindInfo, variable: Variable, cursor: Cursor) throws {
+        if variable.dbType.oracleType == .cursor {
+            self.requiresFullExecute = true
+        }
+        if
+            (variable.dbType.oracleType?.rawValue ?? 0) != (bindInfo.oracleTypeNumber ?? 0) ||
+            variable.size != bindInfo.size ||
+            variable.bufferSize != bindInfo.bufferSize ||
+            variable.precision != bindInfo.precision ||
+            variable.scale != bindInfo.scale ||
+            variable.isArray != bindInfo.isArray ||
+            variable.numberOfElements != bindInfo.numberOfElements ||
+            variable.dbType.csfrm != bindInfo.csfrm
+        {
+            bindInfo.oracleTypeNumber = UInt8(variable.dbType.oracleType?.rawValue ?? 0)
+            bindInfo.csfrm = variable.dbType.csfrm
+            bindInfo.isArray = variable.isArray
+            bindInfo.numberOfElements = variable.numberOfElements
+            bindInfo.size = variable.size
+            bindInfo.bufferSize = variable.bufferSize
+            bindInfo.precision = variable.precision
+            bindInfo.scale = variable.scale
+            self.requiresFullExecute = true
+        }
+        bindInfo.variable = variable
     }
 }

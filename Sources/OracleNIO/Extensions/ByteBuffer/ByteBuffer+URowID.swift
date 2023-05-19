@@ -4,7 +4,8 @@ extension ByteBuffer {
     mutating func readUniversalRowID() -> String? {
         // Get data (first buffer contains the length, which can be ignored)
         guard let (bytes1, _) = self._readRawBytesAndLength(), bytes1 != nil else { return nil }
-        guard var (bytes, length) =  self._readRawBytesAndLength(), let bytes else { return nil }
+        guard let (bytes, lengthTmp) =  self._readRawBytesAndLength(), let bytes else { return nil }
+        var length = lengthTmp
         var buffer = ByteBuffer(bytes: bytes)
 
         var rowID = RowID()

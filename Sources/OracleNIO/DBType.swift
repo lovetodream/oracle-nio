@@ -38,6 +38,7 @@ enum DBTypeNumber: Int {
 }
 
 struct DBType {
+    var key: UInt16
     var number: DBTypeNumber
     var name: String
     var oracleName: String
@@ -46,9 +47,28 @@ struct DBType {
     var csfrm: UInt8 = 0
     var bufferSizeFactor: Int = 0
 
+    init(
+        number: DBTypeNumber,
+        name: String,
+        oracleName: String,
+        oracleType: DataType.Value? = nil,
+        defaultSize: Int = 0,
+        csfrm: UInt8 = 0,
+        bufferSizeFactor: Int = 0
+    ) {
+        self.key = UInt16(csfrm) * 256 + UInt16(oracleType?.rawValue ?? 0)
+        self.number = number
+        self.name = name
+        self.oracleName = oracleName
+        self.oracleType = oracleType
+        self.defaultSize = defaultSize
+        self.csfrm = csfrm
+        self.bufferSizeFactor = bufferSizeFactor
+    }
+
     static func fromORATypeAndCSFRM(typeNumber: UInt8, csfrm: UInt8?) throws -> DBType {
         let key = UInt16(csfrm ?? 0) * 256 + UInt16(typeNumber)
-        guard let type = DataType.Value(rawValue: key), let dbType = supported.first(where: { $0.oracleType == type }) else {
+        guard let dbType = supported.first(where: { $0.key == key }) else {
             throw OracleError.ErrorType.oracleTypeNotSupported
         }
         return dbType

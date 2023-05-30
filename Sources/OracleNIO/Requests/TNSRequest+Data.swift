@@ -766,7 +766,7 @@ final class ExecuteRequest: TNSRequestWithData {
             } else {
                 self.functionCode = Constants.TNS_FUNC_REEXECUTE
             }
-            self.writeReexecuteMessage(to: &buffer)
+            try self.writeReexecuteMessage(to: &buffer)
         } else {
             self.functionCode = Constants.TNS_FUNC_EXECUTE
             try self.writeExecuteMessage(&buffer)
@@ -939,7 +939,52 @@ final class ExecuteRequest: TNSRequestWithData {
         }
     }
 
-    private func writeReexecuteMessage(to buffer: inout ByteBuffer) {}
+    private func writeReexecuteMessage(to buffer: inout ByteBuffer) throws {
+        guard let cursor else {
+            preconditionFailure()
+        }
+        var parameters = cursor.statement.bindInfoList
+        var executionFlags1: UInt32 = 0
+        var executionFlags2: UInt32 = 0
+        var numberOfIterations: UInt32 = 0
+
+        if !parameters.isEmpty {
+            if !cursor.statement.isQuery {
+                self.outVariables = parameters.compactMap {
+                    guard ($0.bindDir ?? 0) != Constants.TNS_BIND_DIR_INPUT else { return nil }
+                    return $0.variable
+                }
+            }
+
+            parameters = parameters.filter { info in
+                (info.bindDir ?? 0) != Constants.TNS_BIND_DIR_OUTPUT && !info.isReturnBind
+            }
+        }
+
+        if self.functionCode == Constants.TNS_FUNC_REEXECUTE_AND_FETCH {
+            executionFlags1 |= Constants.TNS_EXEC_OPTION_EXECUTE
+            numberOfIterations = cursor.prefetchRows
+            cursor.fetchArraySize = numberOfIterations
+        } else {
+            if self.connection.autocommit {
+                executionFlags2 |= Constants.TNS_EXEC_OPTION_COMMIT_REEXECUTE
+            }
+            numberOfIterations = self.numberOfExecutions
+        }
+
+        self.writePiggybacks(to: &buffer)
+        self.writeFunctionCode(to: &buffer)
+        buffer.writeUB4(UInt32(cursor.statement.cursorID))
+        buffer.writeUB4(numberOfIterations)
+        buffer.writeUB4(executionFlags1)
+        buffer.writeUB4(executionFlags2)
+        if !parameters.isEmpty {
+            for i in 0..<numberOfExecutions {
+                buffer.writeInteger(MessageType.rowData.rawValue)
+                try self.writeBindParameterRow(to: &buffer, with: parameters, at: i)
+            }
+        }
+    }
 
     func writeFunctionCode(to buffer: inout ByteBuffer) {
         buffer.writeInteger(self.messageType.rawValue)

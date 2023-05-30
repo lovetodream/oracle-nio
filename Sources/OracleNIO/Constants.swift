@@ -45,7 +45,7 @@ enum Constants {
 
     // MARK: Bind directions
     static let TNS_BIND_DIR_OUTPUT = 16
-    static let TNS_BIND_DIR_INPUT = 32
+    static let TNS_BIND_DIR_INPUT: UInt8 = 32
     static let TNS_BIND_DIR_INPUT_OUTPUT = 48
 
     // MARK: Database object image flags
@@ -98,7 +98,7 @@ enum Constants {
     static let TNS_EXEC_OPTION_EXECUTE: UInt32 = 0x20
     static let TNS_EXEC_OPTION_FETCH: UInt32 = 0x40
     static let TNS_EXEC_OPTION_COMMIT: UInt32 = 0x100
-    static let TNS_EXEC_OPTION_COMMIT_REEXECUTE = 0x1
+    static let TNS_EXEC_OPTION_COMMIT_REEXECUTE: UInt32 = 0x1
     static let TNS_EXEC_OPTION_PLSQL_BIND: UInt32 = 0x400
     static let TNS_EXEC_OPTION_DML_ROWCOUNTS: UInt32 = 0x4000
     static let TNS_EXEC_OPTION_NOT_PLSQL: UInt32 = 0x8000

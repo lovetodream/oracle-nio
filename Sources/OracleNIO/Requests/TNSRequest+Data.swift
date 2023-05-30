@@ -13,6 +13,7 @@ protocol TNSRequestWithData: TNSRequest, AnyObject {
     var outVariables: [Variable]? { get set }
     var processedError: Bool { get set }
     var rowIndex: UInt32 { get set }
+    var numberOfColumnsSent: UInt16? { get set }
     func writeColumnMetadata(to buffer: inout ByteBuffer, with bindVariables: [Variable])
     func writeBindParameters(to buffer: inout ByteBuffer, with parameters: [BindInfo]) throws
     func writeBindParameterRow(to buffer: inout ByteBuffer, with parameters: [BindInfo], at position: UInt32) throws
@@ -354,8 +355,7 @@ extension TNSRequestWithData {
                 connection.logger.warning("Oracle Error occurred: \(error)")
             }
         case .bitVector:
-            fatalError()
-//            self.processBitVector(message)
+            try self.processBitVector(&message)
         case .ioVector:
             fatalError()
 //            self.processIOVector(message)
@@ -673,7 +673,22 @@ extension TNSRequestWithData {
         return nil
     }
 
-    func postprocess() { }
+    func processBitVector(_ message: inout TNSMessage) throws {
+        guard let cursor else {
+            preconditionFailure()
+        }
+        self.numberOfColumnsSent = message.packet.readUB2()
+        var numberOfBytes = cursor.numberOfColumns / 8
+        if cursor.numberOfColumns % 8 > 0 {
+            numberOfBytes += 1
+        }
+        try self.getBitVector(&message, size: numberOfBytes)
+    }
+
+    func postprocess() {
+        guard let outVariables else { return }
+        self.cursor?.fetchVariables = outVariables
+    }
 
     // MARK: Helper
 
@@ -730,6 +745,7 @@ final class ExecuteRequest: TNSRequestWithData {
     var outVariables: [Variable]? = nil
     var processedError = false
     var rowIndex: UInt32 = 0
+    var numberOfColumnsSent: UInt16?
 
     init(connection: OracleConnection, messageType: MessageType) {
         self.connection = connection
@@ -930,6 +946,52 @@ final class ExecuteRequest: TNSRequestWithData {
         buffer.writeInteger(self.functionCode)
         buffer.writeSequenceNumber(with: self.currentSequenceNumber)
         self.currentSequenceNumber += 1
+    }
+}
+
+final class FetchRequest: TNSRequestWithData {
+    var connection: OracleConnection
+    var messageType: MessageType
+    var functionCode: UInt8 = Constants.TNS_FUNC_EXECUTE
+    var currentSequenceNumber: UInt8 = 2
+    var onResponsePromise: NIOCore.EventLoopPromise<TNSMessage>?
+
+    var cursor: Cursor?
+    var offset: UInt32 = 0
+    var parseOnly = false
+    var batchErrors = false
+    var arrayDMLRowCounts = false
+    var numberOfExecutions: UInt32 = 0
+    var inFetch = false
+    var flushOutBinds = false
+    var bitVector: [UInt8]? = nil
+    var outVariables: [Variable]? = nil
+    var processedError = false
+    var rowIndex: UInt32 = 0
+    var numberOfColumnsSent: UInt16?
+
+    init(connection: OracleConnection, messageType: MessageType) {
+        self.connection = connection
+        self.messageType = messageType
+    }
+
+    func initializeHooks() {
+        self.functionCode = Constants.TNS_FUNC_FETCH
+    }
+
+    func get() throws -> [TNSMessage] {
+        guard let cursor else {
+            preconditionFailure()
+        }
+
+        var buffer = ByteBuffer()
+        buffer.startRequest()
+        self.writeFunctionCode(to: &buffer)
+        buffer.writeUB4(UInt32(cursor.statement.cursorID))
+        buffer.writeUB4(cursor.fetchArraySize)
+        buffer.endRequest(capabilities: connection.capabilities)
+
+        return [TNSMessage(packet: buffer)]
     }
 }
 

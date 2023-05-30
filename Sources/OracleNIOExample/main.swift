@@ -26,9 +26,10 @@ do {
         on: group.next()
     ).wait()
     do {
-        //    try connection.query("select sysdate from dual") // SELECT
+//        try connection.query("select sysdate from dual") // SELECT
+        try connection.query("select * from \"test\"")
         //    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT
-        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: [UUID().uuidString]) // INSERT
+//        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: [UUID().uuidString]) // INSERT
 //        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: ["1"]) // INSERT
 //        try connection.query("insert into \"test\" (\"value\") values ('1')") // INSERT
         //    try connection.query("update \"test\" set \"value\" = '\(UUID().uuidString)'") // UPDATE
@@ -40,7 +41,7 @@ do {
     } catch {
         print(error)
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
         try! connection.close().wait()
     }
 } catch {

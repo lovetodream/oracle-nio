@@ -224,7 +224,7 @@ enum Constants {
     static let TNS_FUNC_CLOSE_CURSORS: UInt8 = 105
     static let TNS_FUNC_COMMIT = 14
     static let TNS_FUNC_EXECUTE: UInt8 = 94
-    static let TNS_FUNC_FETCH = 5
+    static let TNS_FUNC_FETCH: UInt8 = 5
     static let TNS_FUNC_LOB_OP: UInt8 = 96
     static let TNS_FUNC_LOGOFF: UInt8 = 9
     static let TNS_FUNC_PING = 147

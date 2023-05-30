@@ -183,7 +183,39 @@ public class OracleConnection {
         let request: ExecuteRequest = createRequest()
         request.numberOfExecutions = 1
         request.cursor = cursor
+        request.onResponsePromise = eventLoop.makePromise()
         channel.write(request, promise: nil)
+        cursor.statement.requiresFullExecute = false
+        request.onResponsePromise!.futureResult.map { _ in
+            self.fetchMoreRows(cursor: cursor)
+        }
+    }
+
+    func fetchMoreRows(cursor: Cursor) {
+        print(cursor.statement.cursorID)
+        print(cursor.fetchVariables)
+        if cursor.moreRowsToFetch {
+            if cursor.statement.requiresFullExecute {
+                let request: ExecuteRequest = self.createRequest()
+                request.cursor = cursor
+                request.onResponsePromise = self.eventLoop.makePromise()
+                self.channel.write(request, promise: nil)
+                cursor.statement.requiresFullExecute = false
+                request.onResponsePromise!.futureResult.map { _ in
+                    self.fetchMoreRows(cursor: cursor)
+                }
+            } else {
+                let request: FetchRequest = self.createRequest()
+                request.cursor = cursor
+                request.onResponsePromise = self.eventLoop.makePromise()
+                self.channel.write(request, promise: nil)
+                request.onResponsePromise!.futureResult.map { _ in
+                    self.fetchMoreRows(cursor: cursor)
+                }
+            }
+        } else {
+            return
+        }
     }
 }
 

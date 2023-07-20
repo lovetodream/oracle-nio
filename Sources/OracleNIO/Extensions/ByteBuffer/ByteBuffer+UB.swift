@@ -9,6 +9,14 @@ extension ByteBuffer {
         readInteger(as: UInt8.self)
     }
 
+    mutating func throwingReadUB1(file: String = #fileID, line: Int = #line) throws -> UInt8 {
+        try self.readUB1().value(
+            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<UInt8>.size, actual: self.readableBytes, file: file, line: line
+            )
+        )
+    }
+
     mutating func skipUB2() {
         guard let length = readUBLength() else { return }
         guard length <= 2 else { fatalError() }
@@ -46,6 +54,14 @@ extension ByteBuffer {
         default:
             fatalError()
         }
+    }
+
+    mutating func throwingReadUB4(file: String = #fileID, line: Int = #line) throws -> UInt32 {
+        try self.readUB4().value(
+            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<Int8>.size, actual: self.readableBytes, file: file, line: line
+            )
+        )
     }
 
     mutating func skipUB4() {

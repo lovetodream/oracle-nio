@@ -1,10 +1,12 @@
-struct DataType {
+public typealias OracleDataType = DataType.Value
+
+public struct DataType: Sendable, Hashable {
     var dataType: DataType.Value
     var convDataType: DataType.Value
     var representation: DataType.Representation
 
     /// TNS Data types.
-    enum Value: UInt16, CustomStringConvertible {
+    public enum Value: UInt16, Sendable, Hashable, CustomStringConvertible {
         case undefined = 0
         case varchar = 1
         case number = 2
@@ -318,7 +320,7 @@ struct DataType {
         case uds = 639
         case tnp = 640
 
-        var description: String {
+        public var description: String {
             switch self {
             case .undefined:
                 return "UNDEFINED"
@@ -949,7 +951,7 @@ struct DataType {
     }
 
     /// Data type representations
-    enum Representation: UInt16, CustomStringConvertible {
+    enum Representation: UInt16, Sendable, Hashable, CustomStringConvertible {
         case native = 0
         case universal = 1
         case oracle = 10

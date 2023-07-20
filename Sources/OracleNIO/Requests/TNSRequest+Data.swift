@@ -465,7 +465,7 @@ extension TNSRequestWithData {
         }
         message.packet.skipUB2() // column position
         message.packet.skipUB4() // uds flag
-        if dataType == DataType.Value.intNamed.rawValue {
+        if dataType == OracleDataType.intNamed.rawValue {
             // TODO
             connection.logger.warning("INT NAMED not implemented")
         }

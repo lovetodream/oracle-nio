@@ -5,6 +5,14 @@ extension ByteBuffer {
         readInteger(as: Int8.self)
     }
 
+    mutating func throwingReadSB1(file: String = #fileID, line: Int = #line) throws -> Int8 {
+        try self.readSB1().value(
+            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<Int8>.size, actual: self.readableBytes, file: file, line: line
+            )
+        )
+    }
+
     mutating func readSB2() -> Int16? {
         guard let length = readUBLength() else { return nil }
         switch length {
@@ -17,6 +25,14 @@ extension ByteBuffer {
         default:
             fatalError()
         }
+    }
+
+    mutating func throwingReadSB2(file: String = #fileID, line: Int = #line) throws -> Int16 {
+        try self.readSB2().value(
+            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<Int8>.size, actual: self.readableBytes, file: file, line: line
+            )
+        )
     }
 
     mutating func readSB4() -> Int32? {

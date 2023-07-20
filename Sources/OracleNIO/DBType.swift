@@ -42,7 +42,7 @@ struct DBType {
     var number: DBTypeNumber
     var name: String
     var oracleName: String
-    var oracleType: DataType.Value?
+    var oracleType: OracleDataType?
     var defaultSize: Int = 0
     var csfrm: UInt8 = 0
     var bufferSizeFactor: Int = 0
@@ -51,7 +51,7 @@ struct DBType {
         number: DBTypeNumber,
         name: String,
         oracleName: String,
-        oracleType: DataType.Value? = nil,
+        oracleType: OracleDataType? = nil,
         defaultSize: Int = 0,
         csfrm: UInt8 = 0,
         bufferSizeFactor: Int = 0

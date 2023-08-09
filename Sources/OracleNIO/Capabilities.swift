@@ -56,6 +56,12 @@ struct Capabilities: Sendable {
         self.supportsOOB = options & Constants.TNS_GSO_CAN_RECV_ATTENTION != 0
     }
 
+    func adjustedForProtocol(version: UInt16, options: UInt16) -> Self {
+        var cap = self
+        cap.adjustForProtocol(version: version, options: options)
+        return cap
+    }
+
     mutating func adjustForServerCompileCapabilities(_ serverCapabilities: [UInt8]) {
         if serverCapabilities[Constants.TNS_CCAP_FIELD_VERSION] < self.ttcFieldVersion {
             self.ttcFieldVersion = serverCapabilities[Constants.TNS_CCAP_FIELD_VERSION]

@@ -1,4 +1,5 @@
 public typealias OracleDataType = DataType.Value
+public typealias OracleFormat = DataType.Representation
 
 public struct DataType: Sendable, Hashable {
     var dataType: DataType.Value
@@ -951,12 +952,12 @@ public struct DataType: Sendable, Hashable {
     }
 
     /// Data type representations
-    enum Representation: UInt16, Sendable, Hashable, CustomStringConvertible {
+    public enum Representation: UInt16, Sendable, Hashable, CustomStringConvertible {
         case native = 0
         case universal = 1
         case oracle = 10
 
-        var description: String {
+        public var description: String {
             switch self {
             case .native:
                 return "NATIVE"

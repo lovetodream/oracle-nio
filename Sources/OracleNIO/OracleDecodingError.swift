@@ -1,6 +1,7 @@
 public struct OracleDecodingError: Error {
     public struct Code: Hashable, Error, CustomStringConvertible {
         enum Base {
+            case missingData
             case typeMismatch
         }
 
@@ -10,12 +11,15 @@ public struct OracleDecodingError: Error {
             self.base = base
         }
 
-        public static let typeMismatch = Self.init(.typeMismatch)
+        public static let missingData = Self(.missingData)
+        public static let typeMismatch = Self(.typeMismatch)
 
         public var description: String {
             switch self.base {
+            case .missingData:
+                return "missingData"
             case .typeMismatch:
-                return "t"
+                return "typeMismatch"
             }
         }
     }

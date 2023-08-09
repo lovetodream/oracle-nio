@@ -34,14 +34,6 @@ public class OracleConnection {
         !self.channel.isActive
     }
 
-    var readyForAuthenticationPromise: EventLoopPromise<Void>
-    var readyForAuthenticationFuture: EventLoopFuture<Void> {
-        self.readyForAuthenticationPromise.futureResult
-    }
-
-    private var decoderHandler: ByteToMessageHandler<TNSMessageDecoder>!
-    private var channelHandler: OracleChannelHandler
-
     public var eventLoop: EventLoop { channel.eventLoop }
 
     var drcpEstablishSession = false
@@ -60,82 +52,48 @@ public class OracleConnection {
         self.configuration = configuration
         self.logger = logger
         self.channel = channel
-        self.readyForAuthenticationPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        self.channelHandler = OracleChannelHandler(logger: logger)
-        self.decoderHandler = ByteToMessageHandler(TNSMessageDecoder(connection: self))
     }
     deinit {
         assert(isClosed, "OracleConnection deinitialized before being closed.")
     }
 
     func start() -> EventLoopFuture<Void> {
-        channelHandler.connection = self
+        // 1. configure handlers
+
+        let channelHandler = OracleChannelHandler(
+            configuration: configuration,
+            logger: logger
+        )
+        channelHandler.capabilitiesProvider = self
+
+        let eventHandler = OracleEventsHandler(logger: logger)
+
+        // 2. add handlers
+
         do {
-            try channel.pipeline.syncOperations.addHandler(decoderHandler, position: .first)
-            try channel.pipeline.syncOperations.addHandlers(channelHandler, position: .after(decoderHandler))
+            try self.channel.pipeline.syncOperations.addHandler(eventHandler)
+            try self.channel.pipeline.syncOperations.addHandler(
+                channelHandler, position: .before(eventHandler)
+            )
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }
 
-        connectPhaseOne()
+        // 3. wait for startup future to succeed.
 
-        return readyForAuthenticationFuture.flatMapWithEventLoop { _, eventLoop in
-            self.logger.debug("Server ready for authentication")
-            do {
-                return try self.connectPhaseTwo()
-            } catch {
-                return eventLoop.makeFailedFuture(error)
-            }
-        }
-    }
-
-    private func connectPhaseOne() {
-        guard let ipAddress = configuration.address.ipAddress, let port = configuration.address.port else {
-            preconditionFailure("Configuration Address needs to include ip address and port")
-        }
-        var request: ConnectRequest = createRequest()
-        request.connectString = "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=\(configuration.serviceName.uppercased()))(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=\(ipAddress))(PORT=\(port))))"
-        channel.write(request, promise: nil)
-    }
-
-    private func connectPhaseTwo() throws -> EventLoopFuture<Void> {
-        if capabilities.protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
-            throw OracleError.ErrorType.serverVersionNotSupported
-        }
-
-        if capabilities.supportsOOB && capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK {
-            // TODO: Perform OOB Check
-        }
-
-        let connectDescription = Description(serviceName: configuration.serviceName)
-        var connectParameters = ConnectParameters(defaultDescription: connectDescription, defaultAddress: Address(), descriptionList: DescriptionList(), mode: 0)
-        connectParameters.setPassword(configuration.password)
-
-        var protocolRequest: ProtocolRequest = self.createRequest()
-        protocolRequest.onResponsePromise = self.eventLoop.makePromise()
-        self.channel.write(protocolRequest, promise: nil)
-        return protocolRequest.onResponsePromise!.futureResult
-            .flatMap { _ in
-                var dataTypesRequest: DataTypesRequest = self.createRequest()
-                dataTypesRequest.onResponsePromise = self.eventLoop.makePromise()
-                self.channel.write(dataTypesRequest, promise: nil)
-                return dataTypesRequest.onResponsePromise!.futureResult
-            }
-            .flatMap { _ in
-                let authRequest: AuthRequest = self.createRequest()
-                authRequest.setParameters(connectParameters, with: connectDescription)
-                authRequest.onResponsePromise = self.eventLoop.makePromise()
-                self.channel.write(authRequest, promise: nil)
-                return authRequest.onResponsePromise!.futureResult.flatMap { message in
-                    if authRequest.resend {
-                        authRequest.onResponsePromise = self.eventLoop.makePromise()
-                        self.channel.write(authRequest, promise: nil)
-                    }
-                    return authRequest.onResponsePromise!.futureResult
+        return eventHandler.startupDoneFuture
+            .flatMapError { error in
+                // in case of a startup error, the connection must be closed and
+                // after that the originating error should be surfaced
+                self.channel.closeFuture.flatMapThrowing { _ in
+                    throw error
                 }
             }
-            .flatMap { _ in
-                self.eventLoop.makeSucceededVoidFuture()
+            .map { context in
+                self.serverVersion = context.version
+                self.sessionID = context.sessionID
+                self.serialNumber = context.serialNumber
+                return Void()
             }
     }
 
@@ -145,8 +103,14 @@ public class OracleConnection {
         on eventLoop: EventLoop
     ) -> EventLoopFuture<OracleConnection> {
         eventLoop.flatSubmit {
-            makeBootstrap(on: eventLoop).connect(to: configuration.address).flatMap { channel -> EventLoopFuture<OracleConnection> in
-                let connection = OracleConnection(configuration: configuration, channel: channel, logger: logger)
+            makeBootstrap(on: eventLoop)
+                .connect(to: configuration.address)
+                .flatMap { channel -> EventLoopFuture<OracleConnection> in
+                let connection = OracleConnection(
+                    configuration: configuration,
+                    channel: channel,
+                    logger: logger
+                )
                 return connection.start().map { _ in connection }
             }
         }
@@ -216,6 +180,16 @@ public class OracleConnection {
         } else {
             return
         }
+    }
+}
+
+extension OracleConnection: CapabilitiesProvider {
+    func getCapabilities() -> Capabilities {
+        self.capabilities
+    }
+
+    func setCapabilities(to capabilities: Capabilities) {
+        self.capabilities = capabilities
     }
 }
 

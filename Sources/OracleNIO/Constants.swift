@@ -219,8 +219,11 @@ enum Constants {
     static let TNS_CHECK_OOB: UInt32 = 0x01
 
     // MARK: TTC functions
-    static let TNS_FUNC_AUTH_PHASE_ONE: UInt8 = 118
-    static let TNS_FUNC_AUTH_PHASE_TWO: UInt8 = 115
+    enum AuthPhase: UInt8 {
+        case one = 118
+        case two = 115
+    }
+
     static let TNS_FUNC_CLOSE_CURSORS: UInt8 = 105
     static let TNS_FUNC_COMMIT = 14
     static let TNS_FUNC_EXECUTE: UInt8 = 94

@@ -8,14 +8,14 @@
 ///  │ └──────────────────── Database Maintenance Release Number
 ///  └───────────────────────── Major Database Release Number
 ///  ```
-struct OracleVersion {
+struct OracleVersion: CustomStringConvertible {
     let majorDatabaseReleaseNumber: Int
     let databaseMaintenanceReleaseNumber: Int
     let fusionMiddlewareReleaseNumber: Int
     let componentSpecificReleaseNumber: Int
     let platformSpecificReleaseNumber: Int
 
-    func formatted() -> String {
+    var description: String {
         "\(majorDatabaseReleaseNumber)." +
         "\(databaseMaintenanceReleaseNumber)." +
         "\(fusionMiddlewareReleaseNumber)." +

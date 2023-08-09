@@ -27,7 +27,7 @@ do {
     ).wait()
     do {
 //        try connection.query("select sysdate from dual") // SELECT
-        try connection.query("select * from \"test\"")
+//        try connection.query("select * from \"test\"")
         //    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT
 //        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: [UUID().uuidString]) // INSERT
 //        try connection.query("insert into \"test\" (\"value\") values (:1)", binds: ["1"]) // INSERT
@@ -41,9 +41,8 @@ do {
     } catch {
         print(error)
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
-        try! connection.close().wait()
-    }
+
+    try! connection.close().wait()
 } catch {
     print(error)
 }

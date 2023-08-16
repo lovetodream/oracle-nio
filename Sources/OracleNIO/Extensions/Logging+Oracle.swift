@@ -6,6 +6,8 @@ enum OracleSQLConnection { }
 extension OracleSQLConnection {
     @usableFromInline
     enum LoggerMetadataKey: String {
+        case connectionID = "oraclesql_connection_id"
+        case sessionID = "oraclesql_session_id"
         case connectionAction = "oraclesql_connection_action"
         case error = "oraclesql_error"
         case message = "oraclesql_message"
@@ -51,6 +53,22 @@ struct OracleSQLLoggingMetadata: ExpressibleByDictionaryLiteral {
     var representation: Logger.Metadata {
         self._baseRepresentation
     }
+}
+
+extension Logger {
+
+    @usableFromInline
+    subscript(
+        oracleMetadataKey metadataKey: OracleSQLConnection.LoggerMetadataKey
+    ) -> Logger.Metadata.Value? {
+        get {
+            return self[metadataKey: metadataKey.rawValue]
+        }
+        set {
+            self[metadataKey: metadataKey.rawValue] = newValue
+        }
+    }
+
 }
 
 extension Logger {

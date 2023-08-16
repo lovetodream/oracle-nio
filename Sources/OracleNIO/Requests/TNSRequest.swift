@@ -108,7 +108,7 @@ extension TNSRequest {
         message.packet.skipUB2() // user cursor options
         message.packet.skipUB1() // UDI parameter
         message.packet.skipUB1() // warning flag
-        let rowID = RowID.read(from: &message)
+        let rowID = RowID.read(from: &message.packet)
         message.packet.skipUB4() // OS error
         message.packet.skipUB1() // statement number
         message.packet.skipUB1() // call number

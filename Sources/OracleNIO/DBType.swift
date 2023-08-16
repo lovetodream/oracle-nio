@@ -5,7 +5,8 @@ enum DatabaseNumericType: Int {
     case string = 3
 }
 
-enum DBTypeNumber: Int {
+@usableFromInline
+enum DBTypeNumber: Int, Sendable {
     case bFile = 2020
     case binaryDouble = 2008
     case binaryFloat = 2007
@@ -37,21 +38,30 @@ enum DBTypeNumber: Int {
     case varchar = 2001
 }
 
-struct DBType {
+public struct DBType: Sendable, Equatable, Hashable {
+    @usableFromInline
     var key: UInt16
+    @usableFromInline
     var number: DBTypeNumber
+    @usableFromInline
     var name: String
+    @usableFromInline
     var oracleName: String
-    var oracleType: OracleDataType?
+    @usableFromInline
+    var oracleType: DataType.Value?
+    @usableFromInline
     var defaultSize: Int = 0
+    @usableFromInline
     var csfrm: UInt8 = 0
+    @usableFromInline
     var bufferSizeFactor: Int = 0
 
+    @usableFromInline
     init(
         number: DBTypeNumber,
         name: String,
         oracleName: String,
-        oracleType: OracleDataType? = nil,
+        oracleType: DataType.Value? = nil,
         defaultSize: Int = 0,
         csfrm: UInt8 = 0,
         bufferSizeFactor: Int = 0
@@ -66,7 +76,10 @@ struct DBType {
         self.bufferSizeFactor = bufferSizeFactor
     }
 
-    static func fromORATypeAndCSFRM(typeNumber: UInt8, csfrm: UInt8?) throws -> DBType {
+    @usableFromInline
+    static func fromORATypeAndCSFRM(
+        typeNumber: UInt8, csfrm: UInt8?
+    ) throws -> DBType {
         let key = UInt16(csfrm ?? 0) * 256 + UInt16(typeNumber)
         guard let dbType = supported.first(where: { $0.key == key }) else {
             throw OracleError.ErrorType.oracleTypeNotSupported
@@ -74,20 +87,119 @@ struct DBType {
         return dbType
     }
 
-    static let binaryInteger = DBType(number: .binaryInteger, name: "DB_TYPE_BINARY_INTEGER", oracleName: "BINARY_INTEGER", oracleType: .init(rawValue: 3)!, bufferSizeFactor: 22)
-    static let blob = DBType(number: .blob, name: "DB_TYPE_BLOB", oracleName: "BLOB", oracleType: .init(rawValue: 113)!, bufferSizeFactor: 112)
-    static let boolean = DBType(number: .boolean, name: "DB_TYPE_BOOLEAN", oracleName: "BOOLEAN", oracleType: .init(rawValue: 252)!, bufferSizeFactor: 4)
-    static let clob = DBType(number: .clob, name: "DB_TYPE_CLOB", oracleName: "CLOB", oracleType: .init(rawValue: 112)!, csfrm: 1, bufferSizeFactor: 112)
-    static let date = DBType(number: .date, name: "DB_TYPE_DATE", oracleName: "DATE", oracleType: .init(rawValue: 12)!, bufferSizeFactor: 7)
-    static let intervalDS = DBType(number: .intervalDS, name: "DB_TYPE_INTERVAL_DS", oracleName: "INTERVAL DAY TO SECOND", oracleType: .init(rawValue: 183)!, bufferSizeFactor: 11)
-    static let number = DBType(number: .number, name: "DB_TYPE_NUMBER", oracleName: "NUMBER", oracleType: .init(rawValue: 2)!, bufferSizeFactor: 22)
-    static let long = DBType(number: .longVarchar, name: "DB_TYPE_LONG", oracleName: "LONG", oracleType: .init(rawValue: 8)!, csfrm: 1, bufferSizeFactor: 2147483647)
-    static let longNVarchar = DBType(number: .longNVarchar, name: "DB_TYPE_LONG_NVARCHAR", oracleName: "LONG NVARCHAR", oracleType: .init(rawValue: 8)!, csfrm: 2, bufferSizeFactor: 2147483647)
-    static let longRAW = DBType(number: .longRAW, name: "DB_TYPE_LONG_RAW", oracleName: "LONG RAW", oracleType: .init(rawValue: 24)!, bufferSizeFactor: 2147483647)
-    static let nCLOB = DBType(number: .nCLOB, name: "DB_TYPE_NCLOB", oracleName: "NCLOB", oracleType: .init(rawValue: 112)!, csfrm: 2, bufferSizeFactor: 112)
-    static let raw = DBType(number: .raw, name: "DB_TYPE_RAW", oracleName: "RAW", oracleType: .init(rawValue: 23)!, defaultSize: 4000, bufferSizeFactor: 1)
-    static let varchar = DBType(number: .varchar, name: "DB_TYPE_VARCHAR", oracleName: "VARCHAR2", oracleType: .init(rawValue: 1)!, defaultSize: 4000, csfrm: 1, bufferSizeFactor: 4)
+    @usableFromInline
+    static let binaryInteger = DBType(
+        number: .binaryInteger,
+        name: "DB_TYPE_BINARY_INTEGER",
+        oracleName: "BINARY_INTEGER",
+        oracleType: .init(rawValue: 3)!,
+        bufferSizeFactor: 22
+    )
+    @usableFromInline
+    static let blob = DBType(
+        number: .blob,
+        name: "DB_TYPE_BLOB",
+        oracleName: "BLOB",
+        oracleType: .init(rawValue: 113)!,
+        bufferSizeFactor: 112
+    )
+    @usableFromInline
+    static let boolean = DBType(
+        number: .boolean, 
+        name: "DB_TYPE_BOOLEAN",
+        oracleName: "BOOLEAN", 
+        oracleType: .init(rawValue: 252)!,
+        bufferSizeFactor: 4
+    )
+    @usableFromInline
+    static let clob = DBType(
+        number: .clob,
+        name: "DB_TYPE_CLOB",
+        oracleName: "CLOB",
+        oracleType: .init(rawValue: 112)!,
+        csfrm: 1,
+        bufferSizeFactor: 112
+    )
+    @usableFromInline
+    static let date = DBType(
+        number: .date,
+        name: "DB_TYPE_DATE",
+        oracleName: "DATE",
+        oracleType: .init(rawValue: 12)!,
+        bufferSizeFactor: 7
+    )
+    @usableFromInline
+    static let intervalDS = DBType(
+        number: .intervalDS,
+        name: "DB_TYPE_INTERVAL_DS",
+        oracleName: "INTERVAL DAY TO SECOND",
+        oracleType: .init(rawValue: 183)!,
+        bufferSizeFactor: 11
+    )
+    @usableFromInline
+    static let number = DBType(
+        number: .number,
+        name: "DB_TYPE_NUMBER",
+        oracleName: "NUMBER",
+        oracleType: .init(rawValue: 2)!,
+        bufferSizeFactor: 22
+    )
+    @usableFromInline
+    static let long = DBType(
+        number: .longVarchar,
+        name: "DB_TYPE_LONG",
+        oracleName: "LONG",
+        oracleType: .init(rawValue: 8)!,
+        csfrm: 1,
+        bufferSizeFactor: 2147483647
+    )
+    @usableFromInline
+    static let longNVarchar = DBType(
+        number: .longNVarchar,
+        name: "DB_TYPE_LONG_NVARCHAR",
+        oracleName: "LONG NVARCHAR",
+        oracleType: .init(rawValue: 8)!,
+        csfrm: 2,
+        bufferSizeFactor: 2147483647
+    )
+    @usableFromInline
+    static let longRAW = DBType(
+        number: .longRAW,
+        name: "DB_TYPE_LONG_RAW",
+        oracleName: "LONG RAW",
+        oracleType: .init(rawValue: 24)!,
+        bufferSizeFactor: 2147483647
+    )
+    @usableFromInline
+    static let nCLOB = DBType(
+        number: .nCLOB,
+        name: "DB_TYPE_NCLOB",
+        oracleName: "NCLOB",
+        oracleType: .init(rawValue: 112)!,
+        csfrm: 2,
+        bufferSizeFactor: 112
+    )
+    @usableFromInline
+    static let raw = DBType(
+        number: .raw,
+        name: "DB_TYPE_RAW",
+        oracleName: "RAW",
+        oracleType: .init(rawValue: 23)!,
+        defaultSize: 4000,
+        bufferSizeFactor: 1
+    )
+    @usableFromInline
+    static let varchar = DBType(
+        number: .varchar,
+        name: "DB_TYPE_VARCHAR",
+        oracleName: "VARCHAR2",
+        oracleType: .init(rawValue: 1)!,
+        defaultSize: 4000,
+        csfrm: 1,
+        bufferSizeFactor: 4
+    )
 
+    @usableFromInline
     static let supported = [
         DBType(number: .bFile, name: "DB_TYPE_BFILE", oracleName: "BFILE", oracleType: .init(rawValue: 114)!),
         DBType(number: .binaryDouble, name: "DB_TYPE_BINARY_DOUBLE", oracleName: "BINARY_DOUBLE", oracleType: .init(rawValue: 101)!, bufferSizeFactor: 8),

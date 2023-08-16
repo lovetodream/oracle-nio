@@ -24,9 +24,9 @@ struct OSONDecoder {
         self.flags = buffer.readInteger(as: UInt16.self) ?? 0
         if flags & Constants.TNS_JSON_FLAG_IS_SCALAR != 0 {
             if flags & Constants.TNS_JSON_FLAG_TREE_SEG_UINT32 != 0 {
-                buffer.moveReaderIndex(forwardByBytes: 4)
+                buffer.moveReaderIndex(forwardBy: 4)
             } else {
-                buffer.moveReaderIndex(forwardByBytes: 2)
+                buffer.moveReaderIndex(forwardBy: 2)
             }
             return try decodeNode()
         }
@@ -79,11 +79,11 @@ struct OSONDecoder {
         } else {
             hashIDSize = 4
         }
-        buffer.moveReaderIndex(forwardByBytes: hashIDSize)
+        buffer.moveReaderIndex(forwardBy: hashIDSize)
 
         // skip the field name offsets array for now
         let fieldNameOffsetsPosition = buffer.readerIndex
-        buffer.moveReaderIndex(forwardByBytes: Int(numberOfFieldNames) * fieldNameOffsetsSize)
+        buffer.moveReaderIndex(forwardBy: Int(numberOfFieldNames) * fieldNameOffsetsSize)
         let bytes = buffer.readBytes(length: Int(fieldNamesSegSize)) ?? []
 
         // determine the names of the fields
@@ -104,7 +104,7 @@ struct OSONDecoder {
         }
 
         // get tree segment
-        buffer.moveReaderIndex(forwardByBytes: Int(fieldNamesSegSize))
+        buffer.moveReaderIndex(forwardBy: Int(fieldNamesSegSize))
         treeSegPosition = buffer.readerIndex
 
         return try decodeNode()

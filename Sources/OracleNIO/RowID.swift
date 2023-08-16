@@ -1,11 +1,13 @@
+import NIOCore
+
 struct RowID {
     var rba: UInt32 = 0
     var partitionID: UInt16 = 0
     var blockNumber: UInt32 = 0
     var slotNumber: UInt16 = 0
 
-    static func read(from message: inout TNSMessage) -> RowID? {
-        return message.packet.readRowID()
+    static func read(from buffer: inout ByteBuffer) -> RowID? {
+        return buffer.readRowID()
     }
 
     func string() -> String? {

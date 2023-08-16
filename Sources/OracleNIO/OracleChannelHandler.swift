@@ -1,8 +1,6 @@
 import NIOCore
 import class Foundation.ProcessInfo
 
-enum OracleTask { }
-
 protocol CapabilitiesProvider: AnyObject {
     func getCapabilities() -> Capabilities
     func setCapabilities(to capabilities: Capabilities)
@@ -10,7 +8,7 @@ protocol CapabilitiesProvider: AnyObject {
 
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask
-    typealias InboundIn = ByteBuffer
+    typealias InboundIn = [OracleBackendMessage]
     typealias OutboundOut = ByteBuffer
 
     private let logger: Logger
@@ -22,12 +20,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     /// The context is captured in `handlerAdded` and released in `handlerRemoved`.
     private var handlerContext: ChannelHandlerContext?
     private var rowStream: OracleRowStream?
-    private var decoder:
-        NIOSingleStepByteToMessageProcessor<OracleBackendMessageDecoder>!
+    private var decoder: ByteToMessageHandler<OracleBackendMessageDecoder>?
     private var encoder: OracleFrontendMessageEncoder!
     private let configuration: OracleConnection.Configuration
 
     weak var capabilitiesProvider: CapabilitiesProvider!
+
+    let cleanupContext = CleanupContext()
 
     init(configuration: OracleConnection.Configuration, logger: Logger) {
         self.state = ConnectionStateMachine()
@@ -62,18 +61,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func channelInactive(context: ChannelHandlerContext) {
-        do {
-            try self.decoder.finishProcessing(seenEOF: true) { message in
-                self.handleMessage(message, context: context)
-            }
-        } catch let error as OracleMessageDecodingError {
-            let action =
-                self.state.errorHappened(.messageDecodingFailure(error))
-            self.run(action, with: context)
-        } catch {
-            preconditionFailure("Expected to only get OracleDecodingErrors from the OracleBackendMessageDecoder")
-        }
-
         self.logger.trace("Channel inactive.")
         let action = self.state.closed()
         self.run(action, with: context)
@@ -90,19 +77,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let buffer = self.unwrapInboundIn(data)
-
-        do {
-            try self.decoder.process(buffer: buffer) { message in
-                self.handleMessage(message, context: context)
-            }
-        } catch let error as OracleMessageDecodingError {
-            let action = self.state.errorHappened(
-                .messageDecodingFailure(error)
-            )
-            self.run(action, with: context)
-        } catch {
-            preconditionFailure("Expected to only get OracleDecodingErrors from the OracleBackendMessageDecoder")
+        let messages = self.unwrapInboundIn(data)
+        for message in messages {
+            self.handleMessage(message, context: context)
         }
     }
 
@@ -124,6 +101,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.acceptReceived()
         case .dataTypes:
             action = self.state.dataTypesReceived()
+        case .error(let error):
+            action = self.state.backendErrorReceived(error)
         case .marker:
             action = self.state.markerReceived()
         case .parameter(let parameter):
@@ -138,9 +117,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.resendReceived()
         case .status:
             action = self.state.statusReceived()
-        case .rowDescription(let rowDescription):
-            fatalError()
-            // action = self.state.rowDescriptionReceived(rowDescription)
+        case .describeInfo(let describeInfo):
+            action = self.state.describeInfoReceived(describeInfo)
+        case .rowHeader(let header):
+            action = self.state.rowHeaderReceived(header)
+        case .rowData(let data):
+            action = self.state.rowDataReceived(data)
+        case .queryParameter(let parameter):
+            action = self.state.queryParameterReceived(parameter)
         }
 
         self.run(action, with: context)
@@ -259,12 +243,55 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .authenticated(let parameters):
             self.authenticated(parameters: parameters, context: context)
+
+        case .sendExecute(let queryContext):
+            self.sendExecute(queryContext: queryContext, context: context)
+        case .sendReexecute:
+            self.sendReexecute()
+        case .succeedQuery(let promise, let result):
+            self.succeedQuery(promise, result: result, context: context)
+        case .moreData(let queryContext, var buffer):
+            do {
+                let messages = try OracleBackendMessage.decode(
+                    from: &buffer,
+                    of: .data,
+                    capabilities: self.capabilitiesProvider.getCapabilities(),
+                    skipDataFlags: false,
+                    queryOptions: queryContext.options
+                )
+                for message in messages {
+                    self.handleMessage(message, context: context)
+                }
+            } catch {
+                context.fireErrorCaught(error)
+            }
+        case .forwardRows(let rows):
+            self.rowStream!.receive(rows)
+        case .forwardStreamComplete(let buffer):
+            guard let rowStream else {
+                // if the stream was cancelled we don't have it here anymore.
+                return
+            }
+            self.rowStream = nil
+            if buffer.count > 0 {
+                rowStream.receive(buffer)
+            }
+            rowStream.receive(completion: .success(()))
+        case .forwardStreamError(let error, let cursorID):
+            self.rowStream!.receive(completion: .failure(error))
+            self.rowStream = nil
+            if let cursorID {
+                cleanupContext.cursorsToClose?.append(cursorID)
+            }
+
+
         case .sendMarker:
             self.encoder.marker()
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .logoffConnection(let promise):
+
+        case .logoffConnection:
             if context.channel.isActive {
                 // The normal, graceful termination procedure is that the
                 // frontend sends a Logoff message and after receiving the
@@ -336,6 +363,40 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         ))
         context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
     }
+
+    private func sendExecute(
+        queryContext: ExtendedQueryContext, context: ChannelHandlerContext
+    ) {
+        // TODO: add ability to specify options with query
+        self.encoder.execute(
+            queryContext: queryContext, 
+            cleanupContext: self.cleanupContext
+        )
+
+        context.writeAndFlush(
+            self.wrapOutboundOut(self.encoder.flush()), promise: nil
+        )
+    }
+
+    private func sendReexecute() {
+
+    }
+
+    private func succeedQuery(
+        _ promise: EventLoopPromise<OracleRowStream>,
+        result: QueryResult,
+        context: ChannelHandlerContext
+    ) {
+        let rows = OracleRowStream(
+            source: .stream(result.value, self),
+            eventLoop: context.channel.eventLoop,
+            logger: result.logger
+        )
+        self.rowStream = rows
+        promise.succeed(rows)
+    }
+
+    // MARK: - Utility
 
     private func getVersionInfo(
         from parameters: OracleBackendMessage.Parameter
@@ -410,15 +471,40 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         return "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=\(configuration.serviceName))(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=\(ipAddress))(PORT=\(port))))"
     }
 
-    private func setCoders(context: ChannelHandlerContext) {
-        self.decoder = NIOSingleStepByteToMessageProcessor(
-            OracleBackendMessageDecoder(
-                capabilities: self.capabilitiesProvider.getCapabilities()
-            )
+    private func setCoders(
+        context: ChannelHandlerContext
+    ) {
+        if let decoder = self.decoder {
+            context.pipeline.removeHandler(decoder, promise: nil)
+        }
+        self.decoder = ByteToMessageHandler(OracleBackendMessageDecoder(
+            capabilities: self.capabilitiesProvider.getCapabilities()
+        ))
+        _ = context.pipeline.addHandler(
+            self.decoder!,
+            position: .before(self)
         )
         self.encoder = OracleFrontendMessageEncoder(
             buffer: context.channel.allocator.buffer(capacity: 256),
             capabilities: capabilitiesProvider.getCapabilities()
         )
+    }
+}
+
+extension OracleChannelHandler: OracleRowsDataSource {
+    func request(for stream: OracleRowStream) {
+        guard  self.rowStream === stream, let handlerContext else {
+            return
+        }
+        let action = self.state.requestQueryRows()
+        self.run(action, with: handlerContext)
+    }
+
+    func cancel(for stream: OracleRowStream) {
+        guard self.rowStream === stream, let handlerContext else {
+            return
+        }
+        let action = self.state.cancelQueryStream()
+        self.run(action, with: handlerContext)
     }
 }

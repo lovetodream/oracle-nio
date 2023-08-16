@@ -111,22 +111,66 @@ public struct OracleBindings: Sendable, Hashable {
     @usableFromInline
     struct Metadata: Sendable, Hashable {
         @usableFromInline
-        var dataType: OracleDataType
-        @usableFromInline
-        var format: OracleFormat
+        var dataType: DBType
         @usableFromInline
         var protected: Bool
+        @usableFromInline
+        var isReturnBind: Bool
+        @usableFromInline
+        var size: UInt32
+        @usableFromInline
+        var bufferSize: UInt32
+
+        @usableFromInline
+        var isArray: Bool
+        @usableFromInline
+        var arrayCount: Int
+        @usableFromInline
+        var maxArraySize: Int
 
         @inlinable
-        init(dataType: OracleDataType, format: DataType.Representation, protected: Bool) {
+        init(
+            dataType: DBType,
+            protected: Bool,
+            isReturnBind: Bool,
+            size: UInt32 = 0,
+            isArray: Bool,
+            arrayCount: Int?,
+            maxArraySize: Int?
+        ) {
             self.dataType = dataType
-            self.format = format
             self.protected = protected
+            self.isReturnBind = isReturnBind
+            if size == 0 {
+                self.size = UInt32(self.dataType.defaultSize)
+            } else {
+                self.size = size
+            }
+            if dataType.defaultSize > 0 {
+                self.bufferSize = size * UInt32(dataType.bufferSizeFactor)
+            } else {
+                self.bufferSize = UInt32(dataType.bufferSizeFactor)
+            }
+            self.isArray = isArray
+            self.arrayCount = arrayCount ?? 0
+            self.maxArraySize = maxArraySize ?? 0
         }
 
         @inlinable
-        init<Value: OracleEncodable>(value: Value, protected: Bool) {
-            self.init(dataType: Value.oracleType, format: Value.oracleFormat, protected: protected)
+        init<Value: OracleEncodable>(
+            value: Value,
+            protected: Bool,
+            isReturnBind: Bool
+        ) {
+            self.init(
+                dataType: Value.oracleType,
+                protected: protected,
+                isReturnBind: isReturnBind,
+                size: value.size,
+                isArray: Value.isArray,
+                arrayCount: value.arrayCount,
+                maxArraySize: value.arraySize
+            )
         }
     }
 
@@ -165,7 +209,12 @@ public struct OracleBindings: Sendable, Hashable {
         _ value: Value,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        fatalError()
+        value.encode(into: &self.bytes, context: context)
+        self.metadata.append(.init(
+            value: value,
+            protected: true,
+            isReturnBind: false
+        ))
     }
 
     @inlinable
@@ -190,7 +239,16 @@ extension OracleBindings:
     public var description: String {
         """
         [
-        \(zip(self.metadata, BindingsReader(buffer: self.bytes)).lazy.map({ Self.makeBindingPrintable(protected: $0.protected, type: $0.dataType, format: $0.format, buffer: $1) }).joined(separator: ", "))
+        \(zip(self.metadata, BindingsReader(buffer: self.bytes))
+            .lazy
+            .map({
+                Self.makeBindingPrintable(
+                    protected: $0.protected,
+                    type: $0.dataType,
+                    buffer: $1
+                )
+            })
+            .joined(separator: ", "))
         ]
         """
     }
@@ -198,16 +256,29 @@ extension OracleBindings:
     public var debugDescription: String {
         """
         [
-        \(zip(self.metadata, BindingsReader(buffer: self.bytes)).lazy.map({ Self.makeDebugDescription(protected: $0.protected, type: $0.dataType, format: $0.format, buffer: $1) }).joined(separator: "m "))
+        \(zip(self.metadata, BindingsReader(buffer: self.bytes))
+                .lazy
+                .map({
+                    Self.makeDebugDescription(
+                        protected: $0.protected,
+                        type: $0.dataType,
+                        buffer: $1
+                    )
+                })
+                .joined(separator: ", "))
         ]
         """
     }
 
-    private static func makeDebugDescription(protected: Bool, type: OracleDataType, format: OracleFormat, buffer: ByteBuffer?) -> String {
-        "(\(Self.makeBindingPrintable(protected: protected, type: type, format: format, buffer: buffer)); \(type); format: \(format))"
+    private static func makeDebugDescription(
+        protected: Bool, type: DBType, buffer: ByteBuffer?
+    ) -> String {
+        "(\(Self.makeBindingPrintable(protected: protected, type: type, buffer: buffer)); \(type))"
     }
 
-    private static func makeBindingPrintable(protected: Bool, type: OracleDataType, format: OracleFormat, buffer: ByteBuffer?) -> String {
+    private static func makeBindingPrintable(
+        protected: Bool, type: DBType, buffer: ByteBuffer?
+    ) -> String {
         if protected {
             return "****"
         }

@@ -18,11 +18,15 @@ struct OraclePartialDecodingError: Error {
         )
     }
 
-    static func fieldNotDecodable(type: Any.Type, file: String = #fileID, line: Int = #line) -> Self {
+    static func fieldNotDecodable(
+        type: Any.Type, file: String = #fileID, line: Int = #line
+    ) -> Self {
         OraclePartialDecodingError(description: "Could not read '\(type)' from ByteBuffer.", file: file, line: line)
     }
 
-    static func unsupportedDataType(type: OracleDataType, file: String = #fileID, line: Int = #line) -> Self {
+    static func unsupportedDataType(
+        type: DataType.Value, file: String = #fileID, line: Int = #line
+    ) -> Self {
         OraclePartialDecodingError(
             description: "Could not process unsupported data type '\(type)'.",
             file: file, line: line

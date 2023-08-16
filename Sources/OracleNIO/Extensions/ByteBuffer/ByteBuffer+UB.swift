@@ -2,17 +2,20 @@ import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
     mutating func skipUB1() {
-        self.moveReaderIndex(forwardByBytes: 1)
+        self.moveReaderIndex(forwardBy: 1)
     }
 
     mutating func readUB1() -> UInt8? {
         readInteger(as: UInt8.self)
     }
 
-    mutating func throwingReadUB1(file: String = #fileID, line: Int = #line) throws -> UInt8 {
+    mutating func throwingReadUB1(
+        file: String = #fileID, line: Int = #line
+    ) throws -> UInt8 {
         try self.readUB1().value(
             or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<UInt8>.size, actual: self.readableBytes, file: file, line: line
+                MemoryLayout<UInt8>.size, actual: self.readableBytes,
+                file: file, line: line
             )
         )
     }
@@ -20,7 +23,7 @@ extension ByteBuffer {
     mutating func skipUB2() {
         guard let length = readUBLength() else { return }
         guard length <= 2 else { fatalError() }
-        self.moveReaderIndex(forwardByBytes: Int(length))
+        self.moveReaderIndex(forwardBy: Int(length))
     }
 
     mutating func readUB2() -> UInt16? {
@@ -35,6 +38,17 @@ extension ByteBuffer {
         default:
             fatalError()
         }
+    }
+
+    mutating func throwingReadUB2(
+        file: String = #fileID, line: Int = #line
+    ) throws -> UInt16 {
+        try self.readUB2().value(
+            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<UInt16>.size, actual: self.readableBytes,
+                file: file, line: line
+            )
+        )
     }
 
     mutating func readUB4() -> UInt32? {
@@ -56,10 +70,13 @@ extension ByteBuffer {
         }
     }
 
-    mutating func throwingReadUB4(file: String = #fileID, line: Int = #line) throws -> UInt32 {
+    mutating func throwingReadUB4(
+        file: String = #fileID, line: Int = #line
+    ) throws -> UInt32 {
         try self.readUB4().value(
             or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<Int8>.size, actual: self.readableBytes, file: file, line: line
+                MemoryLayout<Int8>.size, actual: self.readableBytes, 
+                file: file, line: line
             )
         )
     }
@@ -67,7 +84,7 @@ extension ByteBuffer {
     mutating func skipUB4() {
         guard let length = readUBLength() else { return }
         guard length <= 4 else { fatalError() }
-        self.moveReaderIndex(forwardByBytes: Int(length))
+        self.moveReaderIndex(forwardBy: Int(length))
     }
 
     mutating func readUB8() -> UInt64? {
@@ -94,7 +111,7 @@ extension ByteBuffer {
     mutating func skipUB8() {
         guard let length = readUBLength() else { return }
         guard length <= 8 else { fatalError() }
-        self.moveReaderIndex(forwardByBytes: Int(length))
+        self.moveReaderIndex(forwardBy: Int(length))
     }
 
     mutating func readUBLength() -> UInt8? {
@@ -151,12 +168,12 @@ extension ByteBuffer {
     mutating func skipRawBytesChunked() {
         guard let length = readUB1() else { return }
         if length != Constants.TNS_LONG_LENGTH_INDICATOR {
-            moveReaderIndex(forwardByBytes: Int(length))
+            moveReaderIndex(forwardBy: Int(length))
         } else {
             while true {
                 guard let tmp = self.readUB4() else { break }
                 if tmp == 0 { break }
-                moveReaderIndex(forwardByBytes: Int(tmp))
+                moveReaderIndex(forwardBy: Int(tmp))
             }
         }
     }

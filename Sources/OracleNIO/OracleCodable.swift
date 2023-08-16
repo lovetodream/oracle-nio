@@ -5,15 +5,43 @@ import class Foundation.JSONDecoder
 /// A type that can encode itself to a Oracle wire binary representation.
 public protocol OracleThrowingEncodable {
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
-    static var oracleType: OracleDataType { get }
+    static var oracleType: DBType { get }
 
-    /// Identifies the oracle format that is used to encode the value into `ByteBuffer` in `encode`.
-    static var oracleFormat: OracleFormat { get }
+    /// Identifies the byte size indicator which will be sent to Oracle.
+    ///
+    /// This doesn't need to be the actual size. Mostly it is the corresponding
+    /// ``DBType.defaultSize``.
+    var size: UInt32 { get }
+
+    /// Indicates if the data type is an array.
+    static var isArray: Bool { get }
+
+    /// Indicates the number of elements in the array if the value is an array.
+    ///
+    /// Typically ``Array.count``.
+    var arrayCount: Int? { get }
+
+    /// Indicates the array size sent to Oracle.
+    ///
+    /// Only required if ``isArray`` is `true`.
+    var arraySize: Int? { get }
 
     /// Encode the entity into the `ByteBuffer` in Oracle binary format, without setting the byte count.
     ///
     /// This method is called from the ``OracleBindings``.
     func encode<JSONEncoder: OracleJSONEncoder>(into byteBuffer: inout ByteBuffer, context: OracleEncodingContext<JSONEncoder>) throws
+}
+
+public extension OracleThrowingEncodable {
+    static var isArray: Bool { false }
+    var arrayCount: Int? { nil }
+    var arraySize: Int? { Self.isArray ? 1 : nil }
+}
+
+public extension Array where Element: OracleThrowingEncodable {
+    static var isArray: Bool { true }
+    var arrayCount: Int? { self.count }
+    var arraySize: Int? { self.capacity }
 }
 
 /// A type that can encode itself to a oracle wire binary representation.
@@ -45,7 +73,6 @@ public protocol OracleDecodable {
     init<JSONDecoder: OracleJSONDecoder>(
         from byteBuffer: inout ByteBuffer,
         type: OracleDataType,
-        format: OracleFormat,
         context: OracleDecodingContext<JSONDecoder>
     ) throws
 
@@ -55,7 +82,6 @@ public protocol OracleDecodable {
     static func _decodeRaw<JSONDecoder: OracleJSONEncoder>(
         from byteBuffer: inout ByteBuffer?,
         type: OracleDataType,
-        format: OracleFormat,
         context: OracleDecodingContext<JSONDecoder>
     ) throws -> Self
 }
@@ -65,13 +91,12 @@ extension OracleDecodable {
     public static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
         from byteBuffer: inout ByteBuffer?,
         type: OracleDataType,
-        format: OracleFormat,
         context: OracleDecodingContext<JSONDecoder>
     ) throws -> Self {
         guard var buffer = byteBuffer else {
             throw OracleDecodingError.Code.missingData
         }
-        return try self.init(from: &buffer, type: type, format: format, context: context)
+        return try self.init(from: &buffer, type: type, context: context)
     }
 }
 
@@ -150,6 +175,12 @@ extension OracleEncodingContext where JSONEncoder == Foundation.JSONEncoder {
         OracleEncodingContext(jsonEncoder: JSONEncoder())
 }
 
+extension OracleDecodingContext where JSONDecoder == Foundation.JSONDecoder {
+    /// A default ``OracleDecodingContext`` that uses a Foundation `JSONDecoder`.
+    public static let `default` =
+        OracleDecodingContext(jsonDecoder: Foundation.JSONDecoder())
+}
+
 /// A context that is passed to Swift objects that are decoded from the Oracle wire format.
 ///
 /// Used to pass further information to the decoding method.
@@ -169,13 +200,14 @@ public struct OracleDecodingContext<JSONDecoder: OracleJSONDecoder> {
     }
 }
 
-extension Optional: OracleDecodable where Wrapped: OracleDecodable, Wrapped._DecodableType == Wrapped {
+extension Optional: OracleDecodable 
+    where Wrapped: OracleDecodable, Wrapped._DecodableType == Wrapped
+{
     public typealias _DecodableType = Wrapped
 
     public init<JSONDecoder: OracleJSONDecoder>(
         from byteBuffer: inout ByteBuffer,
         type: OracleDataType,
-        format: OracleFormat,
         context: OracleDecodingContext<JSONDecoder>
     ) throws {
         preconditionFailure("This should not be called")
@@ -185,7 +217,6 @@ extension Optional: OracleDecodable where Wrapped: OracleDecodable, Wrapped._Dec
     public static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
         from byteBuffer: inout ByteBuffer?,
         type: OracleDataType,
-        format: OracleFormat,
         context: OracleDecodingContext<JSONDecoder>
     ) throws -> Optional<Wrapped> {
         switch byteBuffer {
@@ -193,7 +224,6 @@ extension Optional: OracleDecodable where Wrapped: OracleDecodable, Wrapped._Dec
             return try Wrapped(
                 from: &buffer,
                 type: type,
-                format: format,
                 context: context
             )
         case .none:

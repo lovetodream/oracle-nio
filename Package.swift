@@ -11,9 +11,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.46.0"),
-        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.13.1"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.4.4"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.58.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.19.0"),
         .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.15.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "2.2.4"),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.6.0"),

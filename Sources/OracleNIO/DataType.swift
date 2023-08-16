@@ -1,4 +1,4 @@
-public typealias OracleDataType = DataType.Value
+public typealias OracleDataType = DBType
 public typealias OracleFormat = DataType.Representation
 
 public struct DataType: Sendable, Hashable {

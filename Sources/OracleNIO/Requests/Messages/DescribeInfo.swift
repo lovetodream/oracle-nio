@@ -2,7 +2,7 @@ import NIOCore
 
 /// A backend row description message.
 @usableFromInline
-struct RowDescription: OracleBackendMessage.PayloadDecodable, Sendable, Equatable {
+struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Equatable {
     @usableFromInline
     var columns: [Column]
 
@@ -42,14 +42,14 @@ struct RowDescription: OracleBackendMessage.PayloadDecodable, Sendable, Equatabl
         @usableFromInline
         var nullsAllowed: Bool
 
-        static func decode(from buffer: inout ByteBuffer, capabilities: Capabilities) throws -> RowDescription.Column {
+        static func decode(from buffer: inout ByteBuffer, capabilities: Capabilities) throws -> DescribeInfo.Column {
             let dataType = try buffer.throwingReadUB1()
             buffer.skipUB1() // flags
             let precision = try buffer.throwingReadSB1()
 
             let scale: Int16
             if
-                let dataType = OracleDataType(rawValue: UInt16(dataType)),
+                let dataType = DataType.Value(rawValue: UInt16(dataType)),
                 [.number, .intervalDS, .timestamp, .timestampLTZ, .timestampTZ].contains(dataType)
             {
                 scale = try buffer.throwingReadSB2()
@@ -103,18 +103,20 @@ struct RowDescription: OracleBackendMessage.PayloadDecodable, Sendable, Equatabl
             buffer.skipUB2() // column position
             buffer.skipUB4() // uds flag
 
-            if dataType == OracleDataType.intNamed.rawValue {
+            if dataType == DataType.Value.intNamed.rawValue {
                 throw OraclePartialDecodingError.unsupportedDataType(type: .intNamed)
             }
 
             return Column(
-                name: name, dataType: oracleDataType, dataTypeSize: size,
-                precision: Int16(precision), scale: scale, bufferSize: bufferSize, nullsAllowed: nullsAllowed
+                name: name, dataType: dbType, dataTypeSize: size,
+                precision: Int16(precision), scale: scale,
+                bufferSize: bufferSize, nullsAllowed: nullsAllowed
             )
         }
     }
 
-    static func decode(from buffer: inout ByteBuffer, capabilities: Capabilities) throws -> RowDescription {
+    static func decode(from buffer: inout ByteBuffer, capabilities: Capabilities) throws -> DescribeInfo {
+        buffer.skipRawBytesChunked()
         buffer.skipUB4() // max row size
         let columnCount = try buffer.throwingReadUB4()
 
@@ -141,6 +143,6 @@ struct RowDescription: OracleBackendMessage.PayloadDecodable, Sendable, Equatabl
             buffer.skipRawBytesChunked() // dcbqcky
         }
 
-        return RowDescription(columns: result)
+        return DescribeInfo(columns: result)
     }
 }

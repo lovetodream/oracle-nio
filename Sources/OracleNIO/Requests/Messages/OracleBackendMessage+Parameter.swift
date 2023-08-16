@@ -23,7 +23,9 @@ extension OracleBackendMessage {
             get { return elements[key] }
         }
 
-        static func decode(from buffer: inout NIOCore.ByteBuffer, capabilities: Capabilities) throws -> OracleBackendMessage.Parameter {
+        static func decode(
+            from buffer: inout NIOCore.ByteBuffer, capabilities: Capabilities
+        ) throws -> OracleBackendMessage.Parameter {
             let numberOfParameters = buffer.readUB2() ?? 0
             var elements = [Key: Value]()
             for _ in 0..<numberOfParameters {
@@ -45,6 +47,69 @@ extension OracleBackendMessage {
                 elements[key] = (value, flags)
             }
             return .init(elements)
+        }
+    }
+
+    struct QueryParameter {
+        var schema: String?
+        var edition: String?
+        var rowCounts: [UInt64]?
+
+        static func decode(
+            from buffer: inout ByteBuffer,
+            capabilities: Capabilities,
+            options: QueryOptions
+        ) throws -> OracleBackendMessage.QueryParameter {
+            let parametersCount = buffer.readUB2() ?? 0 // al8o4l (ignored)
+            for _ in 0..<parametersCount {
+                buffer.skipUB4()
+            }
+            if
+                let bytesCount = buffer.readUB2()  // al8txl (ignored)
+                    .flatMap(Int.init), bytesCount > 0
+            {
+                buffer.moveReaderIndex(forwardBy: bytesCount)
+            }
+            let pairsCount = buffer.readUB2() ?? 0 // number of key/value pairs
+            var schema: String? = nil
+            var edition: String? = nil
+            var rowCounts: [UInt64]? = nil
+            for _ in 0..<pairsCount {
+                var keyValue: [UInt8]? = nil
+                if let bytesCount = buffer.readUB2(), bytesCount > 0 { // key
+                    keyValue = buffer.readBytes()
+                }
+                if let bytesCount = buffer.readUB2(), bytesCount > 0 { // value
+                    buffer.skipRawBytesChunked()
+                }
+                let keywordNumber = buffer.readUB2() ?? 0 // keyword number
+                if 
+                    keywordNumber == Constants.TNS_KEYWORD_NUM_CURRENT_SCHEMA,
+                    let keyValue 
+                {
+                    schema = String(cString: keyValue)
+                } else if
+                    keywordNumber == Constants.TNS_KEYWORD_NUM_EDITION,
+                    let keyValue
+                {
+                    edition = String(cString: keyValue)
+                }
+            }
+            if
+                let bytesCount = buffer.readUB2().flatMap(Int.init),
+                bytesCount > 0
+            {
+                buffer.moveReaderIndex(forwardBy: bytesCount)
+            }
+            if options.arrayDMLRowCounts {
+                let numberOfRows = buffer.readUB4() ?? 0
+                rowCounts = []
+                for _ in 0..<numberOfRows {
+                    let rowCount = buffer.readUB8() ?? 0
+                    rowCounts?.append(rowCount)
+                }
+            }
+            return .init(schema: schema, edition: edition, rowCounts: rowCounts)
         }
     }
 }

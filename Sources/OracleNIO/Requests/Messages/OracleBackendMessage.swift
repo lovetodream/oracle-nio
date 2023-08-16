@@ -23,11 +23,15 @@ enum OracleBackendMessage {
 
     case accept(Accept)
     case dataTypes
+    case error(BackendError)
     case marker
     case parameter(Parameter)
     case `protocol`(`Protocol`)
+    case queryParameter(QueryParameter)
     case resend
-    case rowDescription(RowDescription)
+    case rowHeader(RowHeader)
+    case rowData(RowData)
+    case describeInfo(DescribeInfo)
     case status
 }
 
@@ -76,9 +80,12 @@ extension OracleBackendMessage {
 
         case `protocol`
         case dataTypes
+        case error
+        case rowHeader
+        case rowData
         case parameter
         case status
-        case rowDescription
+        case describeInfo
 
         init?(rawValue: UInt8) {
             switch rawValue {
@@ -86,12 +93,18 @@ extension OracleBackendMessage {
                 self = .protocol
             case 2:
                 self = .dataTypes
+            case 4:
+                self = .error
+            case 6:
+                self = .rowHeader
+            case 7:
+                self = .rowData
             case 8:
                 self = .parameter
             case 9:
                 self = .status
             case 16:
-                self = .rowDescription
+                self = .describeInfo
             default:
                 return nil
             }
@@ -103,11 +116,17 @@ extension OracleBackendMessage {
                 return 1
             case .dataTypes:
                 return 2
+            case .error:
+                return 4
+            case .rowHeader:
+                return 6
+            case .rowData:
+                return 7
             case .parameter:
                 return 8
             case .status:
                 return 9
-            case .rowDescription:
+            case .describeInfo:
                 return 16
             }
         }
@@ -118,42 +137,76 @@ extension OracleBackendMessage {
     static func decode(
         from buffer: inout ByteBuffer,
         of packetID: ID,
-        capabilities: Capabilities
-    ) throws -> OracleBackendMessage {
+        capabilities: Capabilities,
+        skipDataFlags: Bool = true,
+        queryOptions: QueryOptions? = nil
+    ) throws -> [OracleBackendMessage] {
+        var messages: [OracleBackendMessage] = []
         switch packetID {
         case .resend:
-            return .resend
+            messages.append(.resend)
         case .accept:
-            return try .accept(
+            messages.append(try .accept(
                 .decode(from: &buffer, capabilities: capabilities)
-            )
+            ))
         case .marker:
-            return .marker
+            messages.append(.marker)
         case .data:
-            buffer.moveReaderIndex(forwardBy: 2) // skip data flags
-            let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
-            let messageID = MessageID(rawValue: messageIDByte)
-            switch messageID {
-            case .dataTypes:
-                return .dataTypes
-            case .protocol:
-                return try .protocol(
-                    .decode(from: &buffer, capabilities: capabilities)
-                )
-            case .parameter:
-                return try .parameter(
-                    .decode(from: &buffer, capabilities: capabilities)
-                )
-            case .status:
-                return .status
-            case .rowDescription:
-                return try .rowDescription(
-                    .decode(from: &buffer, capabilities: capabilities)
-                )
-            case nil:
-                fatalError("not implemented")
+            if skipDataFlags {
+                buffer.moveReaderIndex(forwardBy: 2) // skip data flags
+            }
+            readLoop: while buffer.readableBytes > 0 {
+                let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
+                let messageID = MessageID(rawValue: messageIDByte)
+                switch messageID {
+                case .dataTypes:
+                    messages.append(.dataTypes)
+                    break readLoop
+                case .protocol:
+                    messages.append(try .protocol(
+                        .decode(from: &buffer, capabilities: capabilities)
+                    ))
+                    break readLoop
+                case .error:
+                    messages.append(try .error(
+                        .decode(from: &buffer, capabilities: capabilities)
+                    ))
+                case .parameter:
+                    if let queryOptions {
+                        messages.append(try .queryParameter(
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                options: queryOptions
+                            )
+                        ))
+                    } else {
+                        messages.append(try .parameter(
+                            .decode(from: &buffer, capabilities: capabilities)
+                        ))
+                        break readLoop
+                    }
+                case .status:
+                    messages.append(.status)
+                    break readLoop
+                case .describeInfo:
+                    messages.append(try .describeInfo(
+                        .decode(from: &buffer, capabilities: capabilities)
+                    ))
+                case .rowHeader:
+                    messages.append(try .rowHeader(
+                        .decode(from: &buffer, capabilities: capabilities)
+                    ))
+                case .rowData:
+                    messages.append(try .rowData(
+                        .decode(from: &buffer, capabilities: capabilities)
+                    ))
+                case nil:
+                    fatalError("not implemented")
+                }
             }
         }
+        return messages
     }
 }
 
@@ -164,6 +217,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".accept(\(String(reflecting: accept)))"
         case .dataTypes:
             return ".dataTypes"
+        case .error(let error):
+            return ".error(\(String(reflecting: error))"
         case .marker:
             return ".marker"
         case .parameter(let parameter):
@@ -174,8 +229,14 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".resend"
         case .status:
             return ".status"
-        case .rowDescription(let rowDescription):
-            return ".rowDescription(\(String(reflecting: rowDescription)))"
+        case .describeInfo(let describeInfo):
+            return ".describeInfo(\(String(reflecting: describeInfo)))"
+        case .rowHeader(let header):
+            return ".rowHeader(\(String(reflecting: header))"
+        case .rowData(let data):
+            return ".rowData(\(String(reflecting: data)))"
+        case .queryParameter(let parameter):
+            return ".queryParameter(\(String(reflecting: parameter))"
         }
     }
 }

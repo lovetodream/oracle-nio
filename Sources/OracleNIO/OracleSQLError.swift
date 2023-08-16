@@ -5,9 +5,13 @@ public struct OracleSQLError: Error {
 
     public struct Code: Sendable, Hashable, CustomStringConvertible {
         enum Base: Sendable, Hashable {
+            case clientClosesConnection
+            case clientClosedConnection
             case connectionError
             case messageDecodingFailure
             case uncleanShutdown
+            case unexpectedBackendMessage
+            case server
         }
 
         internal var base: Base
@@ -16,18 +20,31 @@ public struct OracleSQLError: Error {
             self.base = base
         }
 
+        public static let clientClosesConnection = Self(.clientClosesConnection)
+        public static let clientClosedConnection = Self(.clientClosedConnection)
         public static let connectionError = Self(.connectionError)
         public static let messageDecodingFailure = Self(.messageDecodingFailure)
         public static let uncleanShutdown = Self(.uncleanShutdown)
+        public static let unexpectedBackendMessage =
+            Self(.unexpectedBackendMessage)
+        public static let server = Self(.server)
 
         public var description: String {
             switch self.base {
+            case .clientClosesConnection:
+                return "clientClosesConnection"
+            case .clientClosedConnection:
+                return "clientClosedConnection"
             case .connectionError:
                 return "connectionError"
             case .messageDecodingFailure:
                 return "messageDecodingFailure"
             case .uncleanShutdown:
                 return "uncleanShutdown"
+            case .unexpectedBackendMessage:
+                return "unexpectedBackendMessage"
+            case .server:
+                return "server"
             }
         }
     }
@@ -144,10 +161,34 @@ public struct OracleSQLError: Error {
     }
 
     public struct ServerInfo {
-        // TODO: this might be the new OracleError
+        let underlying: OracleBackendMessage.BackendError
+
+        init(_ underlying: OracleBackendMessage.BackendError) {
+            self.underlying = underlying
+        }
     }
 
     // MARK: - Internal convenience factory methods -
+
+    static func unexpectedBackendMessage(
+        _ message: OracleBackendMessage
+    ) -> Self {
+        var new = OracleSQLError(code: .unexpectedBackendMessage)
+        new.backendMessage = message
+        return new
+    }
+
+    static func clientClosesConnection(underlying: Error?) -> OracleSQLError {
+        var error = OracleSQLError(code: .clientClosesConnection)
+        error.underlying = underlying
+        return error
+    }
+    
+    static func clientClosedConnection(underlying: Error?) -> OracleSQLError {
+        var error = OracleSQLError(code: .clientClosedConnection)
+        error.underlying = underlying
+        return error
+    }
 
     static var uncleanShutdown: OracleSQLError {
         OracleSQLError(code: .uncleanShutdown)
@@ -164,6 +205,14 @@ public struct OracleSQLError: Error {
     ) -> OracleSQLError {
         var new = OracleSQLError(code: .messageDecodingFailure)
         new.underlying = error
+        return new
+    }
+
+    static func server(
+        _ error: OracleBackendMessage.BackendError
+    ) -> OracleSQLError {
+        var new = OracleSQLError(code: .server)
+        new.serverInfo = .init(error)
         return new
     }
 

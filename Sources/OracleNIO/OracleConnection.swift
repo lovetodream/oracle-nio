@@ -170,9 +170,6 @@ public class OracleConnection {
             NIOTSConnectionBootstrap(validatingGroup: eventLoop)
         {
             return tsBootstrap
-                .channelOption(
-                    ChannelOptions.socketOption(.so_reuseaddr), value: 1
-                )
                 .connectTimeout(configuration.options.connectTimeout)
         }
         #endif
@@ -181,8 +178,6 @@ public class OracleConnection {
             fatalError("No matching bootstrap found")
         }
         return bootstrap
-            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-            .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
             .connectTimeout(configuration.options.connectTimeout)
     }
 

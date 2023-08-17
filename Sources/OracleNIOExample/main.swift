@@ -24,6 +24,7 @@ do {
         id: 1,
         logger: logger
     ).wait()
+
     _ = try connection.query("select \("hello, world") from dual", logger: logger) { row in
         for column in row {
             print(try column.decode(String.self))

@@ -28,6 +28,7 @@ struct ConnectionStateMachine {
         case logoffConnection(EventLoopPromise<Void>?)
         case closeConnection(EventLoopPromise<Void>?)
         case fireChannelInactive
+        case fireEventReadyForQuery
 
         // Connection Establishment Actions
         case sendConnect
@@ -45,13 +46,14 @@ struct ConnectionStateMachine {
         // Query
         case sendExecute(ExtendedQueryContext)
         case sendReexecute
+        case failQuery(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
         case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
         case moreData(ExtendedQueryContext, ByteBuffer)
 
         // Query streaming
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow])
-        case forwardStreamError(OracleSQLError, cursorID: UInt16?)
+        case forwardStreamError(OracleSQLError, read: Bool, cursorID: UInt16?)
 
         case sendMarker
     }
@@ -215,10 +217,14 @@ struct ConnectionStateMachine {
         }
 
         switch task {
-        case .extendedQuery(let extendedQueryContext):
-            // TODO
-            print(oracleError)
-            fatalError()
+        case .extendedQuery(let queryContext):
+            switch queryContext.statement {
+            case .ddl(let promise),
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise):
+                return .failQuery(promise, with: oracleError)
+            }
         }
     }
 
@@ -329,7 +335,7 @@ struct ConnectionStateMachine {
 
     mutating func dataTypesReceived() -> ConnectionAction {
         guard case .dataTypesMessageSent = state else {
-            fatalError()
+            preconditionFailure()
         }
         self.state = .waitingToStartAuthentication
         return .provideAuthenticationContext
@@ -377,7 +383,7 @@ struct ConnectionStateMachine {
             .authenticating:
             return .sendMarker
         case .extendedQuery:
-            fatalError()
+            return .sendMarker
         case .loggingOff:
             fatalError()
         case .closing:
@@ -521,6 +527,18 @@ struct ConnectionStateMachine {
         }
     }
 
+    mutating func readyForQueryReceived() -> ConnectionAction {
+        switch self.state {
+        case .extendedQuery(let extendedQuery):
+            guard extendedQuery.isComplete else { preconditionFailure() }
+
+            self.state = .readyForQuery
+            return self.executeNextQueryFromQueue()
+        default:
+            preconditionFailure()
+        }
+    }
+
     // MARK: - Private Methods -
 
     private mutating func startAuthentication(_ authContext: AuthContext) -> ConnectionAction {
@@ -539,7 +557,8 @@ struct ConnectionStateMachine {
     }
 
     private mutating func closeConnectionAndCleanup(
-        _ error: OracleSQLError
+        _ error: OracleSQLError,
+        closePromise: EventLoopPromise<Void>? = nil
     ) -> ConnectionAction {
         switch self.state {
         case .initialized,
@@ -550,8 +569,7 @@ struct ConnectionStateMachine {
             .authenticating,
             .readyForQuery,
             .extendedQuery:
-            // TODO: handle cases
-            fatalError()
+            return .closeConnection(closePromise)
         case .loggingOff, .closing, .closed:
             // We might run into this case because of reentrancy. For example:
             // After we received an backend unexpected message, that we read
@@ -564,6 +582,27 @@ struct ConnectionStateMachine {
         case .modifying:
             preconditionFailure("Invalid state")
         }
+    }
+
+    private mutating func executeNextQueryFromQueue() -> ConnectionAction {
+        guard case .readyForQuery = state else {
+            preconditionFailure(
+                "Only expected to be invoked, if we are readyForQuery"
+            )
+        }
+
+        if let task = self.taskQueue.popFirst() {
+            return self.executeTask(task)
+        }
+
+        // if we don't have anything left to do and we are quiescing,
+        // we should close
+        if case .quiescing(let closePromise) = self.quiescingState {
+            self.state = .closing
+            return .closeConnection(closePromise)
+        }
+
+        return .fireEventReadyForQuery
     }
 
     private mutating func executeTask(_ task: OracleTask) -> ConnectionAction {
@@ -652,6 +691,8 @@ extension ConnectionStateMachine {
             return .sendExecute(context)
         case .sendReexecute:
             return .sendReexecute
+        case .failQuery(let promise, let error):
+            return .failQuery(promise, with: error)
         case .succeedQuery(let promise, let columns):
             return .succeedQuery(promise, columns)
         case .moreData(let context, let buffer):
@@ -660,8 +701,8 @@ extension ConnectionStateMachine {
             return .forwardRows(rows)
         case .forwardStreamComplete(let rows):
             return .forwardStreamComplete(rows)
-        case .forwardStreamError(let error, let cursorID):
-            return .forwardStreamError(error, cursorID: cursorID)
+        case .forwardStreamError(let error, let read, let cursorID):
+            return .forwardStreamError(error, read: read, cursorID: cursorID)
         case .read:
             return .read
         case .wait:

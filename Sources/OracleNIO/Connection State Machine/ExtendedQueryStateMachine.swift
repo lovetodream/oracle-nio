@@ -11,6 +11,9 @@ struct ExtendedQueryStateMachine {
             OracleBackendMessage.RowHeader,
             RowStreamStateMachine
         )
+        /// Indicates that the current query was cancelled and we want to drain rows from the
+        /// connection ASAP.
+        case drain([DescribeInfo.Column])
 
         case commandComplete
         case error(OracleSQLError)
@@ -22,6 +25,7 @@ struct ExtendedQueryStateMachine {
         case sendExecute(ExtendedQueryContext)
         case sendReexecute
 
+        case failQuery(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
         case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
 
         /// State indicating that the previous message contains more unconsumed data.
@@ -29,7 +33,7 @@ struct ExtendedQueryStateMachine {
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow])
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
-        case forwardStreamError(OracleSQLError, cursorID: UInt16?)
+        case forwardStreamError(OracleSQLError, read: Bool, cursorID: UInt16? = nil)
 
         case read
         case wait
@@ -66,15 +70,26 @@ struct ExtendedQueryStateMachine {
             }
 
             self.isCancelled = true
-            fatalError("todo")
+            switch context.statement {
+            case .ddl(let promise),
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise):
+                return .failQuery(promise, with: .queryCancelled)
+            }
 
-        case .streaming(let context, _, _, let rows):
+        case .streaming(_, let describeInfo, _, var streamStateMachine):
             precondition(!self.isCancelled)
             self.isCancelled = true
+            self.state = .drain(describeInfo.columns)
+            switch streamStateMachine.fail() {
+            case .wait:
+                return .forwardStreamError(.queryCancelled, read: false)
+            case .read:
+                return .forwardStreamError(.queryCancelled, read: true)
+            }
 
-            fatalError("todo")
-
-        case .commandComplete, .error:
+        case .commandComplete, .error, .drain:
             // the stream has already finished
             return .wait
 
@@ -158,7 +173,7 @@ struct ExtendedQueryStateMachine {
             Constants.TNS_ERR_ARRAY_DML_ERRORS == error.number
         {
             switch self.state {
-            case .initialized, .commandComplete, .error:
+            case .initialized, .commandComplete, .error, .drain:
                 preconditionFailure()
             case .describeInfoReceived(_, _):
                 fatalError("is this possible?")
@@ -182,7 +197,9 @@ struct ExtendedQueryStateMachine {
                 state = .error(.server(error))
             }
 
-            action = .forwardStreamError(.server(error), cursorID: cursor)
+            action = .forwardStreamError(
+                .server(error), read: false, cursorID: cursor
+            )
         } else if
             let cursor = error.cursorID,
             error.number != 0 && cursor != 0
@@ -192,15 +209,21 @@ struct ExtendedQueryStateMachine {
                 state = .error(.server(error))
             }
             if exception != .integrityError {
-                action = .forwardStreamError(.server(error), cursorID: cursor)
+                action = .forwardStreamError(
+                    .server(error), read: false, cursorID: cursor
+                )
             } else {
-                action = .forwardStreamError(.server(error), cursorID: nil)
+                action = .forwardStreamError(
+                    .server(error), read: false, cursorID: nil
+                )
             }
         } else {
             self.avoidingStateMachineCoW { state in
                 state = .error(.server(error))
             }
-            action = .forwardStreamError(.server(error), cursorID: nil)
+            action = .forwardStreamError(
+                .server(error), read: false, cursorID: nil
+            )
         }
 
         return action
@@ -228,6 +251,9 @@ struct ExtendedQueryStateMachine {
                     return .wait
                 }
             }
+
+        case .drain:
+            return .wait
 
         case .initialized, .describeInfoReceived:
             preconditionFailure(
@@ -337,7 +363,7 @@ struct ExtendedQueryStateMachine {
 
     var isComplete: Bool {
         switch self.state {
-        case .initialized, .describeInfoReceived, .streaming:
+        case .initialized, .describeInfoReceived, .streaming, .drain:
             return false
         case .commandComplete, .error:
             return true

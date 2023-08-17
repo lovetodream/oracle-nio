@@ -250,6 +250,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.sendReexecute()
         case .succeedQuery(let promise, let result):
             self.succeedQuery(promise, result: result, context: context)
+        case .failQuery(let promise, let error):
+            promise.fail(error)
         case .moreData(let queryContext, var buffer):
             do {
                 let messages = try OracleBackendMessage.decode(
@@ -277,19 +279,28 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 rowStream.receive(buffer)
             }
             rowStream.receive(completion: .success(()))
-        case .forwardStreamError(let error, let cursorID):
+
+            self.run(self.state.readyForQueryReceived(), with: context)
+
+        case .forwardStreamError(let error, let read, let cursorID):
             self.rowStream!.receive(completion: .failure(error))
             self.rowStream = nil
             if let cursorID {
                 cleanupContext.cursorsToClose?.append(cursorID)
+            } else if read {
+                context.read()
             }
 
+            self.run(self.state.readyForQueryReceived(), with: context)
 
         case .sendMarker:
             self.encoder.marker()
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
+
+        case .fireEventReadyForQuery:
+            context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
 
         case .logoffConnection:
             if context.channel.isActive {

@@ -12,6 +12,7 @@ public struct OracleSQLError: Error {
             case uncleanShutdown
             case unexpectedBackendMessage
             case server
+            case queryCancelled
         }
 
         internal var base: Base
@@ -28,6 +29,7 @@ public struct OracleSQLError: Error {
         public static let unexpectedBackendMessage =
             Self(.unexpectedBackendMessage)
         public static let server = Self(.server)
+        public static let queryCancelled = Self(.queryCancelled)
 
         public var description: String {
             switch self.base {
@@ -45,6 +47,8 @@ public struct OracleSQLError: Error {
                 return "unexpectedBackendMessage"
             case .server:
                 return "server"
+            case .queryCancelled:
+                return "queryCancelled"
             }
         }
     }
@@ -215,5 +219,7 @@ public struct OracleSQLError: Error {
         new.serverInfo = .init(error)
         return new
     }
+
+    static let queryCancelled = OracleSQLError(code: .queryCancelled)
 
  }

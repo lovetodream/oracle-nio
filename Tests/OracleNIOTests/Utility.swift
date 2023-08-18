@@ -10,7 +10,7 @@ extension OracleConnection {
 
     static func test(
         on eventLoop: EventLoop,
-        logLevel: Logger.Level = .info
+        logLevel: Logger.Level = Logger.getLogLevel()
     ) -> EventLoopFuture<OracleConnection> {
         var logger = Logger(label: "oracle.connection.test")
         logger.logLevel = logLevel

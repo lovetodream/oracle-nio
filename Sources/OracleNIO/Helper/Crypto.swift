@@ -3,8 +3,7 @@ import CryptoSwift
 func decryptCBC(_ key: [UInt8], _ encryptedText: [UInt8]) throws -> [UInt8] {
     let iv = [UInt8](repeating: 0, count: 16)
     let aes = try AES(key: key, blockMode: CBC(iv: iv))
-    var decryptor = try aes.makeDecryptor()
-    return try decryptor.update(withBytes: encryptedText, isLast: true)
+    return try aes.decrypt(encryptedText)
 }
 
 func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throws -> [UInt8] {

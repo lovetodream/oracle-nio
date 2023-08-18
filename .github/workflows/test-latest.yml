@@ -40,3 +40,4 @@ jobs:
         ORA_SERVICE_NAME: XEPDB1
         ORA_USER: my_user
         ORA_PWD: my_password
+        LOG_LEVEL: trace

@@ -35,8 +35,19 @@ extension OracleConnection {
 extension Logger {
     static var oracleTest: Logger {
         var logger = Logger(label: "oracle.test")
-        logger.logLevel = .info
+        logger.logLevel = self.getLogLevel()
         return logger
+    }
+
+    static func getLogLevel() -> Logger.Level {
+        let ghActionsDebug = env("ACTIONS_STEP_DEBUG")
+        if ghActionsDebug == "true" || ghActionsDebug == "TRUE" {
+            return .trace
+        }
+
+        return env("LOG_LEVEL").flatMap {
+            Logger.Level(rawValue: $0)
+        } ?? .debug
     }
 }
 

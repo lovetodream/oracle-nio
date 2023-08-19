@@ -38,6 +38,6 @@ jobs:
         ORA_HOSTNAME: localhost
         ORA_PORT: 1521
         ORA_SERVICE_NAME: XEPDB1
-        ORA_USER: my_user
-        ORA_PWD: my_password
+        ORA_USERNAME: my_user
+        ORA_PASSWORD: my_password
         LOG_LEVEL: trace

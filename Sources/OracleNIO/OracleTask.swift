@@ -3,6 +3,19 @@ import Logging
 
 enum OracleTask {
     case extendedQuery(ExtendedQueryContext)
+
+    func failWithError(_ error: OracleSQLError) {
+        switch self {
+        case .extendedQuery(let context):
+            switch context.statement {
+            case .ddl(let promise),
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise):
+                promise.fail(error)
+            }
+        }
+    }
 }
 
 final class ExtendedQueryContext {

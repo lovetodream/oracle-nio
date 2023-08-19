@@ -28,6 +28,8 @@ struct ExtendedQueryStateMachine {
         case failQuery(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
         case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
 
+        case evaluateErrorAtConnectionLevel(OracleSQLError)
+
         /// State indicating that the previous message contains more unconsumed data.
         case moreData(ExtendedQueryContext, ByteBuffer)
         case forwardRows([DataRow])
@@ -229,6 +231,10 @@ struct ExtendedQueryStateMachine {
         return action
     }
 
+    mutating func errorHappened(_ error: OracleSQLError) -> Action {
+        return self.setAndFireError(error)
+    }
+
     // MARK: Consumer Actions
 
     mutating func requestQueryRows() -> Action {
@@ -264,6 +270,48 @@ struct ExtendedQueryStateMachine {
             preconditionFailure("""
             The stream is already closed or in a failure state; \
             rows can not be consumed at this time.
+            """)
+
+        case .modifying:
+            preconditionFailure("invalid state")
+        }
+    }
+
+    // MARK: Private Methods
+
+    private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
+        switch self.state {
+        case .initialized(let context), .describeInfoReceived(let context, _):
+            if self.isCancelled {
+                return .evaluateErrorAtConnectionLevel(error)
+            } else {
+                switch context.statement {
+                case .ddl(let promise),
+                    .dml(let promise),
+                    .plsql(let promise),
+                    .query(let promise):
+                    return .failQuery(promise, with: error)
+                }
+            }
+
+        case .drain:
+            self.state = .error(error)
+            return .evaluateErrorAtConnectionLevel(error)
+
+        case .streaming(_, _, _, var streamState):
+            self.state = .error(error)
+            switch streamState.fail() {
+            case .read:
+                return .forwardStreamError(error, read: true, cursorID: nil)
+            case .wait:
+                return .forwardStreamError(error, read: false, cursorID: nil)
+            }
+
+        case .commandComplete, .error:
+            preconditionFailure("""
+            This state must not be reached. If the query `.isComplete`, the 
+            ConnectionStateMachine must not send any further events to the
+            substate machine.
             """)
 
         case .modifying:

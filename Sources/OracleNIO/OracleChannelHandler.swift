@@ -250,8 +250,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.sendReexecute()
         case .succeedQuery(let promise, let result):
             self.succeedQuery(promise, result: result, context: context)
-        case .failQuery(let promise, let error):
+        case .failQuery(let promise, let error, let cleanupContext):
             promise.fail(error)
+            if let cleanupContext {
+                self.closeConnectionAndCleanup(cleanupContext, context: context)
+            }
+
         case .moreData(let queryContext, var buffer):
             do {
                 let messages = try OracleBackendMessage.decode(
@@ -301,6 +305,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         case .fireEventReadyForQuery:
             context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
+
+        case .closeConnectionAndCleanup(let cleanup):
+            self.closeConnectionAndCleanup(cleanup, context: context)
 
         case .logoffConnection:
             if context.channel.isActive {
@@ -405,6 +412,33 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         )
         self.rowStream = rows
         promise.succeed(rows)
+    }
+
+    private func closeConnectionAndCleanup(
+        _ cleanup: ConnectionStateMachine.ConnectionAction.CleanUpContext,
+        context: ChannelHandlerContext
+    ) {
+        self.logger.debug(
+            "Cleaning up and closing connection.",
+            metadata: [.error: "\(cleanup.error)"]
+        )
+
+        // 1. fail all tasks
+        cleanup.tasks.forEach { task in
+            task.failWithError(cleanup.error)
+        }
+
+        // 2. fire an error
+        context.fireErrorCaught(cleanup.error)
+
+        // 3. close the connection or fire channel inactive
+        switch cleanup.action {
+        case .close:
+            context.close(mode: .all, promise: cleanup.closePromise)
+        case .fireChannelInactive:
+            cleanup.closePromise?.succeed()
+            context.fireChannelInactive()
+        }
     }
 
     // MARK: - Utility

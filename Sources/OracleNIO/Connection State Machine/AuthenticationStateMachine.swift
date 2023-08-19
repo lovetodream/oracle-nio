@@ -7,7 +7,7 @@ struct AuthenticationStateMachine {
         case authenticationPhaseOneSent
         case authenticationPhaseTwoSent
 
-        case error
+        case error(OracleSQLError)
         case authenticated
     }
 
@@ -20,7 +20,7 @@ struct AuthenticationStateMachine {
         case wait
         case authenticated(OracleBackendMessage.Parameter)
 
-        case reportAuthenticationError
+        case reportAuthenticationError(OracleSQLError)
     }
 
     let authContext: AuthContext
@@ -51,6 +51,38 @@ struct AuthenticationStateMachine {
         case .authenticationPhaseTwoSent:
             self.state = .authenticated
             return .authenticated(parameters)
+        }
+    }
+
+    mutating func errorReceived(_ message: OracleBackendMessage.BackendError) -> Action {
+        return self.setAndFireError(.server(message))
+    }
+
+    mutating func errorHappened(_ error: OracleSQLError) -> Action {
+        return self.setAndFireError(error)
+    }
+
+    private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
+        switch self.state {
+        case .initialized:
+            preconditionFailure("This doesn't make any sense")
+        case .authenticationPhaseOneSent,
+                .authenticationPhaseTwoSent:
+            self.state = .error(error)
+            return .reportAuthenticationError(error)
+        case .authenticated, .error:
+            preconditionFailure("This state must not be reached")
+        }
+    }
+
+    var isComplete: Bool {
+        switch self.state {
+        case .authenticated, .error:
+            return true
+        case .initialized,
+            .authenticationPhaseOneSent,
+            .authenticationPhaseTwoSent:
+            return false
         }
     }
 }

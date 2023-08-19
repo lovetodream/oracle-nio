@@ -17,12 +17,32 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     ) throws -> DecodingState {
         while let message = try decodeMessage(from: &buffer) {
             context.fireChannelRead(self.wrapInboundOut(message))
-            return .continue
+            if buffer.readableBytes > 0 {
+                return .needMoreData
+            } else {
+                buffer = buffer.slice()
+                return .continue
+            }
         }
         return .needMoreData
     }
 
-    func decodeMessage(from buffer: inout ByteBuffer) throws -> InboundOut? {
+    private func decodeMessage(from buffer: inout ByteBuffer) throws -> InboundOut? {
+        var msgs: InboundOut?
+        while let messages = try self.decodeMessage0(from: &buffer) {
+            buffer = buffer.slice()
+            if msgs != nil {
+                msgs!.append(contentsOf: messages)
+            } else {
+                msgs = messages
+            }
+        }
+        return msgs
+    }
+
+    private func decodeMessage0(
+        from buffer: inout ByteBuffer
+    ) throws -> InboundOut? {
         let length: Int?
         if self.capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             length = buffer.getInteger(at: 0, as: UInt32.self).map(Int.init)

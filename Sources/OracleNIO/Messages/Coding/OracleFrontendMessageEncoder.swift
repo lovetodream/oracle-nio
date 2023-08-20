@@ -77,9 +77,11 @@ struct OracleFrontendMessageEncoder {
 
         self.buffer.startRequest()
 
-        Self.writeBasicAuthData(
-            authContext: authContext, authPhase: .one, authMode: authMode,
-            pairsCount: numberOfPairs, out: &self.buffer
+        self.writeBasicAuthData(
+            authContext: authContext,
+            authPhase: .authPhaseOne,
+            authMode: authMode,
+            pairsCount: numberOfPairs
         )
 
         // 3. write key/value pairs
@@ -158,9 +160,11 @@ struct OracleFrontendMessageEncoder {
 
         self.buffer.startRequest()
 
-        Self.writeBasicAuthData(
-            authContext: authContext, authPhase: .two, authMode: authMode,
-            pairsCount: numberOfPairs, out: &self.buffer
+        self.writeBasicAuthData(
+            authContext: authContext,
+            authPhase: .authPhaseTwo,
+            authMode: authMode,
+            pairsCount: numberOfPairs
         )
 
         Self.writeKeyValuePair(
@@ -267,10 +271,11 @@ struct OracleFrontendMessageEncoder {
         self.writePiggybacks(context: cleanupContext)
 
         // 3 write function code
-        self.buffer.writeInteger(MessageType.function.rawValue)
-        self.buffer.writeInteger(Constants.TNS_FUNC_EXECUTE)
-        self.buffer.writeSequenceNumber(with: queryContext.sequenceNumber)
-        queryContext.sequenceNumber += 1
+        self.writeFunctionCode(
+            messageType: .function,
+            functionCode: .execute,
+            sequenceNumber: &queryContext.sequenceNumber
+        )
 
         // 4. write body of message
         self.buffer.writeUB4(options) // execute options
@@ -375,16 +380,21 @@ struct OracleFrontendMessageEncoder {
         self.buffer.endRequest(capabilities: self.capabilities)
     }
 
+    mutating func fetch(cursorID: UInt16, fetchArraySize: UInt32) {
+        self.clearIfNeeded()
+
+        self.buffer.startRequest()
+        self.writeFunctionCode(messageType: .function, functionCode: .fetch)
+        self.buffer.writeUB4(UInt32(cursorID))
+        self.buffer.writeUB4(fetchArraySize)
+        self.buffer.endRequest(capabilities: self.capabilities)
+    }
+
     mutating func logoff() {
         self.clearIfNeeded()
 
         self.buffer.startRequest()
-
-        // write function code
-        self.buffer.writeInteger(MessageType.function.rawValue)
-        self.buffer.writeInteger(Constants.TNS_FUNC_LOGOFF)
-        self.buffer.writeSequenceNumber()
-
+        self.writeFunctionCode(messageType: .function, functionCode: .logoff)
         self.buffer.endRequest(capabilities: self.capabilities)
     }
 
@@ -419,6 +429,32 @@ struct OracleFrontendMessageEncoder {
         buffer.endRequest(
             packetType: message.packetType, capabilities: capabilities
         )
+    }
+
+    private mutating func writeFunctionCode(
+        messageType: MessageType, functionCode: Constants.FunctionCode
+    ) {
+        var sequenceNumber: UInt8 = 0
+        self.writeFunctionCode(
+            messageType: messageType,
+            functionCode: functionCode,
+            sequenceNumber: &sequenceNumber
+        )
+    }
+
+    private mutating func writeFunctionCode(
+        messageType: MessageType,
+        functionCode: Constants.FunctionCode,
+        sequenceNumber: inout UInt8
+    ) {
+        self.buffer.writeInteger(messageType.rawValue)
+        self.buffer.writeInteger(functionCode.rawValue)
+        self.buffer.writeSequenceNumber(with: sequenceNumber)
+        sequenceNumber += 1
+        if self.capabilities.ttcFieldVersion >=
+            Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
+            buffer.writeUB8(0) // token number
+        }
     }
 }
 
@@ -613,32 +649,34 @@ extension OracleFrontendMessageEncoder {
         return data
     }
 
-    private static func writeBasicAuthData(
+    private mutating func writeBasicAuthData(
         authContext: AuthContext,
-        authPhase: Constants.AuthPhase,
+        authPhase: Constants.FunctionCode,
         authMode: UInt32,
-        pairsCount: UInt32,
-        out buffer: inout ByteBuffer
+        pairsCount: UInt32
     ) {
         let username = authContext.username.bytes
         let usernameLength = authContext.username.count
         let hasUser: UInt8 = authContext.username.count > 0 ? 1 : 0
 
         // 1. write function code
-        buffer.writeInteger(MessageType.function.rawValue)
-        buffer.writeInteger(authPhase.rawValue)
-        buffer.writeSequenceNumber(with: authPhase == .one ? 0 : 1)
+        var sequenceNumber: UInt8 = authPhase == .authPhaseOne ? 0 : 1
+        self.writeFunctionCode(
+            messageType: .function,
+            functionCode: authPhase,
+            sequenceNumber: &sequenceNumber
+        )
 
         // 2. write basic data
-        buffer.writeInteger(hasUser) // pointer (authuser)
-        buffer.writeUB4(UInt32(usernameLength))
-        buffer.writeUB4(authMode) // authentication mode
-        buffer.writeInteger(UInt8(1)) // pointer (authiv1)
-        buffer.writeUB4(pairsCount) // number of key/value pairs
-        buffer.writeInteger(UInt8(1)) // pointer (authovl)
-        buffer.writeInteger(UInt8(1)) // pointer (authovln)
+        self.buffer.writeInteger(hasUser) // pointer (authuser)
+        self.buffer.writeUB4(UInt32(usernameLength))
+        self.buffer.writeUB4(authMode) // authentication mode
+        self.buffer.writeInteger(UInt8(1)) // pointer (authiv1)
+        self.buffer.writeUB4(pairsCount) // number of key/value pairs
+        self.buffer.writeInteger(UInt8(1)) // pointer (authovl)
+        self.buffer.writeInteger(UInt8(1)) // pointer (authovln)
         if hasUser != 0 {
-            buffer.writeBytes(username)
+            self.buffer.writeBytes(username)
         }
     }
 
@@ -666,9 +704,9 @@ extension OracleFrontendMessageEncoder {
         }
     }
 
-    private mutating func writePiggybackCode(code: UInt8) {
+    private mutating func writePiggybackCode(code: Constants.FunctionCode) {
         self.buffer.writeInteger(UInt8(MessageType.piggyback.rawValue))
-        self.buffer.writeInteger(code)
+        self.buffer.writeInteger(code.rawValue)
         self.buffer.writeSequenceNumber()
         if self.capabilities.ttcFieldVersion 
             >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
@@ -679,7 +717,7 @@ extension OracleFrontendMessageEncoder {
     private mutating func writeCloseCursorsPiggyback(
         _ cursorsToClose: [UInt16]
     ) {
-        self.writePiggybackCode(code: Constants.TNS_FUNC_CLOSE_CURSORS)
+        self.writePiggybackCode(code: .closeCursors)
         self.buffer.writeInteger(UInt8(1)) // pointer
         self.buffer.writeUB4(UInt32(cursorsToClose.count))
         for cursorID in cursorsToClose {
@@ -691,7 +729,7 @@ extension OracleFrontendMessageEncoder {
         _ tempLOBsToClose: [[UInt8]],
         totalSize tempLOBsTotalSize: Int
     ) {
-        self.writePiggybackCode(code: Constants.TNS_FUNC_LOB_OP)
+        self.writePiggybackCode(code: .lobOp)
         let opCode = Constants.TNS_LOB_OP_FREE_TEMP | Constants.TNS_LOB_OP_ARRAY
 
         // temp lob data

@@ -230,9 +230,9 @@ extension TNSRequestWithData {
         }
     }
 
-    func writePiggybackCode(to buffer: inout ByteBuffer, code: UInt8) {
+    func writePiggybackCode(to buffer: inout ByteBuffer, code: Constants.FunctionCode) {
         buffer.writeInteger(UInt8(MessageType.piggyback.rawValue))
-        buffer.writeInteger(UInt8(code))
+        buffer.writeInteger(UInt8(code.rawValue))
         buffer.writeSequenceNumber()
         if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
             buffer.writeUB8(0) // token number
@@ -240,7 +240,7 @@ extension TNSRequestWithData {
     }
 
     func writeCloseCursorsPiggyback(to buffer: inout ByteBuffer) {
-        self.writePiggybackCode(to: &buffer, code: Constants.TNS_FUNC_CLOSE_CURSORS)
+        self.writePiggybackCode(to: &buffer, code: .closeCursors)
         buffer.writeInteger(UInt8(1)) // pointer
         buffer.writeUB4(UInt32(self.connection.cursorsToClose!.count))
         guard let cursorIDs = self.connection.cursorsToClose else { return }
@@ -256,7 +256,7 @@ extension TNSRequestWithData {
             return
         }
 
-        self.writePiggybackCode(to: &buffer, code: Constants.TNS_FUNC_LOB_OP)
+        self.writePiggybackCode(to: &buffer, code: .lobOp)
         let opCode = Constants.TNS_LOB_OP_FREE_TEMP | Constants.TNS_LOB_OP_ARRAY
 
         // temp lob data
@@ -729,7 +729,7 @@ final class ExecuteRequest: TNSRequestWithData {
 
     var connection: OracleConnection
     var messageType: MessageType
-    var functionCode: UInt8 = Constants.TNS_FUNC_EXECUTE
+    var functionCode: Constants.FunctionCode = .execute
     var currentSequenceNumber: UInt8 = 2
     var onResponsePromise: NIOCore.EventLoopPromise<TNSMessage>?
 
@@ -762,13 +762,13 @@ final class ExecuteRequest: TNSRequestWithData {
         let statement = cursor.statement
         if statement.cursorID != 0 && !statement.requiresFullExecute && !self.parseOnly && !statement.isDDL && self.batchErrors {
             if statement.isQuery && !statement.requiresDefine && cursor.prefetchRows > 0 {
-                self.functionCode = Constants.TNS_FUNC_REEXECUTE_AND_FETCH
+                self.functionCode = .reexecuteAndFetch
             } else {
-                self.functionCode = Constants.TNS_FUNC_REEXECUTE
+                self.functionCode = .reexecute
             }
             try self.writeReexecuteMessage(to: &buffer)
         } else {
-            self.functionCode = Constants.TNS_FUNC_EXECUTE
+            self.functionCode = .execute
             try self.writeExecuteMessage(&buffer)
         }
 
@@ -961,7 +961,7 @@ final class ExecuteRequest: TNSRequestWithData {
             }
         }
 
-        if self.functionCode == Constants.TNS_FUNC_REEXECUTE_AND_FETCH {
+        if self.functionCode == .reexecuteAndFetch {
             executionFlags1 |= Constants.TNS_EXEC_OPTION_EXECUTE
             numberOfIterations = cursor.prefetchRows
             cursor.fetchArraySize = numberOfIterations
@@ -988,7 +988,7 @@ final class ExecuteRequest: TNSRequestWithData {
 
     func writeFunctionCode(to buffer: inout ByteBuffer) {
         buffer.writeInteger(self.messageType.rawValue)
-        buffer.writeInteger(self.functionCode)
+        buffer.writeInteger(self.functionCode.rawValue)
         buffer.writeSequenceNumber(with: self.currentSequenceNumber)
         self.currentSequenceNumber += 1
     }
@@ -997,7 +997,7 @@ final class ExecuteRequest: TNSRequestWithData {
 final class FetchRequest: TNSRequestWithData {
     var connection: OracleConnection
     var messageType: MessageType
-    var functionCode: UInt8 = Constants.TNS_FUNC_EXECUTE
+    var functionCode: Constants.FunctionCode = .execute
     var currentSequenceNumber: UInt8 = 2
     var onResponsePromise: NIOCore.EventLoopPromise<TNSMessage>?
 
@@ -1021,7 +1021,7 @@ final class FetchRequest: TNSRequestWithData {
     }
 
     func initializeHooks() {
-        self.functionCode = Constants.TNS_FUNC_FETCH
+        self.functionCode = .fetch
     }
 
     func get() throws -> [TNSMessage] {

@@ -6,7 +6,7 @@ func env(_ name: String) -> String? {
 }
 
 var logger = Logger(label: "com.lovetodream.oraclenio")
-logger.logLevel = .trace
+logger.logLevel = .debug
 let ipAddress = env("ORA_IP_ADDRESS") ?? "192.168.1.24"
 let port = (env("ORA_PORT").map(Int.init(_:)) ?? 1521) ?? 1521
 let serviceName = env("ORA_SERVICE_NAME") ?? "XEPDB1"
@@ -25,12 +25,20 @@ do {
         logger: logger
     ).wait()
 
-    _ = try connection.query("select \("hello, world") from dual", logger: logger) { row in
-        for column in row {
-            print(try column.decode(String.self))
-        }
-    }.wait()
     do {
+        var received: Int64 = 0
+        try connection.query(
+            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
+            logger: logger
+        ) { row in
+            func workaround() {
+                var number = try? row.decode(Int64.self, context: .default)
+                received += 1
+                print(number, received, number == received)
+            }
+
+            workaround()
+        }.wait()
 //        try connection.query("select sysdate from dual") // SELECT
 //        try connection.query("select * from \"test\"")
         //    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT

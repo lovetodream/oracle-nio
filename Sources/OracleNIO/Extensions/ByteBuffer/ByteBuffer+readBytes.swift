@@ -31,7 +31,6 @@ extension ByteBuffer {
         else {
             preconditionFailure()
         }
-        self.moveReaderIndex(forwardBy: MemoryLayout<UInt8>.size * -1)
         return self.readSlice(length: Int(length) + MemoryLayout<UInt8>.size)
     }
 }

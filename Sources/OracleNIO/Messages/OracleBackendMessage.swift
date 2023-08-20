@@ -18,11 +18,13 @@ protocol OracleMessagePayloadDecodable {
 }
 
 /// A wire message that is created by a Oracle server to be consumed by the Oracle client.
-enum OracleBackendMessage {
+enum OracleBackendMessage: Sendable, Hashable {
     typealias PayloadDecodable = OracleMessagePayloadDecodable
 
     case accept(Accept)
+    case bitVector(BitVector)
     case dataTypes
+    case describeInfo(DescribeInfo)
     case error(BackendError)
     case marker
     case parameter(Parameter)
@@ -31,7 +33,6 @@ enum OracleBackendMessage {
     case resend
     case rowHeader(RowHeader)
     case rowData(RowData)
-    case describeInfo(DescribeInfo)
     case status
 }
 
@@ -86,6 +87,7 @@ extension OracleBackendMessage {
         case parameter
         case status
         case describeInfo
+        case bitVector
 
         init?(rawValue: UInt8) {
             switch rawValue {
@@ -105,6 +107,8 @@ extension OracleBackendMessage {
                 self = .status
             case 16:
                 self = .describeInfo
+            case 21:
+                self = .bitVector
             default:
                 return nil
             }
@@ -128,6 +132,8 @@ extension OracleBackendMessage {
                 return 9
             case .describeInfo:
                 return 16
+            case .bitVector:
+                return 21
             }
         }
     }
@@ -201,6 +207,10 @@ extension OracleBackendMessage {
                     messages.append(try .rowData(
                         .decode(from: &buffer, capabilities: capabilities)
                     ))
+                case .bitVector:
+                    messages.append(try .bitVector(
+                        .decode(from: &buffer, capabilities: capabilities)
+                    ))
                 case nil:
                     fatalError("not implemented")
                 }
@@ -215,6 +225,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
         switch self {
         case .accept(let accept):
             return ".accept(\(String(reflecting: accept)))"
+        case .bitVector(let bitVector):
+            return ".bitVector(\(String(reflecting: bitVector)))"
         case .dataTypes:
             return ".dataTypes"
         case .error(let error):

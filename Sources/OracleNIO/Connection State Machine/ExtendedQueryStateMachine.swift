@@ -24,6 +24,7 @@ struct ExtendedQueryStateMachine {
     enum Action {
         case sendExecute(ExtendedQueryContext)
         case sendReexecute
+        case sendFetch(ExtendedQueryContext)
 
         case failQuery(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
         case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
@@ -115,30 +116,46 @@ struct ExtendedQueryStateMachine {
     mutating func rowHeaderReceived(
         _ rowHeader: OracleBackendMessage.RowHeader
     ) -> Action {
-        guard case .describeInfoReceived(
-            let context, let describeInfo
-        ) = state else {
+        switch self.state {
+        case .describeInfoReceived(let context, let describeInfo):
+            self.avoidingStateMachineCoW { state in
+                state = .streaming(context, describeInfo, rowHeader, .init())
+            }
+
+            switch context.statement {
+            case .ddl(let promise),
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise):
+                return .succeedQuery(
+                    promise,
+                    QueryResult(value: describeInfo.columns, logger: context.logger)
+                )
+            }
+
+        case .streaming(
+            let context, let describeInfo, let prevRowHeader, let streamState
+        ):
+            if prevRowHeader.bitVector == nil {
+                self.avoidingStateMachineCoW { state in
+                    state = .streaming(
+                        context, describeInfo, rowHeader, streamState
+                    )
+                }
+            }
+            return .wait
+
+        case .initialized, .drain, .error, .commandComplete:
             preconditionFailure()
-        }
 
-        self.avoidingStateMachineCoW { state in
-            state = .streaming(context, describeInfo, rowHeader, .init())
-        }
-
-        switch context.statement {
-        case .ddl(let promise),
-            .dml(let promise),
-            .plsql(let promise),
-            .query(let promise):
-            return .succeedQuery(
-                promise,
-                QueryResult(value: describeInfo.columns, logger: context.logger)
-            )
+        case .modifying:
+            preconditionFailure("invalid state")
         }
     }
 
     mutating func rowDataReceived(
-        _ rowData: OracleBackendMessage.RowData
+        _ rowData: OracleBackendMessage.RowData,
+        capabilities: Capabilities
     ) -> Action {
         var buffer = rowData.slice
         switch self.state {
@@ -159,7 +176,79 @@ struct ExtendedQueryStateMachine {
                 )
             }
 
-            return .moreData(context, buffer.slice())
+            // This is not ideal, but still not as bad as passing potentially
+            // huge buffers around as associated values in enums.
+            // Reason for this even existing is that the `row data` response
+            // from the Oracle database doesn't contain a length field you can
+            // read without parsing all the values of said row. And to parse the
+            // values you have to have contextual information from
+            // `DescribeInfo`. So, because Oracle is sending messages in bulk,
+            // we don't really have another choice.
+            var slice = buffer.slice()
+            do {
+                let messages = try OracleBackendMessage.decode(
+                    from: &slice,
+                    of: .data,
+                    capabilities: capabilities,
+                    skipDataFlags: false,
+                    queryOptions: context.options
+                )
+
+                for message in messages {
+                    let action: Action
+                    switch message {
+                    case .bitVector(let bitVector):
+                        action = self.bitVectorReceived(bitVector)
+                    case .describeInfo(let describeInfo):
+                        action = self.describeInfoReceived(describeInfo)
+                    case .rowHeader(let rowHeader):
+                        action = self.rowHeaderReceived(rowHeader)
+                    case .rowData(let rowData):
+                        action = self.rowDataReceived(
+                            rowData, capabilities: capabilities
+                        )
+                    case .queryParameter:
+                        // query parameters can be safely ignored
+                        action = .wait
+                    case .error(let error):
+                        action = self.errorReceived(error)
+                    default:
+                        preconditionFailure()
+                    }
+                    // If action is anything other than wait, we will have to
+                    // return it. This should be fine, because messages with
+                    // an action should only occur at the end of a packet.
+                    // At least thats what I (@lovetodream) know from testing.
+                    if case .wait = action {
+                        continue
+                    }
+                    return action
+                }
+
+                return .wait
+            } catch {
+                fatalError(.init(describing: error)) // TODO
+            }
+        default:
+            preconditionFailure()
+        }
+    }
+
+    mutating func bitVectorReceived(
+        _ bitVector: OracleBackendMessage.BitVector
+    ) -> Action {
+        switch self.state {
+        case .streaming(
+            let context, let describeInfo, var rowHeader, let streamState
+        ):
+            rowHeader.bitVector = bitVector.bitVector
+            self.avoidingStateMachineCoW { state in
+                state = .streaming(
+                    context, describeInfo, rowHeader, streamState
+                )
+            }
+            return .wait
+
         default:
             preconditionFailure()
         }
@@ -220,12 +309,22 @@ struct ExtendedQueryStateMachine {
                 )
             }
         } else {
-            self.avoidingStateMachineCoW { state in
-                state = .error(.server(error))
+            // no error actually happened, we need more rows
+            switch self.state {
+            case .initialized,
+                .describeInfoReceived,
+                .drain,
+                .commandComplete,
+                .error:
+                preconditionFailure("This is impossible...")
+            case .streaming(let extendedQueryContext, _, _, _):
+                if let cursorID = error.cursorID {
+                    extendedQueryContext.cursorID = cursorID
+                }
+                action = .sendFetch(extendedQueryContext)
+            case .modifying:
+                preconditionFailure("invalid state")
             }
-            action = .forwardStreamError(
-                .server(error), read: false, cursorID: nil
-            )
         }
 
         return action
@@ -338,6 +437,8 @@ struct ExtendedQueryStateMachine {
         let csfrm = columnInfo.dataType.csfrm
         let bufferSize = columnInfo.bufferSize
 
+        // TODO: I know this is weird, but I keep it as long as TNSRequest+Data
+        // is still here and I have to cross check things :)
         var columnValue: ByteBuffer?
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
             columnValue = nil

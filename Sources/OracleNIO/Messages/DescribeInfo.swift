@@ -2,12 +2,12 @@ import NIOCore
 
 /// A backend row description message.
 @usableFromInline
-struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Equatable {
+struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
     @usableFromInline
     var columns: [Column]
 
     @usableFromInline
-    struct Column: OracleBackendMessage.PayloadDecodable, Equatable, Sendable {
+    struct Column: OracleBackendMessage.PayloadDecodable, Hashable, Sendable {
         /// The field name.
         @usableFromInline
         var name: String

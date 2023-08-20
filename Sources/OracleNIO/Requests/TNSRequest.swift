@@ -3,7 +3,7 @@ import NIOCore
 protocol TNSRequest {
     var connection: OracleConnection { get }
     var messageType: MessageType { get }
-    var functionCode: UInt8 { get }
+    var functionCode: Constants.FunctionCode { get }
     var currentSequenceNumber: UInt8 { get set }
     var onResponsePromise: EventLoopPromise<TNSMessage>? { get set }
     init(connection: OracleConnection, messageType: MessageType)
@@ -296,7 +296,7 @@ extension TNSRequest {
 
     func writeFunctionCode(to buffer: inout ByteBuffer) {
         buffer.writeInteger(messageType.rawValue)
-        buffer.writeInteger(functionCode)
+        buffer.writeInteger(functionCode.rawValue)
         buffer.writeSequenceNumber()
         if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
             buffer.writeUB8(0) // token number

@@ -74,6 +74,7 @@ struct ConnectionStateMachine {
         // Query
         case sendExecute(ExtendedQueryContext)
         case sendReexecute
+        case sendFetch(ExtendedQueryContext)
         case failQuery(
             EventLoopPromise<OracleRowStream>,
             with: OracleSQLError, cleanupContext: CleanUpContext?
@@ -469,12 +470,15 @@ struct ConnectionStateMachine {
     }
 
     mutating func rowDataReceived(
-        _ rowData: OracleBackendMessage.RowData
+        _ rowData: OracleBackendMessage.RowData,
+        capabilities: Capabilities
     ) -> ConnectionAction {
         switch self.state {
         case .extendedQuery(var queryState):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.rowDataReceived(rowData)
+                let action = queryState.rowDataReceived(
+                    rowData, capabilities: capabilities
+                )
                 machine.state = .extendedQuery(queryState)
                 return machine.modify(with: action)
             }
@@ -489,6 +493,21 @@ struct ConnectionStateMachine {
         _ parameter: OracleBackendMessage.QueryParameter
     ) -> ConnectionAction {
         return .wait
+    }
+
+    mutating func bitVectorReceived(
+        _ bitVector: OracleBackendMessage.BitVector
+    ) -> ConnectionAction{
+        switch self.state {
+        case .extendedQuery(var queryState):
+            return self.avoidingStateMachineCoW { machine in
+                let action = queryState.bitVectorReceived(bitVector)
+                machine.state = .extendedQuery(queryState)
+                return machine.modify(with: action)
+            }
+        default:
+            preconditionFailure()
+        }
     }
 
     mutating func backendErrorReceived(
@@ -620,6 +639,7 @@ struct ConnectionStateMachine {
             switch queryState.errorHappened(error) {
             case .sendExecute,
                 .sendReexecute,
+                .sendFetch,
                 .succeedQuery,
                 .moreData,
                 .forwardRows,
@@ -828,6 +848,8 @@ extension ConnectionStateMachine {
             return .sendExecute(context)
         case .sendReexecute:
             return .sendReexecute
+        case .sendFetch(let context):
+            return .sendFetch(context)
         case .failQuery(let promise, let error):
             return .failQuery(promise, with: error, cleanupContext: nil)
         case .succeedQuery(let promise, let columns):

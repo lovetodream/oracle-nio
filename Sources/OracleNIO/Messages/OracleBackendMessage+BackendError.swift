@@ -1,7 +1,7 @@
 import NIOCore
 
 extension OracleBackendMessage {
-    struct BackendError: PayloadDecodable {
+    struct BackendError: PayloadDecodable, Hashable {
         var number: UInt32
         var cursorID: UInt16?
         var position: UInt16?

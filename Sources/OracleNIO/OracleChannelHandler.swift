@@ -99,6 +99,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
             self.setCoders(context: context)
             action = self.state.acceptReceived()
+        case .bitVector(let bitVector):
+            action = self.state.bitVectorReceived(bitVector)
         case .dataTypes:
             action = self.state.dataTypesReceived()
         case .error(let error):
@@ -122,7 +124,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .rowHeader(let header):
             action = self.state.rowHeaderReceived(header)
         case .rowData(let data):
-            action = self.state.rowDataReceived(data)
+            action = self.state.rowDataReceived(
+                data, capabilities: self.capabilitiesProvider.getCapabilities()
+            )
         case .queryParameter(let parameter):
             action = self.state.queryParameterReceived(parameter)
         }
@@ -248,6 +252,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.sendExecute(queryContext: queryContext, context: context)
         case .sendReexecute:
             self.sendReexecute()
+        case .sendFetch(let queryContext):
+            self.sendFetch(queryContext: queryContext, context: context)
         case .succeedQuery(let promise, let result):
             self.succeedQuery(promise, result: result, context: context)
         case .failQuery(let promise, let error, let cleanupContext):
@@ -271,6 +277,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             } catch {
                 context.fireErrorCaught(error)
             }
+            
         case .forwardRows(let rows):
             self.rowStream!.receive(rows)
         case .forwardStreamComplete(let buffer):
@@ -398,6 +405,20 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     private func sendReexecute() {
 
+    }
+
+    private func sendFetch(
+        queryContext: ExtendedQueryContext,
+        context: ChannelHandlerContext
+    ) {
+        self.encoder.fetch(
+            cursorID: queryContext.cursorID,
+            fetchArraySize: UInt32(queryContext.options.arraySize)
+        )
+
+        context.writeAndFlush(
+            self.wrapOutboundOut(self.encoder.flush()), promise: nil
+        )
     }
 
     private func succeedQuery(

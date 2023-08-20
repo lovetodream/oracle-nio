@@ -1,7 +1,7 @@
 import NIOCore
 
 extension OracleBackendMessage {
-    struct RowData: PayloadDecodable, Sendable, Equatable {
+    struct RowData: PayloadDecodable, Sendable, Hashable {
         /// Row data cannot be decoded in any other way, because the bounds
         /// aren't clear without the information from ``DescribeInfo``.
         /// Because of that the remaining buffer is returned as the row data.
@@ -11,7 +11,12 @@ extension OracleBackendMessage {
         static func decode(
             from buffer: inout ByteBuffer, capabilities: Capabilities
         ) throws -> RowData {
-            .init(slice: buffer.readSlice(length: buffer.readableBytes) ?? .init())
+            guard 
+                let slice = buffer.readSlice(length: buffer.readableBytes)
+            else {
+                throw OracleDecodingError.Code.missingData
+            }
+            return .init(slice: slice)
         }
     }
 }

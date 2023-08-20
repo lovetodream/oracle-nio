@@ -1,7 +1,7 @@
 import NIOCore
 
 extension OracleBackendMessage {
-    struct Accept: PayloadDecodable {
+    struct Accept: PayloadDecodable, Hashable {
         var newCapabilities: Capabilities
 
         static func decode(

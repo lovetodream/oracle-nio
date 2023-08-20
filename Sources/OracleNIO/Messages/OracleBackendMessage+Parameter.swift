@@ -1,10 +1,15 @@
 import NIOCore
+import class Foundation.NSDictionary
 
 extension OracleBackendMessage {
-    struct Parameter: PayloadDecodable, ExpressibleByDictionaryLiteral {
-        
+    struct Parameter: PayloadDecodable, ExpressibleByDictionaryLiteral, Hashable {
+
         typealias Key = String
-        typealias Value = (value: String, flags: UInt32?)
+        struct Value: Hashable {
+            let value: String
+            let flags: UInt32?
+        }
+
 
         var elements: [Key: Value]
 
@@ -44,13 +49,13 @@ extension OracleBackendMessage {
                     value = ""
                 }
                 let flags = buffer.readUB4()
-                elements[key] = (value, flags)
+                elements[key] = .init(value: value, flags: flags)
             }
             return .init(elements)
         }
     }
 
-    struct QueryParameter {
+    struct QueryParameter: Hashable {
         var schema: String?
         var edition: String?
         var rowCounts: [UInt64]?

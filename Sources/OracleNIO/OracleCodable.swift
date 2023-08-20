@@ -71,7 +71,7 @@ public protocol OracleDecodable {
     ///   - format: The oracle wire format.
     ///   - context: A `OracleDecodingContext` providing context for decoding. This includes a `JSONDecoder` to use when decoding json and metadata to create better errors.
     init<JSONDecoder: OracleJSONDecoder>(
-        from byteBuffer: inout ByteBuffer,
+        from buffer: inout ByteBuffer,
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
     ) throws

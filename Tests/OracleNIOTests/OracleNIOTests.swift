@@ -28,6 +28,27 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertNoThrow(try conn?.close().wait())
     }
 
+    func testAuthenticationFailure() throws {
+        let config = OracleConnection.Configuration(
+            address: try OracleConnection.address(),
+            serviceName: env("ORA_SERVICE_NAME") ?? "XEPDB1",
+            username: env("ORA_USERNAME") ?? "my_user",
+            password: "wrong_password"
+        )
+
+        var conn: OracleConnection?
+        XCTAssertThrowsError(
+            conn = try OracleConnection.connect(
+                configuration: config, id: 1, logger: .oracleTest
+            ).wait()
+        ) {
+            XCTAssertTrue($0 is OracleSQLError)
+        }
+
+        // In case of a test failure the connection must be closed.
+        XCTAssertNoThrow(try conn?.close().wait())
+    }
+
     func testSimpleQuery() {
         var conn: OracleConnection?
         XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())
@@ -40,6 +61,29 @@ final class OracleNIOTests: XCTestCase {
         )
         XCTAssertEqual(rows?.count, 1)
         XCTAssertEqual(try rows?.first?.decode(String.self), "test")
+    }
+
+    func testQuery10kItems() {
+        var conn: OracleConnection?
+        XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())
+        defer { XCTAssertNoThrow(try conn?.close().wait()) }
+
+        var received: Int64 = 0
+        XCTAssertNoThrow(_ = try conn?.query(
+            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
+            logger: .oracleTest
+        ) { row in
+            func workaround() {
+                var number: Int64?
+                XCTAssertNoThrow(number = try row.decode(Int64.self, context: .default))
+                received += 1
+                XCTAssertEqual(number, received)
+            }
+
+            workaround()
+        }.wait())
+
+        XCTAssertEqual(received, 10_000)
     }
 
 }

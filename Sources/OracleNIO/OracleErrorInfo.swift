@@ -11,7 +11,7 @@ struct OracleErrorInfo: Error {
     var batchErrors: [OracleError]
 }
 
-struct OracleError: Error {
+struct OracleError: Error, Hashable {
     var code: Int
     var offset: Int
     var message: String?

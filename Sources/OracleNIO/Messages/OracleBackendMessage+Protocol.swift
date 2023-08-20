@@ -1,7 +1,7 @@
 import NIOCore
 
 extension OracleBackendMessage {
-    struct `Protocol`: PayloadDecodable {
+    struct `Protocol`: PayloadDecodable, Hashable {
         var newCapabilities: Capabilities
 
         static func decode(

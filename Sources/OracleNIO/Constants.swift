@@ -220,25 +220,24 @@ enum Constants {
     static let TNS_CHECK_OOB: UInt32 = 0x01
 
     // MARK: TTC functions
-    enum AuthPhase: UInt8 {
-        case one = 118
-        case two = 115
+    enum FunctionCode: UInt8 {
+        case authPhaseOne = 118
+        case authPhaseTwo = 115
+        case closeCursors = 105
+        case commit = 14
+        case execute = 94
+        case fetch = 5
+        case lobOp = 96
+        case logoff = 9
+        case ping = 147
+        case rollback = 15
+        case setEndToEndAttr = 135
+        case reexecute = 4
+        case reexecuteAndFetch = 78
+        case sessionGet = 162
+        case sessionRelease = 163
+        case setSchema = 152
     }
-
-    static let TNS_FUNC_CLOSE_CURSORS: UInt8 = 105
-    static let TNS_FUNC_COMMIT = 14
-    static let TNS_FUNC_EXECUTE: UInt8 = 94
-    static let TNS_FUNC_FETCH: UInt8 = 5
-    static let TNS_FUNC_LOB_OP: UInt8 = 96
-    static let TNS_FUNC_LOGOFF: UInt8 = 9
-    static let TNS_FUNC_PING = 147
-    static let TNS_FUNC_ROLLBACK = 15
-    static let TNS_FUNC_SET_END_TO_END_ATTR = 135
-    static let TNS_FUNC_REEXECUTE: UInt8 = 4
-    static let TNS_FUNC_REEXECUTE_AND_FETCH: UInt8 = 78
-    static let TNS_FUNC_SESSION_GET = 162
-    static let TNS_FUNC_SESSION_RELEASE = 163
-    static let TNS_FUNC_SET_SCHEMA = 152
 
     // MARK: TTC authentication modes
     static let TNS_AUTH_MODE_LOGON: UInt32 = 0x00000001

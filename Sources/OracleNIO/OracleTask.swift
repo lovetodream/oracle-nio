@@ -60,7 +60,7 @@ final class ExtendedQueryContext {
 
     // metadata
     let sqlLength: UInt32
-    let cursorID: UInt16
+    var cursorID: UInt16
     let requiresFullExecute: Bool
     let requiresDefine: Bool
     let queryVariables: [Variable]
@@ -142,7 +142,30 @@ struct QueryOptions {
     /// to how many rows are returned `+1` for avoiding an extra roundtrip. The one extra row is required
     /// for the protocol to know there aren't any more rows to fetch. If the extra row is not added, the client
     /// has to make another roundtrip to be sure that there aren't any more rows pending.
+    ///
+    /// Adjusting this is especially useful if you're doing pagination.
+    ///
+    /// ```
+    /// | Number of Rows | prefetchrows | arraysize | Round-trips |
+    /// |----------------|--------------|-----------|-------------|
+    /// | 20             | 20           | 20        | 2           |
+    /// | 20             | 21           | 20        | 1           |
+    /// ```
     var prefetchRows: Int = 2
+
+    /// Indicates how many rows will be returned by any subsequent fetch calls to the database.
+    ///
+    /// If you're fetching a huge amount of rows, it makes sense to increase this value to reduce roundtrips
+    /// to the database.
+    ///
+    /// ```
+    /// | Number of Rows | prefetchRows | arraySize | Round-trips |
+    /// |----------------|--------------|-----------|-------------|
+    /// | 10000          | 2            | 100       | 101         |
+    /// | 10000          | 2            | 1000      | 11          |
+    /// | 10000          | 1000         | 1000      | 11          |
+    /// ```
+    var arraySize: Int = 50
 }
 
 final class CleanupContext {

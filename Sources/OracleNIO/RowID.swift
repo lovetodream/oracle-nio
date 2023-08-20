@@ -1,6 +1,6 @@
 import NIOCore
 
-struct RowID {
+struct RowID: Hashable {
     var rba: UInt32 = 0
     var partitionID: UInt16 = 0
     var blockNumber: UInt32 = 0

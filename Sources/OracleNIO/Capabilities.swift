@@ -8,7 +8,7 @@
 //  the database server and the client are capable of.
 //
 
-struct Capabilities: Sendable {
+struct Capabilities: Sendable, Hashable {
     var protocolVersion: UInt16 = 0
     var charsetID = Constants.TNS_CHARSET_UTF8
     var nCharsetID = Constants.TNS_CHARSET_UTF16

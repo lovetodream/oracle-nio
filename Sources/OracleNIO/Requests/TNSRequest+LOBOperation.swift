@@ -3,7 +3,7 @@ import NIOCore
 final class LOBOperationRequest: TNSRequest {
     var connection: OracleConnection
     var messageType: MessageType = .function
-    var functionCode: UInt8 = Constants.TNS_FUNC_LOB_OP
+    var functionCode: Constants.FunctionCode = .lobOp
     var currentSequenceNumber: UInt8 = 0
     var onResponsePromise: NIOCore.EventLoopPromise<TNSMessage>?
 
@@ -129,7 +129,7 @@ final class LOBOperationRequest: TNSRequest {
     }
 
     func initializeHooks() {
-        self.functionCode = Constants.TNS_FUNC_LOB_OP
+        self.functionCode = .lobOp
     }
 
 

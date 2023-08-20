@@ -1,5 +1,4 @@
 import NIOCore
-import Foundation
 
 fileprivate let NUMBER_MAX_DIGITS = 40
 fileprivate let NUMBER_AS_TEXT_CHARS = 172
@@ -21,7 +20,9 @@ extension Int64: OracleDecodable {
     }
 }
 
-private func parseInteger<T: BinaryInteger>(
+// TODO: cleanup once Double and Float are implemented
+// TODO: might have a lot of room for optimization
+private func parseInteger<T: FixedWidthInteger>(
     from buffer: inout ByteBuffer
 ) throws -> T {
     var length = buffer.readableBytes
@@ -92,46 +93,47 @@ private func parseInteger<T: BinaryInteger>(
     }
 
     var data = [UInt8]()
-    // if negative, include the sign
-    if !isPositive {
-        data.append(45) // minus sign
-    }
-
     // if the decimal point index is 0 or less, add the decimal point and
     // any leading zeroes that are needed
     if decimalPointIndex <= 0 {
-        data.append(48) // zero
-        data.append(46) // decimal point
+        data.append(0) // zero
+        // decimal point
         for _ in decimalPointIndex..<0 {
-            data.append(48) // zero
+            data.append(0) // zero
         }
     }
 
     // add each of the digits
     for i in 0..<numberOfDigits {
         if i > 0 && i == decimalPointIndex {
-            data.append(46) // decimal point
+            // decimal point
         }
-        data.append(48 + digits[i])
+        data.append(digits[i])
     }
 
-    // if the decimal point index exceeds the number of digits, add any
-    // trailing zeros that are needed
     if decimalPointIndex > numberOfDigits {
-        for _ in UInt8(numberOfDigits)..<decimalPointIndex {
-            data.append(48) // zero
+        for _ in numberOfDigits..<Int(decimalPointIndex) {
+            data.append(0)
         }
     }
 
-    guard 
-        let stringValue = String(bytes: data, encoding: .utf8),
-        let value = try? T(
-            stringValue, format: IntegerFormatStyle<T>(
-                locale: .init(identifier: "en_US_POSIX")
-            )
-        )
-    else {
-        throw OracleDecodingError.Code.missingData
+    var value: T = data.reduce(0) { partialResult, digit in
+        partialResult * 10 + T(digit)
     }
+
+    if !isPositive {
+        if T.self is any SignedInteger.Type {
+            value = value * -1
+        } else {
+            // TODO: What do we do with negative values and UInt
+            fatalError()
+        }
+    }
+
+    if decimalPointIndex < numberOfDigits {
+        // TODO: handle this case if we get a decimal but we want to parse Int
+        fatalError()
+    }
+
     return value
 }

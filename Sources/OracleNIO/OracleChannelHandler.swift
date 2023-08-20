@@ -392,7 +392,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private func sendExecute(
         queryContext: ExtendedQueryContext, context: ChannelHandlerContext
     ) {
-        // TODO: add ability to specify options with query
         self.encoder.execute(
             queryContext: queryContext, 
             cleanupContext: self.cleanupContext

@@ -130,11 +130,14 @@ final class ExtendedQueryContext {
     }
 }
 
-struct QueryOptions {
-    var autoCommit: Bool = false
+public struct QueryOptions {
+    /// Automatically commit every change made to the database.
+    ///
+    /// This happens on the Oracle server side. So it won't cause additional roundtrips to the database.
+    public var autoCommit: Bool = false
 
-    var arrayDMLRowCounts: Bool = false
-    var batchErrors: Bool = false
+    internal var arrayDMLRowCounts: Bool = false
+    internal var batchErrors: Bool = false
 
     /// Indicates how many rows will be returned with the initial roundtrip.
     ///
@@ -151,7 +154,7 @@ struct QueryOptions {
     /// | 20             | 20           | 20        | 2           |
     /// | 20             | 21           | 20        | 1           |
     /// ```
-    var prefetchRows: Int = 2
+    public var prefetchRows: Int = 2
 
     /// Indicates how many rows will be returned by any subsequent fetch calls to the database.
     ///
@@ -165,7 +168,27 @@ struct QueryOptions {
     /// | 10000          | 2            | 1000      | 11          |
     /// | 10000          | 1000         | 1000      | 11          |
     /// ```
-    var arraySize: Int = 50
+    public var arraySize: Int = 50
+    
+    /// Options to pass to a ``OracleQuery`` to tweak its execution.
+    /// - Parameters:
+    ///   - autoCommit: Automatically commit after execution of the query without needing an
+    ///                 additional roundtrip.
+    ///   - prefetchRows: Indicates how many rows should be fetched with the initial response from
+    ///                   the database. Refer to ``prefetchRows`` for additional explanation.
+    ///   - arraySize: Indicates how many rows will be returned by any subsequent fetch calls to the
+    ///                database. Refer to ``arraySize`` for additional explanation.
+    public init(
+        autoCommit: Bool = false,
+        prefetchRows: Int = 2,
+        arraySize: Int = 50
+    ) {
+        self.autoCommit = autoCommit
+        self.arrayDMLRowCounts = false
+        self.batchErrors = false
+        self.prefetchRows = prefetchRows
+        self.arraySize = arraySize
+    }
 }
 
 final class CleanupContext {

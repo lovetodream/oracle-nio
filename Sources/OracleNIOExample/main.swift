@@ -29,16 +29,18 @@ do {
         var received: Int64 = 0
         try connection.query(
             "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
+            options: .init(arraySize: 50), // change array size to e.g. 100 to get a crash
             logger: logger
         ) { row in
             func workaround() {
                 var number = try? row.decode(Int64.self, context: .default)
                 received += 1
-                print(number, received, number == received)
             }
 
             workaround()
         }.wait()
+
+        print(received, received == 10_000)
 //        try connection.query("select sysdate from dual") // SELECT
 //        try connection.query("select * from \"test\"")
         //    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT

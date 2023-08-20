@@ -193,7 +193,7 @@ public class OracleConnection {
     // MARK: Query
 
     private func queryStream(
-        _ query: OracleQuery, logger: Logger
+        _ query: OracleQuery, options: QueryOptions, logger: Logger
     ) -> EventLoopFuture<OracleRowStream> {
         var logger = logger
         logger[oracleMetadataKey: .sessionID] = "\(self.sessionID ?? 0)"
@@ -204,7 +204,7 @@ public class OracleConnection {
         do {
             let context = try ExtendedQueryContext(
                 query: query,
-                options: .init(),
+                options: options,
                 useCharacterConversion: self.capabilities.characterConversion,
                 logger: logger,
                 promise: promise
@@ -329,6 +329,9 @@ extension OracleConnection {
     ///
     /// - Parameters:
     ///   - query: The ``OracleQuery`` to run.
+    ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
+    ///              be ignored, but feel free to experiment based on your needs. Every option and
+    ///              its impact is documented.
     ///   - logger: The `Logger` to log into for the query.
     ///   - file: The file, the query was started in. Used for better error reporting.
     ///   - line: The line, the query was started in. Used for better error reporting.
@@ -337,6 +340,7 @@ extension OracleConnection {
     @discardableResult
     public func query(
         _ query: OracleQuery,
+        options: QueryOptions = .init(),
         logger: Logger,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
@@ -348,7 +352,7 @@ extension OracleConnection {
         )
         let context = try ExtendedQueryContext(
             query: query,
-            options: .init(),
+            options: options,
             useCharacterConversion: self.capabilities.characterConversion,
             logger: logger,
             promise: promise
@@ -377,6 +381,9 @@ extension OracleConnection {
     ///
     /// - Parameters:
     ///   - query: The ``OracleQuery`` to run.
+    ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
+    ///              be ignored, but feel free to experiment based on your needs. Every option and
+    ///              its impact is documented.
     ///   - logger: The `Logger` to log into for the query.
     ///   - file: The file, the query was started in. Used for better error reporting.
     ///   - line: The line, the query was started in. Used for better error reporting.
@@ -384,11 +391,14 @@ extension OracleConnection {
     ///            ``OracleQueryResult``.
     public func query(
         _ query: OracleQuery,
+        options: QueryOptions = .init(),
         logger: Logger,
         file: String = #fileID,
         line: Int = #line
     ) -> EventLoopFuture<OracleQueryResult> {
-        self.queryStream(query, logger: logger).flatMap { rowStream in
+        self.queryStream(
+            query, options: options, logger: logger
+        ).flatMap { rowStream in
             rowStream.all().flatMapThrowing { rows in
                 let metadata = OracleQueryMetadata()
                 return OracleQueryResult(metadata: metadata, rows: rows)
@@ -402,6 +412,9 @@ extension OracleConnection {
     ///         query API, that supports structured concurrency.
     /// - Parameters:
     ///   - query: The ``OracleQuery`` to run.
+    ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
+    ///              be ignored, but feel free to experiment based on your needs. Every option and
+    ///              its impact is documented.
     ///   - logger: The `Logger` to log into for the query.
     ///   - file: The file, the query was started in. Used for better error reporting.
     ///   - line: The line, the query was started in. Used for better error reporting.
@@ -410,12 +423,15 @@ extension OracleConnection {
     ///            ``OracleQueryMetadata``.
     public func query(
         _ query: OracleQuery,
+        options: QueryOptions = .init(),
         logger: Logger,
         file: String = #fileID,
         line: Int = #line,
         _ onRow: @escaping (OracleRow) throws -> Void
     ) -> EventLoopFuture<OracleQueryMetadata> {
-        self.queryStream(query, logger: logger).flatMap { rowStream in
+        self.queryStream(
+            query, options: options, logger: logger
+        ).flatMap { rowStream in
             rowStream.onRow(onRow).flatMapThrowing { _ in
                 let metadata = OracleQueryMetadata()
                 return metadata

@@ -86,6 +86,34 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(received, 10_000)
     }
 
+    func testFloatingPointNumbers() {
+        var conn: OracleConnection?
+        XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())
+        defer { XCTAssertNoThrow(try conn?.close().wait()) }
+
+        var received: Int64 = 0
+        XCTAssertNoThrow(_ = try conn?.query(
+            """
+            SELECT to_number(column_value) / 100 AS id 
+            FROM xmltable ('1 to 100')
+            """,
+            logger: .oracleTest
+        ) { row in
+            func workaround() {
+                var number: Float?
+                XCTAssertNoThrow(number = try row.decode(
+                    Float.self, context: .default)
+                )
+                received += 1
+                XCTAssertEqual(number, (Float(received) / 100))
+            }
+
+            workaround()
+        }.wait())
+
+        XCTAssertEqual(received, 100)
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

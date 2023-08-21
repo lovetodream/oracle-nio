@@ -27,20 +27,21 @@ do {
 
     do {
         var received: Int64 = 0
+        var last: Int64 = 0
         try connection.query(
             "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
             options: .init(arraySize: 50), // change array size to e.g. 100 to get a crash
             logger: logger
         ) { row in
             func workaround() {
-                var number = try? row.decode(Int64.self, context: .default)
+                last = (try? row.decode(Int64.self, context: .default)) ?? 0
                 received += 1
             }
 
             workaround()
         }.wait()
 
-        print(received, received == 10_000)
+        print(received, received == last, last == 10_000)
 //        try connection.query("select sysdate from dual") // SELECT
 //        try connection.query("select * from \"test\"")
         //    try connection.query("insert into \"test\" (\"value\") values ('\(UUID().uuidString)')") // INSERT

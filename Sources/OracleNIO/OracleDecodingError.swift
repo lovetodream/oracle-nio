@@ -5,6 +5,8 @@ public struct OracleDecodingError: Error, Equatable {
         enum Base {
             case missingData
             case typeMismatch
+            case decimalPointFound
+            case signedIntegerFound
         }
 
         var base: Base
@@ -15,6 +17,25 @@ public struct OracleDecodingError: Error, Equatable {
 
         public static let missingData = Self(.missingData)
         public static let typeMismatch = Self(.typeMismatch)
+        /// Occurs if you're trying to decode a `FixedWidthInteger`, but the database sent a
+        /// `BinaryFloatingPoint` with a decimal point.
+        ///
+        /// - Note: `oracle-nio` does not make assumptions on how to round
+        ///         `BinaryFloatingPoint` to  `FixedWithInteger`. So we rather fail,
+        ///         instead of causing undefined behavior.
+        ///
+        /// - Tip: To fix this error you should either decode as `Float`, `Double` or `Decimal`, 
+        ///      depending on your needs.
+        public static let decimalPointFound = Self(.typeMismatch)
+        /// Occurs if you're trying to decode a negative signed `FixedWithInteger` to an
+        /// `UnsignedInteger`.
+        ///
+        /// - Note: `oracle-nio` does not make assumption on how to handle negative values.
+        ///         Instead of causing Integer overflow or crashing to program, we throw an error.
+        ///
+        /// - Tip: To fix this error, either change to an appropriate `SignedInteger` or handle such
+        ///      cases within the database call.
+        public static let signedIntegerFound = Self(.signedIntegerFound)
 
         public var description: String {
             switch self.base {
@@ -22,6 +43,10 @@ public struct OracleDecodingError: Error, Equatable {
                 return "missingData"
             case .typeMismatch:
                 return "typeMismatch"
+            case .decimalPointFound:
+                return "decimalPointFound"
+            case .signedIntegerFound:
+                return "signedIntegerFound"
             }
         }
     }

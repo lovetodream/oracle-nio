@@ -157,27 +157,16 @@ struct ExtendedQueryStateMachine {
         _ rowData: OracleBackendMessage.RowData,
         capabilities: Capabilities
     ) -> Action {
+        guard case .streaming(let context, _, _, _) = state else {
+            preconditionFailure()
+        }
+
         var buffer = rowData.slice
-        switch self.state {
-        case .streaming(
-            let context, let describeInfo, let rowHeader, var demandStateMachine
-        ):
-            let row = self.rowDataReceived(
-                buffer: &buffer,
-                describeInfo: describeInfo,
-                rowHeader: rowHeader,
-                rowIndex: 0 // todo: use current row index
-            )
-
-            demandStateMachine.receivedRow(row)
-            self.avoidingStateMachineCoW { state in
-                state = .streaming(
-                    context, describeInfo, rowHeader, demandStateMachine
-                )
-            }
-
+        _ = self.rowDataReceived0(buffer: &buffer)
+        while buffer.readableBytes > 0 {
             // This is not ideal, but still not as bad as passing potentially
-            // huge buffers around as associated values in enums.
+            // huge buffers around as associated values in enums and causing
+            // potential stack overflows when having big array sizes configured.
             // Reason for this even existing is that the `row data` response
             // from the Oracle database doesn't contain a length field you can
             // read without parsing all the values of said row. And to parse the
@@ -204,9 +193,8 @@ struct ExtendedQueryStateMachine {
                     case .rowHeader(let rowHeader):
                         action = self.rowHeaderReceived(rowHeader)
                     case .rowData(let rowData):
-                        action = self.rowDataReceived(
-                            rowData, capabilities: capabilities
-                        )
+                        buffer = rowData.slice
+                        action = self.rowDataReceived0(buffer: &buffer)
                     case .queryParameter:
                         // query parameters can be safely ignored
                         action = .wait
@@ -225,13 +213,13 @@ struct ExtendedQueryStateMachine {
                     return action
                 }
 
-                return .wait
+                continue
             } catch {
                 fatalError(.init(describing: error)) // TODO
             }
-        default:
-            preconditionFailure()
         }
+
+        return .wait
     }
 
     mutating func bitVectorReceived(
@@ -377,6 +365,31 @@ struct ExtendedQueryStateMachine {
     }
 
     // MARK: Private Methods
+
+    private mutating func rowDataReceived0(buffer: inout ByteBuffer) -> Action {
+        switch self.state {
+        case .streaming(
+            let context, let describeInfo, let rowHeader, var demandStateMachine
+        ):
+            let row = self.rowDataReceived(
+                buffer: &buffer,
+                describeInfo: describeInfo,
+                rowHeader: rowHeader,
+                rowIndex: 0 // todo: use current row index
+            )
+
+            demandStateMachine.receivedRow(row)
+            self.avoidingStateMachineCoW { state in
+                state = .streaming(
+                    context, describeInfo, rowHeader, demandStateMachine
+                )
+            }
+        default:
+            preconditionFailure()
+        }
+
+        return .wait
+    }
 
     private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
         switch self.state {

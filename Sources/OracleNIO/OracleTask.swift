@@ -168,8 +168,8 @@ public struct QueryOptions {
     /// | 10000          | 2            | 1000      | 11          |
     /// | 10000          | 1000         | 1000      | 11          |
     /// ```
-    public var arraySize: Int = 50
-    
+    public var arraySize: Int = 100
+
     /// Options to pass to a ``OracleQuery`` to tweak its execution.
     /// - Parameters:
     ///   - autoCommit: Automatically commit after execution of the query without needing an

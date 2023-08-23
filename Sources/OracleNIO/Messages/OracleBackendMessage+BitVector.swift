@@ -10,7 +10,11 @@ extension OracleBackendMessage {
             capabilities: Capabilities
         ) throws -> OracleBackendMessage.BitVector {
             let columnsCountSent = try buffer.throwingReadUB2()
-            let bitVector = buffer.readBytes(length: Int(columnsCountSent))
+            var length = Int(columnsCountSent) / 8
+            if columnsCountSent % 8 > 0 {
+                length += 1
+            }
+            let bitVector = buffer.readBytes(length: length)
             return .init(
                 columnsCountSent: columnsCountSent, bitVector: bitVector
             )

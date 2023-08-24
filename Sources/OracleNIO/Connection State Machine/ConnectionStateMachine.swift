@@ -80,7 +80,7 @@ struct ConnectionStateMachine {
             with: OracleSQLError, cleanupContext: CleanUpContext?
         )
         case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
-        case moreData(ExtendedQueryContext, ByteBuffer)
+        case needMoreData
 
         // Query streaming
         case forwardRows([DataRow])
@@ -573,6 +573,24 @@ struct ConnectionStateMachine {
         }
     }
 
+    mutating func chunkReceived(
+        _ buffer: ByteBuffer, capabilities: Capabilities
+    ) -> ConnectionAction {
+        switch self.state {
+        case .extendedQuery(var queryState):
+            return self.avoidingStateMachineCoW { machine in
+                let action = queryState.chunkReceived(
+                    buffer, capabilities: capabilities
+                )
+                machine.state = .extendedQuery(queryState)
+                return machine.modify(with: action)
+            }
+
+        default:
+            preconditionFailure()
+        }
+    }
+
     // MARK: - Private Methods -
 
     private mutating func startAuthentication(_ authContext: AuthContext) -> ConnectionAction {
@@ -641,7 +659,7 @@ struct ConnectionStateMachine {
                 .sendReexecute,
                 .sendFetch,
                 .succeedQuery,
-                .moreData,
+                .needMoreData,
                 .forwardRows,
                 .forwardStreamComplete,
                 .read,
@@ -854,8 +872,8 @@ extension ConnectionStateMachine {
             return .failQuery(promise, with: error, cleanupContext: nil)
         case .succeedQuery(let promise, let columns):
             return .succeedQuery(promise, columns)
-        case .moreData(let context, let buffer):
-            return .moreData(context, buffer)
+        case .needMoreData:
+            return .needMoreData
         case .forwardRows(let rows):
             return .forwardRows(rows)
         case .forwardStreamComplete(let rows):

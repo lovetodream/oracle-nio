@@ -21,6 +21,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private var handlerContext: ChannelHandlerContext?
     private var rowStream: OracleRowStream?
     private var decoder: ByteToMessageHandler<OracleBackendMessageDecoder>?
+    private let decoderContext: OracleBackendMessageDecoder.Context = .init()
     private var encoder: OracleFrontendMessageEncoder!
     private let configuration: OracleConnection.Configuration
 
@@ -90,6 +91,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         self.logger.trace("Backend message received", metadata: [
             .message: "\(message)"
         ])
+        self.decoderContext.performingChunkedRead = false
         let action: ConnectionStateMachine.ConnectionAction
 
         switch message {
@@ -129,6 +131,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .queryParameter(let parameter):
             action = self.state.queryParameterReceived(parameter)
+
+        case .chunk(let buffer):
+            action = self.state.chunkReceived(
+                buffer, 
+                capabilities: self.capabilitiesProvider.getCapabilities()
+            )
         }
 
         self.run(action, with: context)
@@ -262,22 +270,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
 
-        case .moreData(let queryContext, var buffer):
-            do {
-                let messages = try OracleBackendMessage.decode(
-                    from: &buffer,
-                    of: .data,
-                    capabilities: self.capabilitiesProvider.getCapabilities(),
-                    skipDataFlags: false,
-                    queryOptions: queryContext.options
-                )
-                for message in messages {
-                    self.handleMessage(message, context: context)
-                }
-            } catch {
-                context.fireErrorCaught(error)
-            }
-            
+        case .needMoreData:
+            self.decoderContext.performingChunkedRead = true
+            context.read()
+
         case .forwardRows(let rows):
             self.rowStream!.receive(rows)
         case .forwardStreamComplete(let buffer):
@@ -543,7 +539,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.pipeline.removeHandler(decoder, promise: nil)
         }
         self.decoder = ByteToMessageHandler(OracleBackendMessageDecoder(
-            capabilities: self.capabilitiesProvider.getCapabilities()
+            capabilities: self.capabilitiesProvider.getCapabilities(),
+            context: self.decoderContext
         ))
         _ = context.pipeline.addHandler(
             self.decoder!,

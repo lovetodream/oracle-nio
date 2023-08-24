@@ -11,6 +11,13 @@ struct ExtendedQueryStateMachine {
             OracleBackendMessage.RowHeader,
             RowStreamStateMachine
         )
+        case streamingAndWaiting(
+            ExtendedQueryContext,
+            DescribeInfo,
+            OracleBackendMessage.RowHeader,
+            RowStreamStateMachine,
+            partial: ByteBuffer
+        )
         /// Indicates that the current query was cancelled and we want to drain rows from the
         /// connection ASAP.
         case drain([DescribeInfo.Column])
@@ -31,8 +38,8 @@ struct ExtendedQueryStateMachine {
 
         case evaluateErrorAtConnectionLevel(OracleSQLError)
 
-        /// State indicating that the previous message contains more unconsumed data.
-        case moreData(ExtendedQueryContext, ByteBuffer)
+        case needMoreData
+
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow])
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
@@ -81,7 +88,10 @@ struct ExtendedQueryStateMachine {
                 return .failQuery(promise, with: .queryCancelled)
             }
 
-        case .streaming(_, let describeInfo, _, var streamStateMachine):
+        case .streaming(_, let describeInfo, _, var streamStateMachine),
+            .streamingAndWaiting(
+                _, let describeInfo, _, var streamStateMachine, _
+            ):
             precondition(!self.isCancelled)
             self.isCancelled = true
             self.state = .drain(describeInfo.columns)
@@ -145,7 +155,7 @@ struct ExtendedQueryStateMachine {
             }
             return .wait
 
-        case .initialized, .drain, .error, .commandComplete:
+        case .initialized, .streamingAndWaiting, .drain, .error, .commandComplete:
             preconditionFailure()
 
         case .modifying:
@@ -162,64 +172,12 @@ struct ExtendedQueryStateMachine {
         }
 
         var buffer = rowData.slice
-        _ = self.rowDataReceived0(buffer: &buffer)
-        while buffer.readableBytes > 0 {
-            // This is not ideal, but still not as bad as passing potentially
-            // huge buffers around as associated values in enums and causing
-            // potential stack overflows when having big array sizes configured.
-            // Reason for this even existing is that the `row data` response
-            // from the Oracle database doesn't contain a length field you can
-            // read without parsing all the values of said row. And to parse the
-            // values you have to have contextual information from
-            // `DescribeInfo`. So, because Oracle is sending messages in bulk,
-            // we don't really have another choice.
-            var slice = buffer.slice()
-            do {
-                let messages = try OracleBackendMessage.decode(
-                    from: &slice,
-                    of: .data,
-                    capabilities: capabilities,
-                    skipDataFlags: false,
-                    queryOptions: context.options
-                )
-
-                for message in messages {
-                    let action: Action
-                    switch message {
-                    case .bitVector(let bitVector):
-                        action = self.bitVectorReceived(bitVector)
-                    case .describeInfo(let describeInfo):
-                        action = self.describeInfoReceived(describeInfo)
-                    case .rowHeader(let rowHeader):
-                        action = self.rowHeaderReceived(rowHeader)
-                    case .rowData(let rowData):
-                        buffer = rowData.slice
-                        action = self.rowDataReceived0(buffer: &buffer)
-                    case .queryParameter:
-                        // query parameters can be safely ignored
-                        action = .wait
-                    case .error(let error):
-                        action = self.errorReceived(error)
-                    default:
-                        preconditionFailure()
-                    }
-                    // If action is anything other than wait, we will have to
-                    // return it. This should be fine, because messages with
-                    // an action should only occur at the end of a packet.
-                    // At least thats what I (@lovetodream) know from testing.
-                    if case .wait = action {
-                        continue
-                    }
-                    return action
-                }
-
-                continue
-            } catch {
-                fatalError(.init(describing: error)) // TODO
-            }
-        }
-
-        return .wait
+        _ = self.rowDataReceived0(
+            buffer: &buffer
+        )
+        return self.moreDataReceived(
+            &buffer, capabilities: capabilities, context: context
+        )
     }
 
     mutating func bitVectorReceived(
@@ -257,7 +215,8 @@ struct ExtendedQueryStateMachine {
             case .describeInfoReceived(_, _):
                 fatalError("is this possible?")
 
-            case .streaming(_, _, _, var demandStateMachine):
+            case .streaming(_, _, _, var demandStateMachine),
+                .streamingAndWaiting(_, _, _, var demandStateMachine, _):
                 self.avoidingStateMachineCoW { state in
                     state = .commandComplete
                 }
@@ -305,7 +264,8 @@ struct ExtendedQueryStateMachine {
                 .commandComplete,
                 .error:
                 preconditionFailure("This is impossible...")
-            case .streaming(let extendedQueryContext, _, _, _):
+            case .streaming(let extendedQueryContext, _, _, _),
+                .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
                 if let cursorID = error.cursorID {
                     extendedQueryContext.cursorID = cursorID
                 }
@@ -320,6 +280,29 @@ struct ExtendedQueryStateMachine {
 
     mutating func errorHappened(_ error: OracleSQLError) -> Action {
         return self.setAndFireError(error)
+    }
+
+    mutating func chunkReceived(
+        _ buffer: ByteBuffer, capabilities: Capabilities
+    ) -> Action {
+        guard case .streamingAndWaiting(
+            let extendedQueryContext,
+            let describeInfo,
+            let rowHeader,
+            let streamState,
+            var partial
+        ) = state else {
+            preconditionFailure()
+        }
+        partial.writeImmutableBuffer(buffer)
+        self.avoidingStateMachineCoW { state in
+            state = .streaming(
+                extendedQueryContext, describeInfo, rowHeader, streamState
+            )
+        }
+        return self.moreDataReceived(
+            &partial, capabilities: capabilities, context: extendedQueryContext
+        )
     }
 
     // MARK: Consumer Actions
@@ -345,6 +328,9 @@ struct ExtendedQueryStateMachine {
                 }
             }
 
+        case .streamingAndWaiting:
+            return .wait
+
         case .drain:
             return .wait
 
@@ -366,24 +352,112 @@ struct ExtendedQueryStateMachine {
 
     // MARK: Private Methods
 
+    private mutating func moreDataReceived(
+        _ buffer: inout ByteBuffer,
+        capabilities: Capabilities,
+        context: ExtendedQueryContext
+    ) -> Action {
+        while buffer.readableBytes > 0 {
+            // This is not ideal, but still not as bad as passing potentially
+            // huge buffers around as associated values in enums and causing
+            // potential stack overflows when having big array sizes configured.
+            // Reason for this even existing is that the `row data` response
+            // from the Oracle database doesn't contain a length field you can
+            // read without parsing all the values of said row. And to parse the
+            // values you have to have contextual information from
+            // `DescribeInfo`. So, because Oracle is sending messages in bulk,
+            // we don't really have another choice.
+            var slice = buffer.slice()
+            do {
+                let messages = try OracleBackendMessage.decode(
+                    from: &slice,
+                    of: .data,
+                    capabilities: capabilities,
+                    skipDataFlags: false,
+                    queryOptions: context.options,
+                    isChunkedRead: false
+                )
+
+                for message in messages {
+                    let action: Action
+                    switch message {
+                    case .bitVector(let bitVector):
+                        action = self.bitVectorReceived(bitVector)
+                    case .describeInfo(let describeInfo):
+                        action = self.describeInfoReceived(describeInfo)
+                    case .rowHeader(let rowHeader):
+                        action = self.rowHeaderReceived(rowHeader)
+                    case .rowData(let rowData):
+                        buffer = rowData.slice
+                        action = self.rowDataReceived0(
+                            buffer: &buffer
+                        )
+                    case .queryParameter:
+                        // query parameters can be safely ignored
+                        action = .wait
+                    case .error(let error):
+                        action = self.errorReceived(error)
+                    default:
+                        preconditionFailure()
+                    }
+                    // If action is anything other than wait, we will have to
+                    // return it. This should be fine, because messages with
+                    // an action should only occur at the end of a packet.
+                    // At least thats what I (@lovetodream) know from testing.
+                    if case .wait = action {
+                        continue
+                    }
+                    return action
+                }
+
+                continue
+            } catch {
+                fatalError(.init(describing: error)) // TODO
+            }
+        }
+
+        return .wait
+    }
+
     private mutating func rowDataReceived0(buffer: inout ByteBuffer) -> Action {
         switch self.state {
         case .streaming(
             let context, let describeInfo, let rowHeader, var demandStateMachine
         ):
-            let row = self.rowDataReceived(
+            let readerIndex = buffer.readerIndex
+            switch self.rowDataReceived(
                 buffer: &buffer,
                 describeInfo: describeInfo,
                 rowHeader: rowHeader,
                 rowIndex: 0 // todo: use current row index
-            )
-
-            demandStateMachine.receivedRow(row)
-            self.avoidingStateMachineCoW { state in
-                state = .streaming(
-                    context, describeInfo, rowHeader, demandStateMachine
+            ) {
+            case .some(let row):
+                demandStateMachine.receivedRow(row)
+                self.avoidingStateMachineCoW { state in
+                    state = .streaming(
+                        context, describeInfo, rowHeader, demandStateMachine
+                    )
+                }
+            case .none:
+                buffer.moveReaderIndex(to: readerIndex)
+                // prepend message id prefix again
+                var partial = ByteBuffer(
+                    bytes: [OracleBackendMessage.MessageID.rowData.rawValue]
                 )
+                partial.writeImmutableBuffer(buffer.slice())
+
+                self.avoidingStateMachineCoW { state in
+                    state = .streamingAndWaiting(
+                        context,
+                        describeInfo,
+                        rowHeader,
+                        demandStateMachine,
+                        partial: partial
+                    )
+                }
+                return .needMoreData
             }
+
         default:
             preconditionFailure()
         }
@@ -410,7 +484,8 @@ struct ExtendedQueryStateMachine {
             self.state = .error(error)
             return .evaluateErrorAtConnectionLevel(error)
 
-        case .streaming(_, _, _, var streamState):
+        case .streaming(_, _, _, var streamState),
+            .streamingAndWaiting(_, _, _, var streamState, _):
             self.state = .error(error)
             switch streamState.fail() {
             case .read:
@@ -452,40 +527,39 @@ struct ExtendedQueryStateMachine {
 
         // TODO: I know this is weird, but I keep it as long as TNSRequest+Data
         // is still here and I have to cross check things :)
-        var columnValue: ByteBuffer?
+        var columnValue: ByteBuffer
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
-            columnValue = nil
-        } else if [.varchar, .char, .long].contains(oracleType) {
+            columnValue = ByteBuffer(bytes: [0]) // NULL indicator
+            return columnValue
+        }
+
+        switch oracleType {
+        case .varchar, .char, .long:
             if csfrm == Constants.TNS_CS_NCHAR {
                 fatalError() // TODO: check ncharsetid
             }
-            columnValue = buffer.readStringSlice(with: Int(csfrm))
-        } else if [.raw, .longRAW].contains(oracleType) {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .number {
-            columnValue = buffer.readOracleSlice()
-        } else if [.date, .timestamp, .timestampLTZ, .timestampTZ]
-            .contains(oracleType) {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .rowID {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .binaryDouble {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .binaryFloat {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .binaryInteger {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .cursor {
+            switch buffer.readStringSlice(with: Int(csfrm)) {
+            case .some(let slice):
+                columnValue = slice
+            case .none:
+                return nil // need more data
+            }
+        case .raw, .longRAW, .number, .date, .timestamp, .timestampLTZ,
+            .timestampTZ, .rowID, .binaryDouble, .binaryFloat, .binaryInteger,
+            .boolean, .intervalDS:
+            switch buffer.readOracleSlice() {
+            case .some(let slice):
+                columnValue = slice
+            case .none:
+                return nil // need more data
+            }
+        case .cursor:
             fatalError("not implemented")
-        } else if oracleType == .boolean {
-            columnValue = buffer.readOracleSlice()
-        } else if oracleType == .intervalDS {
-            columnValue = buffer.readOracleSlice()
-        } else if [.clob, .blob].contains(oracleType) {
+        case .clob, .blob:
             fatalError("not implemented")
-        } else if oracleType == .json {
+        case .json:
             fatalError("not implemented")
-        } else {
+        default:
             fatalError("not implemented")
         }
 
@@ -497,7 +571,7 @@ struct ExtendedQueryStateMachine {
         describeInfo: DescribeInfo,
         rowHeader: OracleBackendMessage.RowHeader,
         rowIndex: Int
-    ) -> DataRow {
+    ) -> DataRow? {
         var out = ByteBuffer()
         for (index, column) in describeInfo.columns.enumerated() {
             if self.isDuplicateData(
@@ -513,6 +587,8 @@ struct ExtendedQueryStateMachine {
                 from: &buffer, columnInfo: column
             ) {
                 out.writeBuffer(&data)
+            } else {
+                return nil
             }
         }
 
@@ -525,7 +601,11 @@ struct ExtendedQueryStateMachine {
 
     var isComplete: Bool {
         switch self.state {
-        case .initialized, .describeInfoReceived, .streaming, .drain:
+        case .initialized,
+            .describeInfoReceived,
+            .streaming,
+            .streamingAndWaiting,
+            .drain:
             return false
         case .commandComplete, .error:
             return true

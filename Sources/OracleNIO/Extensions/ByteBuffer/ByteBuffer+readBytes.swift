@@ -25,12 +25,20 @@ extension ByteBuffer {
         return (self.readSlice(length: Int(length)), length)
     }
 
+    /// Read a slice of data prefixed with a length byte.
+    ///
+    /// If not enough data could be read, `nil` will be returned, indicating that another packet must be
+    /// read from the channel to complete the operation.
     mutating func readOracleSlice() -> ByteBuffer? {
         guard
             let length = self.getInteger(at: self.readerIndex, as: UInt8.self)
         else {
             preconditionFailure()
         }
-        return self.readSlice(length: Int(length) + MemoryLayout<UInt8>.size)
+        let sliceLength = Int(length) + MemoryLayout<UInt8>.size
+        if self.readableBytes < sliceLength {
+            return nil // need more data
+        }
+        return self.readSlice(length: sliceLength)
     }
 }

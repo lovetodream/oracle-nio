@@ -71,7 +71,7 @@ final class OracleNIOTests: XCTestCase {
         var received: Int64 = 0
         XCTAssertNoThrow(_ = try conn?.query(
             "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
-            options: .init(arraySize: 500),
+            options: .init(arraySize: 1000),
             logger: .oracleTest
         ) { row in
             func workaround() {

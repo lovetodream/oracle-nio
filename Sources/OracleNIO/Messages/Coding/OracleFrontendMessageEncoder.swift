@@ -827,13 +827,10 @@ extension OracleFrontendMessageEncoder {
     }
 
     private mutating func writePiggybackCode(code: Constants.FunctionCode) {
-        self.buffer.writeInteger(UInt8(MessageType.piggyback.rawValue))
-        self.buffer.writeInteger(code.rawValue)
-        self.buffer.writeSequenceNumber()
-        if self.capabilities.ttcFieldVersion 
-            >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
-            self.buffer.writeUB8(0) // token number
-        }
+        self.writeFunctionCode(
+            messageType: .piggyback,
+            functionCode: code
+        )
     }
 
     private mutating func writeCloseCursorsPiggyback(

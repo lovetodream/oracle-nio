@@ -13,12 +13,8 @@ protocol TNSRequest {
 extension TNSRequest {
     static func initialize(from connection: OracleConnection) -> Self {
         let message = Self.init(connection: connection, messageType: .function)
-        message.initializeHooks()
         return message
     }
-
-    func initializeHooks() {}
-    func preprocess() {}
 
     func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         try defaultProcessResponse(&message, of: type, from: channel)
@@ -33,31 +29,12 @@ extension TNSRequest {
             connection.logger.debug(
                 "Received call status: \(callStatus) with end to end sequence number \(endToEndSequenceNumber)"
             )
-        case .warning:
-            let warning = self.processWarning(&message)
-            connection.logger.warning(
-                "The oracle server sent a warning",
-                metadata: ["message": "\(warning.message ?? "empty")", "code": "\(warning.number)"]
-            )
         case .serverSidePiggyback:
             self.processServerSidePiggyback(&message)
         default:
             connection.logger.error("Could not process message of type: \(type)")
             throw OracleError.ErrorType.typeUnknown
         }
-    }
-
-    func processWarning(_ message: inout TNSMessage) -> OracleErrorInfo {
-        let number = message.packet.readInteger(as: UInt16.self) ?? 0 // error number
-        let numberOfBytes = message.packet.readInteger(as: UInt16.self) ?? 0 // length of error message
-        message.packet.moveReaderIndex(forwardByBytes: 2) // flags
-        let errorMessage: String?
-        if number != 0 && numberOfBytes > 0 {
-            errorMessage = message.packet.readString(length: Int(numberOfBytes))
-        } else {
-            errorMessage = nil
-        }
-        return OracleErrorInfo(number: UInt32(number), isWarning: true, message: errorMessage, batchErrors: [])
     }
 
     func processServerSidePiggyback(_ message: inout TNSMessage) {

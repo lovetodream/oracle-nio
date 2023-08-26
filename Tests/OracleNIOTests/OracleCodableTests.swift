@@ -47,7 +47,7 @@ extension DataRow: ExpressibleByArrayLiteral {
             switch column {
             case .none:
                 bytes.writeInteger(UInt8(0))
-            case .some(var input):
+            case .some(let input):
                 input.encode(into: &bytes, context: .default)
             }
         }

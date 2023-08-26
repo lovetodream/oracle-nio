@@ -131,6 +131,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .queryParameter(let parameter):
             action = self.state.queryParameterReceived(parameter)
+        case .warning(let warning):
+            // TODO: maybe we need to inform state about this event in the future
+            self.logger.info(
+                "The oracle server sent a warning, everything should be fine",
+                metadata: [.warning: "\(warning)"]
+            )
+            action = .wait
 
         case .chunk(let buffer):
             action = self.state.chunkReceived(

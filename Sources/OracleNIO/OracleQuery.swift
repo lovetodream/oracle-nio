@@ -306,12 +306,33 @@ extension OracleBindings:
             return "****"
         }
 
-        guard var buffer = buffer else {
+        guard var buffer else {
             return "null"
         }
 
-        // TODO: better printout for numeric, string, bool
-        return "\(buffer.readableBytes) bytes"
+        do {
+            switch type {
+            case .binaryInteger, .number:
+                let number = try Int64(
+                    from: &buffer, type: type, context: .default
+                )
+                return String(describing: number)
+            case .boolean:
+                let bool = try Bool(
+                    from: &buffer, type: type, context: .default
+                )
+                return String(describing: bool)
+            case .varchar, .char, .long, .rowID:
+                let value = try String(
+                    from: &buffer, type: type, context: .default
+                )
+                return String(reflecting: value) // adds quotes
+            default:
+                return "\(buffer.readableBytes) bytes"
+            }
+        } catch {
+            return "\(buffer.readableBytes) bytes"
+        }
     }
 }
 

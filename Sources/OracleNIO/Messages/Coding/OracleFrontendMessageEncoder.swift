@@ -483,7 +483,7 @@ struct OracleFrontendMessageEncoder {
         } else {
             functionCode = .reexecute
         }
-        var parameters = queryContext.query.binds
+        let parameters = queryContext.query.binds
         var executionFlags1: UInt32 = 0
         var executionFlags2: UInt32 = 0
         var numberOfIterations: UInt32 = 0

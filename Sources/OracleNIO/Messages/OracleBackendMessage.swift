@@ -34,6 +34,7 @@ enum OracleBackendMessage: Sendable, Hashable {
     case rowHeader(RowHeader)
     case rowData(RowData)
     case status
+    case warning(BackendError)
 
     case chunk(ByteBuffer)
 }
@@ -88,6 +89,7 @@ extension OracleBackendMessage {
         case rowData
         case parameter
         case status
+        case warning
         case describeInfo
         case bitVector
 
@@ -107,6 +109,8 @@ extension OracleBackendMessage {
                 self = .parameter
             case 9:
                 self = .status
+            case 15:
+                self = .warning
             case 16:
                 self = .describeInfo
             case 21:
@@ -132,6 +136,8 @@ extension OracleBackendMessage {
                 return 8
             case .status:
                 return 9
+            case .warning:
+                return 15
             case .describeInfo:
                 return 16
             case .bitVector:
@@ -217,6 +223,12 @@ extension OracleBackendMessage {
                         messages.append(try .bitVector(
                             .decode(from: &buffer, capabilities: capabilities)
                         ))
+                    case .warning:
+                        messages.append(try .warning(
+                            .decodeWarning(
+                                from: &buffer, capabilities: capabilities
+                            )
+                        ))
                     case nil:
                         fatalError("not implemented")
                     }
@@ -256,6 +268,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".rowData(\(String(reflecting: data)))"
         case .queryParameter(let parameter):
             return ".queryParameter(\(String(reflecting: parameter)))"
+        case .warning(let warning):
+            return ".warning(\(String(reflecting: warning))"
         case .chunk(let buffer):
             return ".chunk(\(String(reflecting: buffer)))"
         }

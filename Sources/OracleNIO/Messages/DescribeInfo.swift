@@ -81,7 +81,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let dbType = try DBType.fromORATypeAndCSFRM(
                 typeNumber: dataType, csfrm: csfrm
             )
-            guard let oracleDataType = dbType._oracleType else {
+            guard dbType._oracleType != nil else {
                 throw OraclePartialDecodingError
                     .fieldNotDecodable(type: OracleDataType.self)
             }

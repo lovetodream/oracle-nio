@@ -10,6 +10,7 @@ extension OracleSQLConnection {
         case sessionID = "oraclesql_session_id"
         case connectionAction = "oraclesql_connection_action"
         case error = "oraclesql_error"
+        case warning = "oraclesql_warning"
         case message = "oraclesql_message"
         case userEvent = "oraclesql_user_event"
     }

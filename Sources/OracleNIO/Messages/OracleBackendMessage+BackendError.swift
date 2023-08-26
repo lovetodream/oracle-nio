@@ -11,10 +11,32 @@ extension OracleBackendMessage {
         var rowID: RowID?
         var batchErrors: [OracleError]
 
+        static func decodeWarning(
+            from buffer: inout ByteBuffer, capabilities: Capabilities
+        ) throws -> OracleBackendMessage.BackendError {
+            let number = try buffer.throwingReadInteger(as: UInt16.self)
+                // error number
+            let length = try buffer.throwingReadInteger(as: UInt16.self)
+                // length of error message
+            buffer.moveReaderIndex(forwardBy: 2) // skip flags
+            let errorMessage: String?
+            if number != 0 && length > 0 {
+                errorMessage = buffer.readString(length: Int(length))
+            } else {
+                errorMessage = nil
+            }
+            return .init(
+                number: UInt32(number),
+                isWarning: true,
+                message: errorMessage,
+                batchErrors: []
+            )
+        }
+
         static func decode(
             from buffer: inout ByteBuffer, capabilities: Capabilities
         ) throws -> OracleBackendMessage.BackendError {
-            let callStatus = try buffer.throwingReadUB4() // end of call status
+            _ = try buffer.throwingReadUB4() // end of call status
             buffer.skipUB2() // end to end seq#
             buffer.skipUB4() // current row number
             buffer.skipUB2() // error number

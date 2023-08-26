@@ -9,6 +9,7 @@ public struct OracleSQLError: Error {
             case clientClosedConnection
             case connectionError
             case messageDecodingFailure
+            case nationalCharsetNotSupported
             case uncleanShutdown
             case unexpectedBackendMessage
             case server
@@ -25,6 +26,8 @@ public struct OracleSQLError: Error {
         public static let clientClosedConnection = Self(.clientClosedConnection)
         public static let connectionError = Self(.connectionError)
         public static let messageDecodingFailure = Self(.messageDecodingFailure)
+        public static let nationalCharsetNotSupported =
+            Self(.nationalCharsetNotSupported)
         public static let uncleanShutdown = Self(.uncleanShutdown)
         public static let unexpectedBackendMessage =
             Self(.unexpectedBackendMessage)
@@ -41,6 +44,8 @@ public struct OracleSQLError: Error {
                 return "connectionError"
             case .messageDecodingFailure:
                 return "messageDecodingFailure"
+            case .nationalCharsetNotSupported:
+                return "nationalCharsetNotSupported"
             case .uncleanShutdown:
                 return "uncleanShutdown"
             case .unexpectedBackendMessage:
@@ -219,6 +224,9 @@ public struct OracleSQLError: Error {
         new.serverInfo = .init(error)
         return new
     }
+
+    static let nationalCharsetNotSupported =
+    OracleSQLError(code: .nationalCharsetNotSupported)
 
     static let queryCancelled = OracleSQLError(code: .queryCancelled)
 

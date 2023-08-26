@@ -745,7 +745,7 @@ extension ConnectionStateMachine {
             .unexpectedBackendMessage,
             .uncleanShutdown:
             return true
-        case .queryCancelled:
+        case .queryCancelled, .nationalCharsetNotSupported:
             return false
         case .server:
             fatalError("todo")

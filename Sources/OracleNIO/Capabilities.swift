@@ -79,7 +79,7 @@ struct Capabilities: Sendable, Hashable {
 
     func checkNCharsetID() throws {
         if self.nCharsetID != Constants.TNS_CHARSET_UTF16 {
-            throw OracleError.ErrorType.nCharCSNotSupported
+            throw OracleSQLError.nationalCharsetNotSupported
         }
     }
 }

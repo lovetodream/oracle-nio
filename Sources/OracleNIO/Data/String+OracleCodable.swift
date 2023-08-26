@@ -25,7 +25,13 @@ extension String: OracleDecodable {
     ) throws {
         switch type.oracleType {
         case .varchar, .char, .long:
-            self = buffer.readString(length: buffer.readableBytes)!
+            if type.csfrm == Constants.TNS_CS_IMPLICIT {
+                self = buffer.readString(length: buffer.readableBytes)!
+            } else {
+                self = buffer.readString(
+                    length: buffer.readableBytes, encoding: .utf16
+                )!
+            }
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

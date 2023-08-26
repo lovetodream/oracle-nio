@@ -172,12 +172,18 @@ struct ExtendedQueryStateMachine {
         }
 
         var buffer = rowData.slice
-        _ = self.rowDataReceived0(
-            buffer: &buffer
+        let action = self.rowDataReceived0(
+            buffer: &buffer, capabilities: capabilities
         )
-        return self.moreDataReceived(
-            &buffer, capabilities: capabilities, context: context
-        )
+        switch action {
+        case .wait:
+            return self.moreDataReceived(
+                &buffer, capabilities: capabilities, context: context
+            )
+
+        default:
+            return action
+        }
     }
 
     mutating func bitVectorReceived(
@@ -390,7 +396,7 @@ struct ExtendedQueryStateMachine {
                     case .rowData(let rowData):
                         buffer = rowData.slice
                         action = self.rowDataReceived0(
-                            buffer: &buffer
+                            buffer: &buffer, capabilities: capabilities
                         )
                     case .queryParameter:
                         // query parameters can be safely ignored
@@ -419,43 +425,60 @@ struct ExtendedQueryStateMachine {
         return .wait
     }
 
-    private mutating func rowDataReceived0(buffer: inout ByteBuffer) -> Action {
+    private mutating func rowDataReceived0(
+        buffer: inout ByteBuffer, capabilities: Capabilities
+    ) -> Action {
         switch self.state {
         case .streaming(
             let context, let describeInfo, let rowHeader, var demandStateMachine
         ):
             let readerIndex = buffer.readerIndex
-            switch self.rowDataReceived(
-                buffer: &buffer,
-                describeInfo: describeInfo,
-                rowHeader: rowHeader,
-                rowIndex: 0 // todo: use current row index
-            ) {
-            case .some(let row):
-                demandStateMachine.receivedRow(row)
-                self.avoidingStateMachineCoW { state in
-                    state = .streaming(
-                        context, describeInfo, rowHeader, demandStateMachine
+            do {
+                switch try self.rowDataReceived(
+                    buffer: &buffer,
+                    describeInfo: describeInfo,
+                    rowHeader: rowHeader,
+                    rowIndex: 0, // todo: use current row index
+                    capabilitites: capabilities
+                ) {
+                case .some(let row):
+                    demandStateMachine.receivedRow(row)
+                    self.avoidingStateMachineCoW { state in
+                        state = .streaming(
+                            context, describeInfo, rowHeader, demandStateMachine
+                        )
+                    }
+                case .none:
+                    buffer.moveReaderIndex(to: readerIndex)
+                    // prepend message id prefix again
+                    var partial = ByteBuffer(
+                        bytes: [OracleBackendMessage.MessageID.rowData.rawValue]
                     )
-                }
-            case .none:
-                buffer.moveReaderIndex(to: readerIndex)
-                // prepend message id prefix again
-                var partial = ByteBuffer(
-                    bytes: [OracleBackendMessage.MessageID.rowData.rawValue]
-                )
-                partial.writeImmutableBuffer(buffer.slice())
+                    partial.writeImmutableBuffer(buffer.slice())
 
-                self.avoidingStateMachineCoW { state in
-                    state = .streamingAndWaiting(
-                        context,
-                        describeInfo,
-                        rowHeader,
-                        demandStateMachine,
-                        partial: partial
+                    self.avoidingStateMachineCoW { state in
+                        state = .streamingAndWaiting(
+                            context,
+                            describeInfo,
+                            rowHeader,
+                            demandStateMachine,
+                            partial: partial
+                        )
+                    }
+                    return .needMoreData
+                }
+            } catch {
+                guard let error = error as? OracleSQLError else {
+                    preconditionFailure()
+                }
+                switch demandStateMachine.fail() {
+                case .read:
+                    return .forwardStreamError(error, read: true, cursorID: nil)
+                case .wait:
+                    return .forwardStreamError(
+                        error, read: false, cursorID: nil
                     )
                 }
-                return .needMoreData
             }
 
         default:
@@ -519,48 +542,49 @@ struct ExtendedQueryStateMachine {
 
     private func processColumnData(
         from buffer: inout ByteBuffer,
-        columnInfo: DescribeInfo.Column
-    ) -> ByteBuffer? {
+        columnInfo: DescribeInfo.Column,
+        capabilities: Capabilities
+    ) throws -> ByteBuffer? {
         let oracleType = columnInfo.dataType.oracleType
         let csfrm = columnInfo.dataType.csfrm
         let bufferSize = columnInfo.bufferSize
 
         // TODO: I know this is weird, but I keep it as long as TNSRequest+Data
         // is still here and I have to cross check things :)
-        var columnValue: ByteBuffer
+        let columnValue: ByteBuffer
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
             columnValue = ByteBuffer(bytes: [0]) // NULL indicator
             return columnValue
         }
+        if [.varchar, .char, .long].contains(oracleType) {
+            if csfrm == Constants.TNS_CS_NCHAR {
+                try capabilities.checkNCharsetID()
+            }
+            // if we need capabilities during decoding in the future, we should
+            // move this to decoding too
+        }
 
         switch oracleType {
-        case .varchar, .char, .long:
-            if csfrm == Constants.TNS_CS_NCHAR {
-                fatalError() // TODO: check ncharsetid
-            }
-            switch buffer.readStringSlice(with: Int(csfrm)) {
-            case .some(let slice):
-                columnValue = slice
-            case .none:
-                return nil // need more data
-            }
-        case .raw, .longRAW, .number, .date, .timestamp, .timestampLTZ,
-            .timestampTZ, .rowID, .binaryDouble, .binaryFloat, .binaryInteger,
-            .boolean, .intervalDS:
+        case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
+            .timestampLTZ, .timestampTZ, .rowID, .binaryDouble, .binaryFloat,
+            .binaryInteger, .boolean, .intervalDS, .cursor:
             switch buffer.readOracleSlice() {
             case .some(let slice):
                 columnValue = slice
             case .none:
                 return nil // need more data
             }
-        case .cursor:
-            fatalError("not implemented")
         case .clob, .blob:
             fatalError("not implemented")
         case .json:
             fatalError("not implemented")
         default:
             fatalError("not implemented")
+        }
+
+        if [.long, .longRAW].contains(oracleType) {
+            buffer.skipSB4() // null indicator
+            buffer.skipUB4() // return code
         }
 
         return columnValue
@@ -570,8 +594,9 @@ struct ExtendedQueryStateMachine {
         buffer: inout ByteBuffer,
         describeInfo: DescribeInfo,
         rowHeader: OracleBackendMessage.RowHeader,
-        rowIndex: Int
-    ) -> DataRow? {
+        rowIndex: Int,
+        capabilitites: Capabilities
+    ) throws -> DataRow? {
         var out = ByteBuffer()
         for (index, column) in describeInfo.columns.enumerated() {
             if self.isDuplicateData(
@@ -583,8 +608,8 @@ struct ExtendedQueryStateMachine {
                     // TODO: get value from previous row
                     fatalError()
                 }
-            } else if var data = self.processColumnData(
-                from: &buffer, columnInfo: column
+            } else if var data = try self.processColumnData(
+                from: &buffer, columnInfo: column, capabilities: capabilitites
             ) {
                 out.writeBuffer(&data)
             } else {

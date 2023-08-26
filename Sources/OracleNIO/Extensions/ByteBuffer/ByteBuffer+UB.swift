@@ -5,10 +5,12 @@ extension ByteBuffer {
         self.moveReaderIndex(forwardBy: 1)
     }
 
+    @available(*, deprecated, renamed: "ByteBuffer.readInteger(as:)", message: "as: UInt8.self")
     mutating func readUB1() -> UInt8? {
         readInteger(as: UInt8.self)
     }
 
+    @available(*, deprecated, renamed: "ByteBuffer.throwingReadInteger(as:)", message: "as: UInt8.self")
     mutating func throwingReadUB1(
         file: String = #fileID, line: Int = #line
     ) throws -> UInt8 {
@@ -108,6 +110,17 @@ extension ByteBuffer {
         }
     }
 
+    mutating func throwingReadUB8(
+        file: String = #fileID, line: Int = #line
+    ) throws -> UInt64 {
+        try self.readUB8().value(
+            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<UInt8>.size, actual: self.readableBytes,
+                file: file, line: line
+            )
+        )
+    }
+
     mutating func skipUB8() {
         guard let length = readUBLength() else { return }
         guard length <= 8 else { fatalError() }
@@ -166,7 +179,7 @@ extension ByteBuffer {
     /// The first byte gives the length. If the length is
     /// TNS_LONG_LENGTH_INDICATOR, however, chunks are read and discarded.
     mutating func skipRawBytesChunked() {
-        guard let length = readUB1() else { return }
+        guard let length = self.readInteger(as: UInt8.self) else { return }
         if length != Constants.TNS_LONG_LENGTH_INDICATOR {
             moveReaderIndex(forwardBy: Int(length))
         } else {

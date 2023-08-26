@@ -30,7 +30,7 @@ struct ExtendedQueryStateMachine {
 
     enum Action {
         case sendExecute(ExtendedQueryContext)
-        case sendReexecute
+        case sendReexecute(ExtendedQueryContext, CleanupContext)
         case sendFetch(ExtendedQueryContext)
 
         case failQuery(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
@@ -47,6 +47,12 @@ struct ExtendedQueryStateMachine {
 
         case read
         case wait
+    }
+
+    private enum DataRowResult {
+        case row(DataRow)
+        case duplicate
+        case notEnoughData
     }
 
     private var state: State
@@ -438,17 +444,23 @@ struct ExtendedQueryStateMachine {
                     buffer: &buffer,
                     describeInfo: describeInfo,
                     rowHeader: rowHeader,
-                    rowIndex: 0, // todo: use current row index
                     capabilitites: capabilities
                 ) {
-                case .some(let row):
+                case .row(let row):
                     demandStateMachine.receivedRow(row)
                     self.avoidingStateMachineCoW { state in
                         state = .streaming(
                             context, describeInfo, rowHeader, demandStateMachine
                         )
                     }
-                case .none:
+                case .duplicate:
+                    demandStateMachine.receivedDuplicate()
+                    self.avoidingStateMachineCoW { state in
+                        state = .streaming(
+                            context, describeInfo, rowHeader, demandStateMachine
+                        )
+                    }
+                case .notEnoughData:
                     buffer.moveReaderIndex(to: readerIndex)
                     // prepend message id prefix again
                     var partial = ByteBuffer(
@@ -545,7 +557,7 @@ struct ExtendedQueryStateMachine {
         columnInfo: DescribeInfo.Column,
         capabilities: Capabilities
     ) throws -> ByteBuffer? {
-        let oracleType = columnInfo.dataType.oracleType
+        let oracleType = columnInfo.dataType._oracleType
         let csfrm = columnInfo.dataType.csfrm
         let bufferSize = columnInfo.bufferSize
 
@@ -567,16 +579,15 @@ struct ExtendedQueryStateMachine {
         switch oracleType {
         case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
             .timestampLTZ, .timestampTZ, .rowID, .binaryDouble, .binaryFloat,
-            .binaryInteger, .boolean, .intervalDS, .cursor:
+            .binaryInteger, .boolean, .intervalDS, .cursor, .clob, .blob:
             switch buffer.readOracleSlice() {
             case .some(let slice):
                 columnValue = slice
             case .none:
                 return nil // need more data
             }
-        case .clob, .blob:
-            fatalError("not implemented")
         case .json:
+            // TODO: OSON
             fatalError("not implemented")
         default:
             fatalError("not implemented")
@@ -594,26 +605,20 @@ struct ExtendedQueryStateMachine {
         buffer: inout ByteBuffer,
         describeInfo: DescribeInfo,
         rowHeader: OracleBackendMessage.RowHeader,
-        rowIndex: Int,
         capabilitites: Capabilities
-    ) throws -> DataRow? {
+    ) throws -> DataRowResult {
         var out = ByteBuffer()
         for (index, column) in describeInfo.columns.enumerated() {
             if self.isDuplicateData(
                 columnNumber: UInt32(index), bitVector: rowHeader.bitVector
             ) {
-                if rowIndex == 0 {
-                    preconditionFailure()
-                } else {
-                    // TODO: get value from previous row
-                    fatalError()
-                }
+                return .duplicate
             } else if var data = try self.processColumnData(
                 from: &buffer, columnInfo: column, capabilities: capabilitites
             ) {
                 out.writeBuffer(&data)
             } else {
-                return nil
+                return .notEnoughData
             }
         }
 
@@ -621,7 +626,7 @@ struct ExtendedQueryStateMachine {
             columnCount: describeInfo.columns.count, bytes: out
         )
 
-        return data
+        return .row(data)
     }
 
     var isComplete: Bool {

@@ -23,7 +23,7 @@ extension String: OracleDecodable {
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
     ) throws {
-        switch type.oracleType {
+        switch type {
         case .varchar, .char, .long:
             if type.csfrm == Constants.TNS_CS_IMPLICIT {
                 self = buffer.readString(length: buffer.readableBytes)!
@@ -32,6 +32,8 @@ extension String: OracleDecodable {
                     length: buffer.readableBytes, encoding: .utf16
                 )!
             }
+        case .rowID:
+            self = RowID(from: &buffer).description
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

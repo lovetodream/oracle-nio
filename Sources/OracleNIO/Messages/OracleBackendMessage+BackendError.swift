@@ -28,7 +28,7 @@ extension OracleBackendMessage {
             buffer.skipUB2() // user cursor options
             buffer.skipUB1() // UDI parameter
             buffer.skipUB1() // warning flag
-            let rowID = RowID.read(from: &buffer)
+            let rowID = RowID(from: &buffer)
             buffer.skipUB4() // OS error
             buffer.skipUB1() // statement number
             buffer.skipUB1() // call number
@@ -43,7 +43,7 @@ extension OracleBackendMessage {
                 try buffer.throwingReadUB2() // batch error codes array
             var batch = [OracleError]()
             if numberOfCodes > 0 {
-                let firstByte = try buffer.throwingReadUB1()
+                let firstByte = try buffer.throwingReadInteger(as: UInt8.self)
                 for _ in 0..<numberOfCodes {
                     if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
                         buffer.skipUB4() // chunk length ignored
@@ -60,7 +60,7 @@ extension OracleBackendMessage {
             let numberOfOffsets =
                 try buffer.throwingReadUB2() // batch error row offset array
             if numberOfOffsets > 0 {
-                let firstByte = try buffer.throwingReadUB1()
+                let firstByte = try buffer.throwingReadInteger(as: UInt8.self)
                 for i in 0..<numberOfOffsets {
                     if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
                         buffer.skipUB4() // chunked length ignored

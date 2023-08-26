@@ -56,7 +56,7 @@ extension OracleQuery {
         public mutating func appendInterpolation<Value: OracleThrowingEncodable>(_ value: Optional<Value>) throws {
             switch value {
             case .none:
-                self.binds.appendNull()
+                self.binds.appendNull(Value.self)
             case .some(let value):
                 try self.binds.append(value, context: .default)
             }
@@ -74,7 +74,7 @@ extension OracleQuery {
         public mutating func appendInterpolation<Value: OracleEncodable>(_ value: Optional<Value>) {
             switch value {
             case .none:
-                self.binds.appendNull()
+                self.binds.appendNull(Value.self)
             case .some(let value):
                 self.binds.append(value, context: .default)
             }
@@ -195,8 +195,31 @@ public struct OracleBindings: Sendable, Hashable {
         self.bytes.reserveCapacity(128 * capacity)
     }
 
-    public mutating func appendNull() {
-        fatalError("appendNull")
+    public mutating func appendNull<T: OracleThrowingEncodable>(
+        _ type: T.Type
+    ) {
+        if T.oracleType == .boolean {
+            self.bytes.writeInteger(Constants.TNS_ESCAPE_CHAR)
+            self.bytes.writeInteger(UInt8(1))
+        } else if T.oracleType._oracleType == .intNamed {
+            self.bytes.writeUB4(0) // TOID
+            self.bytes.writeUB4(0) // OID
+            self.bytes.writeUB4(0) // snapshot
+            self.bytes.writeUB4(0) // version
+            self.bytes.writeUB4(0) // packed data length
+            self.bytes.writeUB4(Constants.TNS_OBJ_TOP_LEVEL) // flags
+        } else {
+            self.bytes.writeInteger(UInt8(0))
+        }
+        self.metadata.append(.init(
+            dataType: type.oracleType,
+            protected: false,
+            isReturnBind: false,
+            size: 1,
+            isArray: type.isArray,
+            arrayCount: type.isArray ? 0 : nil,
+            maxArraySize: type.isArray ? 0 : nil
+        ))
     }
 
     @inlinable

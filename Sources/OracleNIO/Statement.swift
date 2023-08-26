@@ -137,12 +137,12 @@ class Statement {
         }
     }
 
-    func setVariable(bindInfo: inout BindInfo, variable: Variable, cursor: Cursor) throws {
-        if variable.dbType.oracleType == .cursor {
+    func setVariable(bindInfo: inout BindInfo, variable: Variable, cursor: CursorDeprecated) throws {
+        if variable.dbType._oracleType == .cursor {
             self.requiresFullExecute = true
         }
         if
-            (variable.dbType.oracleType?.rawValue ?? 0) != (bindInfo.oracleTypeNumber ?? 0) ||
+            (variable.dbType._oracleType?.rawValue ?? 0) != (bindInfo.oracleTypeNumber ?? 0) ||
             variable.size != bindInfo.size ||
             variable.bufferSize != bindInfo.bufferSize ||
             variable.precision != bindInfo.precision ||
@@ -151,7 +151,7 @@ class Statement {
             variable.numberOfElements != bindInfo.numberOfElements ||
             variable.dbType.csfrm != bindInfo.csfrm
         {
-            bindInfo.oracleTypeNumber = UInt8(variable.dbType.oracleType?.rawValue ?? 0)
+            bindInfo.oracleTypeNumber = UInt8(variable.dbType._oracleType?.rawValue ?? 0)
             bindInfo.csfrm = variable.dbType.csfrm
             bindInfo.isArray = variable.isArray
             bindInfo.numberOfElements = variable.numberOfElements

@@ -9,9 +9,9 @@ final class LOBOperationRequest: TNSRequest {
 
     var processedError = false
     var sourceOffset: UInt64 = 0
-    var sourceLOB: LOB?
+    var sourceLOB: LOBDeprecated?
     var destinationOffset: UInt64 = 0
-    var destinationLOB: LOB?
+    var destinationLOB: LOBDeprecated?
     var operation: UInt32 = 0
     var sendAmount = false
     var amount: Int64 = 0
@@ -29,7 +29,7 @@ final class LOBOperationRequest: TNSRequest {
 
     func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         if messageType == .lobData, let (bytes, _) = message.packet._readRawBytesAndLength() {
-            if self.sourceLOB?.dbType.oracleType == .blob {
+            if self.sourceLOB?.dbType._oracleType == .blob {
                 self.data = bytes
             } else if let sourceLOB {
                 let encoding = sourceLOB.encoding()
@@ -65,7 +65,7 @@ final class LOBOperationRequest: TNSRequest {
     func get() throws -> [TNSMessage] {
         var buffer = ByteBuffer()
         buffer.startRequest()
-        self.writeFunctionCode(to: &buffer)
+//        self.writeFunctionCode(to: &buffer)
 
         if let sourceLOB {
             buffer.writeInteger(UInt8(1)) // source pointer

@@ -10,13 +10,10 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer, capabilities: Capabilities
-        ) throws -> RowData {
-            guard 
-                let slice = buffer.readSlice(length: buffer.readableBytes)
-            else {
-                throw OracleDecodingError.Code.missingData
-            }
-            return .init(slice: slice)
+        ) throws -> RowData { 
+            let data = RowData(slice: buffer.slice())
+            buffer.moveReaderIndex(to: buffer.readerIndex + buffer.readableBytes)
+            return data
         }
     }
 }

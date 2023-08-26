@@ -63,7 +63,6 @@ final class ExtendedQueryContext {
     var cursorID: UInt16
     let requiresFullExecute: Bool
     let requiresDefine: Bool
-    let queryVariables: [Variable]
 
     var sequenceNumber: UInt8 = 2
 
@@ -74,6 +73,21 @@ final class ExtendedQueryContext {
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
     ) throws {
+        if !options.fetchLOBs {
+            var query = query
+            query.binds.metadata = query.binds.metadata.map { metadata in
+                var metadata = metadata
+                if metadata.dataType == .blob {
+                    metadata.dataType = .longRAW
+                } else if metadata.dataType == .clob {
+                    metadata.dataType = .long
+                } else if metadata.dataType == .nCLOB {
+                    metadata.dataType = .longNVarchar
+                }
+                return metadata
+            }
+        }
+
         self.logger = logger
         self.query = query
         self.options = options
@@ -98,7 +112,6 @@ final class ExtendedQueryContext {
         self.cursorID = 0
         self.requiresFullExecute = false
         self.requiresDefine = false
-        self.queryVariables = []
     }
 
     private static func determineStatementType(
@@ -170,6 +183,16 @@ public struct QueryOptions {
     /// ```
     public var arraySize: Int = 100
 
+    /// Defines if LOBs (BLOB, CLOB, NCLOB) should be fetched as LOBs, which requires another 
+    /// round-trip to the server.
+    ///
+    /// If this is set to false, LOBs are fetched as bytes and retrieved inline. This doesn't require another
+    /// round-trip and should be more performant.
+    ///
+    /// - Warning: If you have LOBs > 1GB, you need to set this to `true`. Because LOBs of that size
+    ///            cannot be fetched inline.
+    public var fetchLOBs = false
+
     /// Options to pass to a ``OracleQuery`` to tweak its execution.
     /// - Parameters:
     ///   - autoCommit: Automatically commit after execution of the query without needing an
@@ -178,16 +201,21 @@ public struct QueryOptions {
     ///                   the database. Refer to ``prefetchRows`` for additional explanation.
     ///   - arraySize: Indicates how many rows will be returned by any subsequent fetch calls to the
     ///                database. Refer to ``arraySize`` for additional explanation.
+    ///   - fetchLOBs: Defines if LOBs should be fetched as LOBs (lazy loaded) or inline as raw bytes.
+    ///                by default, this is set to `false`. Refer to ``fetchLOBs`` for additional
+    ///                explanation.
     public init(
         autoCommit: Bool = false,
         prefetchRows: Int = 2,
-        arraySize: Int = 50
+        arraySize: Int = 50,
+        fetchLOBs: Bool = false
     ) {
         self.autoCommit = autoCommit
         self.arrayDMLRowCounts = false
         self.batchErrors = false
         self.prefetchRows = prefetchRows
         self.arraySize = arraySize
+        self.fetchLOBs = fetchLOBs
     }
 }
 

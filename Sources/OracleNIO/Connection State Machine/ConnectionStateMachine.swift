@@ -73,7 +73,7 @@ struct ConnectionStateMachine {
 
         // Query
         case sendExecute(ExtendedQueryContext)
-        case sendReexecute
+        case sendReexecute(ExtendedQueryContext, CleanupContext)
         case sendFetch(ExtendedQueryContext)
         case failQuery(
             EventLoopPromise<OracleRowStream>,
@@ -864,8 +864,8 @@ extension ConnectionStateMachine {
         switch action {
         case .sendExecute(let context):
             return .sendExecute(context)
-        case .sendReexecute:
-            return .sendReexecute
+        case .sendReexecute(let queryContext, let cleanupContext):
+            return .sendReexecute(queryContext, cleanupContext)
         case .sendFetch(let context):
             return .sendFetch(context)
         case .failQuery(let promise, let error):

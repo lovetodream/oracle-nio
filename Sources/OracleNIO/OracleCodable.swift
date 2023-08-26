@@ -4,6 +4,15 @@ import class Foundation.JSONDecoder
 
 /// A type that can encode itself to a Oracle wire binary representation.
 public protocol OracleThrowingEncodable {
+    /// A type definition of the type that actually implements the ``OracleThrowingEncodable``
+    /// protocol.
+    ///
+    /// This is an escape hatch to prevent a cycle in the conformance of the Optional type to
+    /// ``OracleThrowingEncodable``.
+    /// `String?` should be ``OracleThrowingEncodable``, `String??` should not be 
+    /// ``OracleThrowingEncodable``.
+    associatedtype _EncodableType: OracleThrowingEncodable = Self
+
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
     static var oracleType: DBType { get }
 
@@ -33,6 +42,8 @@ public protocol OracleThrowingEncodable {
 }
 
 public extension OracleThrowingEncodable {
+    var size: UInt32 { UInt32(Self.oracleType.defaultSize) }
+
     static var isArray: Bool { false }
     var arrayCount: Int? { nil }
     var arraySize: Int? { Self.isArray ? 1 : nil }
@@ -50,7 +61,10 @@ public extension Array where Element: OracleThrowingEncodable {
 /// This allows users to create ``OracleQuery``'s using the
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
 public protocol OracleEncodable: OracleThrowingEncodable {
-    func encode<JSONEncoder: OracleJSONEncoder>(into byteBuffer: inout ByteBuffer, context: OracleEncodingContext<JSONEncoder>)
+    func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    )
 }
 
 /// A type that can decode itself from a oracle wire binary representation.
@@ -79,8 +93,8 @@ public protocol OracleDecodable {
     /// Decode an entity from the `ByteBuffer` in oracle wire format.
     ///
     /// This method has a default implementation and is only overwritten for `Optional`'s.
-    static func _decodeRaw<JSONDecoder: OracleJSONEncoder>(
-        from byteBuffer: inout ByteBuffer?,
+    static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
+        from buffer: inout ByteBuffer?,
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
     ) throws -> Self
@@ -89,11 +103,11 @@ public protocol OracleDecodable {
 extension OracleDecodable {
     @inlinable
     public static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
-        from byteBuffer: inout ByteBuffer?,
+        from buffer: inout ByteBuffer?,
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
     ) throws -> Self {
-        guard var buffer = byteBuffer else {
+        guard var buffer else {
             throw OracleDecodingError.Code.missingData
         }
         return try self.init(from: &buffer, type: type, context: context)
@@ -112,7 +126,7 @@ extension OracleThrowingEncodable {
         // The length of the parameter value, in bytes
         // (this count does not include itself). Can be zero.
         let lengthIndex = buffer.writerIndex
-        buffer.writeInteger(0, as: Int32.self)
+        buffer.writeInteger(0, as: UInt8.self)
         let startIndex = buffer.writerIndex
         // The value of the parameter, in the format indicated by the associated
         // format code.
@@ -121,7 +135,7 @@ extension OracleThrowingEncodable {
         // overwrite the empty length with the real value
         buffer.setInteger(
             numericCast(buffer.writerIndex - startIndex),
-            at: lengthIndex, as: Int32.self
+            at: lengthIndex, as: UInt8.self
         )
     }
 }
@@ -131,11 +145,11 @@ extension OracleEncodable {
     func encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
-    ) throws {
+    ) {
         // The length of the parameter value, in bytes (this count does not
         // include itself). Can be zero.
         let lengthIndex = buffer.writerIndex
-        buffer.writeInteger(0, as: Int32.self)
+        buffer.writeInteger(0, as: UInt8.self)
         let startIndex = buffer.writerIndex
         // The value of the parameter, in the format indicated by the associated
         // format code.
@@ -144,7 +158,7 @@ extension OracleEncodable {
         // overwrite the empty length, with the real value.
         buffer.setInteger(
             numericCast(buffer.writerIndex - startIndex),
-            at: lengthIndex, as: Int32.self
+            at: lengthIndex, as: UInt8.self
         )
     }
 }
@@ -206,7 +220,7 @@ extension Optional: OracleDecodable
     public typealias _DecodableType = Wrapped
 
     public init<JSONDecoder: OracleJSONDecoder>(
-        from byteBuffer: inout ByteBuffer,
+        from buffer: inout ByteBuffer,
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
     ) throws {
@@ -215,11 +229,11 @@ extension Optional: OracleDecodable
 
     @inlinable
     public static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
-        from byteBuffer: inout ByteBuffer?,
+        from buffer: inout ByteBuffer?,
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
-    ) throws -> Optional<Wrapped> {
-        switch byteBuffer {
+    ) throws -> Self {
+        switch buffer {
         case .some(var buffer):
             return try Wrapped(
                 from: &buffer,

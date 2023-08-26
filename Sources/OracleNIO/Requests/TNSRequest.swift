@@ -8,22 +8,6 @@ protocol TNSRequest {
     var onResponsePromise: EventLoopPromise<TNSMessage>? { get set }
     init(connection: OracleConnection, messageType: MessageType)
     static func initialize(from connection: OracleConnection) -> Self
-    func initializeHooks()
-    func get() throws -> [TNSMessage]
-    func preprocess()
-    func processResponse(_ message: inout TNSMessage, from channel: Channel) throws
-    func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws
-    func defaultProcessResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws
-    func postprocess()
-    func processError(_ message: inout TNSMessage) -> OracleErrorInfo
-    func processReturnParameters(_ message: inout TNSMessage)
-    func processWarning(_ message: inout TNSMessage) -> OracleErrorInfo
-    func processServerSidePiggyback(_ message: inout TNSMessage)
-    func didProcessError()
-    func hasMoreData(_ message: inout TNSMessage) -> Bool
-    /// Set readerIndex for message to prepare for ``processResponse``.
-    func setReaderIndex(for message: inout TNSMessage)
-    func writeFunctionCode(to buffer: inout ByteBuffer)
 }
 
 extension TNSRequest {
@@ -36,28 +20,6 @@ extension TNSRequest {
     func initializeHooks() {}
     func preprocess() {}
 
-    func processResponse(_ message: inout TNSMessage, from channel: Channel) throws {
-        preprocess()
-        setReaderIndex(for: &message)
-        message.packet.moveReaderIndex(forwardBy: 2) // skip data flags
-        while hasMoreData(&message) {
-            guard
-                let messageTypeByte = message.packet.readInteger(as: UInt8.self)
-            else {
-                fatalError("Couldn't read single byte, but readableBytes is still bigger than 0.")
-            }
-            guard let messageType = MessageType(rawValue: messageTypeByte) else {
-                if messageTypeByte == 0 {
-                    postprocess()
-                    return
-                }
-                throw OracleError.ErrorType.typeUnknown
-            }
-            try self.processResponse(&message, of: messageType, from: channel)
-        }
-        postprocess()
-    }
-
     func processResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         try defaultProcessResponse(&message, of: type, from: channel)
     }
@@ -65,11 +27,6 @@ extension TNSRequest {
     func defaultProcessResponse(_ message: inout TNSMessage, of type: MessageType, from channel: Channel) throws {
         connection.logger.trace("Response has message type: \(type)")
         switch type {
-        case .error:
-            let error = self.processError(&message)
-            connection.logger.warning("Oracle Error occurred: \(error)")
-        case .parameter:
-            self.processReturnParameters(&message)
         case .status:
             let callStatus = message.packet.readInteger(as: UInt32.self) ?? 0
             let endToEndSequenceNumber = message.packet.readInteger(as: UInt16.self) ?? 0
@@ -88,110 +45,6 @@ extension TNSRequest {
             connection.logger.error("Could not process message of type: \(type)")
             throw OracleError.ErrorType.typeUnknown
         }
-    }
-
-    func postprocess() {}
-
-    func processError(_ message: inout TNSMessage) -> OracleErrorInfo {
-        let callStatus = message.packet.readUB4() ?? 0 // end of call status
-        connection.logger.debug("Call status received: \(callStatus)")
-        message.packet.skipUB2() // end to end seq#
-        message.packet.skipUB4() // current row number
-        message.packet.skipUB2() // error number
-        message.packet.skipUB2() // array elem error
-        message.packet.skipUB2() // array elem error
-        let cursorID = message.packet.readUB2() // cursor id
-        let errorPosition = message.packet.readUB2() // error position
-        message.packet.skipUB1() // sql type
-        message.packet.skipUB1() // fatal?
-        message.packet.skipUB2() // flags
-        message.packet.skipUB2() // user cursor options
-        message.packet.skipUB1() // UDI parameter
-        message.packet.skipUB1() // warning flag
-        let rowID = RowID.read(from: &message.packet)
-        message.packet.skipUB4() // OS error
-        message.packet.skipUB1() // statement number
-        message.packet.skipUB1() // call number
-        message.packet.skipUB2() // padding
-        message.packet.skipUB4() // success iters
-        let numberOfBytes = message.packet.readUB4() ?? 0 // oerrdd (logical rowID)
-        if numberOfBytes > 0 {
-            message.packet.skipRawBytesChunked()
-        }
-        didProcessError()
-
-        // batch error codes
-        let numberOfCodes = message.packet.readUB2() ?? 0 // batch error codes array
-        var batch = [OracleError]()
-        if numberOfCodes > 0 {
-            let firstByte = message.packet.readUB1() ?? 0
-            for _ in 0..<numberOfCodes {
-                if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
-                    message.packet.skipUB4() // chunk length ignored
-                }
-                guard let errorCode = message.packet.readUB2() else { continue }
-                batch.append(.init(code: Int(errorCode)))
-            }
-            if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
-                message.packet.moveReaderIndex(forwardByBytes: 1) // ignore end marker
-            }
-        }
-
-        // batch error offsets
-        let numberOfOffsets = message.packet.readUB2() ?? 0 // batch error row offset array
-        if numberOfOffsets > 0 {
-            let firstByte = message.packet.readUB1() ?? 0
-            for i in 0..<numberOfOffsets {
-                if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
-                    message.packet.skipUB4() // chunked length ignored
-                }
-                let offset = message.packet.readUB4() ?? 0
-                batch[Int(i)].offset = Int(offset)
-            }
-            if firstByte == Constants.TNS_LONG_LENGTH_INDICATOR {
-                message.packet.moveReaderIndex(forwardByBytes: 1) // ignore end marker
-            }
-        }
-
-        // batch error messages
-        let numberOfMessages = message.packet.readUB2() ?? 0 // batch error messages array
-        if numberOfMessages > 0 {
-            message.packet.moveReaderIndex(forwardByBytes: 1) // ignore packet size
-            for i in 0..<numberOfMessages {
-                message.packet.skipUB2() // skip chunk length
-                let errorMessage = message.packet
-                    .readString(with: Constants.TNS_CS_IMPLICIT)?
-                    .trimmingCharacters(in: .whitespaces)
-                batch[Int(i)].message = errorMessage
-                message.packet.moveReaderIndex(forwardByBytes: 2) // ignore end marker
-            }
-        }
-
-        let number = message.packet.readUB4() ?? 0
-        let rowCount = message.packet.readUB8()
-        let errorMessage: String?
-        if number != 0 {
-            errorMessage = message.packet
-                .readString(with: Constants.TNS_CS_IMPLICIT)?
-                .trimmingCharacters(in: .whitespaces)
-        } else {
-            errorMessage = nil
-        }
-
-        return OracleErrorInfo(
-            number: number,
-            cursorID: cursorID,
-            position: errorPosition,
-            rowCount: rowCount,
-            isWarning: false,
-            message: errorMessage,
-            rowID: rowID,
-            batchErrors: batch
-        )
-    }
-
-    func processReturnParameters(_ message: inout TNSMessage) {
-        fatalError("\(#function) has been called, but this should never have happened")
     }
 
     func processWarning(_ message: inout TNSMessage) -> OracleErrorInfo {
@@ -279,27 +132,6 @@ extension TNSRequest {
             self.connection.drcpEstablishSession = false
             message.packet.moveReaderIndex(forwardByBytes: 4)
             message.packet.moveReaderIndex(forwardByBytes: 2)
-        }
-    }
-
-    func didProcessError() { }
-
-    func hasMoreData(_ message: inout TNSMessage) -> Bool {
-        message.packet.readableBytes > 0
-    }
-
-    func setReaderIndex(for message: inout TNSMessage) {
-        if message.packet.readerIndex < TNSMessage.headerSize && message.packet.capacity >= TNSMessage.headerSize {
-            message.packet.moveReaderIndex(to: TNSMessage.headerSize)
-        }
-    }
-
-    func writeFunctionCode(to buffer: inout ByteBuffer) {
-        buffer.writeInteger(messageType.rawValue)
-        buffer.writeInteger(functionCode.rawValue)
-        buffer.writeSequenceNumber()
-        if connection.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
-            buffer.writeUB8(0) // token number
         }
     }
 }

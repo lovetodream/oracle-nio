@@ -1,5 +1,5 @@
 // TODO: add a lot of missing stuff and try to move this to struct again
-class LOB {
+class LOBDeprecated {
     var connection: OracleConnection
     var dbType: DBType
     var locator: [UInt8]
@@ -14,19 +14,19 @@ class LOB {
     }
     deinit { freeLOB() }
 
-    static func create(connection: OracleConnection, dbType: DBType, locator: [UInt8]? = nil) -> LOB {
+    static func create(connection: OracleConnection, dbType: DBType, locator: [UInt8]? = nil) -> LOBDeprecated {
         if let locator {
-            return LOB(connection: connection, dbType: dbType, locator: locator)
+            return LOBDeprecated(connection: connection, dbType: dbType, locator: locator)
         } else {
             let locator = [UInt8](repeating: 0, count: 40)
-            let lob = LOB(connection: connection, dbType: dbType, locator: locator)
+            let lob = LOBDeprecated(connection: connection, dbType: dbType, locator: locator)
             let request: LOBOperationRequest = connection.createRequest()
             request.operation = Constants.TNS_LOB_OP_CREATE_TEMP
             request.amount = Constants.TNS_DURATION_SESSION
             request.sendAmount = true
             request.sourceLOB = lob
             request.sourceOffset = UInt64(dbType.csfrm)
-            request.destinationOffset = UInt64(dbType.oracleType?.rawValue ?? 0)
+            request.destinationOffset = UInt64(dbType._oracleType?.rawValue ?? 0)
             connection.channel.writeAndFlush(.init(request), promise: nil)
             return lob
         }
@@ -44,7 +44,7 @@ class LOB {
         request.operation = Constants.TNS_LOB_OP_WRITE
         request.sourceLOB = self
         request.sourceOffset = offset
-        if self.dbType.oracleType == .blob, let value = value as? [UInt8] {
+        if self.dbType._oracleType == .blob, let value = value as? [UInt8] {
             request.data = value
         } else if let value = value as? String {
             request.data = value.data(using: encoding() == Constants.TNS_ENCODING_UTF16 ? .utf16 : .utf8)?.bytes

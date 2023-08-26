@@ -16,7 +16,7 @@ extension ByteBuffer {
             rowID.partitionID = buffer.readInteger(endianness: .big, as: UInt16.self) ?? 0
             rowID.blockNumber = buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0
             rowID.slotNumber = buffer.readInteger(endianness: .big, as: UInt16.self) ?? 0
-            return rowID.string()
+            return rowID.description
         }
 
         // handle logical rowID

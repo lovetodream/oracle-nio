@@ -217,52 +217,9 @@ public class OracleConnection {
         return promise.futureResult
     }
 
+    @available(*, deprecated)
     func createRequest<T: TNSRequest>() -> T {
         T.initialize(from: self)
-    }
-
-    public func query(_ sql: String, binds: [Any] = []) throws {
-        let cursor = try Cursor(statement: Statement(sql, characterConversion: capabilities.characterConversion), prefetchRows: 2, fetchArraySize: 0, fetchVariables: [])
-        if !binds.isEmpty {
-            cursor.bind(values: binds)
-        }
-        try cursor.preprocessExecute(connection: self)
-        let request: ExecuteRequest = createRequest()
-        request.numberOfExecutions = 1
-        request.cursor = cursor
-        request.onResponsePromise = eventLoop.makePromise()
-        channel.write(request, promise: nil)
-        cursor.statement.requiresFullExecute = false
-        request.onResponsePromise!.futureResult.map { _ in
-            self.fetchMoreRows(cursor: cursor)
-        }
-    }
-
-    func fetchMoreRows(cursor: Cursor) {
-        print(cursor.statement.cursorID)
-        print(cursor.fetchVariables)
-        if cursor.moreRowsToFetch {
-            if cursor.statement.requiresFullExecute {
-                let request: ExecuteRequest = self.createRequest()
-                request.cursor = cursor
-                request.onResponsePromise = self.eventLoop.makePromise()
-                self.channel.write(request, promise: nil)
-                cursor.statement.requiresFullExecute = false
-                request.onResponsePromise!.futureResult.map { _ in
-                    self.fetchMoreRows(cursor: cursor)
-                }
-            } else {
-                let request: FetchRequest = self.createRequest()
-                request.cursor = cursor
-                request.onResponsePromise = self.eventLoop.makePromise()
-                self.channel.write(request, promise: nil)
-                request.onResponsePromise!.futureResult.map { _ in
-                    self.fetchMoreRows(cursor: cursor)
-                }
-            }
-        } else {
-            return
-        }
     }
 }
 
@@ -279,17 +236,6 @@ extension OracleConnection: CapabilitiesProvider {
 extension OracleConnection {
     func resetStatementCache() {
         // TODO: reset cache
-    }
-
-    func addCursorToClose(_ statement: Statement) throws {
-        if cursorsToClose?.count == Constants.TNS_MAX_CURSORS_TO_CLOSE {
-            throw CursorCloseError.tooManyCursorsToClose
-        }
-        cursorsToClose?.append(statement.cursorID)
-    }
-
-    enum CursorCloseError: Error {
-        case tooManyCursorsToClose
     }
 }
 

@@ -45,12 +45,13 @@ struct RowStreamStateMachine {
             self.state = .waitingForRows(buffer)
 
             // For all the following cases, please note:
-            // Normally these code paths should never be hit. However there is one way to trigger
-            // this:
+            // Normally these code paths should never be hit. However there is 
+            // one way to trigger this:
             //
-            // If the server decides to close a connection, NIO will forward all outstanding
-            // `channelRead`s without waiting for a next `context.read` call. For this reason we might
-            // receive new rows, when we don't expect them here.
+            // If the server decides to close a connection, NIO will forward all
+            // outstanding `channelRead`s without waiting for a next
+            // `context.read` call. For this reason we might receive new rows,
+            // when we don't expect them here.
         case .waitingForReadOrDemand(var buffer):
             self.state = .modifying
             buffer.append(newRow)
@@ -71,6 +72,46 @@ struct RowStreamStateMachine {
             // events must be forwarded to it.
             preconditionFailure("Invalid state: \(self.state)")
         
+        case .modifying:
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+    }
+
+    mutating func receivedDuplicate() {
+        switch self.state {
+        case .waitingForRows(var buffer):
+            self.state = .modifying
+            buffer.append(buffer.last!)
+            self.state = .waitingForRows(buffer)
+
+        // For all the following cases, please note:
+        // Normally these code paths should never be hit. However there is
+        // one way to trigger this:
+        //
+        // If the server decides to close a connection, NIO will forward all
+        // outstanding `channelRead`s without waiting for a next
+        // `context.read` call. For this reason we might receive new rows,
+        // when we don't expect them here.
+        case .waitingForReadOrDemand(var buffer):
+            self.state = .modifying
+            buffer.append(buffer.last!)
+            self.state = .waitingForReadOrDemand(buffer)
+
+        case .waitingForRead(var buffer):
+            self.state = .modifying
+            buffer.append(buffer.last!)
+            self.state = .waitingForRead(buffer)
+
+        case .waitingForDemand(var buffer):
+            self.state = .modifying
+            buffer.append(buffer.last!)
+            self.state = .waitingForDemand(buffer)
+
+        case .failed:
+            // Once the row stream state machine is marked as failed, no further
+            // events must be forwarded to it.
+            preconditionFailure("Invalid state: \(self.state)")
+
         case .modifying:
             preconditionFailure("Invalid state: \(self.state)")
         }

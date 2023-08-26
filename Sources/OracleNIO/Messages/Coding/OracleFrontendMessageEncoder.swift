@@ -395,7 +395,7 @@ struct OracleFrontendMessageEncoder {
         if queryContext.requiresDefine {
             self.buffer.writeInteger(UInt8(1)) // pointer (al8doac)
             self.buffer.writeUB4(
-                UInt32(queryContext.queryVariables.count)
+                UInt32(queryContext.query.binds.count)
             ) // number of defines
         } else {
             self.buffer.writeInteger(UInt8(0))
@@ -468,6 +468,52 @@ struct OracleFrontendMessageEncoder {
         self.buffer.endRequest(capabilities: self.capabilities)
     }
 
+    mutating func reexecute(
+        queryContext: ExtendedQueryContext, cleanupContext: CleanupContext
+    ) {
+        self.clearIfNeeded()
+
+        self.buffer.startRequest()
+        
+        let functionCode: Constants.FunctionCode
+        if queryContext.statement.isQuery && !queryContext.requiresDefine 
+            && queryContext.options.prefetchRows > 0
+        {
+            functionCode = .reexecuteAndFetch
+        } else {
+            functionCode = .reexecute
+        }
+        var parameters = queryContext.query.binds
+        var executionFlags1: UInt32 = 0
+        var executionFlags2: UInt32 = 0
+        var numberOfIterations: UInt32 = 0
+        let numberOfExecutions = 1
+
+        if functionCode == .reexecuteAndFetch {
+            executionFlags1 |= Constants.TNS_EXEC_OPTION_EXECUTE
+            numberOfIterations = UInt32(queryContext.options.prefetchRows)
+        } else {
+            if queryContext.options.autoCommit {
+                executionFlags2 |= Constants.TNS_EXEC_OPTION_COMMIT_REEXECUTE
+            }
+            numberOfIterations = UInt32(numberOfExecutions)
+        }
+
+        self.writePiggybacks(context: cleanupContext)
+        self.writeFunctionCode(
+            messageType: .function, functionCode: functionCode
+        )
+        self.buffer.writeUB4(UInt32(queryContext.cursorID))
+        self.buffer.writeUB4(numberOfIterations)
+        self.buffer.writeUB4(executionFlags1)
+        self.buffer.writeUB4(executionFlags2)
+        if !parameters.metadata.isEmpty {
+            self.buffer.writeInteger(MessageType.rowData.rawValue)
+            self.writeBindParameterRow(bindings: parameters)
+        }
+        self.buffer.endRequest(capabilities: self.capabilities)
+    }
+
     mutating func fetch(cursorID: UInt16, fetchArraySize: UInt32) {
         self.clearIfNeeded()
 
@@ -525,8 +571,8 @@ struct OracleFrontendMessageEncoder {
     ) {
         self.buffer.writeInteger(messageType.rawValue)
         self.buffer.writeInteger(functionCode.rawValue)
-        self.buffer.writeSequenceNumber(with: sequenceNumber)
         sequenceNumber += 1
+        self.buffer.writeInteger(sequenceNumber)
         if self.capabilities.ttcFieldVersion >=
             Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
             buffer.writeUB8(0) // token number
@@ -839,11 +885,10 @@ extension OracleFrontendMessageEncoder {
     }
 
     private mutating func writeBindParameters(_ binds: OracleBindings) {
-        var hasData = !binds.metadata.isEmpty
         self.writeColumnMetadata(binds.metadata)
 
         // write parameter values unless statement contains only return binds
-        if hasData {
+        if !binds.metadata.isEmpty {
             self.buffer.writeInteger(MessageType.rowData.rawValue)
             self.writeBindParameterRow(bindings: binds)
         }
@@ -853,7 +898,7 @@ extension OracleFrontendMessageEncoder {
         _ metadata: [OracleBindings.Metadata]
     ) {
         for info in metadata {
-            var oracleType = info.dataType.oracleType
+            var oracleType = info.dataType._oracleType
             var bufferSize = info.bufferSize
             if [.rowID, .uRowID].contains(oracleType) {
                 oracleType = .varchar

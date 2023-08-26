@@ -254,8 +254,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         case .sendExecute(let queryContext):
             self.sendExecute(queryContext: queryContext, context: context)
-        case .sendReexecute:
-            self.sendReexecute()
+        case .sendReexecute(let queryContext, let cleanupContext):
+            self.sendReexecute(
+                queryContext: queryContext,
+                cleanupContext: cleanupContext,
+                context: context
+            )
         case .sendFetch(let queryContext):
             self.sendFetch(queryContext: queryContext, context: context)
         case .succeedQuery(let promise, let result):
@@ -265,6 +269,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             if let cleanupContext {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
+            self.decoderContext.queryOptions = nil
 
         case .needMoreData:
             self.decoderContext.performingChunkedRead = true
@@ -283,6 +288,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             }
             rowStream.receive(completion: .success(()))
 
+            self.decoderContext.queryOptions = nil
+
             self.run(self.state.readyForQueryReceived(), with: context)
 
         case .forwardStreamError(let error, let read, let cursorID):
@@ -293,6 +300,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             } else if read {
                 context.read()
             }
+
+            self.decoderContext.queryOptions = nil
 
             self.run(self.state.readyForQueryReceived(), with: context)
 
@@ -389,13 +398,25 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             cleanupContext: self.cleanupContext
         )
 
+        self.decoderContext.queryOptions = queryContext.options
+
         context.writeAndFlush(
             self.wrapOutboundOut(self.encoder.flush()), promise: nil
         )
     }
 
-    private func sendReexecute() {
+    private func sendReexecute(
+        queryContext: ExtendedQueryContext,
+        cleanupContext: CleanupContext,
+        context: ChannelHandlerContext
+    ) {
+        self.encoder.reexecute(
+            queryContext: queryContext, cleanupContext: cleanupContext
+        )
 
+        context.writeAndFlush(
+            self.wrapOutboundOut(self.encoder.flush()), promise: nil
+        )
     }
 
     private func sendFetch(

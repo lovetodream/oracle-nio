@@ -35,13 +35,13 @@ struct Variable {
         self.values = .init(repeating: nil, count: Int(numberOfElements))
     }
 
-    mutating func bind(cursor: Cursor, connection: OracleConnection, position: UInt32) throws {
+    mutating func bind(cursor: CursorDeprecated, connection: OracleConnection, position: UInt32) throws {
         // for PL/SQL blocks, if the size of a string or bytes object exceeds
         // 32,767 bytes it must be converted to a BLOB/CLOB; and out converter
         // needs to be established as well to return the string in the way that
         // the user expects to get it
         if cursor.statement.isPlSQL && size > 32767 {
-            if [.raw, .longRAW].contains(self.dbType.oracleType) {
+            if [.raw, .longRAW].contains(self.dbType._oracleType) {
                 self.dbType = .blob
             } else if self.dbType.csfrm == Constants.TNS_CS_NCHAR {
                 self.dbType = .nCLOB
@@ -51,10 +51,10 @@ struct Variable {
         }
 
         // for variables containing LOBs, create temporary LOBs, if needed
-        if [.clob, .blob].contains(self.dbType.oracleType) {
+        if [.clob, .blob].contains(self.dbType._oracleType) {
             for (index, value) in values.enumerated() {
-                if value != nil && value as? LOB == nil {
-                    let lob = LOB.create(connection: connection, dbType: self.dbType)
+                if value != nil && value as? LOBDeprecated == nil {
+                    let lob = LOBDeprecated.create(connection: connection, dbType: self.dbType)
                     if let value {
                         lob.write(value, offset: 0)
                     }

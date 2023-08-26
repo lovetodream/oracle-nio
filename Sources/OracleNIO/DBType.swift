@@ -48,7 +48,7 @@ public struct DBType: Sendable, Equatable, Hashable {
     @usableFromInline
     var oracleName: String
     @usableFromInline
-    var oracleType: DataType.Value?
+    var _oracleType: DataType.Value?
     @usableFromInline
     var defaultSize: Int = 0
     @usableFromInline
@@ -70,7 +70,7 @@ public struct DBType: Sendable, Equatable, Hashable {
         self.number = number
         self.name = name
         self.oracleName = oracleName
-        self.oracleType = oracleType
+        self._oracleType = oracleType
         self.defaultSize = defaultSize
         self.csfrm = csfrm
         self.bufferSizeFactor = bufferSizeFactor

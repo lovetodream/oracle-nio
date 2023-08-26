@@ -146,6 +146,36 @@ internal enum OracleNumeric {
         return float
     }
 
+    static func parseBinaryDouble(
+        from buffer: inout ByteBuffer
+    ) throws -> Double {
+        var b0 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b1 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b2 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b3 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b4 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b5 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b6 = try buffer.throwingReadInteger(as: UInt8.self)
+        var b7 = try buffer.throwingReadInteger(as: UInt8.self)
+        if (b0 & 0x80) != 0 {
+            b0 = b0 & 0x7f
+        } else {
+            b0 = ~b0
+            b1 = ~b1
+            b2 = ~b2
+            b3 = ~b3
+            b4 = ~b4
+            b5 = ~b5
+            b6 = ~b6
+            b7 = ~b7
+        }
+        let highBits: UInt64 = UInt64(b0 << 24 | b1 << 16 | b2 << 8 | b4)
+        let lowBits: UInt64 = UInt64(b4 << 24 | b5 << 16 | b6 << 8 | b7)
+        let allBits: UInt64 = highBits << 32 | (lowBits & 0xffffffff)
+        let double = Double(bitPattern: allBits)
+        return double
+    }
+
     private static func parsePartial(
         from buffer: inout ByteBuffer
     ) throws -> PartialResult {

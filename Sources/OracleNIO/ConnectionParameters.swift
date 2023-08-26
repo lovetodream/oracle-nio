@@ -107,12 +107,8 @@ func parseConnectDescriptor(data: String, args: inout [String: Any]) throws {
 }
 
 struct Defaults {
-    static let arraySize = 100
     static let statementCacheSize = 20
     static let configDirectory = ProcessInfo.processInfo.environment["TNS_ADMIN"]
-    static let fetchLobs = true
-    static let fetchDecimals = false
-    static let prefetchRows = 2
 }
 
 struct ConnectParameters {

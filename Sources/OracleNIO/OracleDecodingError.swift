@@ -7,6 +7,7 @@ public struct OracleDecodingError: Error, Equatable {
             case typeMismatch
             case decimalPointFound
             case signedIntegerFound
+            case failure
         }
 
         var base: Base
@@ -36,6 +37,7 @@ public struct OracleDecodingError: Error, Equatable {
         /// - Tip: To fix this error, either change to an appropriate `SignedInteger` or handle such
         ///      cases within the database call.
         public static let signedIntegerFound = Self(.signedIntegerFound)
+        public static let failure = Self(.failure)
 
         public var description: String {
             switch self.base {
@@ -47,6 +49,8 @@ public struct OracleDecodingError: Error, Equatable {
                 return "decimalPointFound"
             case .signedIntegerFound:
                 return "signedIntegerFound"
+            case .failure:
+                return "failure"
             }
         }
     }

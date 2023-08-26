@@ -335,6 +335,7 @@ enum Constants {
 
     // MARK: Other constants
     static let TNS_MAX_SHORT_LENGTH = 252
+    @usableFromInline
     static let TNS_ESCAPE_CHAR: UInt8 = 253
     static let TNS_LONG_LENGTH_INDICATOR: UInt8 = 254
     @usableFromInline

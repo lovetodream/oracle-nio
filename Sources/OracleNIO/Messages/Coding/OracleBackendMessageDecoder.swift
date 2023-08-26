@@ -12,10 +12,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
 
     class Context {
         var performingChunkedRead = false
-
-        init(performingChunkedRead: Bool = false) {
-            self.performingChunkedRead = performingChunkedRead
-        }
+        var queryOptions: QueryOptions? = nil
     }
 
     init(capabilities: Capabilities, context: Context) {
@@ -84,6 +81,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         let messages = try OracleBackendMessage.decode(
             from: &packet, of: type,
             capabilities: self.capabilities,
+            queryOptions: self.context.queryOptions,
             isChunkedRead: self.context.performingChunkedRead
         )
         return messages

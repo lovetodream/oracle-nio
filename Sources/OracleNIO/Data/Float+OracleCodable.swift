@@ -1,5 +1,31 @@
 import NIOCore
 
+extension Float: OracleEncodable {
+    public static var oracleType: DBType { .binaryFloat }
+    
+    public func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) {
+        var b0, b1, b2, b3: UInt8
+        let allBits = self.bitPattern
+        b3 = UInt8(allBits & 0xff)
+        b2 = UInt8((allBits >> 8) & 0xff)
+        b1 = UInt8((allBits >> 16) & 0xff)
+        b0 = UInt8((allBits >> 24) & 0xff)
+        if b0 & 0x80 == 0 {
+            b0 = b0 | 0x80
+        } else {
+            b0 = ~b0
+            b1 = ~b1
+            b2 = ~b2
+            b3 = ~b3
+        }
+        buffer.writeInteger(UInt8(4))
+        buffer.writeBytes([b0, b1, b2, b3])
+    }
+}
+
 extension Float: OracleDecodable {
     public init<JSONDecoder: OracleJSONDecoder>(
         from buffer: inout ByteBuffer,

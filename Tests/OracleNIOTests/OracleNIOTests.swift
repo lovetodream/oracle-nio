@@ -63,6 +63,27 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(try rows?.first?.decode(String.self), "test")
     }
 
+    func testSimpleOptionalBinds() {
+        var conn: OracleConnection?
+        XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())
+        defer { XCTAssertNoThrow(try conn?.close().wait()) }
+        var rows: [OracleRow]?
+        XCTAssertNoThrow(
+            rows = try conn?.query(
+                "SELECT \(Optional("test")) FROM dual", logger: .oracleTest
+            ).wait().rows
+        )
+        XCTAssertEqual(rows?.count, 1)
+        XCTAssertEqual(try rows?.first?.decode(String?.self), "test")
+        XCTAssertNoThrow(
+            rows = try conn?.query(
+                "SELECT \(String?.none) FROM dual", logger: .oracleTest
+            ).wait().rows
+        )
+        XCTAssertEqual(rows?.count, 1)
+        XCTAssertEqual(try rows?.first?.decode(String?.self), nil)
+    }
+
     func testQuery10kItems() {
         var conn: OracleConnection?
         XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())

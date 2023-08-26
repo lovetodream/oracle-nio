@@ -22,25 +22,6 @@ struct OracleFrontendMessageEncoder {
         return self.buffer
     }
 
-    mutating func encode(_ message: OracleFrontendMessage) {
-        self.clearIfNeeded()
-
-        switch message {
-        case .connect(let connect):
-            Self.createMessage(
-                connect, capabilities: self.capabilities, out: &self.buffer
-            )
-        case .protocol(let `protocol`):
-            Self.createMessage(
-                `protocol`, capabilities: self.capabilities, out: &self.buffer
-            )
-        case .dataTypes(let dataTypes):
-            Self.createMessage(
-                dataTypes, capabilities: self.capabilities, out: &self.buffer
-            )
-        }
-    }
-
     mutating func marker() {
         self.clearIfNeeded()
 
@@ -50,6 +31,111 @@ struct OracleFrontendMessageEncoder {
         )
         self.buffer.endRequest(
             packetType: .marker, capabilities: self.capabilities
+        )
+    }
+
+    mutating func connect(connectString: String) {
+        self.clearIfNeeded()
+
+        var serviceOptions = Constants.TNS_GSO_DONT_CARE
+        let connectFlags1: UInt32 = 0
+        var connectFlags2: UInt32 = 0
+        let nsiFlags: UInt8 = Constants.TNS_NSI_SUPPORT_SECURITY_RENEG
+            | Constants.TNS_NSI_DISABLE_NA
+        if capabilities.supportsOOB {
+            serviceOptions |= Constants.TNS_GSO_CAN_RECV_ATTENTION
+            connectFlags2 |= Constants.TNS_CHECK_OOB
+        }
+        let connectStringByteLength = connectString
+            .lengthOfBytes(using: .utf8)
+
+        self.buffer.startRequest(packetType: .connect)
+
+        self.buffer.writeMultipleIntegers(
+            Constants.TNS_VERSION_DESIRED,
+            Constants.TNS_VERSION_MINIMUM,
+            serviceOptions,
+            Constants.TNS_SDU,
+            Constants.TNS_TDU,
+            Constants.TNS_PROTOCOL_CHARACTERISTICS,
+            UInt16(0), // line turnaround
+            UInt16(1), // value of 1
+            UInt16(connectStringByteLength)
+        )
+        self.buffer.writeMultipleIntegers(
+            UInt16(74), // offset to connect data
+            UInt32(0), // max receivable data
+            nsiFlags,
+            nsiFlags,
+            UInt64(0), // obsolete
+            UInt64(0), // obsolete
+            UInt64(0), // obsolete
+            UInt32(Constants.TNS_SDU), // SDU (large)
+            UInt32(Constants.TNS_TDU), // SDU (large)
+            connectFlags1,
+            connectFlags2
+        )
+        let isConnectStringToLong =
+            connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA
+        if isConnectStringToLong {
+            self.buffer.endRequest(
+                packetType: .connect, capabilities: capabilities
+            )
+            self.buffer.startRequest(packetType: .data)
+        }
+        self.buffer.writeString(connectString)
+
+        self.buffer.endRequest(
+            packetType: isConnectStringToLong ? .data : .connect,
+            capabilities: capabilities
+        )
+    }
+
+    mutating func `protocol`() {
+        self.clearIfNeeded()
+
+        self.buffer.startRequest(packetType: .data)
+
+        self.buffer.writeInteger(MessageType.protocol.rawValue)
+        buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
+        buffer.writeInteger(UInt8(0)) // `array` terminator
+        buffer.writeString(Constants.DRIVER_NAME)
+        buffer.writeInteger(UInt8(0)) // `NULL` terminator
+
+        self.buffer.endRequest(
+            packetType: .data, capabilities: self.capabilities
+        )
+    }
+
+    mutating func dataTypes() {
+        self.clearIfNeeded()
+
+        self.buffer.startRequest(packetType: .data)
+
+        self.buffer.writeInteger(MessageType.dataTypes.rawValue, as: UInt8.self)
+        self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
+        self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
+        self.buffer.writeUB4(UInt32(capabilities.compileCapabilities.count))
+        self.buffer.writeBytes(capabilities.compileCapabilities)
+        self.buffer.writeInteger(UInt8(capabilities.runtimeCapabilities.count))
+        self.buffer.writeBytes(capabilities.runtimeCapabilities)
+
+        var i = 0
+        while true {
+            let dataType = DataType.all[i]
+            if dataType.dataType == .undefined { break }
+            i += 1
+
+            self.buffer.writeInteger(dataType.dataType.rawValue)
+            self.buffer.writeInteger(dataType.convDataType.rawValue)
+            self.buffer.writeInteger(dataType.representation.rawValue)
+            self.buffer.writeInteger(UInt16(0))
+        }
+
+        self.buffer.writeInteger(UInt16(0))
+
+        self.buffer.endRequest(
+            packetType: .data, capabilities: self.capabilities
         )
     }
 
@@ -308,7 +394,9 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeInteger(UInt8(0)) // pointer (al8kvl)
         if queryContext.requiresDefine {
             self.buffer.writeInteger(UInt8(1)) // pointer (al8doac)
-            self.buffer.writeUB4(UInt32(queryContext.queryVariables.count)) // number of defines
+            self.buffer.writeUB4(
+                UInt32(queryContext.queryVariables.count)
+            ) // number of defines
         } else {
             self.buffer.writeInteger(UInt8(0))
             self.buffer.writeUB4(0)
@@ -417,18 +505,6 @@ struct OracleFrontendMessageEncoder {
         case .writable:
             break
         }
-    }
-
-    private static func createMessage(
-        _ message: OracleFrontendMessage.PayloadEncodable,
-        capabilities: Capabilities,
-        out buffer: inout ByteBuffer
-    ) {
-        buffer.startRequest(packetType: message.packetType)
-        message.encode(into: &buffer, capabilities: capabilities)
-        buffer.endRequest(
-            packetType: message.packetType, capabilities: capabilities
-        )
     }
 
     private mutating func writeFunctionCode(

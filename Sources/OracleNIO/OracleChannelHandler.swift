@@ -217,21 +217,17 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .wait:
             break
         case .sendConnect:
-            self.encoder.encode(
-                .connect(.init(connectString: simpleConnectString()))
-            )
+            self.encoder.connect(connectString: simpleConnectString())
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
         case .sendProtocol:
-            self.encoder.encode(
-                .protocol(.init())
-            )
+            self.encoder.protocol()
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
         case .sendDataTypes:
-            self.encoder.encode(.dataTypes(.init()))
+            self.encoder.dataTypes()
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )

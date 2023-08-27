@@ -1,7 +1,7 @@
 import NIOCore
 
 extension Float: OracleEncodable {
-    public static var oracleType: DBType { .binaryFloat }
+    public var oracleType: DBType { .binaryFloat }
     
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

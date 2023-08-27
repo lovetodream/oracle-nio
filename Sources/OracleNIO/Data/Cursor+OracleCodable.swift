@@ -10,7 +10,7 @@ public struct Cursor {
 }
 
 extension Cursor: OracleEncodable {
-    public static var oracleType: DBType { .cursor }
+    public var oracleType: DBType { .cursor }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

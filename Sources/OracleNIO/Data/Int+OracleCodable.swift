@@ -164,13 +164,13 @@ extension UInt: OracleDecodable {
 // MARK: Int
 
 extension Int: OracleEncodable {
-    public static var oracleType: DBType { .number }
+    public var oracleType: DBType { .binaryInteger }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        // TODO: implement a better version of ByteBuffer.writeOracleNumber
+        OracleNumeric.encodeNumeric(self, into: &buffer)
     }
 }
 

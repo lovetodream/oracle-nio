@@ -5,13 +5,13 @@ import struct Foundation.DateComponents
 import struct Foundation.TimeZone
 
 extension Date: OracleEncodable {
-    public static var oracleType: DBType { .timestampTZ }
+    public var oracleType: DBType { .timestampTZ }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        var length = Self.oracleType.bufferSizeFactor
+        var length = self.oracleType.bufferSizeFactor
         let components = Calendar.current.dateComponents(
             [.year, .month, .day, .hour, .minute, .second, .nanosecond],
             from: self

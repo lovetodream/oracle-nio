@@ -86,7 +86,7 @@ public final class LOB {
 }
 
 extension LOB: OracleEncodable {
-    public static var oracleType: DBType { .blob }
+    public var oracleType: DBType { .blob }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

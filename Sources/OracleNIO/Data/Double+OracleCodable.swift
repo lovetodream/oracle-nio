@@ -1,7 +1,7 @@
 import NIOCore
 
 extension Double: OracleEncodable {
-    public static var oracleType: DBType {
+    public var oracleType: DBType {
         .binaryDouble
     }
 

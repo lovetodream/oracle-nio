@@ -3,7 +3,218 @@ import NIOCore
 private let NUMBER_MAX_DIGITS = 40
 private let NUMBER_AS_SINGLE_CHARS = 172
 
+internal extension StringProtocol  {
+    var ascii: [UInt8] { compactMap(\.asciiValue) }
+}
+
+internal extension LosslessStringConvertible {
+    var string: String { .init(self) }
+}
+
+internal extension Numeric where Self: LosslessStringConvertible {
+    var ascii: [UInt8] { string.ascii }
+}
+
 internal enum OracleNumeric {
+
+    // MARK: Encode
+
+    static func encodeNumeric<T>(
+        _ value: T, into buffer: inout ByteBuffer
+    ) where T: Numeric, T: LosslessStringConvertible {
+        self.encodeNumeric(value.ascii, into: &buffer)
+    }
+
+    static func encodeNumeric(
+        _ value: [UInt8], into buffer: inout ByteBuffer
+    ) {
+        var numberOfDigits = 0
+        var digits = [UInt8](repeating: 0, count: NUMBER_AS_SINGLE_CHARS)
+        var isNegative = false
+        var exponentIsNegative = false
+        var position = 0
+        var exponentPosition = 0
+        var exponent: Int16 = 0
+        var prependZero = false
+        var appendSentinel = false
+
+        let length = value.count
+
+        // check to see if number is negative (first character is '-')
+        if value.first == "-".ascii.first {
+            isNegative = true
+            position += 1
+        }
+
+        // scan for digits until the decimal point or exponent indicator found
+        while position < length {
+            if value[position] == ".".ascii.first || 
+                value[position] == "e".ascii.first ||
+                value[position] == "E".ascii.first
+            {
+                break
+            }
+            if value[position] < "0".ascii.first! || 
+                value[position] > "9".ascii.first!
+            {
+                preconditionFailure("\(value) can't logically be a numeric")
+            }
+            let digit = value[position] - "0".ascii.first!
+            position += 1
+            if digit == 0 && numberOfDigits == 0 {
+                continue
+            }
+            digits[numberOfDigits] = digit
+            numberOfDigits += 1
+        }
+        var decimalPointIndex = numberOfDigits
+
+        // scan for digits following the decimal point, if applicable
+        if position < length && value[position] == ".".ascii.first {
+            position += 1
+            while position < length {
+                if value[position] == "e".ascii.first || 
+                    value[position] == "E".ascii.first
+                {
+                    break
+                }
+                let digit = value[position] - "0".ascii.first!
+                position += 1
+                if digit == 0 && numberOfDigits == 0 {
+                    decimalPointIndex -= 1
+                    continue
+                }
+                digits[numberOfDigits] = digit
+                numberOfDigits += 1
+            }
+        }
+
+        // handle exponent, if applicable
+        if position < length && (value[position] == "e".ascii.first || 
+                                 value[position] == "E".ascii.first)
+        {
+            position += 1
+            if position < length {
+                if value[position] == "-".ascii.first {
+                    exponentIsNegative = true
+                    position += 1
+                } else if value[position] == "+".ascii.first {
+                    position += 1
+                }
+            }
+            exponentPosition = position
+            while position < length {
+                if value[position] < "0".ascii.first! || 
+                    value[position] > "9".ascii.first!
+                {
+                    preconditionFailure("\(value) can't logically be a numeric")
+                }
+                position += 1
+            }
+            if exponentPosition == position {
+                preconditionFailure("\(value) can't logically be a numeric")
+            }
+            exponent = Int16(
+                value.dropFirst(exponentPosition).dropLast(position)
+            )
+            if exponentIsNegative {
+                exponent = -exponent
+            }
+            decimalPointIndex += Int(exponent)
+        }
+
+        // if there is anything left in the string, that indicates an 
+        // invalid number as well
+        if position < length {
+            preconditionFailure("\(value) can't logically be a numeric")
+        }
+
+        // skip trailing zeros
+        while numberOfDigits > 0 && digits[numberOfDigits - 1] == 0 {
+            numberOfDigits -= 1
+        }
+
+        // value must be less than 1e126 and greater than 1e-129;
+        // the number of digits also cannot exceed the maximum precision of 
+        // Oracle numbers
+        if numberOfDigits > NUMBER_MAX_DIGITS || decimalPointIndex > 126 ||
+            decimalPointIndex < -129
+        {
+            preconditionFailure("\(value) can't logically be a numeric")
+        }
+
+        // if the exponent is odd, prepend a zero
+        if decimalPointIndex % 2 == 1 {
+            prependZero = true
+            if numberOfDigits > 0 {
+                digits[numberOfDigits] = 0
+                numberOfDigits += 1
+                decimalPointIndex += 1
+            }
+        }
+
+        // determine the number of digit pairs; if the number of digits is odd,
+        // append a zero to make the number of digits even
+        if numberOfDigits % 2 == 1 {
+            digits[numberOfDigits] = 0
+            numberOfDigits += 1
+        }
+        let numberOfPairs = numberOfDigits / 2
+
+        // append a sentinel 102 byte for negative numbers if there is room
+        if isNegative && numberOfDigits > 0 && 
+            numberOfDigits < NUMBER_MAX_DIGITS
+        {
+            appendSentinel = true
+        }
+
+        // write length of number
+        buffer.writeInteger(UInt8(numberOfPairs + 1 + (appendSentinel ? 1 : 0)))
+
+        // if the number of digits is zero, the value is itself zero since all
+        // leading and trailing zeros are removed from the digits string; this 
+        // is a special case
+        if numberOfDigits == 0 {
+            buffer.writeInteger(UInt8(128))
+            return
+        }
+
+        // write the exponent
+        var exponentOnWire: UInt8 = UInt8((decimalPointIndex / 2) + 192)
+        if isNegative {
+            exponentOnWire = ~exponentOnWire
+        }
+        buffer.writeInteger(exponentOnWire)
+
+        // write the mantissa bytes
+        var digitsPosition = 0
+        for pair in 0..<numberOfPairs {
+            var digit: UInt8
+            if pair == 0 && prependZero {
+                digit = digits[digitsPosition]
+                digitsPosition += 1
+            } else {
+                digit = digits[digitsPosition] * 10 + digits[digitsPosition + 1]
+                digitsPosition += 2
+            }
+            if isNegative {
+                digit = 101 - digit
+            } else {
+                digit += 1
+            }
+            buffer.writeInteger(digit)
+        }
+
+        // append 102 bytes for negative numbers if the number of digits is less
+        // than the maximum allowable
+        if appendSentinel {
+            buffer.writeInteger(UInt8(102))
+        }
+    }
+
+
+    // MARK: Decode
+
     static func parseInteger<T: FixedWidthInteger>(
         from buffer: inout ByteBuffer
     ) throws -> T {
@@ -141,7 +352,7 @@ internal enum OracleNumeric {
             b2 = ~b2
             b3 = ~b3
         }
-        let allBits: UInt32 = UInt32((b0 << 24) | (b1 << 16) | (b2 << 8) | b3)
+        let allBits = UInt32(b0) << 24 | UInt32(b1) << 16 | UInt32(b2) << 8 | UInt32(b3)
         let float = Float(bitPattern: allBits)
         return float
     }
@@ -169,9 +380,9 @@ internal enum OracleNumeric {
             b6 = ~b6
             b7 = ~b7
         }
-        let highBits: UInt64 = UInt64(b0 << 24 | b1 << 16 | b2 << 8 | b4)
-        let lowBits: UInt64 = UInt64(b4 << 24 | b5 << 16 | b6 << 8 | b7)
-        let allBits: UInt64 = highBits << 32 | (lowBits & 0xffffffff)
+        let highBits = UInt64(b0) << 24 | UInt64(b1) << 16 | UInt64(b2) << 8 | UInt64(b3)
+        let lowBits = UInt64(b4) << 24 | UInt64(b5) << 16 | UInt64(b6) << 8 | UInt64(b7)
+        let allBits = highBits << 32 | (lowBits & 0xffffffff)
         let double = Double(bitPattern: allBits)
         return double
     }

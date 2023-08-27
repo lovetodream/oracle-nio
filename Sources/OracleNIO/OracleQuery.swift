@@ -47,16 +47,20 @@ extension OracleQuery {
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleThrowingEncodable>(_ value: Value) throws {
+        public mutating func appendInterpolation<
+            Value: OracleThrowingEncodable
+        >(_ value: Value) throws {
             try self.binds.append(value, context: .default)
             self.sql.append(contentsOf: ":\(self.binds.count)")
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleThrowingEncodable>(_ value: Optional<Value>) throws {
+        public mutating func appendInterpolation<
+            Value: OracleThrowingEncodable
+        >(_ value: Optional<Value>) throws {
             switch value {
             case .none:
-                self.binds.appendNull(Value.self)
+                self.binds.appendNull(value?.oracleType)
             case .some(let value):
                 try self.binds.append(value, context: .default)
             }
@@ -65,16 +69,20 @@ extension OracleQuery {
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleEncodable>(_ value: Value) {
+        public mutating func appendInterpolation<Value: OracleEncodable>(
+            _ value: Value
+        ) {
             self.binds.append(value, context: .default)
             self.sql.append(contentsOf: ":\(self.binds.count)")
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleEncodable>(_ value: Optional<Value>) {
+        public mutating func appendInterpolation<Value: OracleEncodable>(
+            _ value: Optional<Value>
+        ) {
             switch value {
             case .none:
-                self.binds.appendNull(Value.self)
+                self.binds.appendNull(value?.oracleType)
             case .some(let value):
                 self.binds.append(value, context: .default)
             }
@@ -83,7 +91,9 @@ extension OracleQuery {
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleThrowingEncodable, JSONEncoder: OracleJSONEncoder>(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
+        public mutating func appendInterpolation<
+            Value: OracleThrowingEncodable, JSONEncoder: OracleJSONEncoder
+        >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
             try self.binds.append(value, context: context)
             self.sql.append(contentsOf: ":\(self.binds.count)")
         }
@@ -163,7 +173,7 @@ public struct OracleBindings: Sendable, Hashable {
             isReturnBind: Bool
         ) {
             self.init(
-                dataType: Value.oracleType,
+                dataType: value.oracleType,
                 protected: protected,
                 isReturnBind: isReturnBind,
                 size: value.size,
@@ -195,13 +205,12 @@ public struct OracleBindings: Sendable, Hashable {
         self.bytes.reserveCapacity(128 * capacity)
     }
 
-    public mutating func appendNull<T: OracleThrowingEncodable>(
-        _ type: T.Type
-    ) {
-        if T.oracleType == .boolean {
+    public mutating func appendNull(_ dataType: OracleDataType?) {
+        let dataType = dataType ?? .varchar
+        if dataType == .boolean {
             self.bytes.writeInteger(Constants.TNS_ESCAPE_CHAR)
             self.bytes.writeInteger(UInt8(1))
-        } else if T.oracleType._oracleType == .intNamed {
+        } else if dataType._oracleType == .intNamed {
             self.bytes.writeUB4(0) // TOID
             self.bytes.writeUB4(0) // OID
             self.bytes.writeUB4(0) // snapshot
@@ -212,26 +221,27 @@ public struct OracleBindings: Sendable, Hashable {
             self.bytes.writeInteger(UInt8(0))
         }
         self.metadata.append(.init(
-            dataType: type.oracleType,
+            dataType: dataType,
             protected: false,
             isReturnBind: false,
             size: 1,
-            isArray: type.isArray,
-            arrayCount: type.isArray ? 0 : nil,
-            maxArraySize: type.isArray ? 0 : nil
+            isArray: false,
+            arrayCount: nil,
+            maxArraySize: nil
         ))
     }
 
     @inlinable
-    public mutating func append<Value: OracleThrowingEncodable, JSONEncoder: OracleJSONEncoder>(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
+    public mutating func append<
+        Value: OracleThrowingEncodable, JSONEncoder: OracleJSONEncoder
+    >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
         fatalError()
     }
 
     @inlinable
-    public mutating func append<Value: OracleEncodable, JSONEncoder: OracleJSONEncoder>(
-        _ value: Value,
-        context: OracleEncodingContext<JSONEncoder>
-    ) {
+    public mutating func append<
+        Value: OracleEncodable, JSONEncoder: OracleJSONEncoder
+    >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) {
         value.encode(into: &self.bytes, context: context)
         self.metadata.append(.init(
             value: value,
@@ -241,18 +251,16 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
-    mutating func appendUnprotected<Value: OracleThrowingEncodable, JSONEncoder: OracleJSONEncoder>(
-        _ value: Value,
-        context: OracleEncodingContext<JSONEncoder>
-    ) throws {
+    mutating func appendUnprotected<
+        Value: OracleThrowingEncodable, JSONEncoder: OracleJSONEncoder
+    >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
         fatalError()
     }
 
     @inlinable
-    mutating func appendUnprotected<Value: OracleEncodable, JSONEncoder: OracleJSONEncoder>(
-        _ value: Value,
-        context: OracleEncodingContext<JSONEncoder>
-    ) {
+    mutating func appendUnprotected<
+        Value: OracleEncodable, JSONEncoder: OracleJSONEncoder
+    >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) {
         fatalError()
     }
 }

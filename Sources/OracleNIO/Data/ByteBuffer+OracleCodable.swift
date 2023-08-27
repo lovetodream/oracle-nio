@@ -1,7 +1,7 @@
 import NIOCore
 
 extension ByteBuffer: OracleEncodable {
-    public static var oracleType: DBType { .raw }
+    public var oracleType: DBType { .raw }
     
     /// Encodes `self` into wire data starting from the current `readerIndex`.
     ///

@@ -9,7 +9,7 @@ extension String: OracleEncodable {
             .encode(into: &buffer, context: context)
     }
     
-    public static var oracleType: DBType {
+    public var oracleType: DBType {
         .varchar
     }
 

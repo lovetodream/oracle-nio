@@ -46,7 +46,7 @@ extension IntervalDS: ExpressibleByFloatLiteral {
 }
 
 extension IntervalDS: OracleEncodable {
-    public static var oracleType: DBType { .intervalDS }
+    public var oracleType: DBType { .intervalDS }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

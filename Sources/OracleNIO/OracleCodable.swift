@@ -14,7 +14,7 @@ public protocol OracleThrowingEncodable {
     associatedtype _EncodableType: OracleThrowingEncodable = Self
 
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
-    static var oracleType: DBType { get }
+    var oracleType: DBType { get }
 
     /// Identifies the byte size indicator which will be sent to Oracle.
     ///
@@ -42,7 +42,7 @@ public protocol OracleThrowingEncodable {
 }
 
 public extension OracleThrowingEncodable {
-    var size: UInt32 { UInt32(Self.oracleType.defaultSize) }
+    var size: UInt32 { UInt32(self.oracleType.defaultSize) }
 
     static var isArray: Bool { false }
     var arrayCount: Int? { nil }

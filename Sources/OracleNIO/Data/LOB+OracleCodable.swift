@@ -101,7 +101,7 @@ extension LOB: OracleEncodable {
     ) {
         let length = self.locator.readableBytes
         buffer.writeUB4(UInt32(length))
-        self.locator.encode(into: &buffer, context: context)
+        self.locator._encodeRaw(into: &buffer, context: context)
     }
 }
 

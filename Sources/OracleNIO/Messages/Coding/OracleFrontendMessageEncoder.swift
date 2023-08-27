@@ -576,7 +576,7 @@ struct OracleFrontendMessageEncoder {
         }
         if let data {
             self.buffer.writeInteger(MessageType.lobData.rawValue)
-            data.encode(into: &self.buffer, context: .default)
+            data._encodeRaw(into: &self.buffer, context: .default)
         }
         if sendAmount {
             self.buffer.writeUB8(UInt64(amount)) // LOB amount
@@ -853,10 +853,10 @@ extension OracleFrontendMessageEncoder {
         let valueBytes = ByteBuffer(string: value)
         let valueLength = valueBytes.readableBytes
         buffer.writeUB4(UInt32(keyLength))
-        keyBytes.encode(into: &buffer, context: .default)
+        keyBytes._encodeRaw(into: &buffer, context: .default)
         buffer.writeUB4(UInt32(valueLength))
         if valueLength > 0 {
-            valueBytes.encode(into: &buffer, context: .default)
+            valueBytes._encodeRaw(into: &buffer, context: .default)
         }
         buffer.writeUB4(flags)
     }

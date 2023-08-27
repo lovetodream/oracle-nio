@@ -242,7 +242,7 @@ public struct OracleBindings: Sendable, Hashable {
     public mutating func append<
         Value: OracleEncodable, JSONEncoder: OracleJSONEncoder
     >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) {
-        value.encode(into: &self.bytes, context: context)
+        value._encodeRaw(into: &self.bytes, context: context)
         self.metadata.append(.init(
             value: value,
             protected: true,

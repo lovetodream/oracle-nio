@@ -1,14 +1,22 @@
 import NIOCore
 
 extension String: OracleEncodable {
-    public func encode<JSONEncoder>(
+    public func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) {
+        preconditionFailure("This should not be called")
+    }
+
+    @inlinable
+    public func _encodeRaw<JSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) where JSONEncoder: OracleJSONEncoder {
         ByteBuffer(string: self)
-            .encode(into: &buffer, context: context)
+            ._encodeRaw(into: &buffer, context: context)
     }
-    
+
     public var oracleType: DBType {
         .varchar
     }

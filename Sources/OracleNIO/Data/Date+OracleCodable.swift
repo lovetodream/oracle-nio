@@ -13,7 +13,7 @@ extension Date: OracleEncodable {
     ) {
         var length = self.oracleType.bufferSizeFactor
         let components = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute, .second, .nanosecond],
+            [.year, .month, .day, .hour, .minute, .second, .nanosecond, .timeZone],
             from: self
         )
         let year = components.year!
@@ -26,7 +26,7 @@ extension Date: OracleEncodable {
         buffer.writeInteger(UInt8(components.second! + 1))
         if length > 7 {
             let fractionalSeconds =
-                UInt32(components.nanosecond! / 1_000_000_000)
+                UInt32(components.nanosecond! / 1_000_000)
             if fractionalSeconds == 0 && length <= 11 {
                 length = 7
             } else {
@@ -36,8 +36,12 @@ extension Date: OracleEncodable {
             }
         }
         if length > 11 {
-            buffer.writeInteger(Constants.TZ_HOUR_OFFSET)
-            buffer.writeInteger(Constants.TZ_MINUTE_OFFSET)
+            let seconds = components.timeZone!.secondsFromGMT()
+            let totalMinutes = seconds / 60
+            let hours = totalMinutes / 60
+            let minutes = totalMinutes % 60
+            buffer.writeInteger(UInt8(hours) + Constants.TZ_HOUR_OFFSET)
+            buffer.writeInteger(UInt8(minutes) + Constants.TZ_MINUTE_OFFSET)
         }
     }
 }

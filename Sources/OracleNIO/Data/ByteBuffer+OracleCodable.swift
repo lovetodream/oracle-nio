@@ -2,12 +2,19 @@ import NIOCore
 
 extension ByteBuffer: OracleEncodable {
     public var oracleType: DBType { .raw }
-    
+
+    public func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) {
+        preconditionFailure("This should not be called")
+    }
+
     /// Encodes `self` into wire data starting from the current `readerIndex`.
     ///
     /// - Warning: If you want the full buffer to be read, make sure to move `readerIndex` to `0`
     ///            before encoding.
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {

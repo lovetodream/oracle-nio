@@ -52,8 +52,6 @@ extension IntervalDS: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        buffer.writeInteger(UInt8(0)) // length
-        let writerIndex = buffer.writerIndex
         buffer.writeInteger(
             UInt32(self.days) + Constants.TNS_DURATION_MID, endianness: .big
         )
@@ -65,8 +63,6 @@ extension IntervalDS: OracleEncodable {
             endianness: .big
         )
         buffer.writeInteger(UInt8(buffer.readableBytes))
-        let length = buffer.writerIndex - writerIndex
-        buffer.setInteger(UInt8(length), at: writerIndex - 1)
     }
 }
 

@@ -92,6 +92,13 @@ extension LOB: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
+        preconditionFailure("This should not be called")
+    }
+
+    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) {
         let length = self.locator.readableBytes
         buffer.writeUB4(UInt32(length))
         self.locator.encode(into: &buffer, context: context)

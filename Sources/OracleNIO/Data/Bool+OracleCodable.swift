@@ -8,9 +8,9 @@ extension Bool: OracleEncodable {
         context: OracleEncodingContext<JSONEncoder>
     ) {
         if self {
-            buffer.writeMultipleIntegers(UInt8(2), UInt16(0x0101))
+            buffer.writeInteger(UInt16(0x0101))
         } else {
-            buffer.writeInteger(UInt16(0x0100))
+            buffer.writeInteger(UInt8(0x00))
         }
     }
 }

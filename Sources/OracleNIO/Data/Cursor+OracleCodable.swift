@@ -17,10 +17,8 @@ extension Cursor: OracleEncodable {
         context: OracleEncodingContext<JSONEncoder>
     ) {
         if self.id == 0 {
-            buffer.writeInteger(UInt8(1))
             buffer.writeInteger(UInt8(0))
         } else {
-            buffer.writeUB4(1)
             buffer.writeUB4(UInt32(self.id))
         }
     }

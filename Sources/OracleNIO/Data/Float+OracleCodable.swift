@@ -21,7 +21,6 @@ extension Float: OracleEncodable {
             b2 = ~b2
             b3 = ~b3
         }
-        buffer.writeInteger(UInt8(4))
         buffer.writeBytes([b0, b1, b2, b3])
     }
 }

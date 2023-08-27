@@ -31,7 +31,6 @@ extension Double: OracleEncodable {
             b6 = ~b6
             b7 = ~b7
         }
-        buffer.writeInteger(UInt8(8))
         buffer.writeBytes([b0, b1, b2, b3, b4, b5, b6, b7])
     }
 }

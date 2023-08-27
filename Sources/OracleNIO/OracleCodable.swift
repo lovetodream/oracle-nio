@@ -4,15 +4,6 @@ import class Foundation.JSONDecoder
 
 /// A type that can encode itself to a Oracle wire binary representation.
 public protocol OracleThrowingEncodable {
-    /// A type definition of the type that actually implements the ``OracleThrowingEncodable``
-    /// protocol.
-    ///
-    /// This is an escape hatch to prevent a cycle in the conformance of the Optional type to
-    /// ``OracleThrowingEncodable``.
-    /// `String?` should be ``OracleThrowingEncodable``, `String??` should not be 
-    /// ``OracleThrowingEncodable``.
-    associatedtype _EncodableType: OracleThrowingEncodable = Self
-
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
     var oracleType: DBType { get }
 
@@ -38,7 +29,19 @@ public protocol OracleThrowingEncodable {
     /// Encode the entity into the `ByteBuffer` in Oracle binary format, without setting the byte count.
     ///
     /// This method is called from the ``OracleBindings``.
-    func encode<JSONEncoder: OracleJSONEncoder>(into byteBuffer: inout ByteBuffer, context: OracleEncodingContext<JSONEncoder>) throws
+    func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) throws
+
+    /// Encode an entity from the `ByteBuffer` in oracle wire format.
+    ///
+    /// This method has a default implementation and is only overwritten if length needs to be specially
+    /// handled. You shouldn't have to touch this.
+    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) throws
 }
 
 public extension OracleThrowingEncodable {
@@ -62,6 +65,11 @@ public extension Array where Element: OracleThrowingEncodable {
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
 public protocol OracleEncodable: OracleThrowingEncodable {
     func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    )
+
+    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     )
@@ -119,7 +127,7 @@ public typealias OracleCodable = OracleEncodable & OracleDecodable
 
 extension OracleThrowingEncodable {
     @inlinable
-    func encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) throws {
@@ -142,7 +150,7 @@ extension OracleThrowingEncodable {
 
 extension OracleEncodable {
     @inlinable
-    func encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {

@@ -168,9 +168,6 @@ internal enum OracleNumeric {
             appendSentinel = true
         }
 
-        // write length of number
-        buffer.writeInteger(UInt8(numberOfPairs + 1 + (appendSentinel ? 1 : 0)))
-
         // if the number of digits is zero, the value is itself zero since all
         // leading and trailing zeros are removed from the digits string; this 
         // is a special case

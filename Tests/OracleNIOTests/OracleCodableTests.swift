@@ -73,9 +73,37 @@ final class OracleCodableTests: XCTestCase {
             (OracleNumber?, OracleNumber?, OracleNumber?).self,
             context: .default)
         )
-        XCTAssert(result.0 == 42)
-        XCTAssert(result.1 == -24.42)
-        XCTAssert(result.2 == 420.08150042)
+        XCTAssert(result.0?.double == 42)
+        XCTAssert(result.1?.double == -24.42)
+        XCTAssert(result.2?.double == 420.08150042)
+    }
+
+    func testDecodeDateFromARow() {
+        let date = Date()
+        let row = OracleRow(
+            lookupTable: ["date": 0],
+            data: .makeTestDataRow(date),
+            columns: [
+                .init(
+                    name: "date",
+                    dataType: .timestampTZ,
+                    dataTypeSize: 1,
+                    precision: 1,
+                    scale: 1,
+                    bufferSize: 1,
+                    nullsAllowed: true
+                )
+            ]
+        )
+
+        var result: (Date?)
+        XCTAssertNoThrow(result = try row.decode(
+            (Date?).self, context: .default
+        ))
+        XCTAssertEqual(
+            result?.timeIntervalSince1970.rounded(),
+            date.timeIntervalSince1970.rounded()
+        )
     }
 
     func testDecodeDifferentNumericsFromARow() {
@@ -131,7 +159,7 @@ extension DataRow: ExpressibleByArrayLiteral {
         var buffer = ByteBuffer()
         let encodingContext = OracleEncodingContext(jsonEncoder: JSONEncoder())
         elements.forEach { element in
-            try! element.encodeRaw(into: &buffer, context: encodingContext)
+            try! element._encodeRaw(into: &buffer, context: encodingContext)
         }
         self.init(columnCount: elements.count, bytes: buffer)
     }
@@ -143,7 +171,7 @@ extension DataRow: ExpressibleByArrayLiteral {
             case .none:
                 bytes.writeInteger(UInt8(0))
             case .some(let input):
-                input.encode(into: &bytes, context: .default)
+                input._encodeRaw(into: &bytes, context: .default)
             }
         }
 

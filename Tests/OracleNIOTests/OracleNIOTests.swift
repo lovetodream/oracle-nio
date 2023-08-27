@@ -63,6 +63,22 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(try rows?.first?.decode(String.self), "test")
     }
 
+    func testSimpleDateQuery() {
+        var conn: OracleConnection?
+        XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())
+        defer { XCTAssertNoThrow(try conn?.close().wait()) }
+        var rows: [OracleRow]?
+        XCTAssertNoThrow(
+            rows = try conn?.query(
+                "SELECT systimestamp FROM dual", logger: .oracleTest
+            ).wait().rows
+        )
+        XCTAssertEqual(rows?.count, 1)
+        var value: Date?
+        XCTAssertNoThrow(value = try rows?.first?.decode(Date.self))
+        XCTAssertNoThrow((try XCTUnwrap(value)))
+    }
+
     func testSimpleOptionalBinds() {
         var conn: OracleConnection?
         XCTAssertNoThrow(conn = try OracleConnection.test(on: eventLoop).wait())

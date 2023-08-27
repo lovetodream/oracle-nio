@@ -5,7 +5,8 @@ extension String: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) where JSONEncoder: OracleJSONEncoder {
-        buffer.writeBytesAndLength(self.bytes)
+        ByteBuffer(string: self)
+            .encode(into: &buffer, context: context)
     }
     
     public static var oracleType: DBType {

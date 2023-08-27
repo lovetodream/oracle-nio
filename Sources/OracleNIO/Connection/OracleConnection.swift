@@ -29,20 +29,19 @@ public class OracleConnection {
         var serviceName: String
         var username: String
         var password: String
-        var autocommit: Bool
 
-        //  "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=XEPDB1)(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=192.168.1.22)(PORT=1521)))"
-
-        public init(address: SocketAddress, serviceName: String, username: String, password: String, autocommit: Bool = false) {
+        public init(
+            address: SocketAddress,
+            serviceName: String,
+            username: String,
+            password: String
+        ) {
             self.address = address
             self.serviceName = serviceName
             self.username = username
             self.password = password
-            self.autocommit = autocommit
         }
     }
-
-    var autocommit: Bool { configuration.autocommit }
 
     var capabilities = Capabilities()
     let configuration: Configuration
@@ -215,11 +214,6 @@ public class OracleConnection {
         }
 
         return promise.futureResult
-    }
-
-    @available(*, deprecated)
-    func createRequest<T: TNSRequest>() -> T {
-        T.initialize(from: self)
     }
 }
 

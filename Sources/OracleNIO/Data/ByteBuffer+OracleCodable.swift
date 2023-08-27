@@ -15,6 +15,7 @@ extension ByteBuffer: OracleEncodable {
         var slice = self.slice()
         if length <= Constants.TNS_MAX_SHORT_LENGTH {
             buffer.writeInteger(UInt8(length))
+            buffer.writeBuffer(&slice)
         } else {
             buffer.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
             while buffer.readableBytes > 0 {
@@ -30,6 +31,8 @@ extension ByteBuffer: OracleEncodable {
 }
 
 extension ByteBuffer: OracleDecodable {
+    public var size: UInt32 { UInt32(self.readableBytes) }
+
     public init<JSONDecoder: OracleJSONDecoder>(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

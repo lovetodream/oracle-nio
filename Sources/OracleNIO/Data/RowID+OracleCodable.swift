@@ -78,7 +78,7 @@ extension RowID: OracleDecodable {
         case .rowID:
             let rba = buffer.readUB4()
             let partitionID = buffer.readUB2()
-            buffer.skipUB1()
+            buffer.moveReaderIndex(forwardBy: 1)
             let blockNumber = buffer.readUB4()
             let slotNumber = buffer.readUB2()
             self = RowID(

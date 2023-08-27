@@ -27,13 +27,15 @@ enum OracleBackendMessage: Sendable, Hashable {
     case describeInfo(DescribeInfo)
     case error(BackendError)
     case marker
+    case lobData(LOBData)
     case parameter(Parameter)
     case `protocol`(`Protocol`)
     case queryParameter(QueryParameter)
     case resend
     case rowHeader(RowHeader)
     case rowData(RowData)
-    case status
+    case serverSidePiggyback(ServerSidePiggyback)
+    case status(Status)
     case warning(BackendError)
 
     case chunk(ByteBuffer)
@@ -41,109 +43,27 @@ enum OracleBackendMessage: Sendable, Hashable {
 
 extension OracleBackendMessage {
     /// Equivalent to ``PacketType``.
-    enum ID: RawRepresentable, Equatable {
-        typealias RawValue = UInt8
-
-        case accept
-        case data
-        case resend
-        case marker
-
-        init?(rawValue: UInt8) {
-            switch rawValue {
-            case 2:
-                self = .accept
-            case 6:
-                self = .data
-            case 11:
-                self = .resend
-            case 12:
-                self = .marker
-            default:
-                return nil
-            }
-        }
-
-        var rawValue: UInt8 {
-            switch self {
-            case .accept:
-                return 2
-            case .data:
-                return 6
-            case .resend:
-                return 11
-            case .marker:
-                return 12
-            }
-        }
+    enum ID: UInt8, Equatable {
+        case accept = 2
+        case data = 6
+        case resend = 11
+        case marker = 12
     }
 
     /// Equivalent to ``MessageType``.
-    enum MessageID: RawRepresentable, Equatable {
-        typealias RawValue =  UInt8
-
-        case `protocol`
-        case dataTypes
-        case error
-        case rowHeader
-        case rowData
-        case parameter
-        case status
-        case warning
-        case describeInfo
-        case bitVector
-
-        init?(rawValue: UInt8) {
-            switch rawValue {
-            case 1:
-                self = .protocol
-            case 2:
-                self = .dataTypes
-            case 4:
-                self = .error
-            case 6:
-                self = .rowHeader
-            case 7:
-                self = .rowData
-            case 8:
-                self = .parameter
-            case 9:
-                self = .status
-            case 15:
-                self = .warning
-            case 16:
-                self = .describeInfo
-            case 21:
-                self = .bitVector
-            default:
-                return nil
-            }
-        }
-
-        var rawValue: UInt8 {
-            switch self {
-            case .protocol:
-                return 1
-            case .dataTypes:
-                return 2
-            case .error:
-                return 4
-            case .rowHeader:
-                return 6
-            case .rowData:
-                return 7
-            case .parameter:
-                return 8
-            case .status:
-                return 9
-            case .warning:
-                return 15
-            case .describeInfo:
-                return 16
-            case .bitVector:
-                return 21
-            }
-        }
+    enum MessageID: UInt8, Equatable {
+        case `protocol` = 1
+        case dataTypes = 2
+        case error = 4
+        case rowHeader = 6
+        case rowData = 7
+        case parameter = 8
+        case status = 9
+        case lobData = 14
+        case warning = 15
+        case describeInfo = 16
+        case bitVector = 21
+        case serverSidePiggyback = 23
     }
 }
 
@@ -205,7 +125,9 @@ extension OracleBackendMessage {
                             break readLoop
                         }
                     case .status:
-                        messages.append(.status)
+                        messages.append(try .status(
+                            .decode(from: &buffer, capabilities: capabilities)
+                        ))
                         break readLoop
                     case .describeInfo:
                         messages.append(try .describeInfo(
@@ -228,6 +150,14 @@ extension OracleBackendMessage {
                             .decodeWarning(
                                 from: &buffer, capabilities: capabilities
                             )
+                        ))
+                    case .serverSidePiggyback:
+                        messages.append(try .serverSidePiggyback(
+                            .decode(from: &buffer, capabilities: capabilities)
+                        ))
+                    case .lobData:
+                        messages.append(try .lobData(
+                            .decode(from: &buffer, capabilities: capabilities)
                         ))
                     case nil:
                         fatalError("not implemented")
@@ -258,8 +188,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".protocol(\(String(reflecting: `protocol`)))"
         case .resend:
             return ".resend"
-        case .status:
-            return ".status"
+        case .status(let status):
+            return ".status(\(String(reflecting: status)))"
         case .describeInfo(let describeInfo):
             return ".describeInfo(\(String(reflecting: describeInfo)))"
         case .rowHeader(let header):
@@ -272,6 +202,10 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".warning(\(String(reflecting: warning))"
         case .chunk(let buffer):
             return ".chunk(\(String(reflecting: buffer)))"
+        case .serverSidePiggyback(let piggyback):
+            return ".serverSidePiggyback(\(String(reflecting: piggyback)))"
+        case .lobData(let data):
+            return ".lobData(\(String(reflecting: data)))"
         }
     }
 }

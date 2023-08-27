@@ -138,6 +138,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 metadata: [.warning: "\(warning)"]
             )
             action = .wait
+        case .serverSidePiggyback(let piggyback):
+            // TODO: we need to inform state about this event
+            fatalError()
+        case .lobData(let lobData):
+            // TODO: we need to inform state about this event
+            fatalError()
 
         case .chunk(let buffer):
             action = self.state.chunkReceived(

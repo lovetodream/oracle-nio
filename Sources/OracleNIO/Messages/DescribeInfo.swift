@@ -48,8 +48,8 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             from buffer: inout ByteBuffer, capabilities: Capabilities
         ) throws -> DescribeInfo.Column {
             let dataType = try buffer.throwingReadInteger(as: UInt8.self)
-            buffer.skipUB1() // flags
-            let precision = try buffer.throwingReadSB1()
+            buffer.moveReaderIndex(forwardBy: 1) // flags
+            let precision = try buffer.throwingReadInteger(as: Int8.self)
 
             let scale: Int16
             if
@@ -59,7 +59,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             {
                 scale = try buffer.throwingReadSB2()
             } else {
-                scale = try Int16(buffer.throwingReadSB1())
+                scale = try Int16(buffer.throwingReadInteger(as: Int8.self))
             }
 
             let bufferSize = try buffer.throwingReadUB4()
@@ -100,7 +100,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let nullsAllowed =
                 try buffer.throwingReadInteger(as: UInt8.self) != 0
 
-            buffer.skipUB1() // v7 length of name
+            buffer.moveReaderIndex(forwardBy: 1) // v7 length of name
 
             guard 
                 try buffer.throwingReadUB4() > 0,
@@ -143,7 +143,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         let columnCount = try buffer.throwingReadUB4()
 
         if columnCount > 0 {
-            buffer.skipUB1()
+            buffer.moveReaderIndex(forwardBy: 1)
         }
 
         var result = [Column]()

@@ -112,17 +112,19 @@ enum Constants {
     static let TNS_SESSGET_SESSION_CHANGED: UInt32 = 4
 
     // MARK: LOB operations
-    static let TNS_LOB_OP_GET_LENGTH = 0x0001
-    static let TNS_LOB_OP_READ = 0x0002
-    static let TNS_LOB_OP_TRIM = 0x0020
-    static let TNS_LOB_OP_WRITE: UInt32 = 0x0040
-    static let TNS_LOB_OP_GET_CHUNK_SIZE = 0x4000
-    static let TNS_LOB_OP_CREATE_TEMP: UInt32 = 0x0110
-    static let TNS_LOB_OP_FREE_TEMP: UInt32 = 0x0111
-    static let TNS_LOB_OP_OPEN = 0x8000
-    static let TNS_LOB_OP_CLOSE = 0x10000
-    static let TNS_LOB_OP_IS_OPEN = 0x11000
-    static let TNS_LOB_OP_ARRAY: UInt32 = 0x80000
+    enum LOBOperation: UInt32 {
+        case getLength = 0x0001
+        case read = 0x0002
+        case trim = 0x0020
+        case write = 0x0040
+        case getChunkSize = 0x4000
+        case createTemp = 0x0110
+        case freeTemp = 0x0111
+        case open = 0x8000
+        case close = 0x10000
+        case isOpen = 0x11000
+        case array = 0x80000
+    }
 
     // MARK: LOB locator constants
     static let TNS_LOB_LOCATOR_OFFSET_FLAG_1 = 4

@@ -117,4 +117,45 @@ extension OracleBackendMessage {
             return .init(schema: schema, edition: edition, rowCounts: rowCounts)
         }
     }
+
+    struct LOBParameter: Hashable {
+        let amount: Int64?
+        let boolFlag: Bool?
+
+        static func decode(
+            from buffer: inout ByteBuffer, capabilities: Capabilities,
+            sourceLOB: LOB?, destinationLOB: LOB?,
+            operation: Constants.LOBOperation, sendAmount: Bool
+        ) throws -> Self {
+            if let sourceLOB {
+                sourceLOB.locator.moveReaderIndex(to: 0)
+                let numberOfBytes = sourceLOB.locator.readableBytes
+                let buffer = buffer.readSlice(length: numberOfBytes)!
+                sourceLOB.locator = buffer
+            }
+            if let destinationLOB {
+                destinationLOB.locator.moveReaderIndex(to: 0)
+                let numberOfBytes = destinationLOB.locator.readableBytes
+                let buffer = buffer.readSlice(length: numberOfBytes)!
+                destinationLOB.locator = buffer
+            }
+            if operation == .createTemp {
+                buffer.skipUB2() // skip character set
+            }
+            let amount: Int64?
+            if sendAmount {
+                amount = try buffer.throwingReadSB8()
+            } else {
+                amount = nil
+            }
+            let boolFlag: Bool?
+            if operation == .createTemp || operation == .isOpen {
+                let temp16 = try buffer.throwingReadUB2() // flag
+                boolFlag = temp16 > 0
+            } else {
+                boolFlag = nil
+            }
+            return .init(amount: amount, boolFlag: boolFlag)
+        }
+    }
 }

@@ -1,27 +1,6 @@
 import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
-    mutating func skipUB1() {
-        self.moveReaderIndex(forwardBy: 1)
-    }
-
-    @available(*, deprecated, renamed: "ByteBuffer.readInteger(as:)", message: "as: UInt8.self")
-    mutating func readUB1() -> UInt8? {
-        readInteger(as: UInt8.self)
-    }
-
-    @available(*, deprecated, renamed: "ByteBuffer.throwingReadInteger(as:)", message: "as: UInt8.self")
-    mutating func throwingReadUB1(
-        file: String = #fileID, line: Int = #line
-    ) throws -> UInt8 {
-        try self.readUB1().value(
-            or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<UInt8>.size, actual: self.readableBytes,
-                file: file, line: line
-            )
-        )
-    }
-
     mutating func skipUB2() {
         guard let length = readUBLength() else { return }
         guard length <= 2 else { fatalError() }

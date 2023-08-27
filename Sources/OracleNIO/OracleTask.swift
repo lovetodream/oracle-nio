@@ -223,5 +223,5 @@ final class CleanupContext {
     var cursorsToClose: [UInt16]? = nil
     
     var tempLOBsTotalSize: Int = 0
-    var tempLOBsToClose: [[UInt8]]? = nil
+    var tempLOBsToClose: [ByteBuffer]? = nil
 }

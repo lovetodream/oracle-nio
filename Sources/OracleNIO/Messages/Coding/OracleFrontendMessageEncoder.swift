@@ -2,6 +2,8 @@ import NIOCore
 import Crypto
 
 struct OracleFrontendMessageEncoder {
+    static let headerSize = 8
+
     private enum State {
         case flushed
         case writable
@@ -25,13 +27,11 @@ struct OracleFrontendMessageEncoder {
     mutating func marker() {
         self.clearIfNeeded()
 
-        self.buffer.startRequest(packetType: .marker)
+        self.startRequest(packetType: .marker)
         self.buffer.writeMultipleIntegers(
             UInt8(1), UInt8(0), Constants.TNS_MARKER_TYPE_RESET
         )
-        self.buffer.endRequest(
-            packetType: .marker, capabilities: self.capabilities
-        )
+        self.endRequest(packetType: .marker)
     }
 
     mutating func connect(connectString: String) {
@@ -49,7 +49,7 @@ struct OracleFrontendMessageEncoder {
         let connectStringByteLength = connectString
             .lengthOfBytes(using: .utf8)
 
-        self.buffer.startRequest(packetType: .connect)
+        self.startRequest(packetType: .connect)
 
         self.buffer.writeMultipleIntegers(
             Constants.TNS_VERSION_DESIRED,
@@ -78,23 +78,18 @@ struct OracleFrontendMessageEncoder {
         let isConnectStringToLong =
             connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA
         if isConnectStringToLong {
-            self.buffer.endRequest(
-                packetType: .connect, capabilities: capabilities
-            )
-            self.buffer.startRequest(packetType: .data)
+            self.endRequest(packetType: .connect)
+            self.startRequest()
         }
         self.buffer.writeString(connectString)
 
-        self.buffer.endRequest(
-            packetType: isConnectStringToLong ? .data : .connect,
-            capabilities: capabilities
-        )
+        self.endRequest(packetType: isConnectStringToLong ? .data : .connect)
     }
 
     mutating func `protocol`() {
         self.clearIfNeeded()
 
-        self.buffer.startRequest(packetType: .data)
+        self.startRequest()
 
         self.buffer.writeInteger(MessageType.protocol.rawValue)
         buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
@@ -102,15 +97,13 @@ struct OracleFrontendMessageEncoder {
         buffer.writeString(Constants.DRIVER_NAME)
         buffer.writeInteger(UInt8(0)) // `NULL` terminator
 
-        self.buffer.endRequest(
-            packetType: .data, capabilities: self.capabilities
-        )
+        self.endRequest()
     }
 
     mutating func dataTypes() {
         self.clearIfNeeded()
 
-        self.buffer.startRequest(packetType: .data)
+        self.startRequest()
 
         self.buffer.writeInteger(MessageType.dataTypes.rawValue, as: UInt8.self)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
@@ -134,9 +127,7 @@ struct OracleFrontendMessageEncoder {
 
         self.buffer.writeInteger(UInt16(0))
 
-        self.buffer.endRequest(
-            packetType: .data, capabilities: self.capabilities
-        )
+        self.endRequest()
     }
 
     mutating func authenticationPhaseOne(authContext: AuthContext) {
@@ -161,7 +152,7 @@ struct OracleFrontendMessageEncoder {
 
         let numberOfPairs: UInt32 = 5
 
-        self.buffer.startRequest()
+        self.startRequest()
 
         self.writeBasicAuthData(
             authContext: authContext,
@@ -197,7 +188,7 @@ struct OracleFrontendMessageEncoder {
             out: &self.buffer
         )
 
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.endRequest()
     }
 
     mutating func authenticationPhaseTwo(
@@ -244,7 +235,7 @@ struct OracleFrontendMessageEncoder {
             numberOfPairs += 1
         }
 
-        self.buffer.startRequest()
+        self.startRequest()
 
         self.writeBasicAuthData(
             authContext: authContext,
@@ -299,7 +290,7 @@ struct OracleFrontendMessageEncoder {
             )
         }
 
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.endRequest()
     }
 
     mutating func execute(
@@ -351,7 +342,7 @@ struct OracleFrontendMessageEncoder {
             options |= Constants.TNS_EXEC_OPTION_COMMIT
         }
 
-        self.buffer.startRequest()
+        self.startRequest()
 
         // 2. write piggybacks, if needed
         self.writePiggybacks(context: cleanupContext)
@@ -465,7 +456,7 @@ struct OracleFrontendMessageEncoder {
             self.writeBindParameters(queryContext.query.binds)
         }
 
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.endRequest()
     }
 
     mutating func reexecute(
@@ -473,7 +464,7 @@ struct OracleFrontendMessageEncoder {
     ) {
         self.clearIfNeeded()
 
-        self.buffer.startRequest()
+        self.startRequest()
         
         let functionCode: Constants.FunctionCode
         if queryContext.statement.isQuery && !queryContext.requiresDefine 
@@ -511,34 +502,101 @@ struct OracleFrontendMessageEncoder {
             self.buffer.writeInteger(MessageType.rowData.rawValue)
             self.writeBindParameterRow(bindings: parameters)
         }
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.endRequest()
     }
 
     mutating func fetch(cursorID: UInt16, fetchArraySize: UInt32) {
         self.clearIfNeeded()
 
-        self.buffer.startRequest()
+        self.startRequest()
         self.writeFunctionCode(messageType: .function, functionCode: .fetch)
         self.buffer.writeUB4(UInt32(cursorID))
         self.buffer.writeUB4(fetchArraySize)
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.endRequest()
+    }
+
+    mutating func lobOperation(
+        sourceLOB: LOB?, sourceOffset: UInt64,
+        destinationLOB: LOB?, destinationOffset: UInt64,
+        operation: Constants.LOBOperation, sendAmount: Bool, amount: Int64,
+        data: ByteBuffer?
+    ) throws {
+        self.clearIfNeeded()
+
+        self.startRequest()
+        self.writeFunctionCode(messageType: .function, functionCode: .lobOp)
+        if let sourceLOB {
+            sourceLOB.locator.moveReaderIndex(to: 0)
+            self.buffer.writeInteger(UInt8(1)) // source pointer
+            self.buffer.writeUB4(UInt32(sourceLOB.locator.readableBytes))
+        } else {
+            self.buffer.writeInteger(UInt8(0)) // source pointer
+            self.buffer.writeInteger(UInt8(0)) // source length
+        }
+        if let destinationLOB {
+            destinationLOB.locator.moveReaderIndex(to: 0)
+            self.buffer.writeInteger(UInt8(1)) // destination pointer
+            self.buffer.writeUB4(UInt32(destinationLOB.locator.readableBytes))
+        } else {
+            self.buffer.writeInteger(UInt8(0)) // destination pointer
+            self.buffer.writeInteger(UInt8(0)) // destination length
+        }
+        self.buffer.writeUB4(0) // short source offset
+        self.buffer.writeUB4(0) // short destination offset
+        self.buffer.writeInteger(UInt8(operation == .createTemp ? 1 : 0))
+            // pointer (character set)
+        self.buffer.writeInteger(UInt8(0)) // pointer (short amount)
+        if operation == .createTemp || operation == .isOpen {
+            self.buffer.writeInteger(UInt8(1)) // pointer (NULL LOB)
+        } else {
+            self.buffer.writeInteger(UInt8(0)) // pointer (NULL LOB)
+        }
+        self.buffer.writeUB4(operation.rawValue)
+        self.buffer.writeInteger(UInt8(0)) // pointer (SCN array)
+        self.buffer.writeInteger(UInt8(0)) // SCN array length
+        self.buffer.writeUB8(sourceOffset)
+        self.buffer.writeUB8(destinationOffset)
+        self.buffer.writeInteger(UInt8(sendAmount ? 1 : 0)) // pointer (amount)
+        for _ in 0..<3 {
+            self.buffer.writeInteger(UInt16(0)) // array LOB (not used)
+        }
+        if let sourceLOB {
+            self.buffer.writeBuffer(&sourceLOB.locator)
+        }
+        if let destinationLOB {
+            self.buffer.writeBuffer(&destinationLOB.locator)
+        }
+        if operation == .createTemp {
+            if let sourceLOB, sourceLOB.dbType.csfrm == Constants.TNS_CS_NCHAR {
+                try self.capabilities.checkNCharsetID()
+                self.buffer.writeUB4(UInt32(Constants.TNS_CHARSET_UTF16))
+            } else {
+                self.buffer.writeUB4(UInt32(Constants.TNS_CHARSET_UTF8))
+            }
+        }
+        if let data {
+            self.buffer.writeInteger(MessageType.lobData.rawValue)
+            data.encode(into: &self.buffer, context: .default)
+        }
+        if sendAmount {
+            self.buffer.writeUB8(UInt64(amount)) // LOB amount
+        }
+        self.endRequest()
     }
 
     mutating func logoff() {
         self.clearIfNeeded()
 
-        self.buffer.startRequest()
+        self.startRequest()
         self.writeFunctionCode(messageType: .function, functionCode: .logoff)
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.endRequest()
     }
 
     mutating func close() {
         self.clearIfNeeded()
 
-        self.buffer.startRequest(
-            packetType: .data, dataFlags: Constants.TNS_DATA_FLAGS_EOF
-        )
-        self.buffer.endRequest(capabilities: self.capabilities)
+        self.startRequest(dataFlags: Constants.TNS_DATA_FLAGS_EOF)
+        self.endRequest()
     }
 
     // MARK: - Private Methods -
@@ -550,6 +608,52 @@ struct OracleFrontendMessageEncoder {
             self.buffer.clear()
         case .writable:
             break
+        }
+    }
+
+
+    /// Starts a new request with a placeholder for the header, which is set at the end of the request via
+    /// ``endRequest``, and the data flags if they are required.
+    mutating func startRequest(
+        packetType: PacketType = .data, dataFlags: UInt16 = 0
+    ) {
+        self.buffer.reserveCapacity(Self.headerSize)
+        self.buffer.moveWriterIndex(forwardBy: Self.headerSize)
+        if packetType == PacketType.data {
+            self.buffer.writeInteger(dataFlags)
+        }
+    }
+
+    private mutating func endRequest(
+        packetType: PacketType = .data
+    ) {
+        self.sendPacket(packetType: packetType, final: true)
+    }
+
+    private mutating func sendPacket(packetType: PacketType, final: Bool) {
+        var position = 0
+        if capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+            self.buffer.setInteger(
+                UInt32(self.buffer.readableBytes), at: position
+            )
+        } else {
+            self.buffer.setInteger(
+                UInt16(self.buffer.readableBytes), at: position
+            )
+            self.buffer.setInteger(
+                UInt16(0), at: position + MemoryLayout<UInt16>.size
+            )
+        }
+        position += MemoryLayout<UInt32>.size
+        self.buffer.setInteger(packetType.rawValue, at: position)
+        position += MemoryLayout<UInt8>.size
+        self.buffer.setInteger(UInt8(0), at: position)
+        position += MemoryLayout<UInt8>.size
+        self.buffer.setInteger(UInt16(0), at: position)
+        if !final {
+            self.buffer.moveWriterIndex(to: Self.headerSize)
+            self.buffer.writeInteger(UInt16(0))
+                // add data flags for next packet
         }
     }
 
@@ -744,15 +848,15 @@ extension OracleFrontendMessageEncoder {
         key: String, value: String, flags: UInt32 = 0,
         out buffer: inout ByteBuffer
     ) {
-        let keyBytes = key.bytes
-        let keyLength = keyBytes.count
-        let valueBytes = value.bytes
-        let valueLength = valueBytes.count
+        let keyBytes = ByteBuffer(string: key)
+        let keyLength = keyBytes.readableBytes
+        let valueBytes = ByteBuffer(string: value)
+        let valueLength = valueBytes.readableBytes
         buffer.writeUB4(UInt32(keyLength))
-        buffer.writeBytesAndLength(keyBytes)
+        keyBytes.encode(into: &buffer, context: .default)
         buffer.writeUB4(UInt32(valueLength))
         if valueLength > 0 {
-            buffer.writeBytesAndLength(valueBytes)
+            valueBytes.encode(into: &buffer, context: .default)
         }
         buffer.writeUB4(flags)
     }
@@ -845,11 +949,12 @@ extension OracleFrontendMessageEncoder {
     }
 
     private mutating func writeCloseTempLOBsPiggyback(
-        _ tempLOBsToClose: [[UInt8]],
+        _ tempLOBsToClose: [ByteBuffer],
         totalSize tempLOBsTotalSize: Int
     ) {
         self.writePiggybackCode(code: .lobOp)
-        let opCode = Constants.TNS_LOB_OP_FREE_TEMP | Constants.TNS_LOB_OP_ARRAY
+        let opCode = Constants.LOBOperation.freeTemp.rawValue 
+            | Constants.LOBOperation.array.rawValue
 
         // temp lob data
         self.buffer.writeInteger(UInt8(1)) // pointer
@@ -877,7 +982,7 @@ extension OracleFrontendMessageEncoder {
         self.buffer.writeUB4(0)
 
         for lob in tempLOBsToClose {
-            buffer.writeBytes(lob)
+            buffer.writeImmutableBuffer(lob)
         }
     }
 

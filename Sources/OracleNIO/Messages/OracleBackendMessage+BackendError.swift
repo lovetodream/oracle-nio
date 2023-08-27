@@ -44,16 +44,16 @@ extension OracleBackendMessage {
             buffer.skipUB2() // array elem error
             let cursorID = buffer.readUB2() // cursor id
             let errorPosition = buffer.readUB2() // error position
-            buffer.skipUB1() // sql type
-            buffer.skipUB1() // fatal?
+            buffer.moveReaderIndex(forwardBy: 1) // sql type
+            buffer.moveReaderIndex(forwardBy: 1) // fatal?
             buffer.skipUB2() // flags
             buffer.skipUB2() // user cursor options
-            buffer.skipUB1() // UDI parameter
-            buffer.skipUB1() // warning flag
+            buffer.moveReaderIndex(forwardBy: 1) // UDI parameter
+            buffer.moveReaderIndex(forwardBy: 1) // warning flag
             let rowID = RowID(from: &buffer)
             buffer.skipUB4() // OS error
-            buffer.skipUB1() // statement number
-            buffer.skipUB1() // call number
+            buffer.moveReaderIndex(forwardBy: 1) // statement number
+            buffer.moveReaderIndex(forwardBy: 1) // call number
             buffer.skipUB2() // padding
             buffer.skipUB4() // success iters
             if let byteCount = buffer.readUB4(), byteCount > 0 {

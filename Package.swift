@@ -33,7 +33,6 @@ let package = Package(
                 .product(name: "CryptoSwift", package: "CryptoSwift"),
             ]
         ),
-        .executableTarget(name: "OracleNIOExample", dependencies: ["OracleNIO"]),
         .testTarget(
             name: "OracleNIOTests",
             dependencies: ["OracleNIO"]

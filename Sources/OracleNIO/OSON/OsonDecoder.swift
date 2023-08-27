@@ -1,5 +1,6 @@
 import NIOCore
 
+// TODO: needs refactoring
 struct OSONDecoder {
     var buffer = ByteBuffer()
     var flags: UInt16 = 0
@@ -15,7 +16,7 @@ struct OSONDecoder {
         if header[0] != Constants.TNS_JSON_MAGIC_BYTE_1 || header[1] != Constants.TNS_JSON_MAGIC_BYTE_2 ||  header[2] != Constants.TNS_JSON_MAGIC_BYTE_3 {
             throw OracleError.ErrorType.unexpectedData
         }
-        let version = buffer.readUB1() ?? 0
+        let version = try buffer.throwingReadInteger(as: UInt8.self)
         if version != Constants.TNS_JSON_VERSION {
             throw OracleError.ErrorType.osonVersionNotSupported
         }
@@ -41,7 +42,7 @@ struct OSONDecoder {
             numberOfFieldNames = UInt32(temp16)
             fieldIDLength = 2
         } else {
-            let temp8 = buffer.readUB1() ?? 0
+            let temp8 = try buffer.throwingReadInteger(as: UInt8.self)
             numberOfFieldNames = UInt32(temp8)
             fieldIDLength = 1
         }
@@ -111,7 +112,7 @@ struct OSONDecoder {
     }
 
     private mutating func decodeNode() throws -> Any? { // TODO: better return type
-        let nodeType = buffer.readUB1() ?? 0
+        let nodeType = try buffer.throwingReadInteger(as: UInt8.self)
         if nodeType & 0x80 != 0 {
             return try decodeContainerNode(nodeType: nodeType)
         }
@@ -149,7 +150,7 @@ struct OSONDecoder {
 
         // handle scalars with lengths stored outside the node itself
         case Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT8:
-            let temp8 = buffer.readUB1() ?? 0
+            let temp8 = try buffer.throwingReadInteger(as: UInt8.self)
             return buffer.readString(length: Int(temp8))
         case Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT16:
             let temp16 = buffer.readInteger(as: UInt16.self) ?? 0
@@ -200,7 +201,9 @@ struct OSONDecoder {
         // determine the number of children by examining the 4th and 5th most
         // significant bits of the node type; determine the offsets in the tree
         // segment to the field ids array and the value offsets array
-        var (numberOfChildren, isShared) = getNumberOfChildren(nodeType: nodeType)
+        var (numberOfChildren, isShared) = try getNumberOfChildren(
+            nodeType: nodeType
+        )
         var offsetPosition: Int
         var fieldIDsPosition: Int
         var value: Any?
@@ -209,8 +212,10 @@ struct OSONDecoder {
             let offset = getOffset(nodeType: nodeType)
             offsetPosition = buffer.readerIndex
             buffer.moveReaderIndex(to: treeSegPosition + Int(offset))
-            let temp8 = buffer.readUB1() ?? 0
-            (numberOfChildren, isShared) = getNumberOfChildren(nodeType: temp8)
+            let temp8 = try buffer.throwingReadInteger(as: UInt8.self)
+            (numberOfChildren, isShared) = try getNumberOfChildren(
+                nodeType: temp8
+            )
             fieldIDsPosition = buffer.readerIndex
         } else if isObject {
             value = [String: Any?]()
@@ -228,7 +233,7 @@ struct OSONDecoder {
             if isObject {
                 buffer.moveReaderIndex(to: fieldIDsPosition)
                 if fieldIDLength == 1 {
-                    let temp8 = buffer.readUB1() ?? 0
+                    let temp8 = try buffer.throwingReadInteger(as: UInt8.self)
                     name = self.fieldNames[Int(temp8) - 1]
                 } else if fieldIDLength == 2 {
                     let temp16 = buffer.readInteger(as: UInt16.self) ?? 0
@@ -268,12 +273,14 @@ struct OSONDecoder {
     /// In the latter case the flag is_shared is set and the number of children
     /// is read by the caller instead as it must examine the offset and then
     /// retain the location for later use.
-    mutating func getNumberOfChildren(nodeType: UInt8) -> (numberOfChildren: UInt32, isShared: Bool) {
+    mutating func getNumberOfChildren(
+        nodeType: UInt8
+    ) throws -> (numberOfChildren: UInt32, isShared: Bool) {
         let childrenBits = nodeType & 0x18
         let isShared = childrenBits == 0x18
         let numberOfChildren: UInt32
         if childrenBits == 0 {
-            let temp8 = buffer.readUB1() ?? 0
+            let temp8 = try buffer.throwingReadInteger(as: UInt8.self)
             numberOfChildren = UInt32(temp8)
         } else if childrenBits == 0x08 {
             let temp16 = buffer.readInteger(as: UInt16.self) ?? 0

@@ -100,10 +100,15 @@ final class OracleCodableTests: XCTestCase {
         XCTAssertNoThrow(result = try row.decode(
             (Date?).self, context: .default
         ))
-        XCTAssertEqual(
-            result?.timeIntervalSince1970.rounded(),
-            date.timeIntervalSince1970.rounded()
+        // Timestamps will lose the last three decimal places of precision when 
+        // sent and received from Oracle, compared to their Swift equivalent.
+        let roundedOrigin = Double(Int(date.timeIntervalSince1970 * 1000)) / 1000
+        var roundedResult: Double?
+        XCTAssertNoThrow(
+            roundedResult = Double(Int(try XCTUnwrap(result)
+                .timeIntervalSince1970 * 1000)) / 1000
         )
+        XCTAssertEqual(roundedOrigin, roundedResult)
     }
 
     func testDecodeDifferentNumericsFromARow() {

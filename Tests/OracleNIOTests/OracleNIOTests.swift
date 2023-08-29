@@ -76,7 +76,7 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(rows?.count, 1)
         var value: Date?
         XCTAssertNoThrow(value = try rows?.first?.decode(Date.self))
-        XCTAssertNoThrow((try XCTUnwrap(value)))
+        XCTAssertNoThrow(try XCTUnwrap(value))
     }
 
     func testSimpleOptionalBinds() {

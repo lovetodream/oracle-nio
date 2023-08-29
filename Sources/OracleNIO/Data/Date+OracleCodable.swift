@@ -85,7 +85,8 @@ extension Date: OracleDecodable {
             if length >= 11, let value = buffer.readInteger(
                 endianness: .big, as: UInt32.self
             ) {
-                let fsecond = Double(value) / 1000.0
+                let fsecond = Double(value) / 
+                    pow(10, Double(String(value).count))
                 components.nanosecond = Int(fsecond * 1_000_000_000)
             }
 

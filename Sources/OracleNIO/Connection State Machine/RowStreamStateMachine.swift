@@ -83,8 +83,8 @@ struct RowStreamStateMachine {
             guard let previousRow = buffer.last else {
                 preconditionFailure()
             }
-            let index = previousRow.index(DataRow.ColumnIndex(0), offsetBy: index)
-            return previousRow[index]!
+            let idx = previousRow.index(previousRow.startIndex, offsetBy: index)
+            return previousRow[idx]!
 
         // For all the following cases, please note:
         // Normally these code paths should never be hit. However there is

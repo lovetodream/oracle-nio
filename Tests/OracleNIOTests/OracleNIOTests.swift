@@ -147,29 +147,48 @@ final class OracleNIOTests: XCTestCase {
             XCTAssertEqual(error.serverInfo?.number, 942)
         }
         try await connection.query(
-            "CREATE TABLE duplicate (id number, title varchar2(50 byte))",
+            "CREATE TABLE duplicate (id number, title varchar2(150 byte))",
             logger: .oracleTest
         )
         try await connection.query(
-            "INSERT INTO duplicate (id, title) VALUES (1, 'hello, there!')",
+            "INSERT INTO duplicate (id, title) VALUES (1, 'hello!')",
             logger: .oracleTest
         )
         try await connection.query(
-            "INSERT INTO duplicate (id, title) VALUES (2, 'hello, there!')",
+            "INSERT INTO duplicate (id, title) VALUES (2, 'hi!')",
             logger: .oracleTest
         )
         try await connection.query(
-            "INSERT INTO duplicate (id, title) VALUES (3, 'hello, guys!')",
+            "INSERT INTO duplicate (id, title) VALUES (3, 'hello, there!')",
+            logger: .oracleTest
+        )
+        try await connection.query(
+            "INSERT INTO duplicate (id, title) VALUES (4, 'hello, there!')",
+            logger: .oracleTest
+        )
+        try await connection.query(
+            "INSERT INTO duplicate (id, title) VALUES (5, 'hello, guys!')",
             logger: .oracleTest
         )
         let rows = try await connection.query(
-            "SELECT id, title FROM duplicate", logger: .oracleTest
+            "SELECT id, title FROM duplicate ORDER BY id", logger: .oracleTest
         )
         var index = 0
         for try await row in rows.decode((Int, String).self) {
             XCTAssertEqual(index + 1, row.0)
             index = row.0
-            XCTAssertEqual(row.1, index == 3 ? "hello, guys!" : "hello, there!")
+            switch index {
+            case 1:
+                XCTAssertEqual(row.1, "hello!")
+            case 2:
+                XCTAssertEqual(row.1, "hi!")
+            case 3, 4:
+                XCTAssertEqual(row.1, "hello, there!")
+            case 5:
+                XCTAssertEqual(row.1, "hello, guys!")
+            default:
+                XCTFail()
+            }
         }
         try await connection.query("DROP TABLE duplicate", logger: .oracleTest)
 

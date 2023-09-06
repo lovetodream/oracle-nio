@@ -750,7 +750,11 @@ struct ExtendedQueryStateMachine {
                 columnNumber: UInt32(index), bitVector: rowHeader.bitVector
             ) {
                 var data = demandStateMachine.receivedDuplicate(at: index)
-                out.writeBuffer(&data)
+                // write data with length, because demandStateMachine doesn't
+                // return the length field
+                try out.writeLengthPrefixed(as: UInt8.self) { buffer in
+                    buffer.writeBuffer(&data)
+                }
             } else if var data = try self.processColumnData(
                 from: &buffer, columnInfo: column, capabilities: capabilitites
             ) {

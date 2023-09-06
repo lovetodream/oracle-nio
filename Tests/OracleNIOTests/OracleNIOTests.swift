@@ -154,6 +154,46 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(received, 100)
     }
 
+    func testDuplicateColumn() async throws {
+        let connection = try await OracleConnection.test(on: eventLoop).get()
+        defer { XCTAssertNoThrow(try connection.close().wait()) }
+        do {
+            try await connection.query(
+                "DROP TABLE duplicate", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await connection.query(
+            "CREATE TABLE duplicate (id number, title varchar2(50 byte))",
+            logger: .oracleTest
+        )
+        try await connection.query(
+            "INSERT INTO duplicate (id, title) VALUES (1, 'hello, there!')",
+            logger: .oracleTest
+        )
+        try await connection.query(
+            "INSERT INTO duplicate (id, title) VALUES (2, 'hello, there!')",
+            logger: .oracleTest
+        )
+        try await connection.query(
+            "INSERT INTO duplicate (id, title) VALUES (3, 'hello, guys!')",
+            logger: .oracleTest
+        )
+        let rows = try await connection.query(
+            "SELECT id, title FROM duplicate", logger: .oracleTest
+        )
+        var index = 0
+        for try await row in rows.decode((Int, String).self) {
+            XCTAssertEqual(index + 1, row.0)
+            index = row.0
+            XCTAssertEqual(row.1, index == 3 ? "hello, guys!" : "hello, there!")
+        }
+        try await connection.query("DROP TABLE duplicate", logger: .oracleTest)
+
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

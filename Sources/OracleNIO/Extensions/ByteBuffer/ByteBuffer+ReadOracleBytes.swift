@@ -18,20 +18,6 @@ extension ByteBuffer {
         return self.readSlice(length: length)!
     }
 
-    mutating func _readRawBytesAndLength() -> (
-        bytes: [UInt8]?, length: UInt8
-    )? {
-        guard let length = self.readInteger(as: UInt8.self) else { return nil }
-        if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
-            return (bytes: [], length: 0)
-        }
-        return (bytes: readBytes(length: Int(length)), length: length)
-    }
-
-    mutating func readBytes() -> [UInt8]? {
-        _readRawBytesAndLength()?.bytes
-    }
-
     /// Read a slice of data prefixed with a length byte.
     ///
     /// If not enough data could be read, `nil` will be returned, indicating that another packet must be

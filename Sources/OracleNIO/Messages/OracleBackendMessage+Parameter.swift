@@ -80,9 +80,10 @@ extension OracleBackendMessage {
             var edition: String? = nil
             var rowCounts: [UInt64]? = nil
             for _ in 0..<pairsCount {
-                var keyValue: [UInt8]? = nil
+                var keyValue: ByteBuffer? = nil
                 if let bytesCount = buffer.readUB2(), bytesCount > 0 { // key
-                    keyValue = buffer.readBytes()
+                    keyValue = 
+                        try buffer.readOracleSpecificLengthPrefixedSlice()
                 }
                 if let bytesCount = buffer.readUB2(), bytesCount > 0 { // value
                     buffer.skipRawBytesChunked()
@@ -92,12 +93,16 @@ extension OracleBackendMessage {
                     keywordNumber == Constants.TNS_KEYWORD_NUM_CURRENT_SCHEMA,
                     let keyValue 
                 {
-                    schema = String(cString: keyValue)
+                    schema = keyValue.getString(
+                        at: 0, length: keyValue.readableBytes
+                    )
                 } else if
                     keywordNumber == Constants.TNS_KEYWORD_NUM_EDITION,
                     let keyValue
                 {
-                    edition = String(cString: keyValue)
+                    edition = keyValue.getString(
+                        at: 0, length: keyValue.readableBytes
+                    )
                 }
             }
             if

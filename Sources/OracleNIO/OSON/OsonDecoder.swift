@@ -1,4 +1,5 @@
 import NIOCore
+import struct Foundation.Date
 
 // TODO: needs refactoring
 struct OSONDecoder {
@@ -8,8 +9,8 @@ struct OSONDecoder {
     var fieldNames = [String]()
     var treeSegPosition = 0
 
-    mutating func decode(_ data: [UInt8]) throws -> Any? {
-        self.buffer = ByteBuffer(bytes: data)
+    mutating func decode(_ data: ByteBuffer) throws -> Any? {
+        self.buffer = data
 
         // Parse root header
         guard let header = buffer.readBytes(length: 3) else { return nil }
@@ -117,7 +118,7 @@ struct OSONDecoder {
             return try decodeContainerNode(nodeType: nodeType)
         }
 
-        let bytes: [UInt8]
+        var bytes: ByteBuffer
         switch nodeType {
         case Constants.TNS_JSON_TYPE_NULL:
             return nil
@@ -128,23 +129,29 @@ struct OSONDecoder {
 
         // handle fixed length scalars
         case Constants.TNS_JSON_TYPE_DATE, Constants.TNS_JSON_TYPE_TIMESTAMP7:
-            bytes = buffer.readBytes(length: 7) ?? []
-            return try buffer.parseDate(bytes: bytes, length: 7)
+            bytes = buffer.readSlice(length: 7) ?? .init()
+            return try Date(from: &bytes, type: .date, context: .default)
         case Constants.TNS_JSON_TYPE_TIMESTAMP:
-            bytes = buffer.readBytes(length: 11) ?? []
-            return try buffer.parseDate(bytes: bytes, length: 11)
+            bytes = buffer.readSlice(length: 11) ?? .init()
+            return try Date(from: &bytes, type: .timestamp, context: .default)
         case Constants.TNS_JSON_TYPE_TIMESTAMP_TZ:
-            bytes = buffer.readBytes(length: 13) ?? []
-            return try buffer.parseDate(bytes: bytes, length: 13)
+            bytes = buffer.readSlice(length: 13) ?? .init()
+            return try Date(from: &bytes, type: .timestampTZ, context: .default)
         case Constants.TNS_JSON_TYPE_BINARY_FLOAT:
-            bytes = buffer.readBytes(length: 4) ?? []
-            return buffer.parseBinaryFloat(bytes: bytes)
+            bytes = buffer.readSlice(length: 4) ?? .init()
+            return try Float(
+                from: &bytes, type: .binaryFloat, context: .default
+            )
         case Constants.TNS_JSON_TYPE_BINARY_DOUBLE:
-            bytes = buffer.readBytes(length: 8) ?? []
-            return buffer.parseBinaryDouble(bytes: bytes)
+            bytes = buffer.readSlice(length: 8) ?? .init()
+            return try Double(
+                from: &bytes, type: .binaryDouble, context: .default
+            )
         case Constants.TNS_JSON_TYPE_INTERVAL_DS:
-            bytes = buffer.readBytes(length: 11) ?? []
-            return buffer.parseIntervalDS(bytes: bytes)
+            bytes = buffer.readSlice(length: 11) ?? .init()
+            return try IntervalDS(
+                from: &bytes, type: .intervalDS, context: .default
+            )
         case Constants.TNS_JSON_TYPE_INTERVAL_YM:
             throw OracleError.ErrorType.dbTypeNotSupported
 
@@ -159,13 +166,16 @@ struct OSONDecoder {
             let temp32 = buffer.readInteger(as: UInt32.self) ?? 0
             return buffer.readString(length: Int(temp32))
         case Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8:
-            return buffer.readOracleNumber()
+            let length = Int(try buffer.throwingReadInteger(as: UInt8.self))
+            var slice = buffer.readSlice(length: length) ?? .init()
+            let value: Double = try OracleNumeric.parseFloat(from: &slice)
+            return value
         case Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT16:
             let temp16 = buffer.readInteger(as: UInt16.self) ?? 0
-            return buffer.readBytes(length: Int(temp16))
+            return temp16
         case Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT32:
             let temp32 = buffer.readInteger(as: UInt32.self) ?? 0
-            return buffer.readBytes(length: Int(temp32))
+            return temp32
 
         default: break
         }
@@ -173,15 +183,19 @@ struct OSONDecoder {
         // handle number/decimal with length stored inside the node itself
         if [0x20, 0x60].contains(nodeType & 0xf0) {
             let temp8 = nodeType & 0x0f
-            bytes = buffer.readBytes(length: Int(temp8) + 1) ?? []
-            return buffer.parseOracleNumber(bytes: bytes, length: Int(temp8) + 1)
+            bytes = buffer.readSlice(length: Int(temp8) + 1) ?? .init()
+            return try OracleNumber(
+                from: &bytes, type: .number, context: .default
+            )
         }
 
         // handle integer with length stored inside the node itself
         if [0x40, 0x50].contains(nodeType & 0xf0) {
             let temp8 = nodeType & 0x0f
-            bytes = buffer.readBytes(length: Int(temp8)) ?? []
-            return buffer.parseOracleNumber(bytes: bytes, length: Int(temp8))
+            bytes = buffer.readSlice(length: Int(temp8)) ?? .init()
+            return try OracleNumber(
+                from: &bytes, type: .number, context: .default
+            )
         }
 
         // handle string with length stored inside the node itself

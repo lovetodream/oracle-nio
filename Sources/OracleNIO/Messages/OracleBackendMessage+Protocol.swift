@@ -39,16 +39,17 @@ extension OracleBackendMessage {
             capabilities.nCharsetID =
                 UInt16((fdo[Int(ix) + 3] << 8) + fdo[Int(ix) + 4])
 
-            if let serverCompileCapabilities = buffer.readChunk() {
-                capabilities.adjustForServerCompileCapabilities(
-                    serverCompileCapabilities
-                )
-            }
-            if let serverRuntimeCapabilities = buffer.readChunk() {
-                capabilities.adjustForServerRuntimeCapabilities(
-                    serverRuntimeCapabilities
-                )
-            }
+            let serverCompileCapabilities = try buffer
+                .readOracleSpecificLengthPrefixedSlice()
+            capabilities.adjustForServerCompileCapabilities(
+                serverCompileCapabilities
+            )
+
+            let serverRuntimeCapabilities = try buffer
+                .readOracleSpecificLengthPrefixedSlice()
+            capabilities.adjustForServerRuntimeCapabilities(
+                serverRuntimeCapabilities
+            )
 
             return .init(newCapabilities: capabilities)
         }

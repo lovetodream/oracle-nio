@@ -67,10 +67,6 @@ public class OracleConnection {
     var serverVersion: OracleVersion?
     var currentSchema: String?
     var edition: String?
-    var tempLOBsTotalSize = 0
-    var tempLOBsToClose: [[UInt8]]? = nil
-
-    var cursorsToClose: [UInt16]?
 
     init(
         configuration: OracleConnection.Configuration,

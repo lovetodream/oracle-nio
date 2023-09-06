@@ -70,7 +70,8 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let oidByteCount = try buffer.throwingReadInteger(as: UInt8.self)
                 // OID
             if oidByteCount > 0 {
-                _ = buffer.readBytes() // oid, only relevant for intNamed
+                // oid, only relevant for intNamed
+                _ = try buffer.readOracleSpecificLengthPrefixedSlice()
             }
 
             buffer.skipUB2() // version

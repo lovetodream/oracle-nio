@@ -3,6 +3,22 @@ import NIOCore
 private let NUMBER_MAX_DIGITS = 40
 private let NUMBER_AS_SINGLE_CHARS = 172
 
+private extension SignedInteger {
+    init(_ bytes: [UInt8]) {
+        precondition(bytes.count <= MemoryLayout<Self>.size)
+
+        var value: Int64 = 0
+
+        for byte in bytes {
+            value <<= 8
+            value |= Int64(byte)
+        }
+
+        self.init(value)
+    }
+}
+
+
 internal extension StringProtocol  {
     var ascii: [UInt8] { compactMap(\.asciiValue) }
 }

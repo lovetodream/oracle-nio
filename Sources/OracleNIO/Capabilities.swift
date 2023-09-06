@@ -8,6 +8,8 @@
 //  the database server and the client are capable of.
 //
 
+import NIOCore
+
 struct Capabilities: Sendable, Hashable {
     var protocolVersion: UInt16 = 0
     var charsetID = Constants.TNS_CHARSET_UTF8
@@ -62,15 +64,26 @@ struct Capabilities: Sendable, Hashable {
         return cap
     }
 
-    mutating func adjustForServerCompileCapabilities(_ serverCapabilities: [UInt8]) {
-        if serverCapabilities[Constants.TNS_CCAP_FIELD_VERSION] < self.ttcFieldVersion {
-            self.ttcFieldVersion = serverCapabilities[Constants.TNS_CCAP_FIELD_VERSION]
-            self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = self.ttcFieldVersion
+    mutating func adjustForServerCompileCapabilities(
+        _ serverCapabilities: ByteBuffer
+    ) {
+        let ttcFieldVersion = serverCapabilities
+            .getInteger(
+                at: Constants.TNS_CCAP_FIELD_VERSION, as: UInt8.self
+            )
+        if let ttcFieldVersion, ttcFieldVersion < self.ttcFieldVersion {
+            self.ttcFieldVersion = ttcFieldVersion
+            self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = 
+                self.ttcFieldVersion
         }
     }
 
-    mutating func adjustForServerRuntimeCapabilities(_ serverCapabilities: [UInt8]) {
-        if (serverCapabilities[Constants.TNS_RCAP_TTC] & Constants.TNS_RCAP_TTC_32K) != 0 {
+    mutating func adjustForServerRuntimeCapabilities(
+        _ serverCapabilities: ByteBuffer
+    ) {
+        let rcapTTC = serverCapabilities
+            .getInteger(at: Constants.TNS_RCAP_TTC, as: UInt8.self)
+        if let rcapTTC, (rcapTTC & Constants.TNS_RCAP_TTC_32K) != 0 {
             self.maxStringSize = 32767
         } else {
             self.maxStringSize = 4000

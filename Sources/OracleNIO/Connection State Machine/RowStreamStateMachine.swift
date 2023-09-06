@@ -77,12 +77,14 @@ struct RowStreamStateMachine {
         }
     }
 
-    mutating func receivedDuplicate() {
+    mutating func receivedDuplicate(at index: Int) -> ByteBuffer {
         switch self.state {
-        case .waitingForRows(var buffer):
-            self.state = .modifying
-            buffer.append(buffer.last!)
-            self.state = .waitingForRows(buffer)
+        case .waitingForRows(let buffer):
+            guard let previousRow = buffer.last else {
+                preconditionFailure()
+            }
+            let index = previousRow.index(DataRow.ColumnIndex(0), offsetBy: index)
+            return previousRow[index]!
 
         // For all the following cases, please note:
         // Normally these code paths should never be hit. However there is
@@ -92,20 +94,14 @@ struct RowStreamStateMachine {
         // outstanding `channelRead`s without waiting for a next
         // `context.read` call. For this reason we might receive new rows,
         // when we don't expect them here.
-        case .waitingForReadOrDemand(var buffer):
-            self.state = .modifying
-            buffer.append(buffer.last!)
-            self.state = .waitingForReadOrDemand(buffer)
-
-        case .waitingForRead(var buffer):
-            self.state = .modifying
-            buffer.append(buffer.last!)
-            self.state = .waitingForRead(buffer)
-
-        case .waitingForDemand(var buffer):
-            self.state = .modifying
-            buffer.append(buffer.last!)
-            self.state = .waitingForDemand(buffer)
+        case .waitingForReadOrDemand(let buffer), 
+            .waitingForRead(let buffer),
+            .waitingForDemand(let buffer):
+            guard let previousRow = buffer.last else {
+                preconditionFailure()
+            }
+            let index = previousRow.index(DataRow.ColumnIndex(0), offsetBy: index)
+            return previousRow[index]!
 
         case .failed:
             // Once the row stream state machine is marked as failed, no further

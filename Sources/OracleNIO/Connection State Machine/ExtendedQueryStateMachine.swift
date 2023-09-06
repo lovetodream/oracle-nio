@@ -51,7 +51,6 @@ struct ExtendedQueryStateMachine {
 
     private enum DataRowResult {
         case row(DataRow)
-        case duplicate
         case notEnoughData
     }
 
@@ -145,7 +144,10 @@ struct ExtendedQueryStateMachine {
                 .query(let promise):
                 return .succeedQuery(
                     promise,
-                    QueryResult(value: describeInfo.columns, logger: context.logger)
+                    QueryResult(
+                        value: .describeInfo(describeInfo.columns),
+                        logger: context.logger
+                    )
                 )
             }
 
@@ -584,17 +586,11 @@ struct ExtendedQueryStateMachine {
                     buffer: &buffer,
                     describeInfo: describeInfo,
                     rowHeader: rowHeader,
-                    capabilitites: capabilities
+                    capabilitites: capabilities,
+                    demandStateMachine: &demandStateMachine
                 ) {
                 case .row(let row):
                     demandStateMachine.receivedRow(row)
-                    self.avoidingStateMachineCoW { state in
-                        state = .streaming(
-                            context, describeInfo, rowHeader, demandStateMachine
-                        )
-                    }
-                case .duplicate:
-                    demandStateMachine.receivedDuplicate()
                     self.avoidingStateMachineCoW { state in
                         state = .streaming(
                             context, describeInfo, rowHeader, demandStateMachine
@@ -745,14 +741,16 @@ struct ExtendedQueryStateMachine {
         buffer: inout ByteBuffer,
         describeInfo: DescribeInfo,
         rowHeader: OracleBackendMessage.RowHeader,
-        capabilitites: Capabilities
+        capabilitites: Capabilities,
+        demandStateMachine: inout RowStreamStateMachine
     ) throws -> DataRowResult {
         var out = ByteBuffer()
         for (index, column) in describeInfo.columns.enumerated() {
             if self.isDuplicateData(
                 columnNumber: UInt32(index), bitVector: rowHeader.bitVector
             ) {
-                return .duplicate
+                var data = demandStateMachine.receivedDuplicate(at: index)
+                out.writeBuffer(&data)
             } else if var data = try self.processColumnData(
                 from: &buffer, columnInfo: column, capabilities: capabilitites
             ) {

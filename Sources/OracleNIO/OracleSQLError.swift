@@ -172,6 +172,16 @@ public struct OracleSQLError: Error {
     public struct ServerInfo {
         let underlying: OracleBackendMessage.BackendError
 
+        /// The error number/identifier.
+        public var number: UInt32 {
+            self.underlying.number
+        }
+
+        /// The error message, typically prefixed with `ORA-` & ``ServerInfo.number``.
+        public var message: String? {
+            self.underlying.message
+        }
+
         init(_ underlying: OracleBackendMessage.BackendError) {
             self.underlying = underlying
         }

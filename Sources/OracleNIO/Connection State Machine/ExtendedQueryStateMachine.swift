@@ -586,7 +586,7 @@ struct ExtendedQueryStateMachine {
                     buffer: &buffer,
                     describeInfo: describeInfo,
                     rowHeader: rowHeader,
-                    capabilitites: capabilities,
+                    capabilities: capabilities,
                     demandStateMachine: &demandStateMachine
                 ) {
                 case .row(let row):
@@ -741,7 +741,7 @@ struct ExtendedQueryStateMachine {
         buffer: inout ByteBuffer,
         describeInfo: DescribeInfo,
         rowHeader: OracleBackendMessage.RowHeader,
-        capabilitites: Capabilities,
+        capabilities: Capabilities,
         demandStateMachine: inout RowStreamStateMachine
     ) throws -> DataRowResult {
         var out = ByteBuffer()
@@ -756,7 +756,7 @@ struct ExtendedQueryStateMachine {
                     buffer.writeBuffer(&data)
                 }
             } else if var data = try self.processColumnData(
-                from: &buffer, columnInfo: column, capabilities: capabilitites
+                from: &buffer, columnInfo: column, capabilities: capabilities
             ) {
                 out.writeBuffer(&data)
             } else {

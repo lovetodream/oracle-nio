@@ -47,7 +47,7 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
                 size: 3,
                 offset: offset
             )
-            return String(cString: buffer)
+            return String(bytes: buffer, encoding: .utf8) ?? String()
         }
         return "<empty>"
     }

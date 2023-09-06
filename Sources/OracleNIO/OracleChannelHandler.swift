@@ -452,13 +452,27 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         result: QueryResult,
         context: ChannelHandlerContext
     ) {
-        let rows = OracleRowStream(
-            source: .stream(result.value, self),
-            eventLoop: context.channel.eventLoop,
-            logger: result.logger
-        )
-        self.rowStream = rows
-        promise.succeed(rows)
+        let rows: OracleRowStream
+        switch result.value {
+        case .describeInfo(let describeInfo):
+            rows = OracleRowStream(
+                source: .stream(describeInfo, self),
+                eventLoop: context.channel.eventLoop,
+                logger: result.logger
+            )
+            self.rowStream = rows
+            promise.succeed(rows)
+
+        case .noRows:
+            rows = OracleRowStream(
+                source: .noRows(.success(())),
+                eventLoop: context.channel.eventLoop,
+                logger: result.logger
+            )
+            promise.succeed(rows)
+            self.run(self.state.readyForQueryReceived(), with: context)
+        }
+
     }
 
     private func closeConnectionAndCleanup(

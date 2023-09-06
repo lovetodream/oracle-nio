@@ -246,12 +246,17 @@ struct ConnectionStateMachine {
             .waitingToStartAuthentication,
             .authenticating,
             .readyForQuery,
-            .extendedQuery,
             .readyToLogOff,
             .loggingOff,
             .closing,
             .closed:
             return .wait
+
+        case .extendedQuery(var extendedQuery):
+            self.state = .modifying // avoid CoW
+            let action = extendedQuery.channelReadComplete()
+            self.state = .extendedQuery(extendedQuery)
+            return self.modify(with: action)
 
         case .modifying:
             preconditionFailure("Invalid state")
@@ -264,6 +269,13 @@ struct ConnectionStateMachine {
             preconditionFailure(
                 "Received a read event on a connection that was never opened"
             )
+
+        case .extendedQuery(var extendedQuery):
+            return self.avoidingStateMachineCoW { machine in
+                let action = extendedQuery.readEventCaught()
+                machine.state = .extendedQuery(extendedQuery)
+                return machine.modify(with: action)
+            }
 
         case .closed:
             preconditionFailure(
@@ -669,9 +681,9 @@ struct ConnectionStateMachine {
             case .evaluateErrorAtConnectionLevel:
                 return .closeConnectionAndCleanup(cleanupContext)
 
-            case .failQuery(let queryContext, with: let error):
+            case .failQuery(let promise, with: let error):
                 return .failQuery(
-                    queryContext, with: error, cleanupContext: cleanupContext
+                    promise, with: error, cleanupContext: cleanupContext
                 )
 
             case .forwardStreamError(let error, let read, let cursorID):

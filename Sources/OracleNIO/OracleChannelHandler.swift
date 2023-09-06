@@ -283,6 +283,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
             self.decoderContext.queryOptions = nil
+            self.run(self.state.readyForQueryReceived(), with: context)
 
         case .needMoreData:
             self.decoderContext.performingChunkedRead = true

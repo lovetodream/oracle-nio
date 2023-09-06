@@ -243,45 +243,86 @@ struct ExtendedQueryStateMachine {
             error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST,
             let cursor = error.cursorID
         {
+            switch self.state {
+            case .initialized(let context):
+                switch context.statement {
+                case .query(let promise),
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise):
+                    action = .failQuery(promise, with: .server(error))
+                }
+            default:
+                action = .forwardStreamError(
+                    .server(error), read: false, cursorID: cursor
+                )
+            }
+
             self.avoidingStateMachineCoW { state in
                 state = .error(.server(error))
             }
-
-            action = .forwardStreamError(
-                .server(error), read: false, cursorID: cursor
-            )
         } else if
             let cursor = error.cursorID,
             error.number != 0 && cursor != 0
         {
             let exception = getExceptionClass(for: Int32(error.number))
+            switch self.state {
+            case .initialized(let context):
+                switch context.statement {
+                case .query(let promise),
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise):
+                    action = .failQuery(promise, with: .server(error))
+                }
+            default:
+                if exception != .integrityError {
+                    action = .forwardStreamError(
+                        .server(error), read: false, cursorID: cursor
+                    )
+                } else {
+                    action = .forwardStreamError(
+                        .server(error), read: false, cursorID: nil
+                    )
+                }
+            }
+
             self.avoidingStateMachineCoW { state in
                 state = .error(.server(error))
             }
-            if exception != .integrityError {
-                action = .forwardStreamError(
-                    .server(error), read: false, cursorID: cursor
-                )
-            } else {
-                action = .forwardStreamError(
-                    .server(error), read: false, cursorID: nil
-                )
-            }
         } else {
-            // no error actually happened, we need more rows
             switch self.state {
-            case .initialized,
-                .describeInfoReceived,
+            case .describeInfoReceived,
                 .drain,
                 .commandComplete,
                 .error:
                 preconditionFailure("This is impossible...")
+
+            case .initialized(let context):
+                if let cursorID = error.cursorID {
+                    context.cursorID = cursorID
+                }
+                switch context.statement {
+                case .query(let promise),
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise):
+                    action = .succeedQuery(
+                        promise, QueryResult(
+                            value: .noRows, logger: context.logger
+                        )
+                    )
+                }
+                self.state = .commandComplete
+
             case .streaming(let extendedQueryContext, _, _, _),
                 .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
+                // no error actually happened, we need more rows
                 if let cursorID = error.cursorID {
                     extendedQueryContext.cursorID = cursorID
                 }
                 action = .sendFetch(extendedQueryContext)
+
             case .modifying:
                 preconditionFailure("invalid state")
             }
@@ -356,6 +397,105 @@ struct ExtendedQueryStateMachine {
             The stream is already closed or in a failure state; \
             rows can not be consumed at this time.
             """)
+
+        case .modifying:
+            preconditionFailure("invalid state")
+        }
+    }
+
+    // MARK: Channel actions
+
+    mutating func channelReadComplete() -> Action {
+        switch self.state {
+        case .initialized,
+             .describeInfoReceived,
+             .drain,
+             .commandComplete,
+             .error:
+            return .wait
+
+        case .streaming(
+            let context, let describeInfo, let header, var demandStateMachine
+        ):
+            return self.avoidingStateMachineCoW { state in
+                let rows = demandStateMachine.channelReadComplete()
+                state = .streaming(
+                    context, describeInfo, header, demandStateMachine
+                )
+                switch rows {
+                case .some(let rows):
+                    return .forwardRows(rows)
+                case .none:
+                    return .wait
+                }
+            }
+        case .streamingAndWaiting(
+            let context, let describeInfo, let header, var demandStateMachine,
+            let partial
+        ):
+            return self.avoidingStateMachineCoW { state in
+                let rows = demandStateMachine.channelReadComplete()
+                state = .streamingAndWaiting(
+                    context, describeInfo, header, demandStateMachine,
+                    partial: partial
+                )
+                switch rows {
+                case .some(let rows):
+                    return .forwardRows(rows)
+                case .none:
+                    return .wait
+                }
+            }
+
+        case .modifying:
+            preconditionFailure("invalid state")
+        }
+    }
+
+    mutating func readEventCaught() -> Action {
+        switch self.state {
+        case .streaming(
+            let context, let describeInfo, let header, var demandStateMachine
+        ):
+            precondition(!self.isCancelled)
+            return self.avoidingStateMachineCoW { state in
+                let action = demandStateMachine.read()
+                state = .streaming(
+                    context, describeInfo, header, demandStateMachine
+                )
+                switch action {
+                case .wait:
+                    return .wait
+                case .read:
+                    return .read
+                }
+            }
+        case .streamingAndWaiting(
+            let context, let describeInfo, let header, var demandStateMachine,
+            let partial
+        ):
+            precondition(!self.isCancelled)
+            return self.avoidingStateMachineCoW { state in
+                let action = demandStateMachine.read()
+                state = .streamingAndWaiting(
+                    context, describeInfo, header, demandStateMachine,
+                    partial: partial
+                )
+                switch action {
+                case .wait:
+                    return .wait
+                case .read:
+                    return .read
+                }
+            }
+        case .initialized,
+             .commandComplete,
+             .drain,
+             .error,
+             .describeInfoReceived:
+            // we already have the complete stream received, now we are waiting
+            // for a `readyForQuery` package. To receive this we need to read.
+            return .read
 
         case .modifying:
             preconditionFailure("invalid state")

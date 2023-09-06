@@ -11,24 +11,20 @@ extension OracleConnection {
     static func test(
         on eventLoop: EventLoop,
         logLevel: Logger.Level = Logger.getLogLevel()
-    ) -> EventLoopFuture<OracleConnection> {
+    ) async throws -> OracleConnection {
         var logger = Logger(label: "oracle.connection.test")
         logger.logLevel = logLevel
 
-        do {
-            let config = OracleConnection.Configuration(
-                address: try Self.address(),
-                serviceName: env("ORA_SERVICE_NAME") ?? "XEPDB1",
-                username: env("ORA_USERNAME") ?? "my_user",
-                password: env("ORA_PASSWORD") ?? "my_passwor"
-            )
+        let config = OracleConnection.Configuration(
+            address: try Self.address(),
+            serviceName: env("ORA_SERVICE_NAME") ?? "XEPDB1",
+            username: env("ORA_USERNAME") ?? "my_user",
+            password: env("ORA_PASSWORD") ?? "my_passwor"
+        )
 
-            return OracleConnection.connect(
-                on: eventLoop, configuration: config, id: 0, logger: logger
-            )
-        } catch {
-            return eventLoop.makeFailedFuture(error)
-        }
+        return try await OracleConnection.connect(
+            on: eventLoop, configuration: config, id: 0, logger: logger
+        )
     }
 }
 

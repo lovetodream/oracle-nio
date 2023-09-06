@@ -127,10 +127,10 @@ struct RowStreamStateMachine {
             }
 
         case .waitingForRead, .waitingForDemand, .waitingForReadOrDemand:
-            preconditionFailure("""
-            How can we receive a body part, after a channelReadComplete, \
-            but no read has been forwarded yet. Invalid state: \(self.state)
-            """)
+            // This case might occur, if we triggered a fetch request to get 
+            // more rows from `ExtendedQueryStateMachine`. We'll just return
+            // nil indicating that we have to wait for now.
+            return nil
 
         case .failed:
             // Once the row stream state machine is marked as failed, no further 

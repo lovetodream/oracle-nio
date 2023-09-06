@@ -3,7 +3,11 @@ import class Foundation.JSONEncoder
 import class Foundation.JSONDecoder
 
 /// A type that can encode itself to a Oracle wire binary representation.
-public protocol OracleThrowingEncodable {
+///
+/// Dynamic types are types that don't have a well-known Oracle type OID at compile time.
+/// For example, custom types created at runtime, such as enums, or extension types whose OID is not
+/// stable between databases.
+public protocol OracleThrowingDynamicTypeEncodable {
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
     var oracleType: DBType { get }
 
@@ -27,8 +31,6 @@ public protocol OracleThrowingEncodable {
     var arraySize: Int? { get }
 
     /// Encode the entity into the `ByteBuffer` in Oracle binary format, without setting the byte count.
-    ///
-    /// This method is called from the ``OracleBindings``.
     func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
@@ -38,11 +40,45 @@ public protocol OracleThrowingEncodable {
     ///
     /// This method has a default implementation and is only overwritten if length needs to be specially
     /// handled. You shouldn't have to touch this.
+    ///
+    /// This method is called from the ``OracleBindings``.
     func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) throws
 }
+
+/// A type that can encode itself to a Oracle wire binary representation.
+///
+/// Dynamic types are types that don't have a well-known Oracle type OID at compile time.
+/// For example, custom types created at runtime, such as enums, or extension types whose OID is not
+/// stable between databases.
+///
+/// This is the non-throwing alternative to ``OracleThrowingDynamicTypeEncodable``. It allows 
+/// users to create ``OracleQuery``s via `ExpressibleByStringInterpolation` without having
+/// to spell `try`.
+public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
+    /// Encode the entity into ``buffer``, using the provided ``context`` as needed, without setting
+    /// the byte count.
+    func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    )
+    
+    /// Encode an entity from the `ByteBuffer` in oracle wire format.
+    ///
+    /// This method has a default implementation and is only overwritten if length needs to be specially
+    /// handled. You shouldn't have to touch this.
+    ///
+    /// This method is called by ``OracleBindings``.
+    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    )
+}
+
+/// A type that can encode itself to a Oracle wire binary representation.
+public protocol OracleThrowingEncodable: OracleThrowingDynamicTypeEncodable { }
 
 public extension OracleThrowingEncodable {
     var size: UInt32 { UInt32(self.oracleType.defaultSize) }
@@ -52,7 +88,7 @@ public extension OracleThrowingEncodable {
     var arraySize: Int? { Self.isArray ? 1 : nil }
 }
 
-public extension Array where Element: OracleThrowingEncodable {
+public extension Array where Element: OracleThrowingDynamicTypeEncodable {
     static var isArray: Bool { true }
     var arrayCount: Int? { self.count }
     var arraySize: Int? { self.capacity }
@@ -63,17 +99,9 @@ public extension Array where Element: OracleThrowingEncodable {
 /// It enforces that the ``OracleEncodable.encode(into:context:)`` does not throw.
 /// This allows users to create ``OracleQuery``'s using the
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
-public protocol OracleEncodable: OracleThrowingEncodable {
-    func encode<JSONEncoder: OracleJSONEncoder>(
-        into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
-    )
-
-    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
-        into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
-    )
-}
+public protocol OracleEncodable: 
+    OracleThrowingEncodable, OracleDynamicTypeEncodable
+{ }
 
 /// A type that can decode itself from a oracle wire binary representation.
 ///
@@ -125,12 +153,12 @@ extension OracleDecodable {
 /// A type that can be encoded into and decoded from a oracle binary format.
 public typealias OracleCodable = OracleEncodable & OracleDecodable
 
-extension OracleThrowingEncodable {
+extension OracleDynamicTypeEncodable {
     @inlinable
     public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
-    ) throws {
+    ) {
         // The length of the parameter value, in bytes
         // (this count does not include itself). Can be zero.
         let lengthIndex = buffer.writerIndex
@@ -138,7 +166,7 @@ extension OracleThrowingEncodable {
         let startIndex = buffer.writerIndex
         // The value of the parameter, in the format indicated by the associated
         // format code.
-        try self.encode(into: &buffer, context: context)
+        self.encode(into: &buffer, context: context)
 
         // overwrite the empty length with the real value
         buffer.setInteger(

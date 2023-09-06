@@ -1,5 +1,6 @@
 import NIOCore
 import Logging
+import RegexBuilder
 
 enum OracleTask {
     case extendedQuery(ExtendedQueryContext)
@@ -122,7 +123,7 @@ final class ExtendedQueryContext {
         if fragment.first == "(" {
             fragment.removeFirst()
         }
-        let tokens = fragment.prefix(10).split(separator: " ")
+        let tokens = fragment.prefix(10).split(separator: One(.whitespace))
         guard let sqlKeyword = tokens.first?.uppercased() else {
             // Throw malformed sql error
             fatalError()

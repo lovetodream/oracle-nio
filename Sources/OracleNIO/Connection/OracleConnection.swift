@@ -245,12 +245,6 @@ extension OracleConnection: CapabilitiesProvider {
     }
 }
 
-extension OracleConnection {
-    func resetStatementCache() {
-        // TODO: reset cache
-    }
-}
-
 // MARK: Async/Await Interface
 
 extension OracleConnection {

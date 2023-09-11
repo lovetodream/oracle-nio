@@ -709,13 +709,12 @@ struct ExtendedQueryStateMachine {
         let csfrm = columnInfo.dataType.csfrm
         let bufferSize = columnInfo.bufferSize
 
-        // TODO: I know this is weird, but I keep it as long as TNSRequest+Data
-        // is still here and I have to cross check things :)
         let columnValue: ByteBuffer
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
             columnValue = ByteBuffer(bytes: [0]) // NULL indicator
             return columnValue
         }
+
         if [.varchar, .char, .long].contains(oracleType) {
             if csfrm == Constants.TNS_CS_NCHAR {
                 try capabilities.checkNCharsetID()

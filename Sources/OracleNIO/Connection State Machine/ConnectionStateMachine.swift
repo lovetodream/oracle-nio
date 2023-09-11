@@ -315,8 +315,7 @@ struct ConnectionStateMachine {
 
     mutating func acceptReceived() -> ConnectionAction {
         guard case .connectMessageSent = state else {
-            // TODO: any other cases?
-            fatalError()
+            preconditionFailure()
         }
         self.state = .protocolMessageSent
         return .sendProtocol

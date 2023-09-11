@@ -226,8 +226,20 @@ struct ExtendedQueryStateMachine {
             switch self.state {
             case .initialized, .commandComplete, .error, .drain:
                 preconditionFailure()
-            case .describeInfoReceived(_, _):
-                fatalError("is this possible?")
+            case .describeInfoReceived(let context, _):
+                self.avoidingStateMachineCoW { state in
+                    state = .commandComplete
+                }
+
+                switch context.statement {
+                case .query(let promise),
+                     .plsql(let promise),
+                     .dml(let promise),
+                     .ddl(let promise):
+                    action = .succeedQuery(
+                        promise, .init(value: .noRows, logger: context.logger)
+                    ) // empty response
+                }
 
             case .streaming(_, _, _, var demandStateMachine),
                 .streamingAndWaiting(_, _, _, var demandStateMachine, _):
@@ -294,13 +306,13 @@ struct ExtendedQueryStateMachine {
             }
         } else {
             switch self.state {
-            case .describeInfoReceived,
-                .drain,
-                .commandComplete,
-                .error:
+            case .drain,
+                 .commandComplete,
+                 .error:
                 preconditionFailure("This is impossible...")
 
-            case .initialized(let context):
+            case .initialized(let context), 
+                 .describeInfoReceived(let context, _):
                 if let cursorID = error.cursorID {
                     context.cursorID = cursorID
                 }
@@ -318,7 +330,7 @@ struct ExtendedQueryStateMachine {
                 self.state = .commandComplete
 
             case .streaming(let extendedQueryContext, _, _, _),
-                .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
+                 .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
                 // no error actually happened, we need more rows
                 if let cursorID = error.cursorID {
                     extendedQueryContext.cursorID = cursorID

@@ -194,6 +194,37 @@ final class OracleNIOTests: XCTestCase {
 
     }
 
+    func testNoRowsQueryFromDual() async throws {
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        let rows = try await conn.query(
+            "SELECT null FROM dual where rownum = 0", logger: .oracleTest
+        ).collect()
+        XCTAssertEqual(rows.count, 0)
+    }
+
+    func testNoRowsQueryFromActual() async throws {
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        do {
+            try await conn.query(
+                "DROP TABLE empty", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await conn.query(
+            "CREATE TABLE empty (id number, title varchar2(150 byte))",
+            logger: .oracleTest
+        )
+        let rows = try await conn.query(
+            "SELECT id, title FROM empty ORDER BY id", logger: .oracleTest
+        ).collect()
+        XCTAssertEqual(rows.count, 0)
+        try await conn.query("DROP TABLE empty", logger: .oracleTest)
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

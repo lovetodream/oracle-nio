@@ -34,6 +34,14 @@ struct OracleFrontendMessageEncoder {
         self.endRequest(packetType: .marker)
     }
 
+    mutating func ping() {
+        self.clearIfNeeded()
+
+        self.startRequest()
+        self.writeFunctionCode(messageType: .function, functionCode: .ping)
+        self.endRequest()
+    }
+
     mutating func connect(connectString: String) {
         self.clearIfNeeded()
 

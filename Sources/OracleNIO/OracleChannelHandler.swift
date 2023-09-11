@@ -325,6 +325,20 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
 
+        case .sendPing:
+            self.encoder.ping()
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+
+        case .failPing(let promise, let error):
+            promise.fail(error)
+            self.run(self.state.readyForQueryReceived(), with: context)
+
+        case .succeedPing(let promise):
+            promise.succeed()
+            self.run(self.state.readyForQueryReceived(), with: context)
+
         case .fireEventReadyForQuery:
             context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
 

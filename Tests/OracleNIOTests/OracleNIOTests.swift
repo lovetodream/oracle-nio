@@ -23,7 +23,7 @@ final class OracleNIOTests: XCTestCase {
     // MARK: Tests
 
     func testConnectionAndClose() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         XCTAssertNoThrow(try conn.close().wait())
     }
 
@@ -49,7 +49,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testSimpleQuery() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         let rows = try await conn.query(
             "SELECT 'test' FROM dual", logger: .oracleTest
@@ -59,7 +59,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testSimpleDateQuery() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         let rows = try await conn.query(
                 "SELECT systimestamp FROM dual", logger: .oracleTest
@@ -71,7 +71,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testSimpleOptionalBinds() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         var rows = try await conn.query(
             "SELECT \(Optional("test")) FROM dual", logger: .oracleTest
@@ -86,7 +86,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testQuery10kItems() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
 
         let rows = try await conn.query(
@@ -108,7 +108,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testFloatingPointNumbers() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
 
         var received: Int64 = 0
@@ -136,7 +136,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testDuplicateColumn() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         do {
             try await conn.query(
@@ -194,7 +194,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testDuplicateColumnInEveryRow() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         do {
             try await conn.query(
@@ -241,7 +241,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testNoRowsQueryFromDual() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         let rows = try await conn.query(
             "SELECT null FROM dual where rownum = 0", logger: .oracleTest
@@ -250,7 +250,7 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testNoRowsQueryFromActual() async throws {
-        let conn = try await OracleConnection.test(on: eventLoop)
+        let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.close().wait()) }
         do {
             try await conn.query(
@@ -269,6 +269,12 @@ final class OracleNIOTests: XCTestCase {
         ).collect()
         XCTAssertEqual(rows.count, 0)
         try await conn.query("DROP TABLE empty", logger: .oracleTest)
+    }
+
+    func testPing() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        XCTAssertNoThrow(try conn.ping().wait())
     }
 
 }

@@ -176,6 +176,7 @@ public class OracleConnection {
             .connectTimeout(configuration.options.connectTimeout)
     }
 
+    /// Closes the connection to the database server.
     public func close() -> EventLoopFuture<Void> {
         guard !self.isClosed else {
             return self.eventLoop.makeSucceededVoidFuture()
@@ -183,6 +184,13 @@ public class OracleConnection {
 
         self.channel.close(mode: .all, promise: nil)
         return self.closeFuture
+    }
+
+    /// Sends a ping to the database server.
+    public func ping() -> EventLoopFuture<Void> {
+        let promise = self.eventLoop.makePromise(of: Void.self)
+        self.channel.write(OracleTask.ping(promise), promise: nil)
+        return promise.futureResult
     }
 
     // MARK: Query
@@ -256,9 +264,14 @@ extension OracleConnection {
         ).get()
     }
 
-    /// Closes the connection to the server.
+    /// Closes the connection to the database server.
     public func close() async throws {
         try await self.close().get()
+    }
+
+    /// Sends a ping to the database server.
+    public func ping() async throws {
+        try await self.ping().get()
     }
 
     /// Run a query on the Oracle server the connection is connected to.

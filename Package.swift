@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "OracleNIO",
+    name: "oracle-nio",
     platforms: [.macOS(.v13)],
     products: [
         .library(

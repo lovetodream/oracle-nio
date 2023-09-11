@@ -3,7 +3,7 @@ import struct NIOCore.ByteBuffer
 extension ByteBuffer {
     mutating func skipUB2() {
         guard let length = readUBLength() else { return }
-        guard length <= 2 else { fatalError() }
+        guard length <= 2 else { preconditionFailure() }
         self.moveReaderIndex(forwardBy: Int(length))
     }
 
@@ -17,7 +17,7 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self)
         default:
-            fatalError()
+            preconditionFailure()
         }
     }
 
@@ -47,7 +47,7 @@ extension ByteBuffer {
         case 4:
             return self.readInteger(as: UInt32.self)
         default:
-            fatalError()
+            preconditionFailure()
         }
     }
 
@@ -64,7 +64,7 @@ extension ByteBuffer {
 
     mutating func skipUB4() {
         guard let length = readUBLength() else { return }
-        guard length <= 4 else { fatalError() }
+        guard length <= 4 else { preconditionFailure() }
         self.moveReaderIndex(forwardBy: Int(length))
     }
 
@@ -85,7 +85,7 @@ extension ByteBuffer {
         case 8:
             return self.readInteger(as: UInt64.self)
         default:
-            fatalError()
+            preconditionFailure()
         }
     }
 

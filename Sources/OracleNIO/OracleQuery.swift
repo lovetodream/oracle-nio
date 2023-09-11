@@ -237,7 +237,10 @@ public struct OracleBindings: Sendable, Hashable {
         Value: OracleThrowingDynamicTypeEncodable,
         JSONEncoder: OracleJSONEncoder
     >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
-        fatalError()
+        try value._encodeRaw(into: &self.bytes, context: context)
+        self.metadata.append(.init(
+            value: value, protected: true, isReturnBind: false
+        ))
     }
 
     @inlinable
@@ -257,14 +260,20 @@ public struct OracleBindings: Sendable, Hashable {
         Value: OracleThrowingDynamicTypeEncodable,
         JSONEncoder: OracleJSONEncoder
     >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
-        fatalError()
+        try value._encodeRaw(into: &self.bytes, context: context)
+        self.metadata.append(.init(
+            value: value, protected: false, isReturnBind: false
+        ))
     }
 
     @inlinable
     mutating func appendUnprotected<
         Value: OracleDynamicTypeEncodable, JSONEncoder: OracleJSONEncoder
     >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) {
-        fatalError()
+        value._encodeRaw(into: &self.bytes, context: context)
+        self.metadata.append(.init(
+            value: value, protected: false, isReturnBind: false
+        ))
     }
 }
 

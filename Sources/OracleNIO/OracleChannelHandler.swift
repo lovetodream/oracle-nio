@@ -330,12 +330,34 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-
         case .failPing(let promise, let error):
             promise.fail(error)
             self.run(self.state.readyForQueryReceived(), with: context)
-
         case .succeedPing(let promise):
+            promise.succeed()
+            self.run(self.state.readyForQueryReceived(), with: context)
+
+        case .sendCommit:
+            self.encoder.commit()
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+        case .failCommit(let promise, let error):
+            promise.fail(error)
+            self.run(self.state.readyForQueryReceived(), with: context)
+        case .succeedCommit(let promise):
+            promise.succeed()
+            self.run(self.state.readyForQueryReceived(), with: context)
+
+        case .sendRollback:
+            self.encoder.rollback()
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+        case .failRollback(let promise, let error):
+            promise.fail(error)
+            self.run(self.state.readyForQueryReceived(), with: context)
+        case .succeedRollback(let promise):
             promise.succeed()
             self.run(self.state.readyForQueryReceived(), with: context)
 

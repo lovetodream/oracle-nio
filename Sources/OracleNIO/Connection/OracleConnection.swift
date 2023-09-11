@@ -193,6 +193,20 @@ public class OracleConnection {
         return promise.futureResult
     }
 
+    /// Sends a commit to the database server.
+    public func commit() -> EventLoopFuture<Void> {
+        let promise = self.eventLoop.makePromise(of: Void.self)
+        self.channel.write(OracleTask.commit(promise), promise: nil)
+        return promise.futureResult
+    }
+
+    /// Sends a rollback to the database server.
+    public func rollback() -> EventLoopFuture<Void> {
+        let promise = self.eventLoop.makePromise(of: Void.self)
+        self.channel.write(OracleTask.rollback(promise), promise: nil)
+        return promise.futureResult
+    }
+
     // MARK: Query
 
     private func queryStream(
@@ -272,6 +286,16 @@ extension OracleConnection {
     /// Sends a ping to the database server.
     public func ping() async throws {
         try await self.ping().get()
+    }
+
+    /// Sends a commit to the database server.
+    public func commit() async throws {
+        try await self.commit().get()
+    }
+
+    /// Sends a rollback to the database server.
+    public func rollback() async throws {
+        try await self.rollback().get()
     }
 
     /// Run a query on the Oracle server the connection is connected to.

@@ -11,6 +11,8 @@ struct ConnectionStateMachine {
         case readyForQuery
         case extendedQuery(ExtendedQueryStateMachine)
         case ping(EventLoopPromise<Void>)
+        case commit(EventLoopPromise<Void>)
+        case rollback(EventLoopPromise<Void>)
         /// Set by ``ConnectionAction.closeConnectionAndCleanup(_:)`` to prepare us for
         /// the upcoming ``loggingOff`` state.
         case readyToLogOff
@@ -77,6 +79,14 @@ struct ConnectionStateMachine {
         case failPing(EventLoopPromise<Void>, with: OracleSQLError)
         case succeedPing(EventLoopPromise<Void>)
 
+        // Commit/Rollback
+        case sendCommit
+        case failCommit(EventLoopPromise<Void>, with: OracleSQLError)
+        case succeedCommit(EventLoopPromise<Void>)
+        case sendRollback
+        case failRollback(EventLoopPromise<Void>, with: OracleSQLError)
+        case succeedRollback(EventLoopPromise<Void>)
+
         // Query
         case sendExecute(ExtendedQueryContext)
         case sendReexecute(ExtendedQueryContext, CleanupContext)
@@ -110,19 +120,7 @@ struct ConnectionStateMachine {
         case .initialized:
             self.state = .connectMessageSent
             return .sendConnect
-        case .connectMessageSent,
-             .protocolMessageSent,
-             .dataTypesMessageSent,
-             .waitingToStartAuthentication,
-             .authenticating,
-             .readyForQuery,
-             .extendedQuery,
-             .ping,
-             .readyToLogOff,
-             .loggingOff,
-             .closing,
-             .closed,
-             .modifying:
+        default:
             return .wait
         }
     }
@@ -156,6 +154,8 @@ struct ConnectionStateMachine {
              .readyForQuery,
              .extendedQuery,
              .ping,
+             .commit,
+             .rollback,
              .readyToLogOff:
             return self.errorHappened(.uncleanShutdown)
         case .loggingOff, .closing:
@@ -182,7 +182,9 @@ struct ConnectionStateMachine {
              .initialized,
              .readyForQuery,
              .extendedQuery,
-             .ping:
+             .ping,
+             .commit,
+             .rollback:
             // TODO: handle errors
             fatalError()
         case .readyToLogOff, .loggingOff, .closing:
@@ -218,7 +220,9 @@ struct ConnectionStateMachine {
                 .waitingToStartAuthentication,
                 .authenticating,
                 .extendedQuery,
-                .ping:
+                .ping,
+                .commit,
+                .rollback:
                 self.taskQueue.append(task)
                 return .wait
 
@@ -246,6 +250,10 @@ struct ConnectionStateMachine {
             }
         case .ping(let promise):
             return .failPing(promise, with: oracleError)
+        case .commit(let promise):
+            return .failCommit(promise, with: oracleError)
+        case .rollback(let promise):
+            return .failRollback(promise, with: oracleError)
         }
     }
 
@@ -259,6 +267,8 @@ struct ConnectionStateMachine {
              .authenticating,
              .readyForQuery,
              .ping,
+             .commit,
+             .rollback,
              .readyToLogOff,
              .loggingOff,
              .closing,
@@ -329,26 +339,29 @@ struct ConnectionStateMachine {
         case .connectMessageSent:
             return .sendConnect
         case .protocolMessageSent:
-            fatalError()
+            return .sendProtocol
         case .dataTypesMessageSent:
-            fatalError()
+            return .sendDataTypes
         case .waitingToStartAuthentication:
-            fatalError()
+            return .wait
         case .authenticating:
-            fatalError()
+            fatalError("Does this even happen?")
         case .readyForQuery:
-            fatalError()
+            return .wait
         case .extendedQuery:
-            fatalError()
+            fatalError("Does this even happen?")
         case .ping:
-            fatalError()
+            return .sendPing
+        case .commit:
+            return .sendCommit
+        case .rollback:
+            return .sendRollback
         case .readyToLogOff:
-            fatalError()
-        case .loggingOff:
-            fatalError()
-        case .closing:
-            fatalError()
-        case .closed:
+            return .wait
+        case .loggingOff(let promise):
+            return .logoffConnection(promise)
+
+        case .closing, .closed:
             preconditionFailure(
                 "How can we resend anything, if the connection is closed"
             )
@@ -384,14 +397,8 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
 
-        case .readyForQuery:
-            fatalError()
-
-        case .extendedQuery:
-            fatalError()
-
-        case .ping:
-            fatalError()
+        case .readyForQuery, .extendedQuery, .ping, .commit, .rollback:
+            fatalError("Is this possible?")
 
         case .readyToLogOff, .loggingOff, .closing, .closed, .modifying:
             preconditionFailure()
@@ -410,7 +417,9 @@ struct ConnectionStateMachine {
              .dataTypesMessageSent,
              .authenticating,
              .extendedQuery,
-             .ping:
+             .ping,
+             .commit,
+             .rollback:
             switch self.markerState {
             case .noMarkerSent:
                 self.markerState = .markerSent
@@ -453,11 +462,19 @@ struct ConnectionStateMachine {
             fatalError()
         case .ping(let promise):
             return .succeedPing(promise)
+
+        case .commit(let promise):
+            return .succeedCommit(promise)
+            
+        case .rollback(let promise):
+            return .succeedRollback(promise)
+
         case .readyToLogOff:
             fatalError()
         case .loggingOff(let promise):
             self.state = .closing
             return .closeConnection(promise)
+
         case .closing:
             fatalError()
         case .closed:
@@ -601,7 +618,7 @@ struct ConnectionStateMachine {
 
             self.state = .readyForQuery
             return self.executeNextQueryFromQueue()
-        case .ping:
+        case .ping, .commit, .rollback:
             self.state = .readyForQuery
             return self.executeNextQueryFromQueue()
         default:
@@ -655,7 +672,9 @@ struct ConnectionStateMachine {
              .dataTypesMessageSent,
              .waitingToStartAuthentication,
              .readyForQuery,
-             .ping:
+             .ping,
+             .commit,
+             .rollback:
             let cleanupContext = self.setErrorAndCreateCleanupContext(
                 error, closePromise: closePromise
             )
@@ -773,6 +792,16 @@ struct ConnectionStateMachine {
             return self.avoidingStateMachineCoW { machine in
                 machine.state = .ping(promise)
                 return .sendPing
+            }
+        case .commit(let promise):
+            return self.avoidingStateMachineCoW { machine in
+                machine.state = .commit(promise)
+                return .sendCommit
+            }
+        case .rollback(let promise):
+            return self.avoidingStateMachineCoW { machine in
+                machine.state = .rollback(promise)
+                return .sendRollback
             }
         }
     }

@@ -42,6 +42,22 @@ struct OracleFrontendMessageEncoder {
         self.endRequest()
     }
 
+    mutating func commit() {
+        self.clearIfNeeded()
+
+        self.startRequest()
+        self.writeFunctionCode(messageType: .function, functionCode: .commit)
+        self.endRequest()
+    }
+
+    mutating func rollback() {
+        self.clearIfNeeded()
+
+        self.startRequest()
+        self.writeFunctionCode(messageType: .function, functionCode: .rollback)
+        self.endRequest()
+    }
+
     mutating func connect(connectString: String) {
         self.clearIfNeeded()
 

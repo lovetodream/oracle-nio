@@ -5,6 +5,8 @@ import RegexBuilder
 enum OracleTask {
     case extendedQuery(ExtendedQueryContext)
     case ping(EventLoopPromise<Void>)
+    case commit(EventLoopPromise<Void>)
+    case rollback(EventLoopPromise<Void>)
 
     func failWithError(_ error: OracleSQLError) {
         switch self {
@@ -17,6 +19,10 @@ enum OracleTask {
                 promise.fail(error)
             }
         case .ping(let promise):
+            promise.fail(error)
+        case .commit(let promise):
+            promise.fail(error)
+        case .rollback(let promise):
             promise.fail(error)
         }
     }

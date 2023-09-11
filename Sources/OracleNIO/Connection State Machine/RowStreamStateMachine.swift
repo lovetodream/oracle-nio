@@ -30,6 +30,7 @@ struct RowStreamStateMachine {
     }
 
     private var state: State
+    private var lastRowFromPreviousBuffer: DataRow?
 
     init() {
         var buffer = [DataRow]()
@@ -80,7 +81,9 @@ struct RowStreamStateMachine {
     mutating func receivedDuplicate(at index: Int) -> ByteBuffer {
         switch self.state {
         case .waitingForRows(let buffer):
-            guard let previousRow = buffer.last else {
+            guard
+                let previousRow = buffer.last ?? lastRowFromPreviousBuffer
+            else {
                 preconditionFailure()
             }
             let idx = previousRow.index(previousRow.startIndex, offsetBy: index)
@@ -122,6 +125,9 @@ struct RowStreamStateMachine {
             } else {
                 var newBuffer = buffer
                 newBuffer.removeAll(keepingCapacity: true)
+                // safe last row in case we receive a duplicate in row 0 of
+                // the next fetch
+                self.lastRowFromPreviousBuffer = buffer.last
                 self.state = .waitingForReadOrDemand(newBuffer)
                 return buffer
             }

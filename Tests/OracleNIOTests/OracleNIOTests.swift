@@ -136,41 +136,41 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testDuplicateColumn() async throws {
-        let connection = try await OracleConnection.test(on: eventLoop)
-        defer { XCTAssertNoThrow(try connection.close().wait()) }
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.close().wait()) }
         do {
-            try await connection.query(
+            try await conn.query(
                 "DROP TABLE duplicate", logger: .oracleTest
             )
         } catch let error as OracleSQLError {
             // "ORA-00942: table or view does not exist" can be ignored
             XCTAssertEqual(error.serverInfo?.number, 942)
         }
-        try await connection.query(
+        try await conn.query(
             "CREATE TABLE duplicate (id number, title varchar2(150 byte))",
             logger: .oracleTest
         )
-        try await connection.query(
+        try await conn.query(
             "INSERT INTO duplicate (id, title) VALUES (1, 'hello!')",
             logger: .oracleTest
         )
-        try await connection.query(
+        try await conn.query(
             "INSERT INTO duplicate (id, title) VALUES (2, 'hi!')",
             logger: .oracleTest
         )
-        try await connection.query(
+        try await conn.query(
             "INSERT INTO duplicate (id, title) VALUES (3, 'hello, there!')",
             logger: .oracleTest
         )
-        try await connection.query(
+        try await conn.query(
             "INSERT INTO duplicate (id, title) VALUES (4, 'hello, there!')",
             logger: .oracleTest
         )
-        try await connection.query(
+        try await conn.query(
             "INSERT INTO duplicate (id, title) VALUES (5, 'hello, guys!')",
             logger: .oracleTest
         )
-        let rows = try await connection.query(
+        let rows = try await conn.query(
             "SELECT id, title FROM duplicate ORDER BY id", logger: .oracleTest
         )
         var index = 0
@@ -190,8 +190,54 @@ final class OracleNIOTests: XCTestCase {
                 XCTFail()
             }
         }
-        try await connection.query("DROP TABLE duplicate", logger: .oracleTest)
+        try await conn.query("DROP TABLE duplicate", logger: .oracleTest)
+    }
 
+    func testDuplicateColumnInEveryRow() async throws {
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        do {
+            try await conn.query(
+                "DROP TABLE duplicate", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await conn.query(
+            "CREATE TABLE duplicate (id number, title varchar2(150 byte))",
+            logger: .oracleTest
+        )
+        try await conn.query(
+            "INSERT INTO duplicate (id, title) VALUES (1, 'hello!')",
+            logger: .oracleTest
+        )
+        try await conn.query(
+            "INSERT INTO duplicate (id, title) VALUES (2, 'hello!')",
+            logger: .oracleTest
+        )
+        try await conn.query(
+            "INSERT INTO duplicate (id, title) VALUES (3, 'hello!')",
+            logger: .oracleTest
+        )
+        try await conn.query(
+            "INSERT INTO duplicate (id, title) VALUES (4, 'hello!')",
+            logger: .oracleTest
+        )
+        try await conn.query(
+            "INSERT INTO duplicate (id, title) VALUES (5, 'hello!')",
+            logger: .oracleTest
+        )
+        let rows = try await conn.query(
+            "SELECT id, title FROM duplicate ORDER BY id", logger: .oracleTest
+        )
+        var index = 0
+        for try await row in rows.decode((Int, String).self) {
+            XCTAssertEqual(index + 1, row.0)
+            index = row.0
+            XCTAssertEqual(row.1, "hello!")
+        }
+        try await conn.query("DROP TABLE duplicate", logger: .oracleTest)
     }
 
     func testNoRowsQueryFromDual() async throws {

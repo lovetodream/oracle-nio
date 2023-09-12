@@ -10,7 +10,6 @@ Non-blocking, event-driven Swift client for Oracle Databases built on [SwiftNIO]
 - Integrated with the Swift server ecosystem, including use of [swift-log](https://github.com/apple/swift-log).
 - Designed to run efficiently on all supported platforms (tested on Linux and Darwin systems)
 - Support for `Network.framework` when available (e.g. on Apple platforms)
-- Supports running on Unix Domain Sockets
 
 OracleNIO does not provide a `ConnectionPool` as of today, but this is planned for a future release.
 
@@ -34,7 +33,8 @@ To create a connection, first create a connection configuration object:
 import OracleNIO
 
 let config = OracleConnection.Configuration(
-    address: SocketAddress(ipAddress: "127.0.0.1", port: 1521),
+    host: "127.0.0.1", 
+    port: 1521,
     serviceName: "my_service",
     username: "my_username",
     password: "my_password"
@@ -58,7 +58,8 @@ import Logging
 let logger = Logger(label: "oracle-logger")
 
 let config = OracleConnection.Configuration(
-    address: SocketAddress(ipAddress: "127.0.0.1", port: 1521),
+    host: "127.0.0.1", 
+    port: 1521,
     serviceName: "my_service",
     username: "my_username",
     password: "my_password"

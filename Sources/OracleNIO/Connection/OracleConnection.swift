@@ -2,48 +2,14 @@ import NIOCore
 #if canImport(Network)
 import NIOTransportServices
 #endif
+import NIOSSL
 import class Foundation.ProcessInfo
 
 public class OracleConnection {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int
 
-    public struct Configuration {
-
-        /// Describes options affecting how the underlying connection is made.
-        public struct Options {
-            /// A timeout for connection attempts. Defaults to ten seconds.
-            public var connectTimeout: TimeAmount
-
-            /// Create an options structure with default values.
-            ///
-            /// Most users should not need to adjust the defaults.
-            public init() {
-                self.connectTimeout = .seconds(10)
-            }
-        }
-
-        var options: Options = .init()
-
-        var address: SocketAddress
-        var serviceName: String
-        var username: String
-        var password: String
-
-        public init(
-            address: SocketAddress,
-            serviceName: String,
-            username: String,
-            password: String
-        ) {
-            self.address = address
-            self.serviceName = serviceName
-            self.username = username
-            self.password = password
-        }
-    }
-
-    var capabilities = Capabilities()
+    var capabilities: Capabilities
     let configuration: Configuration
     let channel: Channel
     let logger: Logger
@@ -78,13 +44,35 @@ public class OracleConnection {
         self.configuration = configuration
         self.logger = logger
         self.channel = channel
+        self.capabilities = .init()
+        // TODO: disable OOB on Windows, if Windows gets to be a supported platform
+        if !configuration.disableOOB ||
+            configuration._protocol == .tcps {
+            self.capabilities.supportsOOB = true
+        }
     }
     deinit {
         assert(isClosed, "OracleConnection deinitialized before being closed.")
     }
 
-    func start() -> EventLoopFuture<Void> {
+    func start(configuration: Configuration) -> EventLoopFuture<Void> {
         // 1. configure handlers
+
+        switch configuration.tls.base {
+        case .disable: break
+        case .require(let context):
+            do {
+                let sslHandler = try NIOSSLClientHandler(
+                    context: context,
+                    serverHostname: configuration.serverNameForTLS
+                )
+                try channel.pipeline.syncOperations.addHandler(
+                    sslHandler, position: .first
+                )
+            } catch {
+                return self.eventLoop.makeFailedFuture(error)
+            }
+        }
 
         let channelHandler = OracleChannelHandler(
             configuration: configuration,
@@ -143,16 +131,18 @@ public class OracleConnection {
 
         return eventLoop.flatSubmit {
             makeBootstrap(on: eventLoop, configuration: configuration)
-                .connect(to: configuration.address)
+                .connect(host: configuration.host, port: configuration.port)
                 .flatMap { channel -> EventLoopFuture<OracleConnection> in
-                let connection = OracleConnection(
-                    configuration: configuration,
-                    channel: channel,
-                    connectionID: connectionID,
-                    logger: logger
-                )
-                return connection.start().map { _ in connection }
-            }
+                    let connection = OracleConnection(
+                        configuration: configuration,
+                        channel: channel,
+                        connectionID: connectionID,
+                        logger: logger
+                    )
+                    return connection.start(configuration: configuration).map {
+                        _ in connection
+                    }
+                }
         }
     }
 

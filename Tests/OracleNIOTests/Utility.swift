@@ -1,13 +1,6 @@
 import OracleNIO
 
 extension OracleConnection {
-    static func address() throws -> SocketAddress {
-        try .makeAddressResolvingHost(
-            env("ORA_HOSTNAME") ?? "192.168.1.24",
-            port: env("ORA_PORT").flatMap(Int.init) ?? 1521
-        )
-    }
-
     static func test(
         on eventLoop: EventLoop,
         logLevel: Logger.Level = Logger.getLogLevel()
@@ -16,7 +9,8 @@ extension OracleConnection {
         logger.logLevel = logLevel
 
         let config = OracleConnection.Configuration(
-            address: try Self.address(),
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
             serviceName: env("ORA_SERVICE_NAME") ?? "XEPDB1",
             username: env("ORA_USERNAME") ?? "my_user",
             password: env("ORA_PASSWORD") ?? "my_passwor"

@@ -29,7 +29,8 @@ final class OracleNIOTests: XCTestCase {
 
     func testAuthenticationFailure() throws {
         let config = OracleConnection.Configuration(
-            address: try OracleConnection.address(),
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
             serviceName: env("ORA_SERVICE_NAME") ?? "XEPDB1",
             username: env("ORA_USERNAME") ?? "my_user",
             password: "wrong_password"

@@ -12,7 +12,7 @@ struct AuthenticationStateMachine {
     }
 
     enum Action {
-        case sendAuthenticationPhaseOne(AuthContext)
+        case sendAuthenticationPhaseOne(AuthContext, ConnectionCookie?)
         case sendAuthenticationPhaseTwo(
             AuthContext,
             OracleBackendMessage.Parameter
@@ -24,10 +24,12 @@ struct AuthenticationStateMachine {
     }
 
     let authContext: AuthContext
+    let cookie: ConnectionCookie?
     var state: State
 
-    init(authContext: AuthContext) {
+    init(authContext: AuthContext, cookie: ConnectionCookie?) {
         self.authContext = authContext
+        self.cookie = cookie
         self.state = .initialized
     }
 
@@ -36,7 +38,7 @@ struct AuthenticationStateMachine {
             preconditionFailure("Unexpected state")
         }
         self.state = .authenticationPhaseOneSent
-        return .sendAuthenticationPhaseOne(self.authContext)
+        return .sendAuthenticationPhaseOne(self.authContext, self.cookie)
     }
 
     mutating func parameterReceived(

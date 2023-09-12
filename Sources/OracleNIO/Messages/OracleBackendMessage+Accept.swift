@@ -1,8 +1,10 @@
 import NIOCore
+import struct Foundation.UUID
 
 extension OracleBackendMessage {
     struct Accept: PayloadDecodable, Hashable {
         var newCapabilities: Capabilities
+        var dbCookieUUID: UUID?
 
         static func decode(
             from buffer: inout ByteBuffer,
@@ -13,24 +15,19 @@ extension OracleBackendMessage {
             let protocolOptions =
                 try buffer.throwingReadInteger(as: UInt16.self)
 
+            let dbUUID: UUID?
+            if protocolVersion >= Constants.TNS_VERSION_MIN_UUID {
+                buffer.moveReaderIndex(forwardBy: 33)
+                dbUUID = buffer.readUUIDBytes()
+            } else {
+                dbUUID = nil
+            }
+
             let cap = capabilities.adjustedForProtocol(
-                version: protocolVersion,
-                options: protocolOptions
+                version: protocolVersion, options: protocolOptions
             )
 
-            if cap.protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
-                throw OracleError.ErrorType.serverVersionNotSupported
-            }
-
-            if
-                cap.supportsOOB && cap.protocolVersion >=
-                Constants.TNS_VERSION_MIN_OOB_CHECK
-            {
-                // TODO: Perform OOB Check
-            }
-
-
-            return .init(newCapabilities: cap)
+            return .init(newCapabilities: cap, dbCookieUUID: dbUUID)
         }
     }
 }

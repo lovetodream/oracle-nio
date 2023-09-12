@@ -206,6 +206,7 @@ enum Constants {
     static let TNS_VERSION_MIN_ACCEPTED = 315      // 12.1
     static let TNS_VERSION_MIN_LARGE_SDU = 315
     static let TNS_VERSION_MIN_OOB_CHECK = 318
+    static let TNS_VERSION_MIN_UUID = 319
 
     // MARK: Control packet types
     static let TNS_CONTROL_TYPE_INBAND_NOTIFICATION = 8

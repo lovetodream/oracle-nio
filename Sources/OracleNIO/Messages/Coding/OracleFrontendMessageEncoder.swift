@@ -110,25 +110,57 @@ struct OracleFrontendMessageEncoder {
         self.endRequest(packetType: isConnectStringToLong ? .data : .connect)
     }
 
-    mutating func `protocol`() {
+    mutating func cookie(_ cookie: ConnectionCookie, authContext: AuthContext) {
         self.clearIfNeeded()
 
         self.startRequest()
 
-        self.buffer.writeInteger(MessageType.protocol.rawValue)
-        buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
-        buffer.writeInteger(UInt8(0)) // `array` terminator
-        buffer.writeString(Constants.DRIVER_NAME)
-        buffer.writeInteger(UInt8(0)) // `NULL` terminator
+        self.protocol0()
+
+        self.buffer.writeMultipleIntegers(
+            MessageType.cookie.rawValue,
+            UInt8(1), // cookie version
+            cookie.protocolVersion
+        )
+        self.buffer.writeInteger(cookie.charsetID, endianness: .little)
+        self.buffer.writeInteger(cookie.flags)
+        self.buffer.writeInteger(cookie.nationalCharsetID, endianness: .little)
+        cookie.serverBanner._encodeRaw(into: &self.buffer, context: .default)
+        cookie.compileCapabilities
+            ._encodeRaw(into: &self.buffer, context: .default)
+        cookie.runtimeCapabilities
+            ._encodeRaw(into: &self.buffer, context: .default)
+        self.dataTypes0()
+        self.authenticationPhaseOne0(authContext: authContext)
 
         self.endRequest()
+    }
+
+    mutating func `protocol`() {
+        self.clearIfNeeded()
+
+        self.startRequest()
+        self.protocol0()
+        self.endRequest()
+    }
+
+    private mutating func protocol0() {
+        self.buffer.writeInteger(MessageType.protocol.rawValue)
+        self.buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
+        self.buffer.writeInteger(UInt8(0)) // `array` terminator
+        self.buffer.writeString(Constants.DRIVER_NAME)
+        self.buffer.writeInteger(UInt8(0)) // `NULL` terminator
     }
 
     mutating func dataTypes() {
         self.clearIfNeeded()
 
         self.startRequest()
+        self.dataTypes0()
+        self.endRequest()
+    }
 
+    private mutating func dataTypes0() {
         self.buffer.writeInteger(MessageType.dataTypes.rawValue, as: UInt8.self)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
@@ -150,13 +182,17 @@ struct OracleFrontendMessageEncoder {
         }
 
         self.buffer.writeInteger(UInt16(0))
-
-        self.endRequest()
     }
 
     mutating func authenticationPhaseOne(authContext: AuthContext) {
         self.clearIfNeeded()
 
+        self.startRequest()
+        self.authenticationPhaseOne0(authContext: authContext)
+        self.endRequest()
+    }
+
+    mutating func authenticationPhaseOne0(authContext: AuthContext) {
         // 1. Setup
 
         let newPassword = authContext.newPassword
@@ -175,8 +211,6 @@ struct OracleFrontendMessageEncoder {
         // 2. message preparation
 
         let numberOfPairs: UInt32 = 5
-
-        self.startRequest()
 
         self.writeBasicAuthData(
             authContext: authContext,
@@ -211,8 +245,6 @@ struct OracleFrontendMessageEncoder {
             value: authContext.username,
             out: &self.buffer
         )
-
-        self.endRequest()
     }
 
     mutating func authenticationPhaseTwo(

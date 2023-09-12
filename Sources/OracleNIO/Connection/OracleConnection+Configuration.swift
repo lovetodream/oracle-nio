@@ -117,6 +117,10 @@ extension OracleConnection {
 
         /// The service name of the database.
         var serviceName: String
+        /// The system identifier (SID) of the database.
+        ///
+        /// - Note: Using a ``serviceName`` instead is recommended by Oracle.
+        var sid: String?
 
         /// Authorization mode to use.
         var mode: AuthenticationMode = .default
@@ -181,7 +185,7 @@ extension OracleConnection {
             value: defaultUsername()
         )
         private static func defaultUsername() -> String {
-            #if os(iOS) || os(tvOS)
+            #if os(iOS) || os(tvOS) || os(watchOS)
             return "unknown"
             #else
             return ProcessInfo.processInfo.userName

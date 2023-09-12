@@ -67,8 +67,8 @@ struct ConnectionStateMachine {
         case sendDataTypes
 
         // Authentication Actions
-        case provideAuthenticationContext
-        case sendAuthenticationPhaseOne(AuthContext)
+        case provideAuthenticationContext(ConnectionCookie?)
+        case sendAuthenticationPhaseOne(AuthContext, ConnectionCookie?)
         case sendAuthenticationPhaseTwo(
             AuthContext, OracleBackendMessage.Parameter
         )
@@ -126,9 +126,9 @@ struct ConnectionStateMachine {
     }
 
     mutating func provideAuthenticationContext(
-        _ authContext: AuthContext
+        _ authContext: AuthContext, cookie: ConnectionCookie?
     ) -> ConnectionAction {
-        self.startAuthentication(authContext)
+        self.startAuthentication(authContext, cookie: cookie)
     }
 
     mutating func close(
@@ -214,15 +214,15 @@ struct ConnectionStateMachine {
         case .notQuiescing:
             switch self.state {
             case .initialized,
-                .connectMessageSent, 
-                .protocolMessageSent,
-                .dataTypesMessageSent,
-                .waitingToStartAuthentication,
-                .authenticating,
-                .extendedQuery,
-                .ping,
-                .commit,
-                .rollback:
+                 .connectMessageSent,
+                 .protocolMessageSent,
+                 .dataTypesMessageSent,
+                 .waitingToStartAuthentication,
+                 .authenticating,
+                 .extendedQuery,
+                 .ping,
+                 .commit,
+                 .rollback:
                 self.taskQueue.append(task)
                 return .wait
 
@@ -313,10 +313,35 @@ struct ConnectionStateMachine {
         }
     }
 
-    mutating func acceptReceived() -> ConnectionAction {
+    mutating func acceptReceived(
+        _ accept: OracleBackendMessage.Accept, description: Description
+    ) -> ConnectionAction {
         guard case .connectMessageSent = state else {
             preconditionFailure()
         }
+
+        let capabilities = accept.newCapabilities
+
+        if capabilities.protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
+            return self.errorHappened(.serverVersionNotSupported)
+        }
+
+        if
+            capabilities.supportsOOB && capabilities.protocolVersion >=
+            Constants.TNS_VERSION_MIN_OOB_CHECK
+        {
+            // TODO: Perform OOB Check
+            // send OUT_OF_BAND + reset marker message through socket
+        }
+
+        // Starting in 23c, a cookie can be sent along with the protocol, data
+        // types and authorization messages without waiting for the server to
+        // respond to each of the messages in turn
+        if let dbUUID = accept.dbCookieUUID, let cookie = ConnectionCookieManager.shared.get(by: dbUUID, description: description) {
+            self.state = .waitingToStartAuthentication
+            return .provideAuthenticationContext(cookie)
+        }
+
         self.state = .protocolMessageSent
         return .sendProtocol
     }
@@ -375,7 +400,7 @@ struct ConnectionStateMachine {
             preconditionFailure()
         }
         self.state = .waitingToStartAuthentication
-        return .provideAuthenticationContext
+        return .provideAuthenticationContext(nil)
     }
 
     mutating func parameterReceived(
@@ -383,10 +408,10 @@ struct ConnectionStateMachine {
     ) -> ConnectionAction {
         switch self.state {
         case .initialized,
-            .connectMessageSent,
-            .protocolMessageSent,
-            .dataTypesMessageSent,
-            .waitingToStartAuthentication:
+             .connectMessageSent,
+             .protocolMessageSent,
+             .dataTypesMessageSent,
+             .waitingToStartAuthentication:
             preconditionFailure()
 
         case .authenticating(var authState):
@@ -407,11 +432,11 @@ struct ConnectionStateMachine {
     mutating func markerReceived() -> ConnectionAction {
         switch self.state {
         case .initialized, 
-            .waitingToStartAuthentication,
-            .readyForQuery,
-            .closed:
+             .waitingToStartAuthentication,
+             .readyForQuery,
+             .closed:
             preconditionFailure()
-        case .connectMessageSent, 
+        case .connectMessageSent,
              .protocolMessageSent,
              .dataTypesMessageSent,
              .authenticating,
@@ -645,7 +670,9 @@ struct ConnectionStateMachine {
 
     // MARK: - Private Methods -
 
-    private mutating func startAuthentication(_ authContext: AuthContext) -> ConnectionAction {
+    private mutating func startAuthentication(
+        _ authContext: AuthContext, cookie: ConnectionCookie?
+    ) -> ConnectionAction {
         guard case .waitingToStartAuthentication = state else {
             preconditionFailure(
                 "Can only start authentication after connection is established"
@@ -653,7 +680,9 @@ struct ConnectionStateMachine {
         }
 
         return self.avoidingStateMachineCoW { machine in
-            var authState = AuthenticationStateMachine(authContext: authContext)
+            var authState = AuthenticationStateMachine(
+                authContext: authContext, cookie: cookie
+            )
             let action = authState.start()
             machine.state = .authenticating(authState)
             return machine.modify(with: action)
@@ -813,6 +842,7 @@ extension ConnectionStateMachine {
         case .connectionError,
             .messageDecodingFailure,
             .unexpectedBackendMessage,
+            .serverVersionNotSupported,
             .uncleanShutdown:
             return true
         case .queryCancelled, .nationalCharsetNotSupported:
@@ -911,8 +941,8 @@ extension ConnectionStateMachine {
         with action: AuthenticationStateMachine.Action
     ) -> ConnectionAction {
         switch action {
-        case .sendAuthenticationPhaseOne(let authContext):
-            return .sendAuthenticationPhaseOne(authContext)
+        case .sendAuthenticationPhaseOne(let authContext, let cookie):
+            return .sendAuthenticationPhaseOne(authContext, cookie)
         case .sendAuthenticationPhaseTwo(let authContext, let parameters):
             return .sendAuthenticationPhaseTwo(authContext, parameters)
         case .wait:

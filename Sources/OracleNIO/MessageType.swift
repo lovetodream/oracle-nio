@@ -18,6 +18,8 @@ enum MessageType: UInt8, CustomStringConvertible {
     case serverSidePiggyback = 23
     case onewayFN = 26
     case implicitResultset = 27
+    case renegotiate = 28
+    case cookie = 30
 
     var description: String {
         switch self {
@@ -57,6 +59,10 @@ enum MessageType: UInt8, CustomStringConvertible {
             return "ONEWAY_FN"
         case .implicitResultset:
             return "IMPLICIT_RESULTSET"
+        case .renegotiate:
+            return "RENEGOTIATE"
+        case .cookie:
+            return "COOKIE"
         }
     }
 }

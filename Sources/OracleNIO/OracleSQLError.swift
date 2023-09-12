@@ -14,6 +14,7 @@ public struct OracleSQLError: Error {
             case unexpectedBackendMessage
             case server
             case queryCancelled
+            case serverVersionNotSupported
         }
 
         internal var base: Base
@@ -33,6 +34,8 @@ public struct OracleSQLError: Error {
             Self(.unexpectedBackendMessage)
         public static let server = Self(.server)
         public static let queryCancelled = Self(.queryCancelled)
+        public static let serverVersionNotSupported =
+            Self(.serverVersionNotSupported)
 
         public var description: String {
             switch self.base {
@@ -54,6 +57,8 @@ public struct OracleSQLError: Error {
                 return "server"
             case .queryCancelled:
                 return "queryCancelled"
+            case .serverVersionNotSupported:
+                return "serverVersionNotSupported"
             }
         }
     }
@@ -239,5 +244,8 @@ public struct OracleSQLError: Error {
     OracleSQLError(code: .nationalCharsetNotSupported)
 
     static let queryCancelled = OracleSQLError(code: .queryCancelled)
+
+    static let serverVersionNotSupported =
+    OracleSQLError(code: .serverVersionNotSupported)
 
  }

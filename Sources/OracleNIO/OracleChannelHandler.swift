@@ -248,7 +248,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .provideAuthenticationContext:
+        case .provideAuthenticationContext(let cookie):
             let authContext = AuthContext(
                 username: configuration.username,
                 password: configuration.password,
@@ -261,12 +261,21 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 mode: configuration.mode,
                 description: configuration.getDescription()
             )
-            let action = self.state.provideAuthenticationContext(authContext)
+            let action = self.state
+                .provideAuthenticationContext(authContext, cookie: cookie)
             return self.run(action, with: context)
-        case .sendAuthenticationPhaseOne(let authContext):
-            self.sendAuthenticationPhaseOne(
-                authContext: authContext, context: context
-            )
+        case .sendAuthenticationPhaseOne(let authContext, let cookie):
+            switch cookie {
+            case .none:
+                self.sendAuthenticationPhaseOne(
+                    authContext: authContext, context: context
+                )
+            case .some(let cookie):
+                self.encoder.cookie(cookie, authContext: authContext)
+                context.writeAndFlush(
+                    self.wrapOutboundOut(self.encoder.flush()), promise: nil
+                )
+            }
         case .sendAuthenticationPhaseTwo(let authContext, let parameters):
             self.sendAuthenticationPhaseTwo(
                 authContext: authContext,

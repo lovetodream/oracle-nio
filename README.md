@@ -35,7 +35,7 @@ import OracleNIO
 let config = OracleConnection.Configuration(
     host: "127.0.0.1", 
     port: 1521,
-    serviceName: "my_service",
+    variant: .serviceName("my_service"),
     username: "my_username",
     password: "my_password"
 )
@@ -60,7 +60,7 @@ let logger = Logger(label: "oracle-logger")
 let config = OracleConnection.Configuration(
     host: "127.0.0.1", 
     port: 1521,
-    serviceName: "my_service",
+    variant: .serviceName("my_service"),
     username: "my_username",
     password: "my_password"
 )

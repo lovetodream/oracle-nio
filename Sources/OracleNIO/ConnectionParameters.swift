@@ -41,8 +41,7 @@ struct Description: Equatable {
     var retryCount: Int = 0
     var retryDelay: Int = 0
     var tcpConnectTimeout: TimeAmount = .seconds(10)
-    var serviceName: String?
-    var sid: String?
+    var variant: OracleConnection.Configuration.ConnectionVariant
     var sslServerDnMatch: Bool
     var sslServerCertDn: String?
     var walletLocation: String?
@@ -91,11 +90,12 @@ struct Description: Equatable {
             }
         }
 
-                // build connect data segment
-                var tempParts = [String]()
-        if let serviceName {
+        // build connect data segment
+        var tempParts = [String]()
+        switch variant {
+        case .serviceName(let serviceName):
             tempParts.append("(SERVICE_NAME=\(serviceName))")
-        } else if let sid {
+        case .sid(let sid):
             tempParts.append("(SID=\(sid))")
         }
         if let cid {

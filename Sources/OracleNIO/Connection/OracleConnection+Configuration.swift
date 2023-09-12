@@ -81,6 +81,15 @@ extension OracleConnection {
             }
         }
 
+        public enum ConnectionVariant: Equatable {
+            /// The service name of the database.
+            case serviceName(String)
+            /// The system identifier (SID) of the database.
+            ///
+            /// - Note: Using a ``serviceName(_:)`` instead is recommended by Oracle.
+            case sid(String)
+        }
+
         var options: Options = .init()
 
         /// The name or IP address of the machine hosting the database or the database listener.
@@ -114,13 +123,12 @@ extension OracleConnection {
         
         /// The password for the user.
         var password: String
-
-        /// The service name of the database.
-        var serviceName: String
-        /// The system identifier (SID) of the database.
+        /// The new password for the user. The new password will take effect immediately upon a
+        /// successful connection to the database.
+        var newPassword: String?
         ///
-        /// - Note: Using a ``serviceName`` instead is recommended by Oracle.
-        var sid: String?
+
+        var variant: ConnectionVariant
 
         /// Authorization mode to use.
         var mode: AuthenticationMode = .default
@@ -197,14 +205,14 @@ extension OracleConnection {
         public init(
             host: String,
             port: Int = 1521,
-            serviceName: String,
+            variant: ConnectionVariant,
             username: String,
             password: String,
             tls: TLS = .disable
         ) {
             self.host = host
             self.port = port
-            self.serviceName = serviceName
+            self.variant = variant
             self.username = username
             self.password = password
             self.tls = tls
@@ -233,8 +241,7 @@ extension OracleConnection {
                 sourceRoute: false,
                 loadBalance: false,
                 tcpConnectTimeout: self.options.connectTimeout,
-                serviceName: self.serviceName,
-                sid: self.sid,
+                variant: self.variant,
                 sslServerDnMatch: self.serverNameForTLS != nil,
                 sslServerCertDn: self.serverNameForTLS,
                 walletLocation: nil

@@ -11,8 +11,14 @@ struct ConnectionCookieManager: Sendable {
     func get(
         by uuid: UUID, description: Description
     ) -> ConnectionCookie? {
-        let key = uuid.uuidString +
-            (description.serviceName ?? description.sid ?? "")
+        let suffix: String
+        switch description.variant {
+        case .serviceName(let serviceName):
+            suffix = serviceName
+        case .sid(let sid):
+            suffix = sid
+        }
+        let key = uuid.uuidString + suffix
         return store[key]
     }
 

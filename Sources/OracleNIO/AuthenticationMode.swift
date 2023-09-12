@@ -34,7 +34,7 @@ enum AuthenticationMode: UInt32, CustomStringConvertible {
     }
 
     /// Bitwise comparison.
-    func compare(with other: UInt32) -> Bool {
-        other & self.rawValue != 0
+    func compare(with other: Self) -> Bool {
+        other.rawValue & self.rawValue != 0
     }
 }

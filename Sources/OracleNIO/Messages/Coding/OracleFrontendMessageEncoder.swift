@@ -188,27 +188,27 @@ struct OracleFrontendMessageEncoder {
         // 3. write key/value pairs
         Self.writeKeyValuePair(
             key: "AUTH_TERMINAL",
-            value: ConnectConstants.default.terminalName,
+            value: authContext.terminalName,
             out: &self.buffer
         )
         Self.writeKeyValuePair(
             key: "AUTH_PROGRAM_NM",
-            value: ConnectConstants.default.programName,
+            value: authContext.programName,
             out: &self.buffer
         )
         Self.writeKeyValuePair(
             key: "AUTH_MACHINE",
-            value: ConnectConstants.default.machineName,
+            value: authContext.machineName,
             out: &self.buffer
         )
         Self.writeKeyValuePair(
             key: "AUTH_PID",
-            value: String(ConnectConstants.default.pid),
+            value: String(authContext.pid),
             out: &self.buffer
         )
         Self.writeKeyValuePair(
             key: "AUTH_SID",
-            value: ConnectConstants.default.username,
+            value: authContext.username,
             out: &self.buffer
         )
 
@@ -713,7 +713,7 @@ struct OracleFrontendMessageEncoder {
 extension OracleFrontendMessageEncoder {
 
     private static func configureAuthMode(
-        from mode: UInt32 , newPassword: String? = nil
+        from mode: AuthenticationMode , newPassword: String? = nil
     ) -> UInt32 {
         var authMode: UInt32 = 0
 

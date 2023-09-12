@@ -970,21 +970,26 @@ struct AuthContext: Equatable, CustomDebugStringConvertible {
     var password: String
     var newPassword: String?
 
-    // TODO: document what mode does
-    var mode: UInt32 = 0
+    var terminalName: String
+    var programName: String
+    var machineName: String
+    var pid: Int32
+    var processUsername: String
+
+    var mode: AuthenticationMode
 
     var description: Description
-
-    struct Description: Equatable {
-        var purity: Purity = .default
-        var serviceName: String
-    }
 
     var debugDescription: String {
         """
         AuthContext(username: \(String(reflecting: self.username)), \
         password: ********, \
         newPassword: \(self.newPassword != nil ? "********" : "nil"), \
+        terminalName: \(self.terminalName), \
+        programName: \(self.programName), \
+        machineName: \(self.machineName), \
+        pid: \(self.pid), \
+        processUsername: \(self.processUsername), \
         mode: \(String(reflecting: self.mode)), \
         description: \(String(reflecting: self.description)))
         """

@@ -100,7 +100,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 to: accept.newCapabilities
             )
             self.setCoders(context: context)
-            action = self.state.acceptReceived()
+            action = self.state.acceptReceived(
+                accept, description: configuration.getDescription()
+            )
         case .bitVector(let bitVector):
             action = self.state.bitVectorReceived(bitVector)
         case .dataTypes:
@@ -230,7 +232,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .wait:
             break
         case .sendConnect:
-            self.encoder.connect(connectString: simpleConnectString())
+            self.encoder.connect(
+                connectString: self.configuration.getConnectString()
+            )
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
@@ -248,7 +252,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             let authContext = AuthContext(
                 username: configuration.username,
                 password: configuration.password,
-                description: .init(serviceName: configuration.serviceName)
+                newPassword: configuration.newPassword,
+                terminalName: configuration._terminalName,
+                programName: configuration.programName,
+                machineName: configuration.machineName,
+                pid: configuration.pid,
+                processUsername: configuration.processUsername,
+                mode: configuration.mode,
+                description: configuration.getDescription()
             )
             let action = self.state.provideAuthenticationContext(authContext)
             return self.run(action, with: context)
@@ -598,19 +609,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             componentSpecificReleaseNumber: (fullVersionNumber >> 8) & 0x0f,
             platformSpecificReleaseNumber: fullVersionNumber & 0x0f
         )
-    }
-
-    private func simpleConnectString() -> String {
-        guard
-            let ipAddress = configuration.address.ipAddress,
-            let port = configuration.address.port
-        else {
-            preconditionFailure(
-                "Configuration Address needs to include ip address and port"
-            )
-        }
-//        return "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=\(configuration.serviceName.uppercased()))(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=\(ipAddress))(PORT=\(port))))"
-        return "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME=\(configuration.serviceName))(CID=(PROGRAM=\(ProcessInfo.processInfo.processName))(HOST=\(ProcessInfo.processInfo.hostName))(USER=\(ProcessInfo.processInfo.userName))))(ADDRESS=(PROTOCOL=tcp)(HOST=\(ipAddress))(PORT=\(port))))"
     }
 
     private func setCoders(

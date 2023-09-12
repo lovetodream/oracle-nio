@@ -140,6 +140,56 @@ extension OracleConnection {
         /// Connection ID on the oracle server.
         private(set) var connectionID: String
 
+        /// The name of the process, sent to the oracle server upon connection.
+        ///
+        /// Defaults to the name of the current process.
+        ///
+        /// - Note: The value set here will be sanitized.
+        public var programName: String {
+            get { _programName }
+            set { _programName = sanitize(value: newValue) }
+        }
+        private var _programName: String = sanitize(
+            value: ProcessInfo.processInfo.processName
+        )
+        /// The name of the machine, sent to the oracle server upon connection.
+        ///
+        /// Defaults to the hostname of your system.
+        ///
+        /// - Note: The value set here will be sanitized.
+        public var machineName: String {
+            get { _machineName }
+            set { _machineName = sanitize(value: newValue) }
+        }
+        private var _machineName: String = sanitize(
+            value: ProcessInfo.processInfo.hostName
+        )
+        /// The process ID, sent to the oracle server upon connection.
+        ///
+        /// Defaults to the current process ID.
+        var pid = ProcessInfo.processInfo.processIdentifier
+        /// The name of the user running the process, sent to the oracle server upon connection.
+        ///
+        /// Defaults to the user running the current process.
+        ///
+        /// - Note: The value set here will be sanitized.
+        var processUsername: String {
+            get { _processUsername }
+            set { _processUsername = sanitize(value: newValue) }
+        }
+        private var _processUsername = sanitize(
+            value: defaultUsername()
+        )
+        private static func defaultUsername() -> String {
+            #if os(iOS) || os(tvOS)
+            return "unknown"
+            #else
+            return ProcessInfo.processInfo.userName
+            #endif
+        }
+        internal let _terminalName = "unknown"
+
+
         public init(
             host: String,
             port: Int = 1521,

@@ -134,8 +134,7 @@ final class ExtendedQueryContext {
         }
         let tokens = fragment.prefix(10).split(separator: One(.whitespace))
         guard let sqlKeyword = tokens.first?.uppercased() else {
-            // Throw malformed sql error
-            fatalError()
+            throw OracleSQLError.malformedQuery(minified: sql)
         }
         switch sqlKeyword {
         case "DECLARE", "BEGIN", "CALL":
@@ -147,8 +146,7 @@ final class ExtendedQueryContext {
         case "CREATE", "ALTER", "DROP", "TRUNCATE":
             return .ddl(promise)
         default:
-            // Throw malformed sql error
-            fatalError()
+            throw OracleSQLError.malformedQuery(minified: sql)
         }
     }
 }

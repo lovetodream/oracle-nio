@@ -121,8 +121,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.protocolReceived()
         case .resend:
             action = self.state.resendReceived()
-        case .status:
-            action = self.state.statusReceived()
+        case .status(let status):
+            action = self.state.statusReceived(status)
         case .describeInfo(let describeInfo):
             action = self.state.describeInfoReceived(describeInfo)
         case .rowHeader(let header):

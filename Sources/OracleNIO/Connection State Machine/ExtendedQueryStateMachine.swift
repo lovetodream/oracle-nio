@@ -534,6 +534,7 @@ struct ExtendedQueryStateMachine {
             // `DescribeInfo`. So, because Oracle is sending messages in bulk,
             // we don't really have another choice.
             var slice = buffer.slice()
+            let startReaderIndex = slice.readerIndex
             do {
                 let messages = try OracleBackendMessage.decode(
                     from: &slice,
@@ -577,8 +578,22 @@ struct ExtendedQueryStateMachine {
                 }
 
                 continue
+            } catch let error as OraclePartialDecodingError {
+                slice.moveReaderIndex(to: startReaderIndex)
+                let completeMessage = slice.slice()
+                return self.errorHappened(
+                    .messageDecodingFailure(
+                        .withPartialError(
+                            error,
+                            packetID: OracleBackendMessage.ID.data.rawValue,
+                            messageBytes: completeMessage
+                        )
+                    )
+                )
             } catch {
-                fatalError(.init(describing: error)) // TODO
+                preconditionFailure(
+                    "Expected to only see `OraclePartialDecodingError`s here."
+                )
             }
         }
 

@@ -7,7 +7,7 @@ protocol OracleMessagePayloadDecodable {
     ///
     /// When the decoding is done all bytes in the given ``ByteBuffer`` must be consumed.
     /// ``ByteBuffer.readableBytes`` must be `0`. In case of an error a
-    /// ``PartialDecodingError`` must be thrown.
+    /// ``OraclePartialDecodingError`` must be thrown.
     ///
     /// - Parameter buffer: The ``ByteBuffer`` to read the message from. When done the
     ///                     `ByteBuffer` must be fully consumed.
@@ -160,7 +160,8 @@ extension OracleBackendMessage {
                             .decode(from: &buffer, capabilities: capabilities)
                         ))
                     case nil:
-                        fatalError("not implemented")
+                        throw OraclePartialDecodingError
+                            .unknownMessageIDReceived(messageID: messageIDByte)
                     }
                 }
             }

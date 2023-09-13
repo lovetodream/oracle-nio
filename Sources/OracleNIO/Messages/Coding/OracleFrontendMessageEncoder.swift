@@ -859,8 +859,9 @@ extension OracleFrontendMessageEncoder {
         let password = password.bytes
 
         guard let authVFRData = parameters["AUTH_VFR_DATA"] else {
-            // TODO: better error handling
-            preconditionFailure("AUTH_VFR_DATA needs to be in \(parameters)")
+            throw OracleSQLError.missingParameter(
+                expected: "AUTH_VFR_DATA", in: parameters
+            )
         }
         let verifierData = Self.hexToBytes(string: authVFRData.value)
         let keyLength: Int
@@ -881,8 +882,9 @@ extension OracleFrontendMessageEncoder {
                 let vgenCountStr = parameters["AUTH_PBKDF2_VGEN_COUNT"],
                 let vgenCount = Int(vgenCountStr.value)
             else {
-                // TODO: better error handling
-                preconditionFailure("AUTH_PBKDF2_VGEN_COUNT needs to be in \(parameters)")
+                throw OracleSQLError.missingParameter(
+                    expected: "AUTH_PBKDF2_VGEN_COUNT", in: parameters
+                )
             }
             let iterations = vgenCount
             let speedyKey = "AUTH_PBKDF2_SPEEDY_KEY".bytes
@@ -899,8 +901,9 @@ extension OracleFrontendMessageEncoder {
 
         // decrypt first half of session key
         guard let authSessionKey = parameters["AUTH_SESSKEY"] else {
-            // TODO: better error handling
-            preconditionFailure("AUTH_SESSKEY needs to be in \(parameters)")
+            throw OracleSQLError.missingParameter(
+                expected: "AUTH_SESSKEY", in: parameters
+            )
         }
         let encodedServerKey = Self.hexToBytes(string: authSessionKey.value)
         let sessionKeyPartA = try decryptCBC(passwordHash, encodedServerKey)
@@ -914,15 +917,18 @@ extension OracleFrontendMessageEncoder {
 
         // create session key from combo key
         guard let cskSalt = parameters["AUTH_PBKDF2_CSK_SALT"] else {
-            // TODO: better error handling
-            preconditionFailure("AUTH_PBKDF2_CSK_SALT needs to be in \(parameters)")
+            throw OracleSQLError.missingParameter(
+                expected: "AUTH_PBKDF2_CSK_SALT", in: parameters
+            )
         }
         let mixingSalt = Self.hexToBytes(string: cskSalt.value)
         guard
             let sderCountStr = parameters["AUTH_PBKDF2_SDER_COUNT"],
             let sderCount = Int(sderCountStr.value)
         else {
-            preconditionFailure("AUTH_PBKDF2_SDER_COUNT needs to be in \(parameters)")
+            throw OracleSQLError.missingParameter(
+                expected: "AUTH_PBKDF2_SDER_COUNT", in: parameters
+            )
         }
         let iterations = sderCount
         let comboKey = Array(

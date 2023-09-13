@@ -16,6 +16,8 @@ public struct OracleSQLError: Error {
             case queryCancelled
             case serverVersionNotSupported
             case sidNotSupported
+            case missingParameter
+            case malformedQuery
         }
 
         internal var base: Base
@@ -29,15 +31,17 @@ public struct OracleSQLError: Error {
         public static let connectionError = Self(.connectionError)
         public static let messageDecodingFailure = Self(.messageDecodingFailure)
         public static let nationalCharsetNotSupported =
-            Self(.nationalCharsetNotSupported)
+        Self(.nationalCharsetNotSupported)
         public static let uncleanShutdown = Self(.uncleanShutdown)
         public static let unexpectedBackendMessage =
-            Self(.unexpectedBackendMessage)
+        Self(.unexpectedBackendMessage)
         public static let server = Self(.server)
         public static let queryCancelled = Self(.queryCancelled)
         public static let serverVersionNotSupported =
-            Self(.serverVersionNotSupported)
+        Self(.serverVersionNotSupported)
         public static let sidNotSupported = Self(.sidNotSupported)
+        public static let missingParameter = Self(.missingParameter)
+        public static let malformedQuery = Self(.malformedQuery)
 
         public var description: String {
             switch self.base {
@@ -63,6 +67,10 @@ public struct OracleSQLError: Error {
                 return "serverVersionNotSupported"
             case .sidNotSupported:
                 return "sidNotSupported"
+            case .missingParameter:
+                return "missingParameter"
+            case .malformedQuery:
+                return "malformedQuery"
             }
         }
     }
@@ -211,7 +219,7 @@ public struct OracleSQLError: Error {
         error.underlying = underlying
         return error
     }
-    
+
     static func clientClosedConnection(underlying: Error?) -> OracleSQLError {
         var error = OracleSQLError(code: .clientClosedConnection)
         error.underlying = underlying
@@ -253,5 +261,39 @@ public struct OracleSQLError: Error {
     OracleSQLError(code: .serverVersionNotSupported)
 
     static let sidNotSupported = OracleSQLError(code: .sidNotSupported)
+
+    static func missingParameter(
+        expected key: String,
+        in parameters: OracleBackendMessage.Parameter
+    ) -> OracleSQLError {
+        var error = OracleSQLError(code: .missingParameter)
+        error.underlying = MissingParameterError(
+            expectedKey: key, actualParameters: parameters
+        )
+        return error
+    }
+
+    static func malformedQuery(minified sql: String) -> OracleSQLError {
+        var error = OracleSQLError(code: .malformedQuery)
+        error.underlying = MalformedQueryError(sql: sql)
+        return error
+    }
+
+}
+
+
+// MARK: - Error Implementations -
+
+extension OracleSQLError {
+
+    struct MissingParameterError: Error {
+        var expectedKey: String
+        var actualParameters: OracleBackendMessage.Parameter
+    }
+
+    struct MalformedQueryError: Error {
+        /// Minified sql statement which was malformed.
+        var sql: String
+    }
 
  }

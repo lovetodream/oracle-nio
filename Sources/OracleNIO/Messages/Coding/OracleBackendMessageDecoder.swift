@@ -51,6 +51,8 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     private func decodeMessage0(
         from buffer: inout ByteBuffer
     ) throws -> InboundOut? {
+        let startReaderIndex = buffer.readerIndex
+
         let length: Int?
         if self.capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             length = buffer.getInteger(at: 0, as: UInt32.self).map(Int.init)
@@ -78,12 +80,36 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             packet.moveReaderIndex(to: Self.headerSize)
         }
 
-        let messages = try OracleBackendMessage.decode(
-            from: &packet, of: type,
-            capabilities: self.capabilities,
-            queryOptions: self.context.queryOptions,
-            isChunkedRead: self.context.performingChunkedRead
-        )
-        return messages
+        do {
+            let messages = try OracleBackendMessage.decode(
+                from: &packet, of: type,
+                capabilities: self.capabilities,
+                queryOptions: self.context.queryOptions,
+                isChunkedRead: self.context.performingChunkedRead
+            )
+            return messages
+        } catch let error as OraclePartialDecodingError {
+            packet.moveReaderIndex(to: startReaderIndex)
+            let completeMessage = buffer
+                .readSlice(length: Int(length) + self.getLengthFieldLength())!
+            throw OracleMessageDecodingError
+                .withPartialError(
+                    error,
+                    packetID: type.rawValue,
+                    messageBytes: completeMessage
+                )
+        } catch {
+            preconditionFailure(
+                "Expected to only see `OraclePartialDecodingError`s here."
+            )
+        }
+    }
+
+    private func getLengthFieldLength() -> Int {
+        if self.capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+            return MemoryLayout<UInt32>.size
+        } else {
+            return MemoryLayout<UInt16>.size
+        }
     }
 }

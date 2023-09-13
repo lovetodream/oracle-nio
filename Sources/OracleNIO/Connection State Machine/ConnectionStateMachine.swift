@@ -176,18 +176,25 @@ struct ConnectionStateMachine {
     mutating func errorHappened(_ error: OracleSQLError) -> ConnectionAction {
         switch self.state {
         case .connectMessageSent,
-             .authenticating,
              .dataTypesMessageSent,
              .protocolMessageSent,
              .waitingToStartAuthentication,
              .initialized,
              .readyForQuery,
-             .extendedQuery,
              .ping,
              .commit,
              .rollback:
-            // TODO: handle errors
-            fatalError()
+            return self.closeConnectionAndCleanup(error)
+        case .authenticating(var authState):
+            let action = authState.errorHappened(error)
+            return self.modify(with: action)
+        case .extendedQuery(var queryState):
+            if queryState.isComplete {
+                return self.closeConnectionAndCleanup(error)
+            } else {
+                let action = queryState.errorHappened(error)
+                return self.modify(with: action)
+            }
         case .readyToLogOff, .loggingOff, .closing:
             // If the state machine is in state `.closing`, the connection
             // shutdown was initiated by the client. This means a `TERMINATE`
@@ -349,7 +356,7 @@ struct ConnectionStateMachine {
 
     mutating func protocolReceived() -> ConnectionAction {
         guard case .protocolMessageSent = state else {
-            fatalError()
+            preconditionFailure()
         }
         self.state = .dataTypesMessageSent
         return .sendDataTypes
@@ -435,6 +442,7 @@ struct ConnectionStateMachine {
         case .initialized, 
              .waitingToStartAuthentication,
              .readyForQuery,
+             .readyToLogOff,
              .closed:
             preconditionFailure()
         case .connectMessageSent,
@@ -455,36 +463,32 @@ struct ConnectionStateMachine {
                 self.markerState = .noMarkerSent
                 return .wait
             }
-        case .readyToLogOff:
-            fatalError()
-        case .loggingOff:
-            fatalError()
-        case .closing:
-            fatalError()
+        case .loggingOff, .closing:
+            return self.errorHappened(.unexpectedBackendMessage(.marker))
 
         case .modifying:
             preconditionFailure("invalid state")
         }
     }
 
-    mutating func statusReceived() -> ConnectionAction {
+    mutating func statusReceived(
+        _ status: OracleBackendMessage.Status
+    ) -> ConnectionAction {
         switch self.state {
         case .initialized:
             preconditionFailure()
-        case .connectMessageSent:
-            fatalError()
-        case .protocolMessageSent:
-            fatalError()
-        case .dataTypesMessageSent:
-            fatalError()
-        case .waitingToStartAuthentication:
-            fatalError()
-        case .authenticating(_):
-            fatalError()
-        case .readyForQuery:
-            fatalError()
-        case .extendedQuery(_):
-            fatalError()
+        
+        case .connectMessageSent,
+             .protocolMessageSent,
+             .dataTypesMessageSent,
+             .waitingToStartAuthentication,
+             .authenticating,
+             .readyForQuery,
+             .extendedQuery:
+            return self.errorHappened(
+                .unexpectedBackendMessage(.status(status))
+            )
+
         case .ping(let promise):
             return .succeedPing(promise)
 
@@ -495,13 +499,14 @@ struct ConnectionStateMachine {
             return .succeedRollback(promise)
 
         case .readyToLogOff:
-            fatalError()
+            preconditionFailure()
+
         case .loggingOff(let promise):
             self.state = .closing
             return .closeConnection(promise)
 
         case .closing:
-            fatalError()
+            return .wait
         case .closed:
             preconditionFailure()
 
@@ -842,16 +847,21 @@ extension ConnectionStateMachine {
         switch error.code.base {
         case .connectionError,
             .messageDecodingFailure,
+            .missingParameter,
             .unexpectedBackendMessage,
             .serverVersionNotSupported,
             .sidNotSupported,
             .uncleanShutdown:
             return true
-        case .queryCancelled, .nationalCharsetNotSupported:
+        case .queryCancelled, .nationalCharsetNotSupported, .malformedQuery:
             return false
         case .server:
-            fatalError("todo")
-
+            switch error.serverInfo?.number {
+            case 28, 600: // connection closed
+                return true
+            default:
+                return false
+            }
         case .clientClosesConnection, .clientClosedConnection:
             preconditionFailure(
                 "Pure client error, that is thrown directly from OracleConnection"

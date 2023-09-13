@@ -32,4 +32,19 @@ struct OraclePartialDecodingError: Error {
             file: file, line: line
         )
     }
+
+    static func unknownMessageIDReceived(
+        messageID: UInt8,
+        file: String = #fileID,
+        line: Int = #line
+    ) -> Self {
+        OraclePartialDecodingError(
+            description: """
+            Received a message with messageID '\(messageID)'. There is no \
+            message type associated with this message identifier.
+            """,
+            file: file,
+            line: line
+        )
+    }
 }

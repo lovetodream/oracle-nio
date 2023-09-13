@@ -249,15 +249,19 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
         case .provideAuthenticationContext(let cookie):
+            let authMethod = self.configuration.authenticationMethod()
+            let peerAddress = context.remoteAddress
             let authContext = AuthContext(
-                username: configuration.username,
-                password: configuration.password,
-                newPassword: configuration.newPassword,
+                method: authMethod,
+                service: configuration.service,
                 terminalName: configuration._terminalName,
                 programName: configuration.programName,
                 machineName: configuration.machineName,
                 pid: configuration.pid,
                 processUsername: configuration.processUsername,
+                proxyUser: configuration.proxyUser,
+                peerAddress: peerAddress,
+                customTimezone: configuration.customTimezone,
                 mode: configuration.mode,
                 description: configuration.getDescription()
             )

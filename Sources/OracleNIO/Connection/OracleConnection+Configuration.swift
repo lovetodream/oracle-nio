@@ -1,6 +1,7 @@
 import NIOSSL
 import struct Foundation.URL
 import class Foundation.ProcessInfo
+import struct Foundation.TimeZone
 
 extension OracleConnection {
     public struct Configuration {
@@ -81,15 +82,6 @@ extension OracleConnection {
             }
         }
 
-        public enum ConnectionVariant: Equatable {
-            /// The service name of the database.
-            case serviceName(String)
-            /// The system identifier (SID) of the database.
-            ///
-            /// - Note: Using a ``serviceName(_:)`` instead is recommended by Oracle.
-            case sid(String)
-        }
-
         var options: Options = .init()
 
         /// The name or IP address of the machine hosting the database or the database listener.
@@ -118,17 +110,16 @@ extension OracleConnection {
             }
         }
 
-        /// The name of the user to connect to.
-        var username: String
-        
-        /// The password for the user.
-        var password: String
-        /// The new password for the user. The new password will take effect immediately upon a
-        /// successful connection to the database.
-        var newPassword: String?
-        ///
+        /// The name of the proxy user to connect to.
+        var proxyUser: String?
 
-        var variant: ConnectionVariant
+        /// The authentication variant used to connect to the database.
+        ///
+        /// It is defined as a closure to ensure we'll have an up-to-date token for establishing future 
+        /// connections if token based authentication is used.
+        var authenticationMethod: () -> OracleAuthenticationMethod
+
+        var service: OracleServiceMethod
 
         /// Authorization mode to use.
         var mode: AuthenticationMode = .default
@@ -137,6 +128,15 @@ extension OracleConnection {
         ///
         /// - Note: Windows does not support this functionality at all.
         var disableOOB: Bool = false
+
+        /// A string with the format `host=<host>;port=<port>` that specifies the host and port of
+        /// the PL/SQL debugger.
+        var debugJDWP: String?
+
+        /// By default the timezone for the established session will be set to the client's (our) current
+        /// timezone, provide a custom timezone if you want to set the timezone to something other than
+        /// the one of the system.
+        var customTimezone: TimeZone?
 
         /// Prefix for the connection id sent to the database server.
         ///
@@ -147,10 +147,17 @@ extension OracleConnection {
             get { _connectionIDPrefix }
             set { _connectionIDPrefix = sanitize(value: newValue) }
         }
-        private var _connectionIDPrefix: String = ""
+        private var _connectionIDPrefix: String = "" {
+            didSet {
+                self.connectionID = sanitize(
+                    value: self._connectionIDPrefix +
+                        [UInt8].random(count: 16).toBase64()
+                )
+            }
+        }
 
         /// Connection ID on the oracle server.
-        private(set) var connectionID: String
+        private(set) var connectionID: String = ""
 
         /// The name of the process, sent to the oracle server upon connection.
         ///
@@ -205,22 +212,33 @@ extension OracleConnection {
         public init(
             host: String,
             port: Int = 1521,
-            variant: ConnectionVariant,
+            service: OracleServiceMethod,
             username: String,
             password: String,
             tls: TLS = .disable
         ) {
             self.host = host
             self.port = port
-            self.variant = variant
-            self.username = username
-            self.password = password
+            self.service = service
+            self.authenticationMethod = {
+                .init(username: username, password: password)
+            }
             self.tls = tls
+        }
 
-            self.connectionID = sanitize(
-                value: self._connectionIDPrefix +
-                    [UInt8].random(count: 16).toBase64()
-            )
+        public init(
+            host: String,
+            port: Int = 1521,
+            service: OracleServiceMethod,
+            authenticationMethod:
+                @autoclosure @escaping () -> OracleAuthenticationMethod,
+            tls: TLS = .disable
+        ) {
+            self.host = host
+            self.port = port
+            self.service = service
+            self.authenticationMethod = authenticationMethod
+            self.tls = tls
         }
 
 
@@ -241,7 +259,7 @@ extension OracleConnection {
                 sourceRoute: false,
                 loadBalance: false,
                 tcpConnectTimeout: self.options.connectTimeout,
-                variant: self.variant,
+                service: self.service,
                 sslServerDnMatch: self.serverNameForTLS != nil,
                 sslServerCertDn: self.serverNameForTLS,
                 walletLocation: nil
@@ -254,7 +272,7 @@ extension OracleConnection {
             let cid = """
             (PROGRAM=\(self.programName)) \
             (HOST=\(self.machineName)) \
-            (USER=\(self.username))
+            (USER=\(self.processUsername))
             """
             return description.buildConnectString(cid)
         }
@@ -282,4 +300,64 @@ private func sanitize(value: String) -> String {
         .replacingOccurrences(of: "(", with: "?")
         .replacingOccurrences(of: ")", with: "?")
         .replacingOccurrences(of: "=", with: "?")
+}
+
+public enum OracleAccessToken: Equatable {
+    /// Specifies an Azure AD OAuth2 token used for Open Authorization (OAuth 2.0) token
+    /// based authentication.
+    case oAuth2(String)
+    /// Specifies the token and private key strings used for Oracle Cloud Infrastructure (OCI)
+    /// Identity and Access Management (IAM) token based authentication.
+    case tokenAndPrivateKey(token: String, key: String)
+}
+
+public struct OracleAuthenticationMethod:
+    Equatable, CustomDebugStringConvertible {
+    var base: Base
+
+    enum Base: Equatable {
+        case usernamePassword(String, String, String?)
+        case token(OracleAccessToken)
+    }
+
+    /// Authenticate with username and password.
+    /// - Parameters:
+    ///   - username: The name of the user to connect to.
+    ///   - password: The password for the user.
+    ///   - newPassword: If set, the new password will take effect immediately upon a
+    ///                  successful connection to the database.
+    public init(
+        username: String, password: String, newPassword: String? = nil
+    ) {
+        self.base = .usernamePassword(username, password, newPassword)
+    }
+
+    /// Authenticate with access token.
+    /// - Parameter token: The access token can be one of ``OracleAccessToken``.
+    public init(token: OracleAccessToken) {
+        self.base = .token(token)
+    }
+
+    public var debugDescription: String {
+        switch self.base {
+        case .usernamePassword(let username, _, let newPassword):
+            return """
+            OracleAuthenticationVariant(username: \(String(reflecting: username)), \
+            password: ********, \
+            newPassword: \(newPassword != nil ? "********" : "nil"))
+            """
+        case .token:
+            return "OracleAuthenticationVariant(token: ********)"
+        }
+    }
+
+}
+
+public enum OracleServiceMethod: Equatable {
+    /// The service name of the database.
+    case serviceName(String)
+    /// The system identifier (SID) of the database.
+    ///
+    /// - Note: Using a ``serviceName(_:)`` instead is recommended by Oracle.
+    case sid(String)
 }

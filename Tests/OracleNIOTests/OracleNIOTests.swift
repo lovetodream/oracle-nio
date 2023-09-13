@@ -31,7 +31,7 @@ final class OracleNIOTests: XCTestCase {
         let config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",
             port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
-            variant: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
             username: env("ORA_USERNAME") ?? "my_user",
             password: "wrong_password"
         )

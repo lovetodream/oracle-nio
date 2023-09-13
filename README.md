@@ -20,8 +20,14 @@ Oracle Database 12.1 or later.
 ## Connection methods
 
 - Username and password with service name
+- Username and password with sid
+- Oracle Cloud Infrastructure (OCI) Identity and Access Management (IAM) token based authentication with service name
+- Open Authorization (OAuth 2.0) token based authentication with service name
+- Open Authorization (OAuth 2.0) token based authentication with sid
 
-More connection methods (including TLS encryption) are planned for the initial release of OracleNIO.
+> Please note that all token based authentication methods are currently untested, because I (@lovetodream) do not have the infrastructure to test this. Contributions are welcome!
+
+All connections can be TLS encrypted using `OracleConnection.Configuration.TLS`, although TLS encryption has not been tested yet.
 
 ## Getting started
 
@@ -35,7 +41,7 @@ import OracleNIO
 let config = OracleConnection.Configuration(
     host: "127.0.0.1", 
     port: 1521,
-    variant: .serviceName("my_service"),
+    service: .serviceName("my_service"), // or .sid("sid")
     username: "my_username",
     password: "my_password"
 )
@@ -60,7 +66,7 @@ let logger = Logger(label: "oracle-logger")
 let config = OracleConnection.Configuration(
     host: "127.0.0.1", 
     port: 1521,
-    variant: .serviceName("my_service"),
+    service: .serviceName("my_service"),
     username: "my_username",
     password: "my_password"
 )

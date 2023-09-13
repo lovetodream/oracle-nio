@@ -1,4 +1,5 @@
 import NIOCore
+import struct Foundation.TimeZone
 
 struct ConnectionStateMachine {
     enum State {
@@ -843,6 +844,7 @@ extension ConnectionStateMachine {
             .messageDecodingFailure,
             .unexpectedBackendMessage,
             .serverVersionNotSupported,
+            .sidNotSupported,
             .uncleanShutdown:
             return true
         case .queryCancelled, .nationalCharsetNotSupported:
@@ -995,10 +997,9 @@ extension ConnectionStateMachine {
     }
 }
 
-struct AuthContext: Equatable, CustomDebugStringConvertible {
-    var username: String
-    var password: String
-    var newPassword: String?
+struct AuthContext: Equatable {
+    var method: OracleAuthenticationMethod
+    var service: OracleServiceMethod
 
     var terminalName: String
     var programName: String
@@ -1006,20 +1007,27 @@ struct AuthContext: Equatable, CustomDebugStringConvertible {
     var pid: Int32
     var processUsername: String
 
-    var mode: AuthenticationMode
+    var proxyUser: String?
+    var jdwpData: String?
+    var peerAddress: SocketAddress?
+    var customTimezone: TimeZone?
 
+    var mode: AuthenticationMode
     var description: Description
 
     var debugDescription: String {
         """
-        AuthContext(username: \(String(reflecting: self.username)), \
-        password: ********, \
-        newPassword: \(self.newPassword != nil ? "********" : "nil"), \
-        terminalName: \(self.terminalName), \
-        programName: \(self.programName), \
-        machineName: \(self.machineName), \
-        pid: \(self.pid), \
-        processUsername: \(self.processUsername), \
+        AuthContext(method: \(String(reflecting: self.method)), \
+        service: \(String(reflecting: self.service)), \
+        terminalName: \(String(reflecting: self.terminalName)), \
+        programName: \(String(reflecting: self.programName)), \
+        machineName: \(String(reflecting: self.machineName)), \
+        pid: \(String(reflecting: self.pid)), \
+        processUsername: \(String(reflecting: self.processUsername)), \
+        proxyUser: \(String(reflecting: self.proxyUser)), \
+        jdwpData: \(self.jdwpData != nil ? "********" : "nil")), \
+        peerAddress: \(String(reflecting: self.peerAddress)), \
+        customTimezone: \(String(reflecting: self.customTimezone)), \
         mode: \(String(reflecting: self.mode)), \
         description: \(String(reflecting: self.description)))
         """

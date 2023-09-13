@@ -15,6 +15,7 @@ public struct OracleSQLError: Error {
             case server
             case queryCancelled
             case serverVersionNotSupported
+            case sidNotSupported
         }
 
         internal var base: Base
@@ -36,6 +37,7 @@ public struct OracleSQLError: Error {
         public static let queryCancelled = Self(.queryCancelled)
         public static let serverVersionNotSupported =
             Self(.serverVersionNotSupported)
+        public static let sidNotSupported = Self(.sidNotSupported)
 
         public var description: String {
             switch self.base {
@@ -59,6 +61,8 @@ public struct OracleSQLError: Error {
                 return "queryCancelled"
             case .serverVersionNotSupported:
                 return "serverVersionNotSupported"
+            case .sidNotSupported:
+                return "sidNotSupported"
             }
         }
     }
@@ -247,5 +251,7 @@ public struct OracleSQLError: Error {
 
     static let serverVersionNotSupported =
     OracleSQLError(code: .serverVersionNotSupported)
+
+    static let sidNotSupported = OracleSQLError(code: .sidNotSupported)
 
  }

@@ -1,4 +1,6 @@
+import CryptoKit
 import CryptoSwift
+import RegexBuilder
 
 func decryptCBC(_ key: [UInt8], _ encryptedText: [UInt8]) throws -> [UInt8] {
     let iv = [UInt8](repeating: 0, count: 16)
@@ -22,4 +24,30 @@ func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throw
 func getDerivedKey(key: [UInt8], salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
     let kdf = try PKCS5.PBKDF2(password: key, salt: salt, iterations: iterations, keyLength: length, variant: .sha2(.sha512))
     return try kdf.calculate()
+}
+
+/// Returns a signed version of the given payload (used for Oracle IAM token authentication) in base64
+/// encoding.
+func getSignature(key: String, payload: String) throws -> String {
+    var key = key
+    if !key.contains({
+        Regex {
+            Anchor.startOfSubject
+            One("-----BEGIN PRIVATE KEY-----")
+            One(.newlineSequence)
+            ZeroOrMore(.any)
+            One(.newlineSequence)
+            One("-----END PRIVATE KEY-----")
+            Anchor.endOfSubject
+        }
+    }) {
+        key = "-----BEGIN PRIVATE KEY-----" + "\n" +
+            key + "\n" + "-----END PRIVATE KEY-----"
+    }
+    let rsa = try RSA(
+        rawRepresentation: key.data(using: .utf8) ?? .init()
+    )
+    let signature = try rsa
+        .sign(payload.bytes, variant: .message_pkcs1v15_SHA256)
+    return signature.toBase64()
 }

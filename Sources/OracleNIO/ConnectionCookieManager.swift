@@ -12,7 +12,7 @@ struct ConnectionCookieManager: Sendable {
         by uuid: UUID, description: Description
     ) -> ConnectionCookie? {
         let suffix: String
-        switch description.variant {
+        switch description.service {
         case .serviceName(let serviceName):
             suffix = serviceName
         case .sid(let sid):

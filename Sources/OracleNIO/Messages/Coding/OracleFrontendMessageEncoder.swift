@@ -1,5 +1,9 @@
 import NIOCore
 import Crypto
+import struct Foundation.Date
+import class Foundation.DateFormatter
+import struct Foundation.Locale
+import struct Foundation.TimeZone
 
 struct OracleFrontendMessageEncoder {
     static let headerSize = 8
@@ -195,8 +199,6 @@ struct OracleFrontendMessageEncoder {
     mutating func authenticationPhaseOne0(authContext: AuthContext) {
         // 1. Setup
 
-        let newPassword = authContext.newPassword
-
         // TODO: DRCP support
         // context: if drcp is used, use purity = NEW as the default purity for
         // standalone connections and purity = SELF for connections that belong
@@ -205,7 +207,7 @@ struct OracleFrontendMessageEncoder {
 
         let authMode = Self.configureAuthMode(
             from: authContext.mode,
-            newPassword: newPassword
+            method: authContext.method
         )
 
         // 2. message preparation
@@ -220,74 +222,79 @@ struct OracleFrontendMessageEncoder {
         )
 
         // 3. write key/value pairs
-        Self.writeKeyValuePair(
-            key: "AUTH_TERMINAL",
-            value: authContext.terminalName,
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "AUTH_TERMINAL", value: authContext.terminalName
         )
-        Self.writeKeyValuePair(
-            key: "AUTH_PROGRAM_NM",
-            value: authContext.programName,
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "AUTH_PROGRAM_NM", value: authContext.programName
         )
-        Self.writeKeyValuePair(
-            key: "AUTH_MACHINE",
-            value: authContext.machineName,
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "AUTH_MACHINE", value: authContext.machineName
         )
-        Self.writeKeyValuePair(
-            key: "AUTH_PID",
-            value: String(authContext.pid),
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "AUTH_PID", value: String(authContext.pid)
         )
-        Self.writeKeyValuePair(
-            key: "AUTH_SID",
-            value: authContext.username,
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "AUTH_SID", value: authContext.processUsername
         )
     }
 
     mutating func authenticationPhaseTwo(
-        authContext: AuthContext, parameters: OracleBackendMessage.Parameter
+        authContext: AuthContext,
+        parameters: OracleBackendMessage.Parameter
     ) throws {
         self.clearIfNeeded()
 
         let verifierType = parameters["AUTH_VFR_DATA"]?.flags
 
-        var numberOfPairs: UInt32 = 3
+        var numberOfPairs: UInt32 = 4
 
-        // user/password authentication
-        numberOfPairs += 2
         var authMode = Self.configureAuthMode(
-            from: authContext.mode, newPassword: authContext.newPassword
-        )
-        authMode |= Constants.TNS_AUTH_MODE_WITH_PASSWORD
-        let verifier11g: Bool
-        if
-            [
-                Constants.TNS_VERIFIER_TYPE_11G_1,
-                Constants.TNS_VERIFIER_TYPE_11G_2
-            ].contains(verifierType) {
-            verifier11g = true
-        } else if verifierType != Constants.TNS_VERIFIER_TYPE_12C {
-            // TODO: refactor error
-            throw OracleError.ErrorType.unsupportedVerifierType
-        } else {
-            verifier11g = false
-            numberOfPairs += 1
-        }
-        let (
-            sessionKey, speedyKey, encodedPassword, encodedNewPassword
-        ) = try Self.generateVerifier(
-            authContext: authContext, parameters: parameters, verifier11g
+            from: authContext.mode, method: authContext.method
         )
 
-        // determine which other key/value pairs to write
-        if authContext.newPassword != nil {
+        let verifier11g: Bool
+        switch authContext.method.base {
+        case .token(let token):
             numberOfPairs += 1
-            authMode |= Constants.TNS_AUTH_MODE_CHANGE_PASSWORD
+            verifier11g = false // ignored
+
+            switch token {
+            case .oAuth2: break
+            case .tokenAndPrivateKey: numberOfPairs += 2
+            }
+
+        case .usernamePassword(_, _, let newPassword):
+            numberOfPairs += 2
+            authMode |= Constants.TNS_AUTH_MODE_WITH_PASSWORD
+
+            if
+                [
+                    Constants.TNS_VERIFIER_TYPE_11G_1,
+                    Constants.TNS_VERIFIER_TYPE_11G_2
+                ].contains(verifierType) {
+                verifier11g = true
+            } else if verifierType != Constants.TNS_VERIFIER_TYPE_12C {
+                throw OracleSQLError.serverVersionNotSupported
+            } else {
+                verifier11g = false
+                numberOfPairs += 1
+            }
+
+            // determine which other key/value pairs to write
+            if newPassword != nil {
+                numberOfPairs += 1
+                authMode |= Constants.TNS_AUTH_MODE_CHANGE_PASSWORD
+            }
+        }
+
+        if authContext.proxyUser != nil {
+            numberOfPairs += 1
         }
         if authContext.description.purity != .default {
+            numberOfPairs += 1
+        }
+        if authContext.jdwpData != nil {
             numberOfPairs += 1
         }
 
@@ -300,49 +307,96 @@ struct OracleFrontendMessageEncoder {
             pairsCount: numberOfPairs
         )
 
-        Self.writeKeyValuePair(
-            key: "AUTH_SESSKEY", value: sessionKey, flags: 1, out: &self.buffer
-        )
-        Self.writeKeyValuePair(
-            key: "AUTH_PASSWORD", value: encodedPassword, out: &self.buffer
-        )
-        if !verifier11g {
-            guard let speedyKey else {
-                preconditionFailure("speedy key needs to be generated before running authentication phase two")
+
+        if let proxyUser = authContext.proxyUser {
+            self.writeKeyValuePair(key: "PROXY_CLIENT_NAME", value: proxyUser)
+        }
+
+        switch authContext.method.base {
+        case .token(let token):
+            switch token {
+            case .oAuth2(let token):
+                self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
+            case .tokenAndPrivateKey(let token, let key):
+                self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
+                let format = "E, dd MMM yyyy HH:mm:ss 'GMT'"
+                let formatter = DateFormatter()
+                formatter.dateFormat = format
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.timeZone = TimeZone(abbreviation: "GMT")
+                let now = formatter.string(from: .now)
+                let hostInfo = """
+                \(authContext.peerAddress?.ipAddress ?? ""):\
+                \(authContext.peerAddress?.port ?? 0)
+                """
+                guard
+                    case let .serviceName(serviceName) = authContext.service
+                else {
+                    throw OracleSQLError.sidNotSupported
+                }
+                let header = """
+                date: \(now)
+                (request-target): \(serviceName)
+                host: \(hostInfo)
+                """
+                let signature = try getSignature(key: key, payload: header)
+                self.writeKeyValuePair(key: "AUTH_HEADER", value: header)
+                self.writeKeyValuePair(key: "AUTH_SIGNATURE", value: signature)
             }
-            Self.writeKeyValuePair(
-                key: "AUTH_PBKDF2_SPEEDY_KEY",
-                value: speedyKey,
-                out: &self.buffer
+
+        case .usernamePassword(_, let password, let newPassword):
+
+            let (
+                sessionKey, speedyKey, encodedPassword, encodedNewPassword
+            ) = try Self.generateVerifier(
+                password: password,
+                newPassword: newPassword,
+                parameters: parameters,
+                verifier11g
             )
-        }
-        if let encodedNewPassword {
-            Self.writeKeyValuePair(
-                key: "AUTH_NEWPASSWORD",
-                value: encodedNewPassword,
-                out: &self.buffer
+
+            self.writeKeyValuePair(
+                key: "AUTH_SESSKEY", value: sessionKey, flags: 1
             )
+            self.writeKeyValuePair(key: "AUTH_PASSWORD", value: encodedPassword)
+            if !verifier11g {
+                guard let speedyKey else {
+                    preconditionFailure("""
+                    speedy key needs to be generated before running \
+                    authentication phase two
+                    """)
+                }
+                self.writeKeyValuePair(
+                    key: "AUTH_PBKDF2_SPEEDY_KEY", value: speedyKey
+                )
+            }
+            if let encodedNewPassword {
+                self.writeKeyValuePair(
+                    key: "AUTH_NEWPASSWORD", value: encodedNewPassword
+                )
+            }
         }
-        Self.writeKeyValuePair(
-            key: "SESSION_CLIENT_CHARSET", value: "873", out: &self.buffer
-        )
+        self.writeKeyValuePair(key: "SESSION_CLIENT_CHARSET", value: "873")
         let driverName = "\(Constants.DRIVER_NAME) thn : \(Constants.VERSION)"
-        Self.writeKeyValuePair(
-            key: "SESSION_CLIENT_DRIVER_NAME",
-            value: driverName,
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "SESSION_CLIENT_DRIVER_NAME", value: driverName
         )
-        Self.writeKeyValuePair(
-            key: "SESSION_CLIENT_VERSION",
-            value: "\(Constants.VERSION_CODE)",
-            out: &self.buffer
+        self.writeKeyValuePair(
+            key: "SESSION_CLIENT_VERSION", value: "\(Constants.VERSION_CODE)"
         )
+        self.writeKeyValuePair(
+            key: "AUTH_ALTER_SESSION",
+            value: self.getAlterTimezoneStatement(
+                customTimezone: authContext.customTimezone
+            ),
+            flags: 1
+        )
+
         if authContext.description.purity != .default {
-            Self.writeKeyValuePair(
+            self.writeKeyValuePair(
                 key: "AUTH_KPPL_PURITY",
                 value: String(authContext.description.purity.rawValue),
-                flags: 1,
-                out: &self.buffer
+                flags: 1
             )
         }
 
@@ -745,8 +799,16 @@ struct OracleFrontendMessageEncoder {
 extension OracleFrontendMessageEncoder {
 
     private static func configureAuthMode(
-        from mode: AuthenticationMode , newPassword: String? = nil
+        from mode: AuthenticationMode,
+        method: OracleAuthenticationMethod
     ) -> UInt32 {
+        let newPassword: String?
+        if case let .usernamePassword(_, _, newPW) = method.base {
+            newPassword = newPW
+        } else {
+            newPassword = nil
+        }
+
         var authMode: UInt32 = 0
 
         // Set authentication mode
@@ -779,7 +841,8 @@ extension OracleFrontendMessageEncoder {
     }
 
     private static func generateVerifier(
-        authContext: AuthContext,
+        password: String,
+        newPassword: String?,
         parameters: OracleBackendMessage.Parameter,
         _ verifier11g: Bool
     ) throws -> (
@@ -793,7 +856,7 @@ extension OracleFrontendMessageEncoder {
         let encodedPassword: String
         let encodedNewPassword: String?
 
-        let password = authContext.password.bytes
+        let password = password.bytes
 
         guard let authVFRData = parameters["AUTH_VFR_DATA"] else {
             // TODO: better error handling
@@ -889,7 +952,7 @@ extension OracleFrontendMessageEncoder {
         encodedPassword = encryptedPassword.toHexString().uppercased()
 
         // encrypt new password
-        if let newPassword = authContext.newPassword?.bytes {
+        if let newPassword = newPassword?.bytes {
             let newPasswordWithSalt = pwSalt + newPassword
             let encryptedNewPassword = try encryptCBC(derivedKey, newPasswordWithSalt)
             encodedNewPassword = encryptedNewPassword.toHexString().uppercased()
@@ -900,21 +963,20 @@ extension OracleFrontendMessageEncoder {
         return (sessionKey, speedyKey, encodedPassword, encodedNewPassword)
     }
 
-    private static func writeKeyValuePair(
-        key: String, value: String, flags: UInt32 = 0,
-        out buffer: inout ByteBuffer
+    private mutating func writeKeyValuePair(
+        key: String, value: String, flags: UInt32 = 0
     ) {
         let keyBytes = ByteBuffer(string: key)
         let keyLength = keyBytes.readableBytes
         let valueBytes = ByteBuffer(string: value)
         let valueLength = valueBytes.readableBytes
-        buffer.writeUB4(UInt32(keyLength))
-        keyBytes._encodeRaw(into: &buffer, context: .default)
-        buffer.writeUB4(UInt32(valueLength))
+        self.buffer.writeUB4(UInt32(keyLength))
+        keyBytes._encodeRaw(into: &self.buffer, context: .default)
+        self.buffer.writeUB4(UInt32(valueLength))
         if valueLength > 0 {
             valueBytes._encodeRaw(into: &buffer, context: .default)
         }
-        buffer.writeUB4(flags)
+        self.buffer.writeUB4(flags)
     }
 
     private static func hexToBytes(string: String) -> [UInt8] {
@@ -937,9 +999,17 @@ extension OracleFrontendMessageEncoder {
         authMode: UInt32,
         pairsCount: UInt32
     ) {
-        let username = authContext.username.bytes
-        let usernameLength = authContext.username.count
-        let hasUser: UInt8 = authContext.username.count > 0 ? 1 : 0
+        let username: [UInt8]
+        let usernameLength: Int
+        switch authContext.method.base {
+        case .usernamePassword(let user, _, _):
+            username = user.bytes
+            usernameLength = user.count
+        case .token:
+            username = []
+            usernameLength = 0
+        }
+        let hasUser: UInt8 = usernameLength > 0 ? 1 : 0
 
         // 1. write function code
         var sequenceNumber: UInt8 = authPhase == .authPhaseOne ? 0 : 1
@@ -1110,6 +1180,27 @@ extension OracleFrontendMessageEncoder {
 
     private mutating func writeBindParameterRow(bindings: OracleBindings) {
         self.buffer.writeImmutableBuffer(bindings.bytes)
+    }
+
+    /// Returns the statement required to change the session time zone to match the time zone in use
+    /// by the client (us).
+    private mutating func getAlterTimezoneStatement(customTimezone: TimeZone?) -> String {
+        let timezone = customTimezone ?? TimeZone.current
+        let now = Date.now
+        var offset = timezone.secondsFromGMT(for: now)
+        let isDaylightSavingTime = timezone.isDaylightSavingTime(for: now)
+        offset -= offset
+        if isDaylightSavingTime {
+            offset -= Int(timezone.daylightSavingTimeOffset(for: now))
+        }
+        let tzHour = abs(offset / 3600)
+        let tzMinute = (abs(offset) % 3600) / 60
+        let sign = offset >= 0 ? "+" : "-"
+        let tzRepresentation = """
+        \(sign)\(String(format: "%02d", tzHour))\
+        :\(String(format: "%02d", tzMinute))
+        """
+        return "ALTER SESSION SET TIME_ZONE='\(tzRepresentation)'\0"
     }
 
 }

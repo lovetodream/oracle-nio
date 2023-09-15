@@ -82,15 +82,15 @@ extension OracleConnection {
             }
         }
 
-        var options: Options = .init()
+        public var options: Options = .init()
 
         /// The name or IP address of the machine hosting the database or the database listener.
-        var host: String
+        public var host: String
         /// The port number on which the database listener is listening.
-        var port: Int
+        public var port: Int
 
-        var tls: TLS
-        var serverNameForTLS: String? {
+        public var tls: TLS
+        public var serverNameForTLS: String? {
             // If a name was explicitly configured always use it.
             if let tlsServerName = options.tlsServerName {
                 return tlsServerName
@@ -111,39 +111,39 @@ extension OracleConnection {
         }
 
         /// The name of the proxy user to connect to.
-        var proxyUser: String?
+        public var proxyUser: String?
 
         /// The authentication variant used to connect to the database.
         ///
         /// It is defined as a closure to ensure we'll have an up-to-date token for establishing future 
         /// connections if token based authentication is used.
-        var authenticationMethod: () -> OracleAuthenticationMethod
+        public var authenticationMethod: () -> OracleAuthenticationMethod
 
-        var service: OracleServiceMethod
+        public var service: OracleServiceMethod
 
         /// Authorization mode to use.
-        var mode: AuthenticationMode = .default
+        public var mode: AuthenticationMode = .default
 
         /// Boolean indicating whether out-of-band breaks should be disabled.
         ///
         /// - Note: Windows does not support this functionality at all.
-        var disableOOB: Bool = false
+        public var disableOOB: Bool = false
 
         /// A string with the format `host=<host>;port=<port>` that specifies the host and port of
         /// the PL/SQL debugger.
-        var debugJDWP: String?
+        public var debugJDWP: String?
 
         /// By default the timezone for the established session will be set to the client's (our) current
         /// timezone, provide a custom timezone if you want to set the timezone to something other than
         /// the one of the system.
-        var customTimezone: TimeZone?
+        public var customTimezone: TimeZone?
 
         /// Prefix for the connection id sent to the database server.
         ///
         /// - Note: This has nothing to do with ``OracleConnection.connectionID``. This
         ///         prefix can be used to identify the connection on the oracle server. It will be
         ///         sanitized.
-        var connectionIDPrefix: String {
+        public var connectionIDPrefix: String {
             get { _connectionIDPrefix }
             set { _connectionIDPrefix = sanitize(value: newValue) }
         }
@@ -157,7 +157,7 @@ extension OracleConnection {
         }
 
         /// Connection ID on the oracle server.
-        private(set) var connectionID: String = ""
+        public private(set) var connectionID: String = ""
 
         /// The name of the process, sent to the oracle server upon connection.
         ///
@@ -192,7 +192,7 @@ extension OracleConnection {
         /// Defaults to the user running the current process.
         ///
         /// - Note: The value set here will be sanitized.
-        var processUsername: String {
+        public var processUsername: String {
             get { _processUsername }
             set { _processUsername = sanitize(value: newValue) }
         }
@@ -270,8 +270,8 @@ extension OracleConnection {
         internal func getConnectString() -> String {
             let description = self.getDescription()
             let cid = """
-            (PROGRAM=\(self.programName)) \
-            (HOST=\(self.machineName)) \
+            (PROGRAM=\(self.programName))\
+            (HOST=\(self.machineName))\
             (USER=\(self.processUsername))
             """
             return description.buildConnectString(cid)

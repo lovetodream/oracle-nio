@@ -101,7 +101,9 @@ struct Description: Equatable {
         if let cid {
             tempParts.append("(CID=\(cid))")
         }
-        tempParts.append("(CONNECTION_ID=\(self.connectionID))")
+        if !connectionID.isEmpty {
+            tempParts.append("(CONNECTION_ID=\(self.connectionID))")
+        }
         if !tempParts.isEmpty {
             parts.append("(CONNECT_DATA=\(tempParts.joined()))")
         }

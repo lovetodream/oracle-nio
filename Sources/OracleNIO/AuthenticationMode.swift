@@ -1,5 +1,5 @@
 /// Oracle authentication modes.
-enum AuthenticationMode: UInt32, CustomStringConvertible {
+public enum AuthenticationMode: UInt32, CustomStringConvertible {
     case `default` = 0
     case prelim = 0x00000008
     case sysASM = 0x00008000
@@ -10,7 +10,7 @@ enum AuthenticationMode: UInt32, CustomStringConvertible {
     case sysOPER = 0x00000004
     case sysRAC = 0x00100000
 
-    var description: String {
+    public var description: String {
         switch self {
         case .default:
             return "DEFAULT"

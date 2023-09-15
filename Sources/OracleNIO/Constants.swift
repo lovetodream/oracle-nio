@@ -257,6 +257,7 @@ enum Constants {
     static let TNS_AUTH_MODE_IAM_TOKEN: UInt32 = 0x20000000
 
     // MARK: Character sets and encodings
+    static let TNS_CHARSET_AL16UTF8: UInt16 = 208
     static let TNS_CHARSET_UTF8: UInt16 = 873
     static let TNS_CHARSET_UTF16: UInt16 = 2000
     static let TNS_ENCODING_UTF8 = "UTF-8"

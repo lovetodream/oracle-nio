@@ -82,12 +82,13 @@ struct RowStreamStateMachine {
         switch self.state {
         case .waitingForRows(let buffer):
             guard
-                let previousRow = buffer.last ?? lastRowFromPreviousBuffer
+                let previousRow = buffer.last ?? self.lastRowFromPreviousBuffer
             else {
                 preconditionFailure()
             }
             let idx = previousRow.index(previousRow.startIndex, offsetBy: index)
-            return previousRow[idx]!
+            // return empty buffer if duplicate is nil
+            return previousRow[idx] ?? .init()
 
         // For all the following cases, please note:
         // Normally these code paths should never be hit. However there is
@@ -100,11 +101,14 @@ struct RowStreamStateMachine {
         case .waitingForReadOrDemand(let buffer), 
             .waitingForRead(let buffer),
             .waitingForDemand(let buffer):
-            guard let previousRow = buffer.last else {
+            guard 
+                let previousRow = buffer.last ?? self.lastRowFromPreviousBuffer
+            else {
                 preconditionFailure()
             }
             let index = previousRow.index(DataRow.ColumnIndex(0), offsetBy: index)
-            return previousRow[index]!
+            // return empty buffer if duplicate is nil
+            return previousRow[index] ?? .init()
 
         case .failed:
             // Once the row stream state machine is marked as failed, no further

@@ -1,4 +1,0 @@
-{
-    "lldb.library": "/Applications/Xcode-15.0.0-Beta.8.app/Contents/SharedFrameworks/LLDB.framework/Versions/A/LLDB",
-    "lldb.launch.expressions": "native"
-}

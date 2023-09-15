@@ -646,14 +646,7 @@ struct ExtendedQueryStateMachine {
                 guard let error = error as? OracleSQLError else {
                     preconditionFailure()
                 }
-                switch demandStateMachine.fail() {
-                case .read:
-                    return .forwardStreamError(error, read: true, cursorID: nil)
-                case .wait:
-                    return .forwardStreamError(
-                        error, read: false, cursorID: nil
-                    )
-                }
+                return self.setAndFireError(error)
             }
 
         default:

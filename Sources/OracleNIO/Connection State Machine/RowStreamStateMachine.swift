@@ -197,7 +197,7 @@ struct RowStreamStateMachine {
 
         case .waitingForRead(let buffer):
             self.state = .waitingForRows(buffer)
-            return .wait
+            return .read
 
         case .waitingForDemand:
             // we have already received a read event. We will issue it as soon 

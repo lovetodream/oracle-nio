@@ -405,7 +405,8 @@ struct OracleFrontendMessageEncoder {
 
     mutating func execute(
         queryContext: ExtendedQueryContext,
-        cleanupContext: CleanupContext
+        cleanupContext: CleanupContext,
+        describeInfo: DescribeInfo?
     ) {
         self.clearIfNeeded()
 
@@ -418,7 +419,7 @@ struct OracleFrontendMessageEncoder {
         var parametersCount: UInt32 = 0
         var iterationsCount: UInt32 = 1
 
-        if !queryContext.requiresFullExecute && query.binds.count != 0 {
+        if !queryContext.requiresDefine && query.binds.count != 0 {
             parametersCount = .init(query.binds.count)
         }
         if queryContext.requiresDefine {
@@ -431,13 +432,13 @@ struct OracleFrontendMessageEncoder {
             options |= Constants.TNS_EXEC_OPTION_PARSE
         }
         if queryContext.statement.isQuery {
-            if queryOptions.prefetchRows > 0 {
-                options |= Constants.TNS_EXEC_OPTION_FETCH
-            }
             if queryContext.cursorID == 0 || queryContext.requiresDefine {
                 iterationsCount = UInt32(queryOptions.prefetchRows)
             } else {
-                iterationsCount = 0
+                iterationsCount = UInt32(queryOptions.arraySize)
+            }
+            if (iterationsCount > 0 && !queryContext.noPrefetch) {
+                options |= Constants.TNS_EXEC_OPTION_FETCH
             }
         }
         if !queryContext.statement.isPlSQL {
@@ -447,6 +448,12 @@ struct OracleFrontendMessageEncoder {
         }
         if parametersCount > 0 {
             options |= Constants.TNS_EXEC_OPTION_BIND
+        }
+        if queryContext.options.batchErrors {
+            options |= Constants.TNS_EXEC_OPTION_BATCH_ERRORS
+        }
+        if queryContext.options.arrayDMLRowCounts {
+            options |= Constants.TNS_EXEC_OPTION_DML_ROWCOUNTS
         }
         if queryOptions.autoCommit {
             options |= Constants.TNS_EXEC_OPTION_COMMIT
@@ -496,7 +503,7 @@ struct OracleFrontendMessageEncoder {
         if queryContext.requiresDefine {
             self.buffer.writeInteger(UInt8(1)) // pointer (al8doac)
             self.buffer.writeUB4(
-                UInt32(queryContext.query.binds.count)
+                UInt32(describeInfo?.columns.count ?? 0)
             ) // number of defines
         } else {
             self.buffer.writeInteger(UInt8(0))
@@ -561,7 +568,11 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeUB4(0) // al8i4[11]
         self.buffer.writeUB4(0) // al8i4[12]
         if queryContext.requiresDefine {
-            self.writeColumnMetadata(queryContext.query.binds.metadata)
+            guard let columns = describeInfo?.columns else {
+                preconditionFailure()
+            }
+
+            self.writeColumnMetadata(columns)
         } else if parametersCount > 0 {
             self.writeBindParameters(queryContext.query.binds)
         }
@@ -737,34 +748,10 @@ struct OracleFrontendMessageEncoder {
     private mutating func endRequest(
         packetType: PacketType = .data
     ) {
-        self.sendPacket(packetType: packetType, final: true)
-    }
-
-    private mutating func sendPacket(packetType: PacketType, final: Bool) {
-        var position = 0
-        if capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
-            self.buffer.setInteger(
-                UInt32(self.buffer.readableBytes), at: position
-            )
-        } else {
-            self.buffer.setInteger(
-                UInt16(self.buffer.readableBytes), at: position
-            )
-            self.buffer.setInteger(
-                UInt16(0), at: position + MemoryLayout<UInt16>.size
-            )
-        }
-        position += MemoryLayout<UInt32>.size
-        self.buffer.setInteger(packetType.rawValue, at: position)
-        position += MemoryLayout<UInt8>.size
-        self.buffer.setInteger(UInt8(0), at: position)
-        position += MemoryLayout<UInt8>.size
-        self.buffer.setInteger(UInt16(0), at: position)
-        if !final {
-            self.buffer.moveWriterIndex(to: Self.headerSize)
-            self.buffer.writeInteger(UInt16(0))
-                // add data flags for next packet
-        }
+        self.buffer.prepareSend(
+            packetType: packetType,
+            protocolVersion: self.capabilities.protocolVersion
+        )
     }
 
     private mutating func writeFunctionCode(
@@ -1129,7 +1116,7 @@ extension OracleFrontendMessageEncoder {
     }
 
     private mutating func writeColumnMetadata(
-        _ metadata: [OracleBindings.Metadata]
+        _ metadata: [ColumnMetadata]
     ) {
         for info in metadata {
             var oracleType = info.dataType._oracleType
@@ -1169,11 +1156,11 @@ extension OracleFrontendMessageEncoder {
             }
             self.buffer.writeUB8(UInt64(contFlag))
             self.buffer.writeUB4(0) // OID
-            self.buffer.writeUB4(0) // version
+            self.buffer.writeUB2(0) // version
             if info.dataType.csfrm != 0 {
-                self.buffer.writeUB4(UInt32(Constants.TNS_CHARSET_UTF8))
+                self.buffer.writeUB2(Constants.TNS_CHARSET_UTF8)
             } else {
-                self.buffer.writeUB4(0)
+                self.buffer.writeUB2(0)
             }
             self.buffer.writeInteger(info.dataType.csfrm)
             self.buffer.writeUB4(lobPrefetchLength) // max chars (LOB prefetch)
@@ -1209,4 +1196,18 @@ extension OracleFrontendMessageEncoder {
         return "ALTER SESSION SET TIME_ZONE='\(tzRepresentation)'\0"
     }
 
+}
+
+private protocol ColumnMetadata {
+    var dataType: DBType { get }
+    var bufferSize: UInt32 { get }
+    var isArray: Bool { get }
+    var maxArraySize: Int { get }
+}
+
+extension OracleBindings.Metadata: ColumnMetadata { }
+
+extension DescribeInfo.Column: ColumnMetadata {
+    var isArray: Bool { false }
+    var maxArraySize: Int { 0 }
 }

@@ -289,8 +289,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .authenticated(let parameters):
             self.authenticated(parameters: parameters, context: context)
 
-        case .sendExecute(let queryContext):
-            self.sendExecute(queryContext: queryContext, context: context)
+        case .sendExecute(let queryContext, let describeInfo):
+            self.sendExecute(
+                queryContext: queryContext,
+                describeInfo: describeInfo,
+                context: context
+            )
         case .sendReexecute(let queryContext, let cleanupContext):
             self.sendReexecute(
                 queryContext: queryContext,
@@ -465,11 +469,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     private func sendExecute(
-        queryContext: ExtendedQueryContext, context: ChannelHandlerContext
+        queryContext: ExtendedQueryContext,
+        describeInfo: DescribeInfo?,
+        context: ChannelHandlerContext
     ) {
         self.encoder.execute(
             queryContext: queryContext, 
-            cleanupContext: self.cleanupContext
+            cleanupContext: self.cleanupContext,
+            describeInfo: describeInfo
         )
 
         self.decoderContext.queryOptions = queryContext.options

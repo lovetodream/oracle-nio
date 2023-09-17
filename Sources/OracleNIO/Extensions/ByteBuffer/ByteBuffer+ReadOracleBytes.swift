@@ -10,7 +10,25 @@ extension ByteBuffer {
                 file: file, line: line
             )
         }
-        
+
+        if length == Constants.TNS_LONG_LENGTH_INDICATOR {
+            var out = ByteBuffer()
+            while true {
+                guard let chunkLength = self.readUB4(), chunkLength > 0 else {
+                    return out
+                }
+                guard var temp = self.readSlice(length: Int(chunkLength)) else {
+                    throw OraclePartialDecodingError
+                        .expectedAtLeastNRemainingBytes(
+                            Int(chunkLength), actual: self.readableBytes,
+                            file: file, line: line
+                        )
+                }
+                out.writeBuffer(&temp)
+            }
+            return out
+        }
+
         if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
             return .init() // empty buffer
         }
@@ -28,6 +46,31 @@ extension ByteBuffer {
         else {
             preconditionFailure()
         }
+
+        if length == Constants.TNS_LONG_LENGTH_INDICATOR {
+            let startReaderIndex = self.readerIndex
+            // skip previously read length
+            self.moveReaderIndex(forwardBy: MemoryLayout<UInt8>.size)
+            var out = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            while true {
+                guard let chunkLength = self.readUB4() else {
+                    self.moveReaderIndex(to: startReaderIndex)
+                    return nil // need more data
+                }
+                guard chunkLength > 0 else {
+                    out.writeInteger(0, as: UInt32.self) // chunk length of zero
+                    return out
+                }
+                guard var temp = self.readSlice(length: Int(chunkLength)) else {
+                    self.moveReaderIndex(to: startReaderIndex)
+                    return nil // need more data
+                }
+                out.writeInteger(chunkLength)
+                out.writeBuffer(&temp)
+            }
+            return out
+        }
+
         let sliceLength = Int(length) + MemoryLayout<UInt8>.size
         if self.readableBytes < sliceLength {
             return nil // need more data

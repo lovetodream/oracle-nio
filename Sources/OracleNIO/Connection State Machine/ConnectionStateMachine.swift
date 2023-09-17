@@ -89,7 +89,7 @@ struct ConnectionStateMachine {
         case succeedRollback(EventLoopPromise<Void>)
 
         // Query
-        case sendExecute(ExtendedQueryContext)
+        case sendExecute(ExtendedQueryContext, DescribeInfo?)
         case sendReexecute(ExtendedQueryContext, CleanupContext)
         case sendFetch(ExtendedQueryContext)
         case failQuery(
@@ -971,8 +971,8 @@ extension ConnectionStateMachine {
         with action: ExtendedQueryStateMachine.Action
     ) -> ConnectionAction {
         switch action {
-        case .sendExecute(let context):
-            return .sendExecute(context)
+        case .sendExecute(let context, let describeInfo):
+            return .sendExecute(context, describeInfo)
         case .sendReexecute(let queryContext, let cleanupContext):
             return .sendReexecute(queryContext, cleanupContext)
         case .sendFetch(let context):

@@ -29,7 +29,7 @@ struct ExtendedQueryStateMachine {
     }
 
     enum Action {
-        case sendExecute(ExtendedQueryContext)
+        case sendExecute(ExtendedQueryContext, DescribeInfo?)
         case sendReexecute(ExtendedQueryContext, CleanupContext)
         case sendFetch(ExtendedQueryContext)
 
@@ -69,7 +69,7 @@ struct ExtendedQueryStateMachine {
             )
         }
 
-        return .sendExecute(queryContext)
+        return .sendExecute(queryContext, nil)
     }
 
     mutating func cancel() -> Action {
@@ -247,7 +247,7 @@ struct ExtendedQueryStateMachine {
                     state = .commandComplete
                 }
 
-                let rows = demandStateMachine.channelReadComplete() ?? []
+                let rows = demandStateMachine.end()
                 action = .forwardStreamComplete(rows)
 
             case .modifying:
@@ -311,16 +311,15 @@ struct ExtendedQueryStateMachine {
                  .error:
                 preconditionFailure("This is impossible...")
 
-            case .initialized(let context), 
-                 .describeInfoReceived(let context, _):
+            case .initialized(let context):
                 if let cursorID = error.cursorID {
                     context.cursorID = cursorID
                 }
                 switch context.statement {
                 case .query(let promise),
-                    .plsql(let promise),
-                    .dml(let promise),
-                    .ddl(let promise):
+                     .plsql(let promise),
+                     .dml(let promise),
+                     .ddl(let promise):
                     action = .succeedQuery(
                         promise, QueryResult(
                             value: .noRows, logger: context.logger
@@ -328,6 +327,52 @@ struct ExtendedQueryStateMachine {
                     )
                 }
                 self.state = .commandComplete
+
+            case .describeInfoReceived(let context, let describeInfo):
+                if let cursorID = error.cursorID {
+                    context.cursorID = cursorID
+                }
+                if describeInfo.columns.contains(where: {
+                    [.clob, .nCLOB, .blob, .json].contains($0.dataType)
+                }) {
+                    context.requiresDefine = true
+                    context.noPrefetch = true
+
+                    if !context.options.fetchLOBs {
+                        var describeInfo = describeInfo
+                        self.avoidingStateMachineCoW { state in
+                            describeInfo.columns = describeInfo.columns.map {
+                                var col = $0
+                                if col.dataType == .blob {
+                                    col.dataType = .longRAW
+                                } else if col.dataType == .clob {
+                                    col.dataType = .long
+                                } else if col.dataType == .nCLOB {
+                                    col.dataType = .longNVarchar
+                                }
+                                if col.dataType.defaultSize > 0 {
+                                    if col.dataTypeSize == 0 {
+                                        col.dataTypeSize =
+                                            UInt32(col.dataType.defaultSize)
+                                    }
+                                    col.bufferSize = col.dataTypeSize *
+                                        UInt32(col.dataType.bufferSizeFactor)
+                                } else {
+                                    col.bufferSize =
+                                        UInt32(col.dataType.bufferSizeFactor)
+                                }
+                                return col
+                            }
+                            state = .describeInfoReceived(context, describeInfo)
+                        }
+                        action = .sendExecute(context, describeInfo)
+                    } else {
+                        action = .sendExecute(context, describeInfo)
+                    }
+
+                } else {
+                    action = .sendFetch(context)
+                }
 
             case .streaming(let extendedQueryContext, _, _, _),
                  .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
@@ -374,6 +419,24 @@ struct ExtendedQueryStateMachine {
 
     // MARK: Consumer Actions
 
+    mutating func requestFetch() -> Action {
+        switch self.state {
+        case .initialized(let context),
+             .describeInfoReceived(let context, _),
+             .streaming(let context, _, _, _),
+             .streamingAndWaiting(let context, _, _, _, _):
+            return .sendFetch(context)
+        case .drain,
+             .commandComplete,
+             .error:
+            preconditionFailure(
+                "We can't send a fetch if the query completed already"
+            )
+        case .modifying:
+            preconditionFailure("Invalid state")
+        }
+    }
+
     mutating func requestQueryRows() -> Action {
         switch self.state {
         case .streaming(
@@ -395,13 +458,10 @@ struct ExtendedQueryStateMachine {
                 }
             }
 
-        case .streamingAndWaiting:
+        case .streamingAndWaiting, .drain, .describeInfoReceived:
             return .wait
 
-        case .drain:
-            return .wait
-
-        case .initialized, .describeInfoReceived:
+        case .initialized:
             preconditionFailure(
                 "Requested to consume next row without anything going on."
             )
@@ -581,15 +641,14 @@ struct ExtendedQueryStateMachine {
             } catch let error as OraclePartialDecodingError {
                 slice.moveReaderIndex(to: startReaderIndex)
                 let completeMessage = slice.slice()
-                return self.errorHappened(
-                    .messageDecodingFailure(
-                        .withPartialError(
-                            error,
-                            packetID: OracleBackendMessage.ID.data.rawValue,
-                            messageBytes: completeMessage
-                        )
+                let error = OracleSQLError.messageDecodingFailure(
+                    .withPartialError(
+                        error,
+                        packetID: OracleBackendMessage.ID.data.rawValue,
+                        messageBytes: completeMessage
                     )
                 )
+                return self.errorHappened(error)
             } catch {
                 preconditionFailure(
                     "Expected to only see `OraclePartialDecodingError`s here."
@@ -667,6 +726,7 @@ struct ExtendedQueryStateMachine {
                     .dml(let promise),
                     .plsql(let promise),
                     .query(let promise):
+                    self.state = .error(error)
                     return .failQuery(promise, with: error)
                 }
             }
@@ -734,15 +794,34 @@ struct ExtendedQueryStateMachine {
         switch oracleType {
         case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
             .timestampLTZ, .timestampTZ, .rowID, .binaryDouble, .binaryFloat,
-            .binaryInteger, .boolean, .intervalDS, .cursor, .clob, .blob:
+            .binaryInteger, .boolean, .intervalDS, .cursor:
             switch buffer.readOracleSlice() {
             case .some(let slice):
                 columnValue = slice
             case .none:
                 return nil // need more data
             }
+        case .clob, .blob:
+
+            // LOB has a UB4 length indicator instead of the usual UInt8
+            let length = try buffer.throwingReadUB4()
+            if length > 0 {
+                let size = try buffer.throwingReadUB8()
+                let chunkSize = try buffer.throwingReadUB4()
+                var locator = try buffer.readOracleSpecificLengthPrefixedSlice()
+                var tempBuffer = ByteBuffer()
+                tempBuffer.writeInteger(size)
+                tempBuffer.writeInteger(chunkSize)
+                tempBuffer.writeBuffer(&locator)
+                var columnValue = ByteBuffer()
+                tempBuffer.encode(into: &columnValue, context: .default)
+                return columnValue
+            } else {
+                columnValue = .init() // empty buffer
+            }
         case .json:
             // TODO: OSON
+            // OSON has a UB4 length indicator instead of the usual UInt8
             fatalError("not implemented")
         default:
             fatalError("not implemented")

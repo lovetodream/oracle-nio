@@ -81,14 +81,17 @@ public class OracleConnection {
         channelHandler.capabilitiesProvider = self
 
         let eventHandler = OracleEventsHandler(logger: logger)
+        let frontendMessageHandler = OracleFrontendMessagePostProcessor()
+        frontendMessageHandler.capabilitiesProvider = self
 
         // 2. add handlers
 
         do {
             try self.channel.pipeline.syncOperations.addHandler(eventHandler)
-            try self.channel.pipeline.syncOperations.addHandler(
-                channelHandler, position: .before(eventHandler)
-            )
+            try self.channel.pipeline.syncOperations
+                .addHandler(channelHandler, position: .before(eventHandler))
+            try self.channel.pipeline.syncOperations
+                .addHandler(frontendMessageHandler, position: .before(channelHandler))
         } catch {
             return self.eventLoop.makeFailedFuture(error)
         }

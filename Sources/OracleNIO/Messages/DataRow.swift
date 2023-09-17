@@ -70,12 +70,32 @@ extension DataRow: Collection {
         }
         let elementLength =
             Int(self.bytes.getInteger(at: index.offset, as: UInt8.self)!)
-        if 
-            elementLength == 0 || 
+        
+        if
+            elementLength == 0 ||
             elementLength == Constants.TNS_NULL_LENGTH_INDICATOR
         {
             return nil
         }
+
+        if elementLength == Constants.TNS_LONG_LENGTH_INDICATOR {
+            var out = ByteBuffer()
+            var position = index.offset + MemoryLayout<UInt8>.size
+            while true {
+                let chunkLength =
+                    Int(self.bytes.getInteger(at: position, as: UInt32.self)!)
+                position += MemoryLayout<UInt32>.size
+                if chunkLength == 0 {
+                    return out
+                }
+                var temp = self.bytes.getSlice(
+                    at: position, length: chunkLength
+                )!
+                position += chunkLength
+                out.writeBuffer(&temp)
+            }
+        }
+
         return self.bytes.getSlice(
             at: index.offset + MemoryLayout<UInt8>.size, length: elementLength
         )!

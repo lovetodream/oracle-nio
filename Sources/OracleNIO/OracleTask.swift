@@ -70,9 +70,10 @@ final class ExtendedQueryContext {
 
     // metadata
     let sqlLength: UInt32
-    var cursorID: UInt16
-    let requiresFullExecute: Bool
-    let requiresDefine: Bool
+    var cursorID: UInt16 = 0
+    let requiresFullExecute: Bool = false
+    var requiresDefine: Bool = false
+    var noPrefetch: Bool = false
 
     var sequenceNumber: UInt8 = 2
 
@@ -83,21 +84,6 @@ final class ExtendedQueryContext {
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
     ) throws {
-        if !options.fetchLOBs {
-            var query = query
-            query.binds.metadata = query.binds.metadata.map { metadata in
-                var metadata = metadata
-                if metadata.dataType == .blob {
-                    metadata.dataType = .longRAW
-                } else if metadata.dataType == .clob {
-                    metadata.dataType = .long
-                } else if metadata.dataType == .nCLOB {
-                    metadata.dataType = .longNVarchar
-                }
-                return metadata
-            }
-        }
-
         self.logger = logger
         self.query = query
         self.options = options
@@ -118,10 +104,6 @@ final class ExtendedQueryContext {
             minifiedSQL: sql, promise: promise
         )
         self.statement = query
-        
-        self.cursorID = 0
-        self.requiresFullExecute = false
-        self.requiresDefine = false
     }
 
     private static func determineStatementType(

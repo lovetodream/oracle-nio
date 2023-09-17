@@ -107,14 +107,24 @@ extension ByteBuffer {
     }
 
     mutating func readUBLength() -> UInt8? {
-        guard let first = self.readBytes(length: 1)?.first else { return nil }
-        let length: UInt8
-        if first & 0x80 != 0 {
-            length = first & 0x7f
-        } else {
-            length = first
+        guard var length = self.readInteger(as: UInt8.self) else { return nil }
+        if length & 0x80 != 0 {
+            length = length & 0x7f
         }
         return length
+    }
+
+    mutating func writeUB2(_ integer: UInt16) {
+        switch integer {
+        case 0:
+            self.writeInteger(UInt8(0))
+        case 1...UInt16(UInt8.max):
+            self.writeInteger(UInt8(1))
+            self.writeInteger(UInt8(integer))
+        default:
+            self.writeInteger(UInt8(2))
+            self.writeInteger(integer)
+        }
     }
 
     mutating func writeUB4(_ integer: UInt32) {

@@ -369,7 +369,50 @@ final class OracleNIOTests: XCTestCase {
         try await conn.query("DROP TABLE test_rollback", logger: .oracleTest)
     }
 
-    func testSimpleBinaryLOB() async throws {
+    func testSimpleBinaryLOBViaData() async throws {
+        let filePath = try XCTUnwrap(Bundle.module.path(
+            forResource: "Isaac_Newton-Opticks", ofType: "txt"
+        ))
+        let fileURL = URL(fileURLWithPath: filePath)
+        let data = try Data(contentsOf: fileURL)
+
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        do {
+            try await conn.query(
+                "DROP TABLE test_simple_blob", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await conn.query(
+            "CREATE TABLE test_simple_blob (id number, content blob)",
+            logger: .oracleTest
+        )
+        try await conn.query(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, \(data))",
+            logger: .oracleTest
+        )
+        let rows = try await conn.query(
+            "SELECT id, content FROM test_simple_blob ORDER BY id",
+            logger: .oracleTest
+        )
+        var index = 0
+        for try await row in rows.decode((Int, Data).self) {
+            XCTAssertEqual(index + 1, row.0)
+            index = row.0
+            XCTAssertEqual(row.1, data)
+            XCTAssertEqual(
+                String(data: row.1, encoding: .utf8),
+                String(data: data, encoding: .utf8)
+            )
+        }
+
+        try await conn.query("DROP TABLE test_simple_blob", logger: .oracleTest)
+    }
+
+    func testSimpleBinaryLOBViaByteBuffer() async throws {
         let filePath = try XCTUnwrap(Bundle.module.path(
             forResource: "Isaac_Newton-Opticks", ofType: "txt"
         ))

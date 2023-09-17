@@ -112,11 +112,12 @@ for try await (id, username, birthday) in rows.decode((Int, String, Date).self) 
 A type must implement the `OracleDecodable` protocol in order to be decoded from a row. `OracleNIO` provides default implementations for most of Swift's builtin types, as well as some types provided by Foundation:
 
 - `Bool`
-- `ByteBuffer`
+- `Bytes`, `ByteBuffer`, `Data`
 - `Date`
 - `UInt8`, `Int8`, `UInt16`, `Int16`, `UInt32`, `Int32`, `UInt64`, `Int64`, `UInt`, `Int`
 - `Float`, `Double`
 - `String`
+- `UUID`
 
 `OracleNIO` does provide some types which are more specific to Oracle too.
 

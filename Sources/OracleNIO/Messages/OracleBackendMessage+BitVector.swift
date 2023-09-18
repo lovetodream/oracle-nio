@@ -9,14 +9,15 @@ extension OracleBackendMessage {
             from buffer: inout ByteBuffer,
             capabilities: Capabilities
         ) throws -> OracleBackendMessage.BitVector {
-            let columnsCountSent = try buffer.throwingReadUB2()
-            var length = Int(columnsCountSent) / 8
-            if columnsCountSent % 8 > 0 {
+            let columnsCountSent = try Double(buffer.throwingReadUB2())
+            var length = Double(columnsCountSent) / 8.0
+            if columnsCountSent.truncatingRemainder(dividingBy: 8.0) > 0 {
                 length += 1
             }
-            let bitVector = buffer.readBytes(length: length)
+            let bitVector = buffer.readBytes(length: Int(length))
             return .init(
-                columnsCountSent: columnsCountSent, bitVector: bitVector
+                columnsCountSent: UInt16(columnsCountSent),
+                bitVector: bitVector
             )
         }
     }

@@ -13,6 +13,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     class Context {
         var performingChunkedRead = false
         var queryOptions: QueryOptions? = nil
+        var columnsCount: Int? = nil
     }
 
     init(capabilities: Capabilities, context: Context) {
@@ -84,14 +85,12 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             let messages = try OracleBackendMessage.decode(
                 from: &packet, of: type,
                 capabilities: self.capabilities,
-                queryOptions: self.context.queryOptions,
-                isChunkedRead: self.context.performingChunkedRead
+                context: context
             )
             return messages
         } catch let error as OraclePartialDecodingError {
-            packet.moveReaderIndex(to: startReaderIndex)
-            let completeMessage = buffer
-                .readSlice(length: Int(length) + self.getLengthFieldLength())!
+            buffer.moveReaderIndex(to: startReaderIndex)
+            let completeMessage = buffer.readSlice(length: length)!
             throw OracleMessageDecodingError
                 .withPartialError(
                     error,
@@ -102,14 +101,6 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             preconditionFailure(
                 "Expected to only see `OraclePartialDecodingError`s here."
             )
-        }
-    }
-
-    private func getLengthFieldLength() -> Int {
-        if self.capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
-            return MemoryLayout<UInt32>.size
-        } else {
-            return MemoryLayout<UInt16>.size
         }
     }
 }

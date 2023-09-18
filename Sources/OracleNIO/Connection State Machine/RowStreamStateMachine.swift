@@ -122,7 +122,10 @@ struct RowStreamStateMachine {
 
     mutating func channelReadComplete() -> [DataRow]? {
         switch self.state {
-        case .waitingForRows(let buffer):
+        case .waitingForRows(let buffer), 
+             .waitingForRead(let buffer),
+             .waitingForDemand(let buffer),
+             .waitingForReadOrDemand(let buffer):
             if buffer.isEmpty {
                 self.state = .waitingForRead(buffer)
                 return nil
@@ -135,12 +138,6 @@ struct RowStreamStateMachine {
                 self.state = .waitingForReadOrDemand(newBuffer)
                 return buffer
             }
-
-        case .waitingForRead, .waitingForDemand, .waitingForReadOrDemand:
-            // This case might occur, if we triggered a fetch request to get 
-            // more rows from `ExtendedQueryStateMachine`. We'll just return
-            // nil indicating that we have to wait for now.
-            return nil
 
         case .failed:
             // Once the row stream state machine is marked as failed, no further 

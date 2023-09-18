@@ -8,7 +8,9 @@ extension OracleBackendMessage {
         var bitVector: [UInt8]?
 
         static func decode(
-            from buffer: inout ByteBuffer, capabilities: Capabilities
+            from buffer: inout ByteBuffer,
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.RowHeader {
             buffer.moveReaderIndex(forwardBy: 1) // flags
             buffer.skipUB2() // number of requests

@@ -12,7 +12,9 @@ extension OracleBackendMessage {
         var batchErrors: [OracleError]
 
         static func decodeWarning(
-            from buffer: inout ByteBuffer, capabilities: Capabilities
+            from buffer: inout ByteBuffer,
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.BackendError {
             let number = try buffer.throwingReadInteger(as: UInt16.self)
                 // error number
@@ -34,7 +36,9 @@ extension OracleBackendMessage {
         }
 
         static func decode(
-            from buffer: inout ByteBuffer, capabilities: Capabilities
+            from buffer: inout ByteBuffer, 
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.BackendError {
             _ = try buffer.throwingReadUB4() // end of call status
             buffer.skipUB2() // end to end seq#

@@ -9,8 +9,10 @@ extension OracleBackendMessage {
         var slice: ByteBuffer
 
         static func decode(
-            from buffer: inout ByteBuffer, capabilities: Capabilities
-        ) throws -> RowData { 
+            from buffer: inout ByteBuffer,
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
+        ) throws -> RowData {
             let data = RowData(slice: buffer.slice())
             buffer.moveReaderIndex(to: buffer.readerIndex + buffer.readableBytes)
             return data

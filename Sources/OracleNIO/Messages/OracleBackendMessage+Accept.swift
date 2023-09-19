@@ -8,7 +8,8 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.Accept {
             let protocolVersion =
                 try buffer.throwingReadInteger(as: UInt16.self)

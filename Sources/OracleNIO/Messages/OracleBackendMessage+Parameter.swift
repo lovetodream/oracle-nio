@@ -29,7 +29,9 @@ extension OracleBackendMessage {
         }
 
         static func decode(
-            from buffer: inout NIOCore.ByteBuffer, capabilities: Capabilities
+            from buffer: inout ByteBuffer,
+            capabilities: Capabilities, 
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.Parameter {
             let numberOfParameters = buffer.readUB2() ?? 0
             var elements = [Key: Value]()
@@ -55,7 +57,7 @@ extension OracleBackendMessage {
         }
     }
 
-    struct QueryParameter: Hashable {
+    struct QueryParameter: PayloadDecodable, Hashable {
         var schema: String?
         var edition: String?
         var rowCounts: [UInt64]?
@@ -63,7 +65,7 @@ extension OracleBackendMessage {
         static func decode(
             from buffer: inout ByteBuffer,
             capabilities: Capabilities,
-            options: QueryOptions
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.QueryParameter {
             let parametersCount = buffer.readUB2() ?? 0 // al8o4l (ignored)
             for _ in 0..<parametersCount {
@@ -111,7 +113,7 @@ extension OracleBackendMessage {
             {
                 buffer.moveReaderIndex(forwardBy: bytesCount)
             }
-            if options.arrayDMLRowCounts {
+            if context.queryOptions!.arrayDMLRowCounts == true {
                 let numberOfRows = buffer.readUB4() ?? 0
                 rowCounts = []
                 for _ in 0..<numberOfRows {

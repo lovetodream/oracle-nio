@@ -175,7 +175,7 @@ struct ExtendedQueryStateMachine {
         _ rowData: OracleBackendMessage.RowData,
         capabilities: Capabilities
     ) -> Action {
-        guard case .streaming(let context, _, _, _) = state else {
+        guard case .streaming(let context, let describeInfo, _, _) = state else {
             preconditionFailure()
         }
 
@@ -186,7 +186,10 @@ struct ExtendedQueryStateMachine {
         switch action {
         case .wait:
             return self.moreDataReceived(
-                &buffer, capabilities: capabilities, context: context
+                &buffer, 
+                capabilities: capabilities,
+                context: context,
+                describeInfo: describeInfo
             )
 
         default:
@@ -413,7 +416,10 @@ struct ExtendedQueryStateMachine {
             )
         }
         return self.moreDataReceived(
-            &partial, capabilities: capabilities, context: extendedQueryContext
+            &partial,
+            capabilities: capabilities,
+            context: extendedQueryContext,
+            describeInfo: describeInfo
         )
     }
 
@@ -581,7 +587,8 @@ struct ExtendedQueryStateMachine {
     private mutating func moreDataReceived(
         _ buffer: inout ByteBuffer,
         capabilities: Capabilities,
-        context: ExtendedQueryContext
+        context: ExtendedQueryContext,
+        describeInfo: DescribeInfo
     ) -> Action {
         while buffer.readableBytes > 0 {
             // This is not ideal, but still not as bad as passing potentially
@@ -596,13 +603,15 @@ struct ExtendedQueryStateMachine {
             var slice = buffer.slice()
             let startReaderIndex = slice.readerIndex
             do {
+                let decodingContext = OracleBackendMessageDecoder.Context()
+                decodingContext.queryOptions = context.options
+                decodingContext.columnsCount = describeInfo.columns.count
                 let messages = try OracleBackendMessage.decode(
                     from: &slice,
                     of: .data,
                     capabilities: capabilities,
                     skipDataFlags: false,
-                    queryOptions: context.options,
-                    isChunkedRead: false
+                    context: decodingContext
                 )
 
                 for message in messages {

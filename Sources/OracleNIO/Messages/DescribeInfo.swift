@@ -45,7 +45,9 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         var nullsAllowed: Bool
 
         static func decode(
-            from buffer: inout ByteBuffer, capabilities: Capabilities
+            from buffer: inout ByteBuffer, 
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> DescribeInfo.Column {
             let dataType = try buffer.throwingReadInteger(as: UInt8.self)
             buffer.moveReaderIndex(forwardBy: 1) // flags
@@ -137,11 +139,14 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
     }
 
     static func decode(
-        from buffer: inout ByteBuffer, capabilities: Capabilities
+        from buffer: inout ByteBuffer,
+        capabilities: Capabilities,
+        context: OracleBackendMessageDecoder.Context
     ) throws -> DescribeInfo {
         buffer.skipRawBytesChunked()
         buffer.skipUB4() // max row size
         let columnCount = try buffer.throwingReadUB4()
+        context.columnsCount = Int(columnCount)
 
         if columnCount > 0 {
             buffer.moveReaderIndex(forwardBy: 1)
@@ -152,7 +157,9 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
         for _ in 0..<columnCount {
             let field = try Column.decode(
-                from: &buffer, capabilities: capabilities
+                from: &buffer, 
+                capabilities: capabilities,
+                context: context
             )
             result.append(field)
         }

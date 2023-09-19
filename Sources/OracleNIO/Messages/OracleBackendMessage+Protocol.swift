@@ -6,7 +6,8 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout NIOCore.ByteBuffer,
-            capabilities: Capabilities
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.`Protocol` {
             buffer.moveReaderIndex(forwardBy: 2) // skip protocol array
             while true { // skip server banner

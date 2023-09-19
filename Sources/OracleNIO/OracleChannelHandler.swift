@@ -311,6 +311,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
             self.decoderContext.queryOptions = nil
+            self.decoderContext.columnsCount = nil
             self.run(self.state.readyForQueryReceived(), with: context)
 
         case .needMoreData:
@@ -331,6 +332,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             rowStream.receive(completion: .success(()))
 
             self.decoderContext.queryOptions = nil
+            self.decoderContext.columnsCount = nil
 
             self.run(self.state.readyForQueryReceived(), with: context)
 
@@ -344,6 +346,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             }
 
             self.decoderContext.queryOptions = nil
+            self.decoderContext.columnsCount = nil
 
             self.run(self.state.readyForQueryReceived(), with: context)
 

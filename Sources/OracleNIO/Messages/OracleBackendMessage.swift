@@ -13,7 +13,8 @@ protocol OracleMessagePayloadDecodable {
     ///                     `ByteBuffer` must be fully consumed.
     static func decode(
         from buffer: inout ByteBuffer,
-        capabilities: Capabilities
+        capabilities: Capabilities,
+        context: OracleBackendMessageDecoder.Context
     ) throws -> Self
 }
 
@@ -73,8 +74,7 @@ extension OracleBackendMessage {
         of packetID: ID,
         capabilities: Capabilities,
         skipDataFlags: Bool = true,
-        queryOptions: QueryOptions? = nil,
-        isChunkedRead: Bool
+        context: OracleBackendMessageDecoder.Context
     ) throws -> [OracleBackendMessage] {
         var messages: [OracleBackendMessage] = []
         switch packetID {
@@ -82,7 +82,11 @@ extension OracleBackendMessage {
             messages.append(.resend)
         case .accept:
             messages.append(try .accept(
-                .decode(from: &buffer, capabilities: capabilities)
+                .decode(
+                    from: &buffer, 
+                    capabilities: capabilities,
+                    context: context
+                )
             ))
         case .marker:
             messages.append(.marker)
@@ -90,7 +94,7 @@ extension OracleBackendMessage {
             if skipDataFlags {
                 buffer.moveReaderIndex(forwardBy: 2) // skip data flags
             }
-            if isChunkedRead {
+            if context.performingChunkedRead {
                 messages.append(.chunk(buffer.slice()))
             } else {
                 readLoop: while buffer.readableBytes > 0 {
@@ -102,62 +106,105 @@ extension OracleBackendMessage {
                         break readLoop
                     case .protocol:
                         messages.append(try .protocol(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                         break readLoop
                     case .error:
                         messages.append(try .error(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case .parameter:
-                        if let queryOptions {
+                        switch context.queryOptions {
+                        case .some:
                             messages.append(try .queryParameter(
                                 .decode(
                                     from: &buffer,
                                     capabilities: capabilities,
-                                    options: queryOptions
+                                    context: context
                                 )
                             ))
-                        } else {
+                        case .none:
                             messages.append(try .parameter(
-                                .decode(from: &buffer, capabilities: capabilities)
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
                             ))
                             break readLoop
                         }
                     case .status:
                         messages.append(try .status(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                         break readLoop
                     case .describeInfo:
                         messages.append(try .describeInfo(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case .rowHeader:
                         messages.append(try .rowHeader(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case .rowData:
                         messages.append(try .rowData(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case .bitVector:
                         messages.append(try .bitVector(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case .warning:
                         messages.append(try .warning(
                             .decodeWarning(
-                                from: &buffer, capabilities: capabilities
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
                             )
                         ))
                     case .serverSidePiggyback:
                         messages.append(try .serverSidePiggyback(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case .lobData:
                         messages.append(try .lobData(
-                            .decode(from: &buffer, capabilities: capabilities)
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
                         ))
                     case nil:
                         throw OraclePartialDecodingError

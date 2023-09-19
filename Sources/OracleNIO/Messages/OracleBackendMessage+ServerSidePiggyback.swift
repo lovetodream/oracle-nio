@@ -8,7 +8,9 @@ extension OracleBackendMessage {
         let resetStatementCache: Bool
 
         static func decode(
-            from buffer: inout ByteBuffer, capabilities: Capabilities
+            from buffer: inout ByteBuffer, 
+            capabilities: Capabilities,
+            context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.ServerSidePiggyback {
             let opCode = ServerPiggybackCode(
                 rawValue: try buffer.throwingReadInteger(as: UInt8.self)

@@ -10,8 +10,8 @@ extension OracleBackendMessage {
             capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.Status {
-            let callStatus = try buffer.throwingReadInteger(as: UInt32.self)
-            let endToEndSequenceNumber = buffer.readInteger(as: UInt16.self)
+            let callStatus = try buffer.throwingReadUB4()
+            let endToEndSequenceNumber = buffer.readUB2()
             return .init(
                 callStatus: callStatus,
                 endToEndSequenceNumber: endToEndSequenceNumber

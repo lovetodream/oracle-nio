@@ -308,11 +308,6 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
 
-        case .closed:
-            preconditionFailure(
-                "How can we receive a read, if the connection is closed"
-            )
-
         case .modifying:
             preconditionFailure("Invalid state")
 
@@ -767,7 +762,11 @@ struct ConnectionStateMachine {
                 )
             }
 
-        case .readyToLogOff, .loggingOff, .closing, .closed:
+        case .readyToLogOff:
+            self.state = .loggingOff(closePromise)
+            return .logoffConnection(closePromise)
+
+        case .loggingOff, .closing, .closed:
             // We might run into this case because of reentrancy. For example:
             // After we received an backend unexpected message, that we read
             // of the wire, we bring this connection into the error state and

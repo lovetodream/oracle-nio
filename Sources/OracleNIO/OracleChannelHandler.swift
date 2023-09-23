@@ -413,11 +413,16 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .closeConnection(let promise):
             if context.channel.isActive {
                 self.encoder.close()
+                let writePromise = context.eventLoop.makePromise(of: Void.self)
                 context.writeAndFlush(
-                    self.wrapOutboundOut(self.encoder.flush()), promise: nil
+                    self.wrapOutboundOut(self.encoder.flush()),
+                    promise: writePromise
                 )
+                writePromise.futureResult.whenComplete { _ in
+                    context.close(mode: .all, promise: promise)
+                }
+            } else {
             }
-            context.close(mode: .all, promise: promise)
         case .fireChannelInactive:
             context.fireChannelInactive()
         }
@@ -565,7 +570,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         // 3. close the connection or fire channel inactive
         switch cleanup.action {
         case .close:
-            context.close(mode: .all, promise: cleanup.closePromise)
+            let action = self.state.close(cleanup.closePromise)
+            self.run(action, with: context)
         case .fireChannelInactive:
             cleanup.closePromise?.succeed()
             context.fireChannelInactive()

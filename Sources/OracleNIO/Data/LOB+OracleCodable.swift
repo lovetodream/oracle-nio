@@ -1,13 +1,13 @@
 import NIOCore
 
-public final class LOB {
+final class LOB {
     var size: UInt64
     var chunkSize: UInt32
     internal var locator: ByteBuffer
-    var hasMetadata: Bool
+    private(set) var hasMetadata: Bool
     public let dbType: DBType
 
-    weak var cleanupContext: CleanupContext?
+    private(set) weak var cleanupContext: CleanupContext?
 
     init(
         size: UInt64,
@@ -42,7 +42,7 @@ public final class LOB {
                 hasMetadata: false,
                 dbType: dbType
             )
-            fatalError("TODO: create temp lob on db")
+            // TODO: create temp lob on db
             return lob
         }
     }

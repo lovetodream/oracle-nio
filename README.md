@@ -123,7 +123,6 @@ A type must implement the `OracleDecodable` protocol in order to be decoded from
 
 - `Cursor` (partially implemented)
 - `IntervalDS`
-- `LOB` (partially implemented)
 - `OracleNumber`
 - `RowID`
 

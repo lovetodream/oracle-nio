@@ -1,8 +1,16 @@
 # testing
 
 services:
-    oracle:
+    oracle-xe:
         image: gvenzl/oracle-xe:latest
+        environment:
+            ORACLE_RANDOM_PASSWORD: true
+            APP_USER: my_user
+            APP_USER_PASSWORD: my_passwor
+        ports:
+            - 1521:1521
+    oracle-23:
+        image: gvenzl/oracle-free:23
         environment:
             ORACLE_RANDOM_PASSWORD: true
             APP_USER: my_user

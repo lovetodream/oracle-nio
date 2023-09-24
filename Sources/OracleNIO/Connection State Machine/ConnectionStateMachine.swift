@@ -841,13 +841,14 @@ extension ConnectionStateMachine {
 
     func shouldCloseConnection(reason error: OracleSQLError) -> Bool {
         switch error.code.base {
-        case .connectionError,
-            .messageDecodingFailure,
-            .missingParameter,
-            .unexpectedBackendMessage,
-            .serverVersionNotSupported,
-            .sidNotSupported,
-            .uncleanShutdown:
+        case .failedToAddSSLHandler,
+             .connectionError,
+             .messageDecodingFailure,
+             .missingParameter,
+             .unexpectedBackendMessage,
+             .serverVersionNotSupported,
+             .sidNotSupported,
+             .uncleanShutdown:
             return true
         case .queryCancelled, .nationalCharsetNotSupported, .malformedQuery:
             return false

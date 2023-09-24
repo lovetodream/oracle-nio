@@ -13,7 +13,7 @@ import Foundation
 enum Constants {
 
     // MARK: Packet flags
-    static let TNS_PACKET_FLAG_TLS_RENEG = 0x08
+    static let TNS_PACKET_FLAG_TLS_RENEG: UInt8 = 0x08
 
     // MARK: Data flags
     static let TNS_DATA_FLAGS_EOF: UInt16 = 0x0040

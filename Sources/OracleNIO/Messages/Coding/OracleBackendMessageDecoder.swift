@@ -4,7 +4,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
 
     static let headerSize = 8
 
-    typealias InboundOut = [OracleBackendMessage]
+    typealias InboundOut = [(flags: UInt8?, OracleBackendMessage)]
 
     private var capabilities: Capabilities
 
@@ -60,6 +60,12 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         } else {
             length = buffer.getInteger(at: 0, as: UInt16.self).map(Int.init)
         }
+
+        let packetFlags = buffer.getInteger(
+            at: MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
+            as: UInt8.self
+        )
+
         guard
             let length,
             buffer.readableBytes >= Self.headerSize,
@@ -87,7 +93,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
                 capabilities: self.capabilities,
                 context: context
             )
-            return messages
+            return messages.map { (packetFlags, $0) }
         } catch let error as OraclePartialDecodingError {
             buffer.moveReaderIndex(to: startReaderIndex)
             let completeMessage = buffer.readSlice(length: length)!

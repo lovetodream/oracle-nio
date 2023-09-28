@@ -456,6 +456,45 @@ final class OracleNIOTests: XCTestCase {
         try await conn.query("DROP TABLE test_simple_blob", logger: .oracleTest)
     }
 
+    func testSimplePlSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+
+            let input = 42
+            try await conn.query("""
+            declare
+            result number;
+            begin
+            result := \(OracleNumber(input)) + 69;
+            end;
+            """, logger: .oracleTest)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testSimpleMalformedPlSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+
+            let input = 42
+            // The following query misses a required semicolon in line 4
+            try await conn.query("""
+            declare
+            result number;
+            begin
+            result := \(OracleNumber(input)) + 69
+            end;
+            """, logger: .oracleTest)
+        } catch let error as OracleSQLError {
+            XCTAssertEqual(error.serverInfo?.number, 6550)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

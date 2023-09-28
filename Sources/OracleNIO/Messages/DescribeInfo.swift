@@ -107,18 +107,19 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             guard 
                 try buffer.throwingReadUB4() > 0,
-                let name = buffer.readString(with: Constants.TNS_CS_IMPLICIT)
+                let name = try buffer
+                    .readString(with: Constants.TNS_CS_IMPLICIT)
             else {
                 throw OraclePartialDecodingError
                     .fieldNotDecodable(type: String.self)
             }
 
             if try buffer.throwingReadUB4() > 0 {
-                _ = buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? "" 
+                _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
                     // current schema name, for intNamed
             }
             if try buffer.throwingReadUB4() > 0 {
-                _ = buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? "" 
+                _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? "" 
                     // name of intNamed
             }
 

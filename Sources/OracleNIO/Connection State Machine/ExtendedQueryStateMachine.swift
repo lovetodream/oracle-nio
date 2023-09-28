@@ -423,6 +423,44 @@ struct ExtendedQueryStateMachine {
         )
     }
 
+    mutating func ioVectorReceived(
+        _ vector: OracleBackendMessage.InOutVector
+    ) -> Action {
+        switch self.state {
+        case .initialized(let context):
+            // TODO: Parse the vector and see if we have any out or inout binds 
+            // we have to handle. It'll be added with the support for out binds.
+            // For now we do not support out binds at all.
+
+            if vector.bindMetadata.contains(where: {
+                $0.direction != Constants.TNS_BIND_DIR_INPUT
+            }) {
+                // Let's log a warning here, so the user knows what's going on.
+                context.logger.warning("""
+                Received one or more IN/OUT or OUT variables from a PL/SQL \
+                query. OUTPUT variables are not supported yet. Please refactor \
+                your statements if possible.
+                """)
+            }
+
+            // we won't change the state
+            return .wait
+
+        case .describeInfoReceived,
+             .streaming,
+             .streamingAndWaiting,
+             .drain,
+             .commandComplete,
+             .error:
+            return self.errorHappened(
+                .unexpectedBackendMessage(.ioVector(vector))
+            )
+
+        case .modifying:
+            preconditionFailure("invalid state")
+        }
+    }
+
     // MARK: Consumer Actions
 
     mutating func requestFetch() -> Action {

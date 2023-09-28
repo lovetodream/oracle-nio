@@ -61,7 +61,7 @@ extension OracleBackendMessage {
             buffer.skipUB2() // padding
             buffer.skipUB4() // success iters
             if let byteCount = buffer.readUB4(), byteCount > 0 {
-                buffer.skipRawBytesChunked()
+                buffer.skipRawBytesChunked() // oerrdd (logical rowid)
             }
 
             // batch error codes
@@ -106,7 +106,7 @@ extension OracleBackendMessage {
                 buffer.moveReaderIndex(forwardBy: 1) // ignore packet size
                 for i in 0..<numberOfMessages {
                     buffer.skipUB2() // skip chunk length
-                    let errorMessage = buffer
+                    let errorMessage = try buffer
                         .readString(with: Constants.TNS_CS_IMPLICIT)?
                         .trimmingCharacters(in: .whitespaces)
                     batch[Int(i)].message = errorMessage
@@ -118,7 +118,7 @@ extension OracleBackendMessage {
             let rowCount = buffer.readUB8()
             let errorMessage: String?
             if number != 0 {
-                errorMessage = buffer
+                errorMessage = try buffer
                     .readString(with: Constants.TNS_CS_IMPLICIT)?
                     .trimmingCharacters(in: .whitespaces)
             } else {

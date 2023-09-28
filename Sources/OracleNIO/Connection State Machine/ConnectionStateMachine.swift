@@ -666,6 +666,20 @@ struct ConnectionStateMachine {
         }
     }
 
+    mutating func ioVectorReceived(
+        _ vector: OracleBackendMessage.InOutVector
+    ) -> ConnectionAction {
+        guard case var .extendedQuery(queryState) = self.state else {
+            preconditionFailure()
+        }
+
+        return self.avoidingStateMachineCoW { machine in
+            let action = queryState.ioVectorReceived(vector)
+            machine.state = .extendedQuery(queryState)
+            return machine.modify(with: action)
+        }
+    }
+
     // MARK: - Private Methods -
 
     private mutating func startAuthentication(

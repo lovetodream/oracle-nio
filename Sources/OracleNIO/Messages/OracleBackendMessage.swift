@@ -38,6 +38,7 @@ enum OracleBackendMessage: Sendable, Hashable {
     case serverSidePiggyback(ServerSidePiggyback)
     case status(Status)
     case warning(BackendError)
+    case ioVector(InOutVector)
 
     case chunk(ByteBuffer)
 }
@@ -60,6 +61,7 @@ extension OracleBackendMessage {
         case rowData = 7
         case parameter = 8
         case status = 9
+        case ioVector = 11
         case lobData = 14
         case warning = 15
         case describeInfo = 16
@@ -150,6 +152,14 @@ extension OracleBackendMessage {
                             )
                         ))
                         break readLoop
+                    case .ioVector:
+                        messages.append(try .ioVector(
+                            .decode(
+                                from: &buffer,
+                                capabilities: capabilities,
+                                context: context
+                            )
+                        ))
                     case .describeInfo:
                         messages.append(try .describeInfo(
                             .decode(
@@ -254,6 +264,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".serverSidePiggyback(\(String(reflecting: piggyback)))"
         case .lobData(let data):
             return ".lobData(\(String(reflecting: data)))"
+        case .ioVector(let vector):
+            return ".ioVector(\(String(reflecting: vector)))"
         }
     }
 }

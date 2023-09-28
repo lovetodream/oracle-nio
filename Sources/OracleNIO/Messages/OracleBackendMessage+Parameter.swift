@@ -38,15 +38,16 @@ extension OracleBackendMessage {
             for _ in 0..<numberOfParameters {
                 buffer.skipUB4()
                 guard
-                    let key = buffer.readString(with: Constants.TNS_CS_IMPLICIT)
+                    let key = try buffer
+                        .readString(with: Constants.TNS_CS_IMPLICIT)
                 else {
                     preconditionFailure("add an error here")
                 }
                 let length = buffer.readUB4() ?? 0
                 let value: String
                 if length > 0 {
-                    value =
-                        buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+                    value = try buffer
+                        .readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
                 } else {
                     value = ""
                 }

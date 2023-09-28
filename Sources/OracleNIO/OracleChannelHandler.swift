@@ -147,6 +147,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 metadata: [.warning: "\(warning)"]
             )
             action = .wait
+        case .ioVector(let vector):
+            action = self.state.ioVectorReceived(vector)
         case .serverSidePiggyback(let piggyback):
             // TODO: we need to inform state about this event
             fatalError()

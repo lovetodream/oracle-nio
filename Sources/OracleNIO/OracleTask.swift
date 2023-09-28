@@ -114,7 +114,8 @@ final class ExtendedQueryContext {
         if fragment.first == "(" {
             fragment.removeFirst()
         }
-        let tokens = fragment.prefix(10).split(separator: One(.whitespace))
+        let tokens = fragment.prefix(10)
+            .components(separatedBy: .whitespacesAndNewlines)
         guard let sqlKeyword = tokens.first?.uppercased() else {
             throw OracleSQLError.malformedQuery(minified: sql)
         }

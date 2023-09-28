@@ -7,6 +7,7 @@ public struct OracleSQLError: Error {
         enum Base: Sendable, Hashable {
             case clientClosesConnection
             case clientClosedConnection
+            case failedToAddSSLHandler
             case connectionError
             case messageDecodingFailure
             case nationalCharsetNotSupported
@@ -28,6 +29,7 @@ public struct OracleSQLError: Error {
 
         public static let clientClosesConnection = Self(.clientClosesConnection)
         public static let clientClosedConnection = Self(.clientClosedConnection)
+        public static let failedToAddSSLHandler = Self(.failedToAddSSLHandler)
         public static let connectionError = Self(.connectionError)
         public static let messageDecodingFailure = Self(.messageDecodingFailure)
         public static let nationalCharsetNotSupported =
@@ -49,6 +51,8 @@ public struct OracleSQLError: Error {
                 return "clientClosesConnection"
             case .clientClosedConnection:
                 return "clientClosedConnection"
+            case .failedToAddSSLHandler:
+                return "failedToAddSSLHandler"
             case .connectionError:
                 return "connectionError"
             case .messageDecodingFailure:
@@ -228,6 +232,12 @@ public struct OracleSQLError: Error {
 
     static var uncleanShutdown: OracleSQLError {
         OracleSQLError(code: .uncleanShutdown)
+    }
+
+    static func failedToAddSSLHandler(underlying: Error) -> OracleSQLError {
+        var error = OracleSQLError(code: .failedToAddSSLHandler)
+        error.underlying = underlying
+        return error
     }
 
     static func connectionError(underlying: Error) -> OracleSQLError {

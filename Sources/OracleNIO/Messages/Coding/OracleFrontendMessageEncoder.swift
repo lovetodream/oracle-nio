@@ -62,8 +62,15 @@ struct OracleFrontendMessageEncoder {
         self.endRequest()
     }
 
-    mutating func connect(connectString: String) {
+    /// Connect is a special case, because of it's specific packet size limit based on the
+    /// `connectString`'s length.
+    /// If the length is exceeded, we have to sent two separate messages to the server.
+    /// Because of that, we have to return an array of messages, which is sent by the
+    /// ``OracleChannelHandler``.
+    mutating func connect(connectString: String) -> [ByteBuffer] {
         self.clearIfNeeded()
+
+        var buffers = [ByteBuffer]()
 
         var serviceOptions = Constants.TNS_GSO_DONT_CARE
         let connectFlags1: UInt32 = 0
@@ -107,11 +114,19 @@ struct OracleFrontendMessageEncoder {
             connectStringByteLength > Constants.TNS_MAX_CONNECT_DATA
         if isConnectStringToLong {
             self.endRequest(packetType: .connect)
+
+            buffers.append(self.buffer)
+            self.buffer.clear()
+
             self.startRequest()
         }
         self.buffer.writeString(connectString)
 
         self.endRequest(packetType: isConnectStringToLong ? .data : .connect)
+
+        buffers.append(self.buffer)
+        self.buffer.clear()
+        return buffers
     }
 
     mutating func cookie(_ cookie: ConnectionCookie, authContext: AuthContext) {

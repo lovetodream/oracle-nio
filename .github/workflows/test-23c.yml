@@ -1,0 +1,43 @@
+name: Oracle 23c Database
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    services:
+      oracle:
+        image: gvenzl/oracle-free:23
+        env:
+          ORACLE_RANDOM_PASSWORD: true
+          APP_USER: my_user
+          APP_USER_PASSWORD: my_password
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd healthcheck.sh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set DEBUG specific environment variables
+      if: runner.debug == '1'
+      run: |
+        echo "LOG_LEVEL=trace" >> "$GITHUB_ENV"
+    - name: Build
+      run: swift build
+    - name: Run tests
+      run: swift test
+      env:
+        ORA_HOSTNAME: localhost
+        ORA_PORT: 1521
+        ORA_SERVICE_NAME: FREEPDB1
+        ORA_USERNAME: my_user
+        ORA_PASSWORD: my_password

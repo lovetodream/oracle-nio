@@ -1,4 +1,5 @@
 import NIOCore
+import NIOSSL
 import class Foundation.ProcessInfo
 
 protocol CapabilitiesProvider: AnyObject {
@@ -8,7 +9,7 @@ protocol CapabilitiesProvider: AnyObject {
 
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask
-    typealias InboundIn = [OracleBackendMessage]
+    typealias InboundIn = [(flags: UInt8?, OracleBackendMessage)]
     typealias OutboundOut = ByteBuffer
 
     private let logger: Logger
@@ -29,7 +30,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     let cleanupContext = CleanupContext()
 
-    init(configuration: OracleConnection.Configuration, logger: Logger) {
+    init(
+        configuration: OracleConnection.Configuration, 
+        logger: Logger
+    ) {
         self.state = ConnectionStateMachine()
         self.configuration = configuration
         self.logger = logger
@@ -80,12 +84,15 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let messages = self.unwrapInboundIn(data)
         for message in messages {
-            self.handleMessage(message, context: context)
+            self.handleMessage(
+                message.1, flags: message.flags, context: context
+            )
         }
     }
 
     private func handleMessage(
         _ message: OracleBackendMessage,
+        flags: UInt8?,
         context: ChannelHandlerContext
     ) {
         self.logger.trace("Backend message received", metadata: [
@@ -154,7 +161,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         }
 
-        self.run(action, with: context)
+        self.run(action, flags: flags, with: context)
     }
 
     func channelReadComplete(context: ChannelHandlerContext) {
@@ -220,6 +227,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     func run(
         _ action: ConnectionStateMachine.ConnectionAction,
+        flags: UInt8? = nil,
         with context: ChannelHandlerContext
     ) {
         self.logger.trace("Run action", metadata: [
@@ -232,12 +240,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .wait:
             break
         case .sendConnect:
-            self.encoder.connect(
-                connectString: self.configuration.getConnectString()
-            )
-            context.writeAndFlush(
-                self.wrapOutboundOut(self.encoder.flush()), promise: nil
-            )
+            self.sendConnect(withFlags: flags, context: context)
         case .sendProtocol:
             self.encoder.protocol()
             context.writeAndFlush(
@@ -413,11 +416,16 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .closeConnection(let promise):
             if context.channel.isActive {
                 self.encoder.close()
+                let writePromise = context.eventLoop.makePromise(of: Void.self)
                 context.writeAndFlush(
-                    self.wrapOutboundOut(self.encoder.flush()), promise: nil
+                    self.wrapOutboundOut(self.encoder.flush()),
+                    promise: writePromise
                 )
+                writePromise.futureResult.whenComplete { _ in
+                    context.close(mode: .all, promise: promise)
+                }
+            } else {
             }
-            context.close(mode: .all, promise: promise)
         case .fireChannelInactive:
             context.fireChannelInactive()
         }
@@ -428,6 +436,44 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private func connected(context: ChannelHandlerContext) {
         let action = self.state.connected()
         self.run(action, with: context)
+    }
+
+    private func sendConnect(
+        withFlags flags: UInt8?, 
+        context: ChannelHandlerContext
+    ) {
+        // Renegotiate TLS if needed
+        if self.configuration._protocol == .tcps &&
+            (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0 {
+            // TODO: renegotiate TLS (by removing the TLS handler and adding it
+            // again?).
+            // References:
+            // - python-oracledb: https://github.com/oracle/python-oracledb/blob/3fef73704673575c63d7db0e0beb8cb9ce72124c/src/oracledb/impl/thin/protocol.pyx#L191
+            // - node-oracledb: https://github.com/oracle/node-oracledb/blob/86b1c61ec8b650599f353c8fbdf1c49af7aeac89/lib/thin/sqlnet/ntTcp.js#L472
+            self.logger.critical("""
+            Renegotiating TLS connection is not supported yet, the connection \
+            will be terminated.
+            If you're experienced with 'swift-nio-ssl', I welcome you to \
+            contribute this feature. \
+            (https://github.com/lovetodream/oracle-nio/issues/2)
+            """)
+
+            struct TLSRenegotiationUnsupported: Error { }
+            self.errorCaught(
+                context: context, error: TLSRenegotiationUnsupported()
+            )
+            return
+        }
+
+
+        let messages = self.encoder.connect(
+            connectString: self.configuration.getConnectString()
+        )
+        for message in messages {
+            context.writeAndFlush(
+                self.wrapOutboundOut(message), promise: nil
+            )
+        }
     }
 
     private func sendAuthenticationPhaseOne(
@@ -565,7 +611,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         // 3. close the connection or fire channel inactive
         switch cleanup.action {
         case .close:
-            context.close(mode: .all, promise: cleanup.closePromise)
+            let action = self.state.close(cleanup.closePromise)
+            self.run(action, with: context)
         case .fireChannelInactive:
             cleanup.closePromise?.succeed()
             context.fireChannelInactive()

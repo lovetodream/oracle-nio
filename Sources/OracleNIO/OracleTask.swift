@@ -182,7 +182,7 @@ public struct QueryOptions {
     ///
     /// - Warning: If you have LOBs > 1GB, you need to set this to `true`. Because LOBs of that size
     ///            cannot be fetched inline.
-    public var fetchLOBs = false
+    internal var fetchLOBs = false
 
     /// Options to pass to a ``OracleQuery`` to tweak its execution.
     /// - Parameters:
@@ -198,15 +198,14 @@ public struct QueryOptions {
     public init(
         autoCommit: Bool = false,
         prefetchRows: Int = 2,
-        arraySize: Int = 50,
-        fetchLOBs: Bool = false
+        arraySize: Int = 50
     ) {
         self.autoCommit = autoCommit
         self.arrayDMLRowCounts = false
         self.batchErrors = false
         self.prefetchRows = prefetchRows
         self.arraySize = arraySize
-        self.fetchLOBs = fetchLOBs
+        self.fetchLOBs = false
     }
 }
 

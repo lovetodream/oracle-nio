@@ -27,7 +27,9 @@ Oracle Database 12.1 or later.
 
 > Please note that all token based authentication methods are currently untested, because I (@lovetodream) do not have the infrastructure to test this. Contributions are welcome!
 
-All connections can be TLS encrypted using `OracleConnection.Configuration.TLS`, although TLS encryption has not been tested yet.
+All connections can be TLS encrypted using `OracleConnection.Configuration.TLS`. 
+**Please be aware that the connection might fail due to TLS renegotiation not being supported at the moment**. 
+Help is needed to implement this feature, see [#2](https://github.com/lovetodream/oracle-nio/issues/2).
 
 ## Getting started
 
@@ -112,17 +114,17 @@ for try await (id, username, birthday) in rows.decode((Int, String, Date).self) 
 A type must implement the `OracleDecodable` protocol in order to be decoded from a row. `OracleNIO` provides default implementations for most of Swift's builtin types, as well as some types provided by Foundation:
 
 - `Bool`
-- `ByteBuffer`
+- `Bytes`, `ByteBuffer`, `Data`
 - `Date`
 - `UInt8`, `Int8`, `UInt16`, `Int16`, `UInt32`, `Int32`, `UInt64`, `Int64`, `UInt`, `Int`
 - `Float`, `Double`
 - `String`
+- `UUID`
 
 `OracleNIO` does provide some types which are more specific to Oracle too.
 
 - `Cursor` (partially implemented)
 - `IntervalDS`
-- `LOB` (partially implemented)
 - `OracleNumber`
 - `RowID`
 

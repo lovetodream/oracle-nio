@@ -261,7 +261,7 @@ extension OracleConnection {
                 tcpConnectTimeout: self.options.connectTimeout,
                 service: self.service,
                 sslServerDnMatch: self.serverNameForTLS != nil,
-                sslServerCertDn: self.serverNameForTLS,
+                sslServerCertDn: nil,
                 walletLocation: nil
             )
             return desc

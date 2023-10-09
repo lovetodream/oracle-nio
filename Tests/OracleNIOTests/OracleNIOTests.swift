@@ -495,6 +495,22 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testEmptyStringBind() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+
+            let row = try await conn
+                .query("SELECT \("") FROM dual", logger: .oracleTest)
+                .collect()
+                .first
+            XCTAssertNil(try row?.decode(String?.self))
+            XCTAssertEqual(try row?.decode(String.self), "")
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

@@ -22,11 +22,27 @@ extension String: OracleEncodable {
     }
 
     public var size: UInt32 {
-        .init(self.count)
+        // empty strings have a length of 1
+        // (they're basically the same as null in a oracle db)
+        .init(self.count >= 1 ? self.count : 1)
     }
 }
 
 extension String: OracleDecodable {
+    @inlinable
+    static public func _decodeRaw<JSONDecoder>(
+        from buffer: inout ByteBuffer?,
+        type: OracleDataType,
+        context: OracleDecodingContext<JSONDecoder>
+    ) throws -> String where JSONDecoder : OracleJSONDecoder {
+        // because oracle doesn't differentiate between null and empty strings
+        // we have to use the internal imp
+        guard var buffer else {
+            return ""
+        }
+        return try self.init(from: &buffer, type: type, context: context)
+    }
+    
     public init<JSONDecoder: OracleJSONDecoder>(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

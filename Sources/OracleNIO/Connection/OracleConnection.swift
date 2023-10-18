@@ -170,6 +170,10 @@ public class OracleConnection {
         }
         return bootstrap
             .connectTimeout(configuration.options.connectTimeout)
+            .channelOption(ChannelOptions
+                .socket(SocketOptionLevel(SOL_SOCKET), SO_KEEPALIVE), value: 1)
+            .channelOption(ChannelOptions
+                .socket(SocketOptionLevel(IPPROTO_TCP), TCP_NODELAY), value: 1)
     }
 
     /// Closes the connection to the database server.

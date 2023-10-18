@@ -27,9 +27,7 @@ Oracle Database 12.1 or later.
 
 > Please note that all token based authentication methods are currently untested, because I (@lovetodream) do not have the infrastructure to test this. Contributions are welcome!
 
-All connections can be TLS encrypted using `OracleConnection.Configuration.TLS`. 
-**Please be aware that the connection might fail due to TLS renegotiation not being supported at the moment**. 
-Help is needed to implement this feature, see [#2](https://github.com/lovetodream/oracle-nio/issues/2).
+All connections can be TLS encrypted using `OracleConnection.Configuration.TLS`.
 
 ## Getting started
 

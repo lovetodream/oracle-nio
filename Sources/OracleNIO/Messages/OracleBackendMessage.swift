@@ -184,6 +184,11 @@ extension OracleBackendMessage {
                                 context: context
                             )
                         ))
+                        // Until we handled the current rowData on
+                        // OracleChannelHandler, we are performing a chunked
+                        // read on all upcoming data packets, because we are
+                        // "blind" and don't know what we might get until then.
+                        context.performingChunkedRead = true
                     case .bitVector:
                         messages.append(try .bitVector(
                             .decode(

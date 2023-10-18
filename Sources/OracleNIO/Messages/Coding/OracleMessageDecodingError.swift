@@ -27,12 +27,11 @@ struct OracleMessageDecodingError: Error {
         packetID: UInt8,
         messageBytes: ByteBuffer
     ) -> Self {
-        var buffer = messageBytes
-        let data = buffer.readData(length: buffer.readableBytes)!
+        let data = messageBytes.hexDump(format: .plain)
 
         return OracleMessageDecodingError(
             packetID: packetID,
-            payload: data.base64EncodedString(),
+            payload: data,
             description: partialError.description,
             file: partialError.file,
             line: partialError.line

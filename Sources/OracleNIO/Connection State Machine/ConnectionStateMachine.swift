@@ -21,6 +21,8 @@ struct ConnectionStateMachine {
         case closing
         case closed
 
+        case renegotiatingTLS
+
         case modifying
     }
 
@@ -157,7 +159,8 @@ struct ConnectionStateMachine {
              .ping,
              .commit,
              .rollback,
-             .readyToLogOff:
+             .readyToLogOff,
+             .renegotiatingTLS:
             return self.errorHappened(.uncleanShutdown)
         case .loggingOff, .closing:
             self.state = .closed
@@ -183,7 +186,8 @@ struct ConnectionStateMachine {
              .readyForQuery,
              .ping,
              .commit,
-             .rollback:
+             .rollback,
+             .renegotiatingTLS:
             return self.closeConnectionAndCleanup(error)
         case .authenticating(var authState):
             let action = authState.errorHappened(error)
@@ -230,7 +234,8 @@ struct ConnectionStateMachine {
                  .extendedQuery,
                  .ping,
                  .commit,
-                 .rollback:
+                 .rollback,
+                 .renegotiatingTLS:
                 self.taskQueue.append(task)
                 return .wait
 
@@ -280,7 +285,8 @@ struct ConnectionStateMachine {
              .readyToLogOff,
              .loggingOff,
              .closing,
-             .closed:
+             .closed,
+             .renegotiatingTLS:
             return .wait
 
         case .extendedQuery(var extendedQuery):
@@ -387,6 +393,8 @@ struct ConnectionStateMachine {
             return .wait
         case .loggingOff(let promise):
             return .logoffConnection(promise)
+        case .renegotiatingTLS:
+            fatalError("Does this even happen?")
 
         case .closing, .closed:
             preconditionFailure(
@@ -414,7 +422,8 @@ struct ConnectionStateMachine {
              .connectMessageSent,
              .protocolMessageSent,
              .dataTypesMessageSent,
-             .waitingToStartAuthentication:
+             .waitingToStartAuthentication,
+             .renegotiatingTLS:
             preconditionFailure()
 
         case .authenticating(var authState):
@@ -438,7 +447,8 @@ struct ConnectionStateMachine {
              .waitingToStartAuthentication,
              .readyForQuery,
              .readyToLogOff,
-             .closed:
+             .closed,
+             .renegotiatingTLS:
             preconditionFailure()
         case .connectMessageSent,
              .protocolMessageSent,
@@ -479,7 +489,8 @@ struct ConnectionStateMachine {
              .waitingToStartAuthentication,
              .authenticating,
              .readyForQuery,
-             .extendedQuery:
+             .extendedQuery,
+             .renegotiatingTLS:
             return self.errorHappened(
                 .unexpectedBackendMessage(.status(status))
             )
@@ -680,6 +691,18 @@ struct ConnectionStateMachine {
         }
     }
 
+    mutating func renegotiatingTLS() {
+        self.state = .renegotiatingTLS
+    }
+
+    mutating func tlsEstablished() -> ConnectionAction {
+        guard case .renegotiatingTLS = self.state else {
+            return .wait
+        }
+        self.state = .connectMessageSent
+        return .sendConnect
+    }
+
     // MARK: - Private Methods -
 
     private mutating func startAuthentication(
@@ -714,7 +737,8 @@ struct ConnectionStateMachine {
              .readyForQuery,
              .ping,
              .commit,
-             .rollback:
+             .rollback,
+             .renegotiatingTLS:
             let cleanupContext = self.setErrorAndCreateCleanupContext(
                 error, closePromise: closePromise
             )
@@ -856,6 +880,7 @@ extension ConnectionStateMachine {
     func shouldCloseConnection(reason error: OracleSQLError) -> Bool {
         switch error.code.base {
         case .failedToAddSSLHandler,
+             .failedToVerifyTLSCertificates,
              .connectionError,
              .messageDecodingFailure,
              .missingParameter,

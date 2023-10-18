@@ -1,5 +1,6 @@
 import NIOCore
 import NIOSSL
+import NIOTLS
 import class Foundation.ProcessInfo
 
 protocol CapabilitiesProvider: AnyObject {
@@ -25,6 +26,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private let decoderContext: OracleBackendMessageDecoder.Context = .init()
     private var encoder: OracleFrontendMessageEncoder!
     private let configuration: OracleConnection.Configuration
+    private let currentSSLHandler: NIOSSLClientHandler?
 
     weak var capabilitiesProvider: CapabilitiesProvider!
 
@@ -32,11 +34,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     init(
         configuration: OracleConnection.Configuration, 
-        logger: Logger
+        logger: Logger,
+        sslHandler: NIOSSLClientHandler?
     ) {
         self.state = ConnectionStateMachine()
         self.configuration = configuration
         self.logger = logger
+        self.currentSSLHandler = sslHandler
     }
 
     // MARK: Handler Lifecycle
@@ -175,6 +179,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         self.logger.trace("User inbound event received", metadata: [
             .userEvent: "\(event)"
         ])
+
+        switch event {
+        case TLSUserEvent.handshakeCompleted:
+            let action = self.state.tlsEstablished()
+            self.run(action, with: context)
+        default:
+            context.fireUserInboundEventTriggered(event)
+        }
     }
 
     // MARK: Channel handler outgoing
@@ -447,23 +459,34 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         // Renegotiate TLS if needed
         if self.configuration._protocol == .tcps &&
             (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0 {
-            // TODO: renegotiate TLS (by removing the TLS handler and adding it
-            // again?).
-            // References:
-            // - python-oracledb: https://github.com/oracle/python-oracledb/blob/3fef73704673575c63d7db0e0beb8cb9ce72124c/src/oracledb/impl/thin/protocol.pyx#L191
-            // - node-oracledb: https://github.com/oracle/node-oracledb/blob/86b1c61ec8b650599f353c8fbdf1c49af7aeac89/lib/thin/sqlnet/ntTcp.js#L472
-            self.logger.critical("""
-            Renegotiating TLS connection is not supported yet, the connection \
-            will be terminated.
-            If you're experienced with 'swift-nio-ssl', I welcome you to \
-            contribute this feature. \
-            (https://github.com/lovetodream/oracle-nio/issues/2)
-            """)
+            let promise = context.eventLoop.makePromise(of: Void.self)
+            context.pipeline.removeHandler(currentSSLHandler!, promise: promise)
+            promise.futureResult.whenComplete { result in
+                switch result {
+                case .success:
 
-            struct TLSRenegotiationUnsupported: Error { }
-            self.errorCaught(
-                context: context, error: TLSRenegotiationUnsupported()
-            )
+                    do {
+                        let sslHandler = try NIOSSLClientHandler(
+                            context: self.configuration.tls.sslContext!,
+                            serverHostname: self.configuration.serverNameForTLS
+                        )
+                        try context.pipeline.syncOperations.addHandler(
+                            sslHandler, position: .first
+                        )
+                        self.state.renegotiatingTLS()
+                    } catch {
+                        let action = self.state
+                            .errorHappened(.failedToAddSSLHandler(underlying: error))
+                        self.run(action, with: context)
+                    }
+
+                case .failure(let error):
+                    let action = self.state
+                        .errorHappened(.failedToAddSSLHandler(underlying: error))
+                    self.run(action, with: context)
+                }
+            }
+
             return
         }
 

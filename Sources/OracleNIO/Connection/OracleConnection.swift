@@ -58,16 +58,18 @@ public class OracleConnection {
     func start(configuration: Configuration) -> EventLoopFuture<Void> {
         // 1. configure handlers
 
+        let sslHandler: NIOSSLClientHandler?
         switch configuration.tls.base {
-        case .disable: break
+        case .disable: 
+            sslHandler = nil
         case .require(let context):
             do {
-                let sslHandler = try NIOSSLClientHandler(
+                sslHandler = try NIOSSLClientHandler(
                     context: context,
                     serverHostname: configuration.serverNameForTLS
                 )
                 try channel.pipeline.syncOperations.addHandler(
-                    sslHandler, position: .first
+                    sslHandler!, position: .first
                 )
             } catch {
                 return self.eventLoop.makeFailedFuture(error)
@@ -76,7 +78,8 @@ public class OracleConnection {
 
         let channelHandler = OracleChannelHandler(
             configuration: configuration,
-            logger: logger
+            logger: logger,
+            sslHandler: sslHandler
         )
         channelHandler.capabilitiesProvider = self
 

@@ -8,6 +8,7 @@ public struct OracleSQLError: Error {
             case clientClosesConnection
             case clientClosedConnection
             case failedToAddSSLHandler
+            case failedToVerifyTLSCertificates
             case connectionError
             case messageDecodingFailure
             case nationalCharsetNotSupported
@@ -30,17 +31,19 @@ public struct OracleSQLError: Error {
         public static let clientClosesConnection = Self(.clientClosesConnection)
         public static let clientClosedConnection = Self(.clientClosedConnection)
         public static let failedToAddSSLHandler = Self(.failedToAddSSLHandler)
+        public static let failedToVerifyTLSCertificates =
+            Self(.failedToVerifyTLSCertificates)
         public static let connectionError = Self(.connectionError)
         public static let messageDecodingFailure = Self(.messageDecodingFailure)
         public static let nationalCharsetNotSupported =
-        Self(.nationalCharsetNotSupported)
+            Self(.nationalCharsetNotSupported)
         public static let uncleanShutdown = Self(.uncleanShutdown)
         public static let unexpectedBackendMessage =
-        Self(.unexpectedBackendMessage)
+            Self(.unexpectedBackendMessage)
         public static let server = Self(.server)
         public static let queryCancelled = Self(.queryCancelled)
         public static let serverVersionNotSupported =
-        Self(.serverVersionNotSupported)
+            Self(.serverVersionNotSupported)
         public static let sidNotSupported = Self(.sidNotSupported)
         public static let missingParameter = Self(.missingParameter)
         public static let malformedQuery = Self(.malformedQuery)
@@ -53,6 +56,8 @@ public struct OracleSQLError: Error {
                 return "clientClosedConnection"
             case .failedToAddSSLHandler:
                 return "failedToAddSSLHandler"
+            case .failedToVerifyTLSCertificates:
+                return "failedToVerifyTLSCertificates"
             case .connectionError:
                 return "connectionError"
             case .messageDecodingFailure:
@@ -238,6 +243,10 @@ public struct OracleSQLError: Error {
         var error = OracleSQLError(code: .failedToAddSSLHandler)
         error.underlying = underlying
         return error
+    }
+
+    static var failedToVerifyTLSCertificates: OracleSQLError {
+        OracleSQLError(code: .failedToVerifyTLSCertificates)
     }
 
     static func connectionError(underlying: Error) -> OracleSQLError {

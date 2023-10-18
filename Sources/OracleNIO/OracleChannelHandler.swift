@@ -353,7 +353,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
             self.run(self.state.readyForQueryReceived(), with: context)
 
-        case .forwardStreamError(let error, let read, let cursorID):
+        case .forwardStreamError(
+            let error, let read, let cursorID, let clientCancelled
+        ):
             self.rowStream!.receive(completion: .failure(error))
             self.rowStream = nil
             if let cursorID {
@@ -365,7 +367,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.decoderContext.queryOptions = nil
             self.decoderContext.columnsCount = nil
 
-            self.run(self.state.readyForQueryReceived(), with: context)
+            if clientCancelled {
+                self.run(.sendMarker, with: context)
+            } else {
+                self.run(self.state.readyForQueryReceived(), with: context)
+            }
 
         case .sendMarker:
             self.encoder.marker()

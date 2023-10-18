@@ -43,7 +43,13 @@ struct ExtendedQueryStateMachine {
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow])
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
-        case forwardStreamError(OracleSQLError, read: Bool, cursorID: UInt16? = nil)
+        case forwardStreamError(
+            OracleSQLError, 
+            read: Bool,
+            cursorID: UInt16? = nil,
+            clientCancelled: Bool = false
+        )
+        case forwardCancelComplete
 
         case read
         case wait
@@ -102,9 +108,13 @@ struct ExtendedQueryStateMachine {
             self.state = .drain(describeInfo.columns)
             switch streamStateMachine.fail() {
             case .wait:
-                return .forwardStreamError(.queryCancelled, read: false)
+                return .forwardStreamError(
+                    .queryCancelled, read: false, clientCancelled: true
+                )
             case .read:
-                return .forwardStreamError(.queryCancelled, read: true)
+                return .forwardStreamError(
+                    .queryCancelled, read: true, clientCancelled: true
+                )
             }
 
         case .commandComplete, .error, .drain:
@@ -307,6 +317,9 @@ struct ExtendedQueryStateMachine {
             self.avoidingStateMachineCoW { state in
                 state = .error(.server(error))
             }
+        } else if self.isCancelled && error.number == 1013 {
+            self.state = .commandComplete
+            action = .forwardCancelComplete
         } else {
             switch self.state {
             case .drain,
@@ -400,27 +413,35 @@ struct ExtendedQueryStateMachine {
     mutating func chunkReceived(
         _ buffer: ByteBuffer, capabilities: Capabilities
     ) -> Action {
-        guard case .streamingAndWaiting(
+        switch self.state {
+        case .drain:
+            // Could happen if we cancelled the query while the database is
+            // still sending stuff
+            return .wait
+
+        case .streamingAndWaiting(
             let extendedQueryContext,
             let describeInfo,
             let rowHeader,
             let streamState,
             var partial
-        ) = state else {
-            preconditionFailure()
-        }
-        partial.writeImmutableBuffer(buffer)
-        self.avoidingStateMachineCoW { state in
-            state = .streaming(
-                extendedQueryContext, describeInfo, rowHeader, streamState
+        ):
+            partial.writeImmutableBuffer(buffer)
+            self.avoidingStateMachineCoW { state in
+                state = .streaming(
+                    extendedQueryContext, describeInfo, rowHeader, streamState
+                )
+            }
+            return self.moreDataReceived(
+                &partial,
+                capabilities: capabilities,
+                context: extendedQueryContext,
+                describeInfo: describeInfo
             )
+
+        default:
+            preconditionFailure("invalid state: \(self.state)")
         }
-        return self.moreDataReceived(
-            &partial,
-            capabilities: capabilities,
-            context: extendedQueryContext,
-            describeInfo: describeInfo
-        )
     }
 
     mutating func ioVectorReceived(

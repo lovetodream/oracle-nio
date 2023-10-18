@@ -104,7 +104,9 @@ struct ConnectionStateMachine {
         // Query streaming
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow])
-        case forwardStreamError(OracleSQLError, read: Bool, cursorID: UInt16?)
+        case forwardStreamError(
+            OracleSQLError, read: Bool, cursorID: UInt16?, clientCancelled: Bool
+        )
 
         case sendMarker
     }
@@ -782,6 +784,7 @@ struct ConnectionStateMachine {
                 .needMoreData,
                 .forwardRows,
                 .forwardStreamComplete,
+                .forwardCancelComplete,
                 .read,
                 .wait:
                 preconditionFailure("invalid state")
@@ -794,9 +797,14 @@ struct ConnectionStateMachine {
                     promise, with: error, cleanupContext: cleanupContext
                 )
 
-            case .forwardStreamError(let error, let read, let cursorID):
+            case .forwardStreamError(
+                let error, let read, let cursorID, let clientCancelled
+            ):
                 return .forwardStreamError(
-                    error, read: read, cursorID: cursorID
+                    error,
+                    read: read,
+                    cursorID: cursorID,
+                    clientCancelled: clientCancelled
                 )
             }
 
@@ -1026,8 +1034,17 @@ extension ConnectionStateMachine {
             return .forwardRows(rows)
         case .forwardStreamComplete(let rows):
             return .forwardStreamComplete(rows)
-        case .forwardStreamError(let error, let read, let cursorID):
-            return .forwardStreamError(error, read: read, cursorID: cursorID)
+        case .forwardStreamError(
+            let error, let read, let cursorID, let clientCancelled
+        ):
+            return .forwardStreamError(
+                error, 
+                read: read,
+                cursorID: cursorID,
+                clientCancelled: clientCancelled
+            )
+        case .forwardCancelComplete:
+            return .fireEventReadyForQuery
         case .evaluateErrorAtConnectionLevel(let error):
             if let cleanupContext = 
                 self.setErrorAndCreateCleanupContextIfNeeded(error)

@@ -237,9 +237,9 @@ struct ExtendedQueryStateMachine {
             Constants.TNS_ERR_ARRAY_DML_ERRORS == error.number
         {
             switch self.state {
-            case .initialized, .commandComplete, .error, .drain:
+            case .commandComplete, .error, .drain:
                 preconditionFailure()
-            case .describeInfoReceived(let context, _):
+            case .initialized(let context), .describeInfoReceived(let context, _):
                 self.avoidingStateMachineCoW { state in
                     state = .commandComplete
                 }

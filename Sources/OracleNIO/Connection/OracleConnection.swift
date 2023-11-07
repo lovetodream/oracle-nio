@@ -4,9 +4,6 @@ import NIOTransportServices
 #endif
 import NIOSSL
 import class Foundation.ProcessInfo
-#if DEBUG
-import Logging
-#endif
 
 public class OracleConnection {
     /// A Oracle connection ID, used exclusively for logging.
@@ -93,11 +90,6 @@ public class OracleConnection {
         // 2. add handlers
 
         do {
-            #if DEBUG
-            var tracer = Logger(label: "oracle-nio.network-tracing")
-            tracer.logLevel = .debug
-            try self.channel.pipeline.syncOperations.addHandler(DebugLogHandler(logger: tracer))
-            #endif
             try self.channel.pipeline.syncOperations.addHandler(eventHandler)
             try self.channel.pipeline.syncOperations
                 .addHandler(channelHandler, position: .before(eventHandler))
@@ -365,29 +357,3 @@ extension OracleConnection {
         #endif
     }
 }
-
-
-#if DEBUG
-private final class DebugLogHandler: ChannelDuplexHandler {
-    typealias InboundIn = ByteBuffer
-    typealias OutboundIn = ByteBuffer
-
-    private var logger: Logger
-
-    init(logger: Logger) {
-        self.logger = logger
-    }
-
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let buffer = self.unwrapInboundIn(data)
-        self.logger.info("\(buffer.hexDump(format: .detailed))", metadata: ["direction": "incoming"])
-        context.fireChannelRead(data)
-    }
-
-    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let buffer = self.unwrapOutboundIn(data)
-        self.logger.info("\(buffer.hexDump(format: .detailed))", metadata: ["direction": "outgoing"])
-        context.write(data, promise: promise)
-    }
-}
-#endif

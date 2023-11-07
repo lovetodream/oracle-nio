@@ -5,8 +5,8 @@ enum DatabaseNumericType: Int {
     case string = 3
 }
 
-/// - Warning: Be aware that this enum might receive additional values without major semver changes!
-public enum _DBTypeNumber: Int, Sendable {
+@usableFromInline
+enum DBTypeNumber: Int, Sendable {
     case bFile = 2020
     case binaryDouble = 2008
     case binaryFloat = 2007
@@ -42,7 +42,7 @@ public struct DBType: Sendable, Equatable, Hashable {
     @usableFromInline
     var key: UInt16
     @usableFromInline
-    var number: _DBTypeNumber
+    var number: DBTypeNumber
     @usableFromInline
     var name: String
     @usableFromInline
@@ -56,8 +56,9 @@ public struct DBType: Sendable, Equatable, Hashable {
     @usableFromInline
     var bufferSizeFactor: Int = 0
 
-    public init(
-        number: _DBTypeNumber,
+    @usableFromInline
+    init(
+        number: DBTypeNumber,
         name: String,
         oracleName: String,
         oracleType: DataType.Value? = nil,

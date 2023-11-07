@@ -90,13 +90,6 @@ extension OracleQuery {
             self.sql.append(contentsOf: ":\(self.binds.count)")
         }
 
-        public mutating func appendInterpolation<Value: OracleRef>(
-            _ value: Value
-        ) throws {
-            self.binds.append(value)
-            self.sql.append(contentsOf: ":\(self.binds.count)")
-        }
-
         @inlinable
         public mutating func appendInterpolation<
             Value: OracleThrowingDynamicTypeEncodable, 
@@ -145,9 +138,6 @@ public struct OracleBindings: Sendable, Hashable {
         var arrayCount: Int
         @usableFromInline
         var maxArraySize: Int
-
-        @usableFromInline
-        var outContainer: OracleRef? // reference type for return binds
 
         @inlinable
         init(
@@ -263,18 +253,6 @@ public struct OracleBindings: Sendable, Hashable {
             protected: true,
             isReturnBind: false
         ))
-    }
-
-    @inlinable
-    public mutating func append<Value: OracleRef>(_ value: Value) {
-        var metadata = value.metadata
-        metadata.outContainer = value
-        if var bytes = value.storage {
-            self.bytes.writeBuffer(&bytes)
-        } else {
-            self.bytes.writeInteger(UInt8(0)) // null
-        }
-        self.metadata.append(metadata)
     }
 
     @inlinable

@@ -8,7 +8,6 @@ extension ByteBuffer {
     ) {
         self.prepareSend(
             packetTypeByte: packetType.rawValue,
-            packetFlags: packetFlags,
             protocolVersion: protocolVersion
         )
     }

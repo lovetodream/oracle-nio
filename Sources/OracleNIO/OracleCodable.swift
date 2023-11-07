@@ -7,7 +7,7 @@ import class Foundation.JSONDecoder
 /// Dynamic types are types that don't have a well-known Oracle type OID at compile time.
 /// For example, custom types created at runtime, such as enums, or extension types whose OID is not
 /// stable between databases.
-public protocol OracleThrowingDynamicTypeEncodable {
+public protocol OracleThrowingDynamicTypeEncodable: Sendable {
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
     var oracleType: DBType { get }
 
@@ -106,7 +106,7 @@ public protocol OracleEncodable:
 /// A type that can decode itself from a oracle wire binary representation.
 ///
 /// If you want to conform a type to OracleDecodable you must implement the decode method.
-public protocol OracleDecodable {
+public protocol OracleDecodable: Sendable {
     /// A type definition of the type that actually implements the OracleDecodable protocol.
     ///
     /// This is an escape hatch to prevent a cycle in the conformance of the Optional type to

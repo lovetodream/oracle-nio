@@ -185,25 +185,78 @@ struct ExtendedQueryStateMachine {
         _ rowData: OracleBackendMessage.RowData,
         capabilities: Capabilities
     ) -> Action {
-        guard case .streaming(let context, let describeInfo, _, _) = state else {
-            preconditionFailure()
-        }
+        switch self.state {
+        case .initialized(let context):
+            let outBinds = context.query.binds.metadata
+                .compactMap(\.outContainer)
+            guard !outBinds.isEmpty else { preconditionFailure() }
+            var buffer = rowData.slice
+            for outBind in outBinds {
+                outBind.storage = ByteBuffer()
+                let rowCount = buffer.readUB4() ?? 0
+                guard rowCount > 0 else {
+                    continue
+                }
+                
+                do {
+                    for _ in 0..<rowCount {
+                        var columnData = try self.processColumnData(
+                            from: &buffer,
+                            oracleType: outBind.metadata.dataType._oracleType,
+                            csfrm: outBind.metadata.dataType.csfrm,
+                            bufferSize: outBind.metadata.bufferSize,
+                            capabilities: capabilities
+                        )
 
-        var buffer = rowData.slice
-        let action = self.rowDataReceived0(
-            buffer: &buffer, capabilities: capabilities
-        )
-        switch action {
-        case .wait:
+                        let actualBytesCount = buffer.readSB4() ?? 0
+                        if actualBytesCount < 0 && 
+                            outBind.metadata.dataType._oracleType == .boolean {
+                            continue
+                        } else if actualBytesCount != 0 && columnData != nil {
+                            // TODO: throw this as error?
+                            preconditionFailure("column truncated, length: \(actualBytesCount)")
+                        }
+
+                        guard columnData != nil else {
+                            preconditionFailure("TODO: unhandled need more data")
+                        }
+
+                        outBind.storage!.writeBuffer(&columnData!)
+                    }
+                } catch {
+                    guard let error = error as? OracleSQLError else {
+                        preconditionFailure()
+                    }
+                    return self.setAndFireError(error)
+                }
+            }
+
             return self.moreDataReceived(
-                &buffer, 
+                &buffer,
                 capabilities: capabilities,
                 context: context,
-                describeInfo: describeInfo
+                describeInfo: nil
             )
 
-        default:
-            return action
+        case .streaming(let context, let describeInfo, _, _):
+            var buffer = rowData.slice
+            let action = self.rowDataReceived0(
+                buffer: &buffer, capabilities: capabilities
+            )
+            switch action {
+            case .wait:
+                return self.moreDataReceived(
+                    &buffer,
+                    capabilities: capabilities,
+                    context: context,
+                    describeInfo: describeInfo
+                )
+
+            default:
+                return action
+            }
+
+        default: preconditionFailure()
         }
     }
 
@@ -647,7 +700,7 @@ struct ExtendedQueryStateMachine {
         _ buffer: inout ByteBuffer,
         capabilities: Capabilities,
         context: ExtendedQueryContext,
-        describeInfo: DescribeInfo
+        describeInfo: DescribeInfo?
     ) -> Action {
         while buffer.readableBytes > 0 {
             // This is not ideal, but still not as bad as passing potentially
@@ -664,7 +717,7 @@ struct ExtendedQueryStateMachine {
             do {
                 let decodingContext = OracleBackendMessageDecoder.Context()
                 decodingContext.queryOptions = context.options
-                decodingContext.columnsCount = describeInfo.columns.count
+                decodingContext.columnsCount = describeInfo?.columns.count
                 let messages = try OracleBackendMessage.decode(
                     from: &slice,
                     of: .data,
@@ -838,13 +891,11 @@ struct ExtendedQueryStateMachine {
 
     private func processColumnData(
         from buffer: inout ByteBuffer,
-        columnInfo: DescribeInfo.Column,
+        oracleType: DataType.Value?,
+        csfrm: UInt8,
+        bufferSize: UInt32,
         capabilities: Capabilities
     ) throws -> ByteBuffer? {
-        let oracleType = columnInfo.dataType._oracleType
-        let csfrm = columnInfo.dataType.csfrm
-        let bufferSize = columnInfo.bufferSize
-
         let columnValue: ByteBuffer
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
             columnValue = ByteBuffer(bytes: [0]) // NULL indicator
@@ -885,7 +936,7 @@ struct ExtendedQueryStateMachine {
                 tempBuffer.encode(into: &columnValue, context: .default)
                 return columnValue
             } else {
-                columnValue = .init() // empty buffer
+                columnValue = .init(bytes: [0]) // empty buffer
             }
         case .json:
             // TODO: OSON
@@ -922,7 +973,11 @@ struct ExtendedQueryStateMachine {
                     buffer.writeBuffer(&data)
                 }
             } else if var data = try self.processColumnData(
-                from: &buffer, columnInfo: column, capabilities: capabilities
+                from: &buffer,
+                oracleType: column.dataType._oracleType,
+                csfrm: column.dataType.csfrm,
+                bufferSize: column.bufferSize,
+                capabilities: capabilities
             ) {
                 out.writeBuffer(&data)
             } else {

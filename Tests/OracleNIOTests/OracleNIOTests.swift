@@ -593,8 +593,7 @@ final class OracleNIOTests: XCTestCase {
             let conn = try await OracleConnection.test(on: self.eventLoop)
             defer { XCTAssertNoThrow(try conn.close().wait()) }
             // table creation errors can be ignored
-            _ = try? await conn.query("TRUNCATE TABLE test_out", logger: .oracleTest)
-//            _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
+            _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
 
             let out = OracleRef(dataType: .number, isReturnBind: true)
             try await conn.query("""
@@ -603,7 +602,7 @@ final class OracleNIOTests: XCTestCase {
             """, logger: .oracleTest)
             XCTAssertEqual(try out.decode(), 1)
 
-//            _ = try? await conn.query("DROP TABLE test_out", logger: .oracleTest)
+            _ = try? await conn.query("DROP TABLE test_out", logger: .oracleTest)
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }
@@ -639,6 +638,22 @@ final class OracleNIOTests: XCTestCase {
             """, logger: .oracleTest)
             XCTAssertEqual(try out1.decode(), 15)
             XCTAssertEqual(try out2.decode(), 15)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testInOutBindInPLSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            let ref = OracleRef(OracleNumber(25))
+            try await conn.query("""
+            begin
+            \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
+            end;
+            """, logger: .oracleTest)
+            XCTAssertEqual(try ref.decode(), 40)
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }

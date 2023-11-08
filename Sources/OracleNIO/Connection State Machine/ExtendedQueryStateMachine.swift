@@ -192,6 +192,7 @@ struct ExtendedQueryStateMachine {
             var buffer = rowData.slice
             if context.isReturning {
                 for outBind in outBinds {
+                    outBind.storage = nil
                     let rowCount = buffer.readUB4() ?? 0
                     guard rowCount > 0 else {
                         continue
@@ -221,6 +222,7 @@ struct ExtendedQueryStateMachine {
                 )
             } else {
                 for outBind in outBinds {
+                    outBind.storage = nil
                     do {
                         try self.processBindData(
                             from: &buffer,

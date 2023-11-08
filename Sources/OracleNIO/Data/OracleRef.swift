@@ -1,16 +1,32 @@
 import NIOCore
 
-/// A reference type used to capture OUT and IN/OUT binds in DML returning statements or PL/SQL.
+/// A reference type used to capture `OUT` and `IN/OUT` binds in `DML` returning statements or 
+/// `PL/SQL`.
 ///
 /// - Note: `OracleRef`s used as `IN/OUT` binds without a value will be declared
 ///         as `NULL` in `PL/SQL`.
 ///
-/// Here is an example showing how to use OUT binds in a `RETURNING` clause:
+/// Here is an example showing how to use `OUT` binds in a `RETURNING` clause:
 ///
 /// ```swift
 /// let ref = OracleRef(dataType: .number, isReturnBind: true)
-/// try await connection.query("INSERT INTO table(id) VALUES (1) RETURNING id INTO \(ref)", logger: logger)
+/// try await connection.query(
+///     "INSERT INTO table(id) VALUES (1) RETURNING id INTO \(ref)",
+///     logger: logger
+/// )
 /// let id = try ref.decode(as: Int.self) // 1
+/// ```
+///
+/// Here is an example showing how to use `OUT` binds in `PL\SQL`:
+///
+/// ```swift
+/// let ref = OracleRef(dataType: .number)
+/// try await conn.query("""
+///     begin
+///         \(ref) := \(OracleNumber(8)) + \(OracleNumber(7));
+///     end;
+///     """, logger: logger)
+/// let result = try ref.decode(as: Int.self) // 15
 /// ```
 ///
 public final class OracleRef: @unchecked Sendable, Hashable {
@@ -44,21 +60,26 @@ public final class OracleRef: @unchecked Sendable, Hashable {
             isReturnBind: isReturnBind,
             isArray: false,
             arrayCount: nil,
-            maxArraySize: nil
+            maxArraySize: nil,
+            bindName: nil
         )
     }
 
     /// Use this initializer to create a IN/OUT bind.
     public init<V: OracleThrowingDynamicTypeEncodable>(_ value: V) throws {
         self.storage = ByteBuffer()
-        self.metadata = .init(value: value, protected: true, isReturnBind: true)
+        self.metadata = .init(
+            value: value, protected: true, isReturnBind: false, bindName: nil
+        )
         try value._encodeRaw(into: &self.storage!, context: .default)
     }
 
     /// Use this initializer to create a IN/OUT bind.
     public init<V: OracleEncodable>(_ value: V) {
         self.storage = ByteBuffer()
-        self.metadata = .init(value: value, protected: true, isReturnBind: true)
+        self.metadata = .init(
+            value: value, protected: true, isReturnBind: false, bindName: nil
+        )
         value._encodeRaw(into: &self.storage!, context: .default)
     }
 

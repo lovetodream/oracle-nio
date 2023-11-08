@@ -556,7 +556,6 @@ struct OracleFrontendMessageEncoder {
         }
         if queryContext.cursorID == 0 || queryContext.statement.isDDL {
             let sqlBytes = queryContext.query.sql.bytes
-            self.buffer.writeInteger(UInt8(sqlBytes.count)) // TODO: TNS_LONG_LENGTH_INDICATOR handling
             self.buffer.writeBytes(sqlBytes)
             self.buffer.writeUB4(1) // al8i4[0] parse
         } else {

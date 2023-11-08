@@ -4,6 +4,7 @@ import NIOTransportServices
 #endif
 import NIOSSL
 import class Foundation.ProcessInfo
+
 #if DEBUG
 import Logging
 #endif
@@ -94,9 +95,11 @@ public class OracleConnection {
 
         do {
             #if DEBUG
-            var tracer = Logger(label: "oracle-nio.network-tracing")
-            tracer.logLevel = .debug
-            try self.channel.pipeline.syncOperations.addHandler(DebugLogHandler(logger: tracer))
+            // This is very useful for sending hex dumps to Oracle to analyze
+            // problems in the driver.
+            let tracer = Logger(label: "oracle-nio.network-tracing")
+            try self.channel.pipeline.syncOperations
+                .addHandler(DebugLogHandler(logger: tracer))
             #endif
             try self.channel.pipeline.syncOperations.addHandler(eventHandler)
             try self.channel.pipeline.syncOperations
@@ -373,20 +376,43 @@ private final class DebugLogHandler: ChannelDuplexHandler {
     typealias OutboundIn = ByteBuffer
 
     private var logger: Logger
+    private var shouldLog: Bool
 
-    init(logger: Logger) {
+    init(logger: Logger, shouldLog: Bool? = nil) {
+        if let shouldLog {
+            self.shouldLog = shouldLog
+        } else {
+            let envValue = getenv("ORANIO_TRACE_PACKETS")
+                .flatMap { String(cString: $0) }
+                .flatMap(Int.init) ?? 0
+            self.shouldLog = envValue != 0
+        }
         self.logger = logger
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let buffer = self.unwrapInboundIn(data)
-        self.logger.info("\(buffer.hexDump(format: .detailed))", metadata: ["direction": "incoming"])
+        if self.shouldLog {
+            let buffer = self.unwrapInboundIn(data)
+            self.logger.info(
+                "\(buffer.hexDump(format: .detailed))", 
+                metadata: ["direction": "incoming"]
+            )
+        }
         context.fireChannelRead(data)
     }
 
-    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let buffer = self.unwrapOutboundIn(data)
-        self.logger.info("\(buffer.hexDump(format: .detailed))", metadata: ["direction": "outgoing"])
+    func write(
+        context: ChannelHandlerContext, 
+        data: NIOAny,
+        promise: EventLoopPromise<Void>?
+    ) {
+        if self.shouldLog {
+            let buffer = self.unwrapOutboundIn(data)
+            self.logger.info(
+                "\(buffer.hexDump(format: .detailed))", 
+                metadata: ["direction": "outgoing"]
+            )
+        }
         context.write(data, promise: promise)
     }
 }

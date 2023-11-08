@@ -17,7 +17,7 @@ import NIOCore
 /// let id = try ref.decode(as: Int.self) // 1
 /// ```
 ///
-/// Here is an example showing how to use `OUT` binds in `PL\SQL`:
+/// Here is an example showing how to use `OUT` binds in `PL/SQL`:
 ///
 /// ```swift
 /// let ref = OracleRef(dataType: .number)
@@ -27,6 +27,18 @@ import NIOCore
 ///     end;
 ///     """, logger: logger)
 /// let result = try ref.decode(as: Int.self) // 15
+/// ```
+///
+/// Here is an example showing how to use `IN/OUT` binds in `PL/SQL`
+///
+/// ```swift
+/// let ref = OracleRef(OracleNumber(25))
+/// try await conn.query("""
+///     begin
+///     \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
+///     end;
+///     """, logger: .oracleTest)
+/// let result = try ref.decode(as: Int.self) // 40
 /// ```
 ///
 public final class OracleRef: @unchecked Sendable, Hashable {

@@ -31,7 +31,7 @@ extension ExtendedQueryContext {
     
     convenience init(query: OracleQuery) throws {
         try self.init(
-            query: query, options: .init(), useCharacterConversion: true,
+            query: query, options: .init(),
             logger: .oracleTest,
             promise: OracleConnection.defaultEventLoopGroup.any().makePromise()
         )

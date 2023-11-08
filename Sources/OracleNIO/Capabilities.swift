@@ -16,7 +16,6 @@ struct Capabilities: Sendable, Hashable {
     var nCharsetID = Constants.TNS_CHARSET_UTF16
     var compileCapabilities = [UInt8](repeating: 0, count: Constants.TNS_CCAP_MAX)
     var runtimeCapabilities = [UInt8](repeating: 0, count: Constants.TNS_RCAP_MAX)
-    var characterConversion = false
     var supportsOOB = false
     var maxStringSize: UInt32 = 0
 

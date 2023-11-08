@@ -233,7 +233,6 @@ public class OracleConnection {
             let context = try ExtendedQueryContext(
                 query: query,
                 options: options,
-                useCharacterConversion: self.capabilities.characterConversion,
                 logger: logger,
                 promise: promise
             )
@@ -331,7 +330,6 @@ extension OracleConnection {
         let context = try ExtendedQueryContext(
             query: query,
             options: options,
-            useCharacterConversion: self.capabilities.characterConversion,
             logger: logger,
             promise: promise
         )

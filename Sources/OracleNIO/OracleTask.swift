@@ -81,19 +81,13 @@ final class ExtendedQueryContext {
     init(
         query: OracleQuery,
         options: QueryOptions,
-        useCharacterConversion: Bool,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
     ) throws {
         self.logger = logger
         self.query = query
         self.options = options
-
-        if useCharacterConversion {
-            self.sqlLength = .init(query.sql.count)
-        } else {
-            self.sqlLength = .init(query.sql.bytes.count)
-        }
+        self.sqlLength = .init(query.sql.bytes.count)
 
         // strip single/multiline comments and and strings from the sql
         var sql = query.sql

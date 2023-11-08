@@ -262,6 +262,8 @@ enum Constants {
     static let TNS_CHARSET_UTF16: UInt16 = 2000
     static let TNS_ENCODING_UTF8 = "UTF-8"
     static let TNS_ENCODING_UTF16 = "UTF-16BE"
+    static let TNS_ENCODING_MULTI_BYTE = 0x01
+    static let TNS_ENCODING_CONV_LENGTH = 0x02
 
     // MARK: Compile time capability indices
     static let TNS_CCAP_SQL_VERSION = 0

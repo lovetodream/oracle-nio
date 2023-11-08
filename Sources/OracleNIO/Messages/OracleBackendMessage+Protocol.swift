@@ -19,8 +19,7 @@ extension OracleBackendMessage {
                 endianness: .little, as: UInt16.self
             )
             var capabilities = capabilities
-            capabilities.characterConversion =
-                charsetID != Constants.TNS_CHARSET_UTF8
+            capabilities.charsetID = charsetID
 
             buffer.moveReaderIndex(forwardBy: 1) // skip server flags
             let elementsCount = try buffer.throwingReadInteger(

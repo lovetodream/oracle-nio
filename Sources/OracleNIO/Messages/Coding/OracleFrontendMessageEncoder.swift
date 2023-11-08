@@ -183,7 +183,10 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeInteger(MessageType.dataTypes.rawValue, as: UInt8.self)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
-        self.buffer.writeUB4(UInt32(capabilities.compileCapabilities.count))
+        self.buffer.writeInteger(UInt8(
+            Constants.TNS_ENCODING_MULTI_BYTE | Constants.TNS_ENCODING_CONV_LENGTH
+        ))
+        self.buffer.writeInteger(UInt8(capabilities.compileCapabilities.count))
         self.buffer.writeBytes(capabilities.compileCapabilities)
         self.buffer.writeInteger(UInt8(capabilities.runtimeCapabilities.count))
         self.buffer.writeBytes(capabilities.runtimeCapabilities)
@@ -555,8 +558,8 @@ struct OracleFrontendMessageEncoder {
             }
         }
         if queryContext.cursorID == 0 || queryContext.statement.isDDL {
-            let sqlBytes = queryContext.query.sql.bytes
-            self.buffer.writeBytes(sqlBytes)
+            queryContext.query.sql
+                ._encodeRaw(into: &self.buffer, context: .default)
             self.buffer.writeUB4(1) // al8i4[0] parse
         } else {
             self.buffer.writeUB4(0) // al8i4[0] parse
@@ -1008,14 +1011,14 @@ extension OracleFrontendMessageEncoder {
         authMode: UInt32,
         pairsCount: UInt32
     ) {
-        let username: [UInt8]
+        let username: String
         let usernameLength: Int
         switch authContext.method.base {
         case .usernamePassword(let user, _, _):
-            username = user.bytes
-            usernameLength = user.count
+            username = user
+            usernameLength = user.bytes.count
         case .token:
-            username = []
+            username = ""
             usernameLength = 0
         }
         let hasUser: UInt8 = usernameLength > 0 ? 1 : 0
@@ -1037,7 +1040,7 @@ extension OracleFrontendMessageEncoder {
         self.buffer.writeInteger(UInt8(1)) // pointer (authovl)
         self.buffer.writeInteger(UInt8(1)) // pointer (authovln)
         if hasUser != 0 {
-            self.buffer.writeBytes(username)
+            username._encodeRaw(into: &self.buffer, context: .default)
         }
     }
 

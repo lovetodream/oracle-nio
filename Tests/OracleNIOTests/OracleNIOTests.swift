@@ -588,6 +588,77 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testOutBind() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            // table creation errors can be ignored
+            _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
+
+            let out = OracleRef(dataType: .number, isReturnBind: true)
+            try await conn.query("""
+            INSERT INTO test_out VALUES (\(OracleNumber(1)))
+            RETURNING value INTO \(out)
+            """, logger: .oracleTest)
+            XCTAssertEqual(try out.decode(), 1)
+
+            _ = try? await conn.query("DROP TABLE test_out", logger: .oracleTest)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testOutBindInPLSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            let out = OracleRef(dataType: .number)
+            try await conn.query("""
+            begin 
+            \(out) := \(OracleNumber(8)) + \(OracleNumber(7));
+            end;
+            """, logger: .oracleTest)
+            XCTAssertEqual(try out.decode(), 15)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testOutBindDuplicateInPLSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            let out1 = OracleRef(dataType: .number)
+            let out2 = OracleRef(dataType: .number)
+            try await conn.query("""
+            begin
+            \(out1) := \(OracleNumber(8)) + \(OracleNumber(7));
+            \(out2) := 15;
+            end;
+            """, logger: .oracleTest)
+            XCTAssertEqual(try out1.decode(), 15)
+            XCTAssertEqual(try out2.decode(), 15)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testInOutBindInPLSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            let ref = OracleRef(OracleNumber(25))
+            try await conn.query("""
+            begin
+            \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
+            end;
+            """, logger: .oracleTest)
+            XCTAssertEqual(try ref.decode(), 40)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

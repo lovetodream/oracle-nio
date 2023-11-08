@@ -1,6 +1,6 @@
 import NIOCore
 
-final class LOB {
+final class LOB: @unchecked Sendable {
     var size: UInt64
     var chunkSize: UInt32
     internal var locator: ByteBuffer
@@ -86,6 +86,14 @@ final class LOB {
 }
 
 extension LOB: OracleEncodable {
+    static func == (lhs: LOB, rhs: LOB) -> Bool {
+        lhs.size == rhs.size &&
+        lhs.chunkSize == rhs.chunkSize &&
+        lhs.locator == rhs.locator &&
+        lhs.hasMetadata == rhs.hasMetadata &&
+        lhs.dbType == rhs.dbType
+    }
+    
     public var oracleType: DBType { .blob }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(

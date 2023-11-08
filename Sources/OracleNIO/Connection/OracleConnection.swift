@@ -5,6 +5,10 @@ import NIOTransportServices
 import NIOSSL
 import class Foundation.ProcessInfo
 
+#if DEBUG
+import Logging
+#endif
+
 public class OracleConnection {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int
@@ -90,6 +94,13 @@ public class OracleConnection {
         // 2. add handlers
 
         do {
+            #if DEBUG
+            // This is very useful for sending hex dumps to Oracle to analyze
+            // problems in the driver.
+            let tracer = Logger(label: "oracle-nio.network-tracing")
+            try self.channel.pipeline.syncOperations
+                .addHandler(DebugLogHandler(logger: tracer))
+            #endif
             try self.channel.pipeline.syncOperations.addHandler(eventHandler)
             try self.channel.pipeline.syncOperations
                 .addHandler(channelHandler, position: .before(eventHandler))
@@ -357,3 +368,52 @@ extension OracleConnection {
         #endif
     }
 }
+
+
+#if DEBUG
+private final class DebugLogHandler: ChannelDuplexHandler {
+    typealias InboundIn = ByteBuffer
+    typealias OutboundIn = ByteBuffer
+
+    private var logger: Logger
+    private var shouldLog: Bool
+
+    init(logger: Logger, shouldLog: Bool? = nil) {
+        if let shouldLog {
+            self.shouldLog = shouldLog
+        } else {
+            let envValue = getenv("ORANIO_TRACE_PACKETS")
+                .flatMap { String(cString: $0) }
+                .flatMap(Int.init) ?? 0
+            self.shouldLog = envValue != 0
+        }
+        self.logger = logger
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        if self.shouldLog {
+            let buffer = self.unwrapInboundIn(data)
+            self.logger.info(
+                "\(buffer.hexDump(format: .detailed))", 
+                metadata: ["direction": "incoming"]
+            )
+        }
+        context.fireChannelRead(data)
+    }
+
+    func write(
+        context: ChannelHandlerContext, 
+        data: NIOAny,
+        promise: EventLoopPromise<Void>?
+    ) {
+        if self.shouldLog {
+            let buffer = self.unwrapOutboundIn(data)
+            self.logger.info(
+                "\(buffer.hexDump(format: .detailed))", 
+                metadata: ["direction": "outgoing"]
+            )
+        }
+        context.write(data, promise: promise)
+    }
+}
+#endif

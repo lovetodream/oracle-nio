@@ -555,7 +555,8 @@ struct OracleFrontendMessageEncoder {
             }
         }
         if queryContext.cursorID == 0 || queryContext.statement.isDDL {
-            self.buffer.writeBytes(queryContext.query.sql.bytes)
+            let sqlBytes = queryContext.query.sql.bytes
+            self.buffer.writeBytes(sqlBytes)
             self.buffer.writeUB4(1) // al8i4[0] parse
         } else {
             self.buffer.writeUB4(0) // al8i4[0] parse

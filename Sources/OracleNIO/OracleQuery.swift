@@ -97,7 +97,7 @@ extension OracleQuery {
 
         public mutating func appendInterpolation<Value: OracleRef>(
             _ value: Value
-        ) throws {
+        ) {
             if let bindName = self.binds.contains(ref: value) {
                 self.sql.append(contentsOf: ":\(bindName)")
             } else {

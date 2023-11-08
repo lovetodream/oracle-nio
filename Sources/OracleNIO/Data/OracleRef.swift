@@ -8,7 +8,7 @@ import NIOCore
 /// Here is an example showing how to use OUT binds in a `RETURNING` clause:
 ///
 /// ```swift
-/// let ref = OracleRef(dataType: .number)
+/// let ref = OracleRef(dataType: .number, isReturnBind: true)
 /// try await connection.query("INSERT INTO table(id) VALUES (1) RETURNING id INTO \(ref)", logger: logger)
 /// let id = try ref.decode(as: Int.self) // 1
 /// ```
@@ -28,18 +28,21 @@ public final class OracleRef: @unchecked Sendable, Hashable {
     internal var metadata: OracleBindings.Metadata
 
     /// Use this initializer to create a OUT bind.
-    ///
+    /// 
     /// Please be aware that you still have to decode the database response into the Swift type you want
     /// after completing the query (using ``OracleRef.decode()``).
-    ///
+    /// 
     /// - Parameter dataType: The desired datatype within the Oracle database.
-    public init(dataType: DBType) {
+    /// - Parameter isReturnBind: Set this to `true` if the bind is used as part of a DML
+    ///                           statement in the `RETURNING ... INTO binds` where
+    ///                           binds are x `OracleRef`'s.
+    public init(dataType: DBType, isReturnBind: Bool = false) {
         self.storage = nil
         self.metadata = .init(
             dataType: dataType,
             protected: false,
-            isReturnBind: false,
-            isArray: false, 
+            isReturnBind: isReturnBind,
+            isArray: false,
             arrayCount: nil,
             maxArraySize: nil
         )

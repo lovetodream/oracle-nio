@@ -596,7 +596,7 @@ final class OracleNIOTests: XCTestCase {
             _ = try? await conn.query("TRUNCATE TABLE test_out", logger: .oracleTest)
 //            _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
 
-            let out = OracleRef(dataType: .number)
+            let out = OracleRef(dataType: .number, isReturnBind: true)
             try await conn.query("""
             INSERT INTO test_out VALUES (\(OracleNumber(1)))
             RETURNING value INTO \(out)
@@ -620,6 +620,25 @@ final class OracleNIOTests: XCTestCase {
             end;
             """, logger: .oracleTest)
             XCTAssertEqual(try out.decode(), 15)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testOutBindDuplicateInPLSQL() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            let out1 = OracleRef(dataType: .number)
+            let out2 = OracleRef(dataType: .number)
+            try await conn.query("""
+            begin
+            \(out1) := \(OracleNumber(8)) + \(OracleNumber(7));
+            \(out2) := 15;
+            end;
+            """, logger: .oracleTest)
+            XCTAssertEqual(try out1.decode(), 15)
+            XCTAssertEqual(try out2.decode(), 15)
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }

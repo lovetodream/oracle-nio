@@ -187,56 +187,61 @@ struct ExtendedQueryStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            let outBinds = context.query.binds.metadata
-                .compactMap(\.outContainer)
+            let outBinds = context.query.binds.metadata.compactMap(\.outContainer)
             guard !outBinds.isEmpty else { preconditionFailure() }
             var buffer = rowData.slice
-            for outBind in outBinds {
-                outBind.storage = ByteBuffer()
-                let rowCount = buffer.readUB4() ?? 0
-                guard rowCount > 0 else {
-                    continue
+            if context.isReturning {
+                for outBind in outBinds {
+                    let rowCount = buffer.readUB4() ?? 0
+                    guard rowCount > 0 else {
+                        continue
+                    }
+
+                    do {
+                        for _ in 0..<rowCount {
+                            try self.processBindData(
+                                from: &buffer,
+                                outBind: outBind,
+                                capabilities: capabilities
+                            )
+                        }
+                    } catch {
+                        guard let error = error as? OracleSQLError else {
+                            preconditionFailure()
+                        }
+                        return self.setAndFireError(error)
+                    }
                 }
-                
-                do {
-                    for _ in 0..<rowCount {
-                        var columnData = try self.processColumnData(
+
+                return self.moreDataReceived(
+                    &buffer,
+                    capabilities: capabilities,
+                    context: context,
+                    describeInfo: nil
+                )
+            } else {
+                for outBind in outBinds {
+                    do {
+                        try self.processBindData(
                             from: &buffer,
-                            oracleType: outBind.metadata.dataType._oracleType,
-                            csfrm: outBind.metadata.dataType.csfrm,
-                            bufferSize: outBind.metadata.bufferSize,
+                            outBind: outBind,
                             capabilities: capabilities
                         )
-
-                        let actualBytesCount = buffer.readSB4() ?? 0
-                        if actualBytesCount < 0 && 
-                            outBind.metadata.dataType._oracleType == .boolean {
-                            continue
-                        } else if actualBytesCount != 0 && columnData != nil {
-                            // TODO: throw this as error?
-                            preconditionFailure("column truncated, length: \(actualBytesCount)")
+                    } catch {
+                        guard let error = error as? OracleSQLError else {
+                            preconditionFailure()
                         }
-
-                        guard columnData != nil else {
-                            preconditionFailure("TODO: unhandled need more data")
-                        }
-
-                        outBind.storage!.writeBuffer(&columnData!)
+                        return self.setAndFireError(error)
                     }
-                } catch {
-                    guard let error = error as? OracleSQLError else {
-                        preconditionFailure()
-                    }
-                    return self.setAndFireError(error)
                 }
-            }
 
-            return self.moreDataReceived(
-                &buffer,
-                capabilities: capabilities,
-                context: context,
-                describeInfo: nil
-            )
+                return self.moreDataReceived(
+                    &buffer,
+                    capabilities: capabilities,
+                    context: context,
+                    describeInfo: nil
+                )
+            }
 
         case .streaming(let context, let describeInfo, _, _):
             var buffer = rowData.slice
@@ -502,19 +507,15 @@ struct ExtendedQueryStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            // TODO: Parse the vector and see if we have any out or inout binds 
-            // we have to handle. It'll be added with the support for out binds.
-            // For now we do not support out binds at all.
-
-            if vector.bindMetadata.contains(where: {
-                $0.direction != Constants.TNS_BIND_DIR_INPUT
-            }) {
-                // Let's log a warning here, so the user knows what's going on.
-                context.logger.warning("""
-                Received one or more IN/OUT or OUT variables from a PL/SQL \
-                query. OUTPUT variables are not supported yet. Please refactor \
-                your statements if possible.
+            guard context.query.binds.count == vector.bindMetadata.count else {
+                preconditionFailure("""
+                mismatch in binds - sent: \(context.query.binds.count), \
+                received: \(vector.bindMetadata.count)
                 """)
+            }
+            for i in 0..<context.query.binds.count {
+                if vector.bindMetadata[i].direction == Constants.TNS_BIND_DIR_INPUT { continue }
+                // TODO: out binds
             }
 
             // we won't change the state
@@ -887,6 +888,43 @@ struct ExtendedQueryStateMachine {
         let byteNumber = columnNumber / 8
         let bitNumber = columnNumber % 8
         return bitVector[Int(byteNumber)] & (1 << bitNumber) == 0
+    }
+
+    private func processBindData(
+        from buffer: inout ByteBuffer, 
+        outBind: OracleRef,
+        capabilities: Capabilities
+    ) throws {
+        var columnData = try self.processColumnData(
+            from: &buffer,
+            oracleType: outBind.metadata.dataType._oracleType,
+            csfrm: outBind.metadata.dataType.csfrm,
+            bufferSize: outBind.metadata.bufferSize,
+            capabilities: capabilities
+        )
+
+        let actualBytesCount = buffer.readSB4() ?? 0
+        if actualBytesCount < 0 &&
+            outBind.metadata.dataType._oracleType == .boolean {
+            return
+        } else if actualBytesCount != 0 && columnData != nil {
+            // TODO: throw this as error?
+            preconditionFailure("column truncated, length: \(actualBytesCount)")
+        }
+
+        guard columnData != nil else {
+            preconditionFailure("""
+            unhandled need more data in bind processing: please file a issue \
+            on https://github.com/lovetodream/oracle-nio/issues with steps to \
+            reproduce the crash
+            """)
+        }
+
+        if outBind.storage == nil {
+            outBind.storage = columnData!
+        } else {
+            outBind.storage!.writeBuffer(&columnData!)
+        }
     }
 
     private func processColumnData(

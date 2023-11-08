@@ -271,7 +271,7 @@ public struct OracleBindings: Sendable, Hashable {
         metadata.outContainer = value
         if var bytes = value.storage {
             self.bytes.writeBuffer(&bytes)
-        } else {
+        } else if !metadata.isReturnBind { // return binds do not send null
             self.bytes.writeInteger(UInt8(0)) // null
         }
         self.metadata.append(metadata)

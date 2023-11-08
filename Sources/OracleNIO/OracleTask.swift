@@ -74,6 +74,7 @@ final class ExtendedQueryContext {
     let requiresFullExecute: Bool = false
     var requiresDefine: Bool = false
     var noPrefetch: Bool = false
+    let isReturning: Bool
 
     var sequenceNumber: UInt8 = 2
 
@@ -100,6 +101,8 @@ final class ExtendedQueryContext {
         sql = try sql.replacing(Regex(#"\--.*(\n|$)"#), with: "")
         sql = try sql.replacing(Regex(#"'[^']*'(?=(?:[^']*[^']*')*[^']*$)"#), with: "")
 
+        self.isReturning = query.binds.metadata
+            .first(where: \.isReturnBind) != nil
         let query = try Self.determineStatementType(
             minifiedSQL: sql, promise: promise
         )

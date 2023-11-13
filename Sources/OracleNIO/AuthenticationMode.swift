@@ -1,5 +1,5 @@
 /// Oracle authentication modes.
-public enum AuthenticationMode: UInt32, CustomStringConvertible {
+public enum AuthenticationMode: UInt32, Sendable, CustomStringConvertible {
     case `default` = 0
     case prelim = 0x00000008
     case sysASM = 0x00008000

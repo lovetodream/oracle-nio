@@ -8,7 +8,7 @@
 ///  │ └──────────────────── Database Maintenance Release Number
 ///  └───────────────────────── Major Database Release Number
 ///  ```
-struct OracleVersion: CustomStringConvertible {
+struct OracleVersion: CustomStringConvertible, Sendable {
     let majorDatabaseReleaseNumber: Int
     let databaseMaintenanceReleaseNumber: Int
     let fusionMiddlewareReleaseNumber: Int

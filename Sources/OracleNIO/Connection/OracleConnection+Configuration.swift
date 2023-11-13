@@ -4,12 +4,12 @@ import class Foundation.ProcessInfo
 import struct Foundation.TimeZone
 
 extension OracleConnection {
-    public struct Configuration {
+    public struct Configuration: Sendable {
 
         // MARK: - TLS
 
         /// The possible modes of operation for TLS encapsulation of a connection.
-        public struct TLS {
+        public struct TLS: Sendable {
 
             /// Do not try to create a TLS connection to the server.
             public static var disable: Self { .init(base: .disable) }
@@ -40,7 +40,7 @@ extension OracleConnection {
         // MARK: - Underlying connection options
 
         /// Describes options affecting how the underlying connection is made.
-        public struct Options {
+        public struct Options: Sendable {
             /// A timeout for connection attempts. Defaults to ten seconds.
             public var connectTimeout: TimeAmount
 
@@ -117,7 +117,7 @@ extension OracleConnection {
         ///
         /// It is defined as a closure to ensure we'll have an up-to-date token for establishing future 
         /// connections if token based authentication is used.
-        public var authenticationMethod: () -> OracleAuthenticationMethod
+        public var authenticationMethod: @Sendable () -> OracleAuthenticationMethod
 
         public var service: OracleServiceMethod
 
@@ -231,7 +231,7 @@ extension OracleConnection {
             port: Int = 1521,
             service: OracleServiceMethod,
             authenticationMethod:
-                @autoclosure @escaping () -> OracleAuthenticationMethod,
+                @Sendable @autoclosure @escaping () -> OracleAuthenticationMethod,
             tls: TLS = .disable
         ) {
             self.host = host
@@ -353,7 +353,7 @@ public struct OracleAuthenticationMethod:
 
 }
 
-public enum OracleServiceMethod: Equatable {
+public enum OracleServiceMethod: Sendable, Equatable {
     /// The service name of the database.
     case serviceName(String)
     /// The system identifier (SID) of the database.

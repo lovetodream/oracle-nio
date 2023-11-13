@@ -9,7 +9,7 @@ import class Foundation.ProcessInfo
 import Logging
 #endif
 
-public class OracleConnection {
+public final class OracleConnection: @unchecked Sendable {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int
 
@@ -26,7 +26,7 @@ public class OracleConnection {
         !self.channel.isActive
     }
 
-    let id: ID
+    public let id: ID
 
     public var eventLoop: EventLoop { channel.eventLoop }
 

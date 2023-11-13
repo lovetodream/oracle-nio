@@ -30,62 +30,55 @@ import _ConnectionPoolModule
 /// }
 /// ```
 public final class OracleClient: Sendable {
-    public struct Configuration: Sendable {
-        
-        // MARK: Client options
+    /// Describes general client behavior options. Those settings are considered advanced options.
+    public struct Options: Sendable {
+        /// A keep-alive behavior for Oracle connections. The ``frequency`` defines after which time an idle
+        /// connection shall run a keep-alive ping.
+        public struct KeepAliveBehavior: Sendable {
+            /// The amount of time that shall pass before an idle connection runs a keep-alive ``query``.
+            public var frequency: Duration
 
-        /// Describes general client behavior options. Those settings are considered advanced options.
-        public struct Options: Sendable {
-            /// A keep-alive behavior for Oracle connections. The ``frequency`` defines after which time an idle
-            /// connection shall run a keep-alive ping.
-            public struct KeepAliveBehavior: Sendable {
-                /// The amount of time that shall pass before an idle connection runs a keep-alive ``query``.
-                public var frequency: Duration
-
-                /// Create a new `KeepAliveBehavior`.
-                /// - Parameters:
-                ///   - frequency: The amount of time that shall pass before an idle connection runs a keep-alive `query`.
-                ///                Defaults to `30` seconds.
-                public init(frequency: Duration = .seconds(30)) {
-                    self.frequency = frequency
-                }
+            /// Create a new `KeepAliveBehavior`.
+            /// - Parameters:
+            ///   - frequency: The amount of time that shall pass before an idle connection runs a keep-alive `query`.
+            ///                Defaults to `30` seconds.
+            public init(frequency: Duration = .seconds(30)) {
+                self.frequency = frequency
             }
-
-            /// A timeout for creating a TCP connection. Defaults to `10` seconds.
-            public var connectTimout: Duration = .seconds(10)
-
-            /// The minimum number of connections that the client shall keep open at any time, even if there is no
-            /// demand. Default to `0`.
-            ///
-            /// If the open connection count becomes less than ``minimumConnections`` new connections
-            /// are created immidiatly. Must be greater or equal to zero and less than ``maximumConnections``.
-            ///
-            /// Idle connections are kept alive using the ``keepAliveBehavior``.
-            public var minimumConnections: Int = 0
-
-            /// The maximum number of connections that the client may open to the server at any time. Must be greater
-            /// than ``minimumConnections``. Defaults to `20` connections.
-            ///
-            /// Connections, that are created in response to demand are kept alive for the ``connectionIdleTimeout``
-            /// before they are dropped.
-            public var maximumConnections: Int = 20
-
-            /// The maximum amount time that a connection that is not part of the ``minimumConnections`` is kept
-            /// open without being leased. Defaults to `60` seconds.
-            public var connectionIdleTimeout: Duration = .seconds(60)
-
-            /// The ``KeepAliveBehavior-swift.struct`` to ensure that the underlying tcp-connection is still active
-            /// for idle connections. `Nil` means that the client shall not run keep alive queries to the server. Defaults to a
-            /// keep alive ping every `30` seconds.
-            public var keepAliveBehavior: KeepAliveBehavior? = KeepAliveBehavior()
-
-            /// Create an options structure with default values.
-            ///
-            /// Most users should not need to adjust the defaults.
-            public init() {}
         }
 
-        public var options: Options = .init()
+        /// A timeout for creating a TCP connection. Defaults to `10` seconds.
+        public var connectTimout: Duration = .seconds(10)
+
+        /// The minimum number of connections that the client shall keep open at any time, even if there is no
+        /// demand. Default to `0`.
+        ///
+        /// If the open connection count becomes less than ``minimumConnections`` new connections
+        /// are created immidiatly. Must be greater or equal to zero and less than ``maximumConnections``.
+        ///
+        /// Idle connections are kept alive using the ``keepAliveBehavior``.
+        public var minimumConnections: Int = 0
+
+        /// The maximum number of connections that the client may open to the server at any time. Must be greater
+        /// than ``minimumConnections``. Defaults to `20` connections.
+        ///
+        /// Connections, that are created in response to demand are kept alive for the ``connectionIdleTimeout``
+        /// before they are dropped.
+        public var maximumConnections: Int = 20
+
+        /// The maximum amount time that a connection that is not part of the ``minimumConnections`` is kept
+        /// open without being leased. Defaults to `60` seconds.
+        public var connectionIdleTimeout: Duration = .seconds(60)
+
+        /// The ``KeepAliveBehavior-swift.struct`` to ensure that the underlying tcp-connection is still active
+        /// for idle connections. `Nil` means that the client shall not run keep alive queries to the server. Defaults to a
+        /// keep alive ping every `30` seconds.
+        public var keepAliveBehavior: KeepAliveBehavior? = KeepAliveBehavior()
+
+        /// Create an options structure with default values.
+        ///
+        /// Most users should not need to adjust the defaults.
+        public init() {}
     }
 
     typealias Pool = ConnectionPool<
@@ -96,7 +89,7 @@ public final class OracleClient: Sendable {
         ConnectionRequest.ID,
         OracleKeepAliveBehavior,
         OracleClientMetrics,
-         ContinuousClock
+        ContinuousClock
     >
 
     let pool: Pool
@@ -105,7 +98,8 @@ public final class OracleClient: Sendable {
     let backgroundLogger: Logger
 
     public init(
-        configuration: Configuration, 
+        configuration: OracleConnection.Configuration,
+        options: Options = .init(),
         eventLoopGroup: any EventLoopGroup = OracleClient.defaultEventLoopGroup,
         backgroundLogger: Logger
     ) {
@@ -114,10 +108,10 @@ public final class OracleClient: Sendable {
         self.backgroundLogger = backgroundLogger
 
         self.pool = ConnectionPool(
-            configuration: .init(configuration),
+            configuration: .init(options),
             idGenerator: ConnectionIDGenerator(),
             requestType: ConnectionRequest<OracleConnection>.self,
-            keepAliveBehavior: .init(configuration.options.keepAliveBehavior, logger: backgroundLogger),
+            keepAliveBehavior: .init(options.keepAliveBehavior, logger: backgroundLogger),
             observabilityDelegate: .init(logger: backgroundLogger),
             clock: ContinuousClock(),
             connectionFactory: { connectionID, pool in
@@ -172,10 +166,10 @@ public final class OracleClient: Sendable {
 
 
 struct OracleKeepAliveBehavior: ConnectionKeepAliveBehavior {
-    let behaviour: OracleClient.Configuration.Options.KeepAliveBehavior?
+    let behaviour: OracleClient.Options.KeepAliveBehavior?
     let logger: Logger
 
-    init(_ behaviour: OracleClient.Configuration.Options.KeepAliveBehavior?, logger: Logger) {
+    init(_ behaviour: OracleClient.Options.KeepAliveBehavior?, logger: Logger) {
         self.behaviour = behaviour
         self.logger = logger
     }
@@ -190,12 +184,12 @@ struct OracleKeepAliveBehavior: ConnectionKeepAliveBehavior {
 }
 
 extension ConnectionPoolConfiguration {
-    init(_ config: OracleClient.Configuration) {
+    init(_ options: OracleClient.Options) {
         self = ConnectionPoolConfiguration()
-        self.minimumConnectionCount = config.options.minimumConnections
-        self.maximumConnectionSoftLimit = config.options.maximumConnections
-        self.maximumConnectionHardLimit = config.options.maximumConnections
-        self.idleTimeout = config.options.connectionIdleTimeout
+        self.minimumConnectionCount = options.minimumConnections
+        self.maximumConnectionSoftLimit = options.maximumConnections
+        self.maximumConnectionHardLimit = options.maximumConnections
+        self.idleTimeout = options.connectionIdleTimeout
     }
 }
 

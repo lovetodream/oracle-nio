@@ -218,6 +218,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             return
         }
 
+        if self.configuration.drcpEnabled {
+            // TODO: send ReleaseSessionMessage
+        }
         let action = self.state.close(promise)
         self.run(action, with: context)
     }

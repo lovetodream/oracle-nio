@@ -209,6 +209,12 @@ extension OracleConnection {
         internal let _terminalName = "unknown"
 
 
+        // MARK: - Connection Pooling
+        internal var purity: Purity = .default
+        internal var serverType: String?
+        internal var drcpEnabled = false
+        internal var cclass: String?
+
         public init(
             host: String,
             port: Int = 1521,
@@ -262,7 +268,10 @@ extension OracleConnection {
                 service: self.service,
                 sslServerDnMatch: self.serverNameForTLS != nil,
                 sslServerCertDn: nil,
-                walletLocation: nil
+                walletLocation: nil,
+                purity: self.purity,
+                serverType: self.serverType,
+                cclass: self.cclass
             )
             return desc
         }

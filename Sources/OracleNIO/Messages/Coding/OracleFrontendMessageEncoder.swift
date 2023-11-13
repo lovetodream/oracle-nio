@@ -718,6 +718,20 @@ struct OracleFrontendMessageEncoder {
         self.endRequest()
     }
 
+    mutating func releaseSession(deauthenticate: Bool = false) {
+        self.clearIfNeeded()
+
+        self.startRequest()
+
+        self.writeFunctionCode(
+            messageType: .onewayFN, functionCode: .sessionRelease
+        )
+        self.buffer.writeInteger(UInt8(0)) // pointer (tag name)
+        self.buffer.writeInteger(UInt8(0)) // tag name length
+        self.buffer.writeUB4(deauthenticate ? Constants.DRCP_DEAUTHENTICATE : 0)
+        self.endRequest()
+    }
+
     mutating func logoff() {
         self.clearIfNeeded()
 

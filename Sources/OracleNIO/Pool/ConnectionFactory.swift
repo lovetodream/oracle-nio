@@ -12,6 +12,7 @@ final class ConnectionFactory: Sendable {
     }
 
     let configBox: NIOLockedValueBox<ConfigCache>
+    let drcp: Bool
 
     let eventLoopGroup: any EventLoopGroup
 
@@ -21,12 +22,15 @@ final class ConnectionFactory: Sendable {
     let isBootstrapped = ManagedAtomic(false)
     let bootstrapLock = NIOLock()
 
+
     init(
         config: OracleConnection.Configuration,
+        drcp: Bool,
         eventLoopGroup: any EventLoopGroup,
         logger: Logger
     ) {
         self.configBox = NIOLockedValueBox(ConfigCache(config: config))
+        self.drcp = drcp
         self.eventLoopGroup = eventLoopGroup
         self.logger = logger
     }
@@ -56,6 +60,10 @@ final class ConnectionFactory: Sendable {
     }
 
     func makeConfiguration(newPool: Bool) -> OracleConnection.Configuration {
+        if !self.drcp {
+            return self.configBox.withLockedValue { $0.config }
+        }
+
         var config = self.configBox.withLockedValue {
             if $0.config.cclass == nil {
                 $0.config.cclass = "DBNIO:\(Self.b64UUID())"
@@ -63,17 +71,13 @@ final class ConnectionFactory: Sendable {
             return $0.config
         }
 
-
-        // - set purity: NEW if this is the pool's first connection, otherwise SELF
-        // - set cclass
-        // - set drcpEnabled
-        // - add drcp specific params to messages
         // - add drcp release message to channel closing
 
         config.purity = newPool ? .new : .`self`
-        config.serverType = "pooled"
-        config.drcpEnabled = true
-        config.cclass = "DBNIO"
+        if !newPool {
+            config.serverType = "pooled"
+            config.drcpEnabled = true
+        }
 
         return config
     }

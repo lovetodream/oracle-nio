@@ -47,9 +47,6 @@ public final class OracleClient: Sendable {
             }
         }
 
-        /// A timeout for creating a TCP connection. Defaults to `10` seconds.
-        public var connectTimout: Duration = .seconds(10)
-
         /// The minimum number of connections that the client shall keep open at any time, even if there is no
         /// demand. Default to `0`.
         ///
@@ -97,13 +94,24 @@ public final class OracleClient: Sendable {
     let runningAtomic = ManagedAtomic(false)
     let backgroundLogger: Logger
 
+    /// Creates a new ``OracleClient``. Don't forget to run ``run()`` the client in a long running task.
+    /// - Parameters:
+    ///   - configuration: The client's configuration. See ``OracleConnection/Configuration``
+    ///   - options: The pool configuration. See ``Options``
+    ///   - drcp: Whether the database server supports `DRCP` (Database Resident Connection Pooling) or not.
+    ///           Defaults to `true`. More information on `DRCP` can be found
+    ///           [here](https://www.oracle.com/docs/tech/drcp-technical-brief.pdf).
+    ///   - eventLoopGroup: The underlying NIO `EventLoopGroup`. Defaults to ``defaultEventLoopGroup``.
+    ///   - backgroundLogger: A `swift-log` `Logger` to log background messages to. A copy of this logger is also
+    ///                       forwarded to the created connections as a background logger.
     public init(
         configuration: OracleConnection.Configuration,
         options: Options = .init(),
+        drcp: Bool = true,
         eventLoopGroup: any EventLoopGroup = OracleClient.defaultEventLoopGroup,
         backgroundLogger: Logger
     ) {
-        let factory = ConnectionFactory(config: configuration, eventLoopGroup: eventLoopGroup, logger: backgroundLogger)
+        let factory = ConnectionFactory(config: configuration, drcp: drcp, eventLoopGroup: eventLoopGroup, logger: backgroundLogger)
         self.factory = factory
         self.backgroundLogger = backgroundLogger
 

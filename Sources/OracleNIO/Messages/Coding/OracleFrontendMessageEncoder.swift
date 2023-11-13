@@ -217,12 +217,6 @@ struct OracleFrontendMessageEncoder {
     mutating func authenticationPhaseOne0(authContext: AuthContext) {
         // 1. Setup
 
-        // TODO: DRCP support
-        // context: if drcp is used, use purity = NEW as the default purity for
-        // standalone connections and purity = SELF for connections that belong
-        // to a pool
-        // for now just use the value from description
-
         let authMode = Self.configureAuthMode(
             from: authContext.mode,
             method: authContext.method

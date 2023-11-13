@@ -45,7 +45,9 @@ struct Description: Equatable {
     var sslServerDnMatch: Bool
     var sslServerCertDn: String?
     var walletLocation: String?
-    var purity: Purity = .default
+    var purity: Purity
+    var serverType: String? // when using drcp: "pooled"
+    var cclass: String?
 
     private func buildDurationString(_ value: TimeAmount) -> String {
         let value = Int(
@@ -98,10 +100,20 @@ struct Description: Equatable {
         case .sid(let sid):
             tempParts.append("(SID=\(sid))")
         }
+        if let serverType {
+            tempParts.append("(SERVER=\(serverType))")
+        }
         if let cid {
             tempParts.append("(CID=\(cid))")
+        } else {
+            if let cclass {
+                tempParts.append("(POOL_CONNECTION_CLASS=\(cclass)")
+            }
+            if self.purity != .default {
+                tempParts.append("(POOL_PURITY=\(self.purity.rawValue))")
+            }
         }
-        if !connectionID.isEmpty {
+        if !self.connectionID.isEmpty {
             tempParts.append("(CONNECTION_ID=\(self.connectionID))")
         }
         if !tempParts.isEmpty {

@@ -374,7 +374,7 @@ enum Constants {
     static let TZ_MINUTE_OFFSET: UInt8 = 60
 
     // MARK: DRCP release mode
-    static let DRCP_DEAUTHENTICATE = 0x00000002
+    static let DRCP_DEAUTHENTICATE: UInt32 = 0x00000002
 
 }
 

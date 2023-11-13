@@ -1,12 +1,9 @@
 import OracleNIO
+import NIOSSL
 
 extension OracleConnection {
-    static func test(
-        on eventLoop: EventLoop,
-        logLevel: Logger.Level = Logger.getLogLevel()
-    ) async throws -> OracleConnection {
-        var logger = Logger(label: "oracle.connection.test")
-        logger.logLevel = logLevel
+
+    static func testConfig() throws -> OracleConnection.Configuration {
 
         let config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",
@@ -16,8 +13,18 @@ extension OracleConnection {
             password: env("ORA_PASSWORD") ?? "my_passwor"
         )
 
+        return config
+    }
+
+    static func test(
+        on eventLoop: EventLoop,
+        logLevel: Logger.Level = Logger.getLogLevel()
+    ) async throws -> OracleConnection {
+        var logger = Logger(label: "oracle.connection.test")
+        logger.logLevel = logLevel
+
         return try await OracleConnection.connect(
-            on: eventLoop, configuration: config, id: 0, logger: logger
+            on: eventLoop, configuration: self.testConfig(), id: 0, logger: logger
         )
     }
 }

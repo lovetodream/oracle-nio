@@ -217,12 +217,6 @@ struct OracleFrontendMessageEncoder {
     mutating func authenticationPhaseOne0(authContext: AuthContext) {
         // 1. Setup
 
-        // TODO: DRCP support
-        // context: if drcp is used, use purity = NEW as the default purity for
-        // standalone connections and purity = SELF for connections that belong
-        // to a pool
-        // for now just use the value from description
-
         let authMode = Self.configureAuthMode(
             from: authContext.mode,
             method: authContext.method
@@ -721,6 +715,20 @@ struct OracleFrontendMessageEncoder {
         if sendAmount {
             self.buffer.writeUB8(UInt64(amount)) // LOB amount
         }
+        self.endRequest()
+    }
+
+    mutating func releaseSession(deauthenticate: Bool = false) {
+        self.clearIfNeeded()
+
+        self.startRequest()
+
+        self.writeFunctionCode(
+            messageType: .onewayFN, functionCode: .sessionRelease
+        )
+        self.buffer.writeInteger(UInt8(0)) // pointer (tag name)
+        self.buffer.writeInteger(UInt8(0)) // tag name length
+        self.buffer.writeUB4(deauthenticate ? Constants.DRCP_DEAUTHENTICATE : 0)
         self.endRequest()
     }
 

@@ -218,6 +218,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             return
         }
 
+        if self.configuration.drcpEnabled {
+            self.encoder.releaseSession()
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+        }
         let action = self.state.close(promise)
         self.run(action, with: context)
     }

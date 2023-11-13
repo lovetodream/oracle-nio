@@ -515,10 +515,6 @@ struct ExtendedQueryStateMachine {
                 received: \(vector.bindMetadata.count)
                 """)
             }
-            for i in 0..<context.query.binds.count {
-                if vector.bindMetadata[i].direction == Constants.TNS_BIND_DIR_INPUT { continue }
-                // TODO: out binds
-            }
 
             // we won't change the state
             return .wait

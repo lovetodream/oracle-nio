@@ -10,8 +10,7 @@ Non-blocking, event-driven Swift client for Oracle Databases built on [SwiftNIO]
 - Integrated with the Swift server ecosystem, including use of [swift-log](https://github.com/apple/swift-log).
 - Designed to run efficiently on all supported platforms (tested on Linux and Darwin systems)
 - Support for `Network.framework` when available (e.g. on Apple platforms)
-
-OracleNIO does not provide a `ConnectionPool` as of today, but this is planned for a future release.
+- An `OracleClient` ConnectionPool backed by DRCP (Database Resident Connection Pooling) if available
 
 ## Supported Oracle Database versions
 

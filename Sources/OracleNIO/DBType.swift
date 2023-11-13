@@ -5,44 +5,81 @@ enum DatabaseNumericType: Int {
     case string = 3
 }
 
-/// - Warning: Be aware that this enum might receive additional values without major semver changes!
-public enum _DBTypeNumber: Int, Sendable {
-    case bFile = 2020
-    case binaryDouble = 2008
-    case binaryFloat = 2007
-    case binaryInteger = 2009
-    case blob = 2019
-    case boolean = 2022
-    case char = 2003
-    case clob = 2017
-    case cursor = 2021
-    case date = 2011
-    case intervalDS = 2015
-    case intervalYM = 2016
-    case json = 2027
-    case longNVarchar = 2031
-    case longRAW = 2025
-    case longVarchar = 2024
-    case nChar = 2004
-    case nCLOB = 2018
-    case number = 2010
-    case nVarchar = 2002
-    case object = 2023
-    case raw = 2006
-    case rowID = 2005
-    case timestamp = 2012
-    case timestampLTZ = 2014
-    case timestampTZ = 2013
-    case unknown = 0
-    case uRowID = 2030
-    case varchar = 2001
+public struct DBTypeNumber: Sendable, Hashable {
+    internal enum Backing: Int, Sendable {
+        case bFile = 2020
+        case binaryDouble = 2008
+        case binaryFloat = 2007
+        case binaryInteger = 2009
+        case blob = 2019
+        case boolean = 2022
+        case char = 2003
+        case clob = 2017
+        case cursor = 2021
+        case date = 2011
+        case intervalDS = 2015
+        case intervalYM = 2016
+        case json = 2027
+        case longNVarchar = 2031
+        case longRAW = 2025
+        case longVarchar = 2024
+        case nChar = 2004
+        case nCLOB = 2018
+        case number = 2010
+        case nVarchar = 2002
+        case object = 2023
+        case raw = 2006
+        case rowID = 2005
+        case timestamp = 2012
+        case timestampLTZ = 2014
+        case timestampTZ = 2013
+        case unknown = 0
+        case uRowID = 2030
+        case varchar = 2001
+    }
+
+    internal let backing: Backing
+
+    internal init(_ backing: Backing) {
+        self.backing = backing
+    }
+
+    public static let bFile: Self = .init(.bFile)
+    public static let binaryDouble: Self = .init(.binaryDouble)
+    public static let binaryFloat: Self = .init(.binaryFloat)
+    public static let binaryInteger: Self = .init(.binaryInteger)
+    public static let blob: Self = .init(.blob)
+    public static let boolean: Self = .init(.boolean)
+    public static let char: Self = .init(.char)
+    public static let clob: Self = .init(.clob)
+    public static let cursor: Self = .init(.cursor)
+    public static let date: Self = .init(.date)
+    public static let intervalDS: Self = .init(.intervalDS)
+    public static let intervalYM: Self = .init(.intervalYM)
+    public static let json: Self = .init(.json)
+    public static let longNVarchar: Self = .init(.longNVarchar)
+    public static let longRAW: Self = .init(.longRAW)
+    public static let longVarchar: Self = .init(.longVarchar)
+    public static let nChar: Self = .init(.nChar)
+    public static let nCLOB: Self = .init(.nCLOB)
+    public static let number: Self = .init(.number)
+    public static let nVarchar: Self = .init(.nVarchar)
+    public static let object: Self = .init(.object)
+    public static let raw: Self = .init(.raw)
+    public static let rowID: Self = .init(.rowID)
+    public static let timestamp: Self = .init(.timestamp)
+    public static let timestampLTZ: Self = .init(.timestampLTZ)
+    public static let timestampTZ: Self = .init(.timestampTZ)
+    public static let unknown: Self = .init(.unknown)
+    public static let uRowID: Self = .init(.uRowID)
+    public static let varchar: Self = .init(.varchar)
 }
 
 public struct DBType: Sendable, Equatable, Hashable {
     @usableFromInline
     var key: UInt16
     @usableFromInline
-    var number: _DBTypeNumber
+    var number: DBTypeNumber
     @usableFromInline
     var name: String
     @usableFromInline
@@ -57,7 +94,7 @@ public struct DBType: Sendable, Equatable, Hashable {
     var bufferSizeFactor: Int = 0
 
     public init(
-        number: _DBTypeNumber,
+        number: DBTypeNumber,
         name: String,
         oracleName: String,
         oracleType: DataType.Value? = nil,

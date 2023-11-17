@@ -674,7 +674,14 @@ final class OracleNIOTests: XCTestCase {
                 FROM dual CONNECT BY level <= 4
                 """, logger: .oracleTest
             ).collect()
-            print(result)
+            var i = 1
+            for row in result {
+                let (level, _, username, suffix) = try row.decode((Int, Date, String, String).self)
+                XCTAssertEqual(level, i)
+                XCTAssertEqual(username, "user_\(i)")
+                XCTAssertEqual(suffix, "test")
+                i += 1
+            }
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }

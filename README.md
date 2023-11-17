@@ -2,6 +2,8 @@
 
 Non-blocking, event-driven Swift client for Oracle Databases built on [SwiftNIO](https://github.com/apple/swift-nio).
 
+It's like [PostgresNIO](https://github.com/vapor/postgres-nio), but written for Oracle Databases.
+
 ## Features
 
 - An `OracleConnection` which allows you to connect to, authorize with, query, and retrieve results from an Oracle database server

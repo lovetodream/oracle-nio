@@ -659,6 +659,27 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    /// Reference: [#6](https://github.com/lovetodream/oracle-nio/issues/6)
+    func testMultipleRowsWithFourColumnsWork() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            let result = try await conn.query(
+                """
+                SELECT
+                    level,
+                    sysdate,
+                    'user_' || level username,
+                    'test' suffix
+                FROM dual CONNECT BY level <= 4
+                """, logger: .oracleTest
+            ).collect()
+            print(result)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

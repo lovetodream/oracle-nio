@@ -41,7 +41,7 @@ struct ExtendedQueryStateMachine {
         case needMoreData
 
         case forwardRows([DataRow])
-        case forwardStreamComplete([DataRow])
+        case forwardStreamComplete([DataRow], cursorID: UInt16)
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
         case forwardStreamError(
             OracleSQLError, 
@@ -300,6 +300,8 @@ struct ExtendedQueryStateMachine {
             case .commandComplete, .error, .drain:
                 preconditionFailure()
             case .initialized(let context), .describeInfoReceived(let context, _):
+                context.cursorID = error.cursorID ?? context.cursorID
+
                 self.avoidingStateMachineCoW { state in
                     state = .commandComplete
                 }
@@ -314,14 +316,16 @@ struct ExtendedQueryStateMachine {
                     ) // empty response
                 }
 
-            case .streaming(_, _, _, var demandStateMachine),
-                .streamingAndWaiting(_, _, _, var demandStateMachine, _):
+            case .streaming(let context, _, _, var demandStateMachine),
+                .streamingAndWaiting(let context, _, _, var demandStateMachine, _):
+                context.cursorID = error.cursorID ?? context.cursorID
+
                 self.avoidingStateMachineCoW { state in
                     state = .commandComplete
                 }
 
                 let rows = demandStateMachine.end()
-                action = .forwardStreamComplete(rows)
+                action = .forwardStreamComplete(rows, cursorID: context.cursorID)
 
             case .modifying:
                 preconditionFailure("invalid state")
@@ -332,6 +336,8 @@ struct ExtendedQueryStateMachine {
         {
             switch self.state {
             case .initialized(let context):
+                context.cursorID = cursor
+
                 switch context.statement {
                 case .query(let promise),
                     .plsql(let promise),
@@ -355,6 +361,8 @@ struct ExtendedQueryStateMachine {
             let exception = getExceptionClass(for: Int32(error.number))
             switch self.state {
             case .initialized(let context):
+                context.cursorID = cursor
+
                 switch context.statement {
                 case .query(let promise),
                     .plsql(let promise),

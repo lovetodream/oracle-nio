@@ -732,10 +732,11 @@ struct OracleFrontendMessageEncoder {
         self.endRequest()
     }
 
-    mutating func logoff() {
+    mutating func logoff(cleanupContext: CleanupContext) {
         self.clearIfNeeded()
 
         self.startRequest()
+        self.writePiggybacks(context: cleanupContext)
         self.writeFunctionCode(messageType: .function, functionCode: .logoff)
         self.endRequest()
     }
@@ -1058,12 +1059,9 @@ extension OracleFrontendMessageEncoder {
 
 extension OracleFrontendMessageEncoder {
     private mutating func writePiggybacks(context: CleanupContext) {
-        if 
-            let cursorsToClose = context.cursorsToClose,
-            !cursorsToClose.isEmpty 
-        {
-            self.writeCloseCursorsPiggyback(cursorsToClose)
-            context.cursorsToClose = nil
+        if !context.cursorsToClose.isEmpty {
+            self.writeCloseCursorsPiggyback(context.cursorsToClose)
+            context.cursorsToClose.removeAll()
         }
         if context.tempLOBsTotalSize > 0 {
             if let tempLOBsToClose = context.tempLOBsToClose {
@@ -1084,7 +1082,7 @@ extension OracleFrontendMessageEncoder {
     }
 
     private mutating func writeCloseCursorsPiggyback(
-        _ cursorsToClose: [UInt16]
+        _ cursorsToClose: Set<UInt16>
     ) {
         self.writePiggybackCode(code: .closeCursors)
         self.buffer.writeInteger(UInt8(1)) // pointer

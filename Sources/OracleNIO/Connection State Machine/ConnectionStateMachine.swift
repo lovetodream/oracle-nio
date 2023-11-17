@@ -103,7 +103,7 @@ struct ConnectionStateMachine {
 
         // Query streaming
         case forwardRows([DataRow])
-        case forwardStreamComplete([DataRow])
+        case forwardStreamComplete([DataRow], cursorID: UInt16)
         case forwardStreamError(
             OracleSQLError, read: Bool, cursorID: UInt16?, clientCancelled: Bool
         )
@@ -1032,8 +1032,8 @@ extension ConnectionStateMachine {
             return .needMoreData
         case .forwardRows(let rows):
             return .forwardRows(rows)
-        case .forwardStreamComplete(let rows):
-            return .forwardStreamComplete(rows)
+        case .forwardStreamComplete(let rows, let cursorID):
+            return .forwardStreamComplete(rows, cursorID: cursorID)
         case .forwardStreamError(
             let error, let read, let cursorID, let clientCancelled
         ):

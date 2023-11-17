@@ -207,7 +207,7 @@ public struct QueryOptions {
 }
 
 final class CleanupContext {
-    var cursorsToClose: [UInt16]? = nil
+    var cursorsToClose: Set<UInt16> = []
     
     var tempLOBsTotalSize: Int = 0
     var tempLOBsToClose: [ByteBuffer]? = nil

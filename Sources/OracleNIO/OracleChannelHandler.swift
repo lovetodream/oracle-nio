@@ -343,7 +343,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         case .forwardRows(let rows):
             self.rowStream!.receive(rows)
-        case .forwardStreamComplete(let buffer):
+        case .forwardStreamComplete(let buffer, let cursorID):
             guard let rowStream else {
                 // if the stream was cancelled we don't have it here anymore.
                 return
@@ -357,6 +357,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.decoderContext.queryOptions = nil
             self.decoderContext.columnsCount = nil
 
+            if cursorID != 0 {
+                self.cleanupContext.cursorsToClose.insert(cursorID)
+            }
+
             self.run(self.state.readyForQueryReceived(), with: context)
 
         case .forwardStreamError(
@@ -365,7 +369,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.rowStream!.receive(completion: .failure(error))
             self.rowStream = nil
             if let cursorID {
-                cleanupContext.cursorsToClose?.append(cursorID)
+                cleanupContext.cursorsToClose.insert(cursorID)
             } else if read {
                 context.read()
             }
@@ -434,7 +438,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 // response to that, it sends a Close message. On receipt of
                 // this message, the backend closes the connection and
                 // terminates
-                self.encoder.logoff()
+                self.encoder.logoff(cleanupContext: self.cleanupContext)
                 context.writeAndFlush(
                     self.wrapOutboundOut(self.encoder.flush()), promise: nil
                 )

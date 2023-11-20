@@ -122,7 +122,7 @@ struct ExtendedQueryStateMachine {
             return .wait
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -174,10 +174,10 @@ struct ExtendedQueryStateMachine {
             return .wait
 
         case .initialized, .streamingAndWaiting, .drain, .error, .commandComplete:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -208,7 +208,7 @@ struct ExtendedQueryStateMachine {
                         }
                     } catch {
                         guard let error = error as? OracleSQLError else {
-                            preconditionFailure()
+                            preconditionFailure("Unexpected error: \(error)")
                         }
                         return self.setAndFireError(error)
                     }
@@ -231,7 +231,7 @@ struct ExtendedQueryStateMachine {
                         )
                     } catch {
                         guard let error = error as? OracleSQLError else {
-                            preconditionFailure()
+                            preconditionFailure("Unexpected error: \(error)")
                         }
                         return self.setAndFireError(error)
                     }
@@ -263,7 +263,8 @@ struct ExtendedQueryStateMachine {
                 return action
             }
 
-        default: preconditionFailure()
+        default: 
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -283,7 +284,7 @@ struct ExtendedQueryStateMachine {
             return .wait
 
         default:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -298,7 +299,7 @@ struct ExtendedQueryStateMachine {
         {
             switch self.state {
             case .commandComplete, .error, .drain:
-                preconditionFailure()
+                preconditionFailure("Invalid state: \(self.state)")
             case .initialized(let context), .describeInfoReceived(let context, _):
                 context.cursorID = error.cursorID ?? context.cursorID
 
@@ -328,7 +329,7 @@ struct ExtendedQueryStateMachine {
                 action = .forwardStreamComplete(rows, cursorID: context.cursorID)
 
             case .modifying:
-                preconditionFailure("invalid state")
+                preconditionFailure("Invalid state: \(self.state)")
             }
         } else if 
             error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST,
@@ -467,7 +468,7 @@ struct ExtendedQueryStateMachine {
                 action = .sendFetch(extendedQueryContext)
 
             case .modifying:
-                preconditionFailure("invalid state")
+                preconditionFailure("Invalid state: \(self.state)")
             }
         }
 
@@ -508,7 +509,7 @@ struct ExtendedQueryStateMachine {
             )
 
         default:
-            preconditionFailure("invalid state: \(self.state)")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -538,7 +539,7 @@ struct ExtendedQueryStateMachine {
             )
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -558,7 +559,7 @@ struct ExtendedQueryStateMachine {
                 "We can't send a fetch if the query completed already"
             )
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -598,7 +599,7 @@ struct ExtendedQueryStateMachine {
             """)
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -647,7 +648,7 @@ struct ExtendedQueryStateMachine {
             }
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -697,7 +698,7 @@ struct ExtendedQueryStateMachine {
             return .read
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -753,7 +754,7 @@ struct ExtendedQueryStateMachine {
                     case .error(let error):
                         action = self.errorReceived(error)
                     default:
-                        preconditionFailure()
+                        preconditionFailure("Invalid state: \(self.state)")
                     }
                     // If action is anything other than wait, we will have to
                     // return it. This should be fine, because messages with
@@ -831,13 +832,13 @@ struct ExtendedQueryStateMachine {
                 }
             } catch {
                 guard let error = error as? OracleSQLError else {
-                    preconditionFailure()
+                    preconditionFailure("Unexpected error: \(error)")
                 }
                 return self.setAndFireError(error)
             }
 
         default:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
 
         return .wait

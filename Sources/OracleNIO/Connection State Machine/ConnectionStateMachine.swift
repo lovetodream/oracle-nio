@@ -174,7 +174,7 @@ struct ConnectionStateMachine {
             )
 
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -214,7 +214,7 @@ struct ConnectionStateMachine {
             return self.closeConnectionAndCleanup(error)
 
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -248,7 +248,7 @@ struct ConnectionStateMachine {
                 oracleError = .clientClosesConnection(underlying: nil)
             
             case .modifying:
-                preconditionFailure("invalid state")
+                preconditionFailure("Invalid state: \(self.state)")
             }
         }
 
@@ -298,7 +298,7 @@ struct ConnectionStateMachine {
             return self.modify(with: action)
 
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -317,7 +317,7 @@ struct ConnectionStateMachine {
             }
 
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
 
         default:
             return .read
@@ -328,7 +328,7 @@ struct ConnectionStateMachine {
         _ accept: OracleBackendMessage.Accept, description: Description
     ) -> ConnectionAction {
         guard case .connectMessageSent = state else {
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
 
         let capabilities = accept.newCapabilities
@@ -359,7 +359,7 @@ struct ConnectionStateMachine {
 
     mutating func protocolReceived() -> ConnectionAction {
         guard case .protocolMessageSent = state else {
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
         self.state = .dataTypesMessageSent
         return .sendDataTypes
@@ -404,13 +404,13 @@ struct ConnectionStateMachine {
             )
 
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
     mutating func dataTypesReceived() -> ConnectionAction {
         guard case .dataTypesMessageSent = state else {
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
         self.state = .waitingToStartAuthentication
         return .provideAuthenticationContext(nil)
@@ -426,7 +426,7 @@ struct ConnectionStateMachine {
              .dataTypesMessageSent,
              .waitingToStartAuthentication,
              .renegotiatingTLS:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
 
         case .authenticating(var authState):
             return self.avoidingStateMachineCoW { machine in
@@ -439,7 +439,7 @@ struct ConnectionStateMachine {
             fatalError("Is this possible?")
 
         case .readyToLogOff, .loggingOff, .closing, .closed, .modifying:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -451,7 +451,7 @@ struct ConnectionStateMachine {
              .readyToLogOff,
              .closed,
              .renegotiatingTLS:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         case .connectMessageSent,
              .protocolMessageSent,
              .dataTypesMessageSent,
@@ -474,7 +474,7 @@ struct ConnectionStateMachine {
             return self.errorHappened(.unexpectedBackendMessage(.marker))
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -483,8 +483,8 @@ struct ConnectionStateMachine {
     ) -> ConnectionAction {
         switch self.state {
         case .initialized:
-            preconditionFailure()
-        
+            preconditionFailure("Invalid state: \(self.state)")
+
         case .connectMessageSent,
              .protocolMessageSent,
              .dataTypesMessageSent,
@@ -507,7 +507,7 @@ struct ConnectionStateMachine {
             return .succeedRollback(promise)
 
         case .readyToLogOff:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
 
         case .loggingOff(let promise):
             self.state = .closing
@@ -516,10 +516,10 @@ struct ConnectionStateMachine {
         case .closing:
             return .wait
         case .closed:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
 
         case .modifying:
-            preconditionFailure("invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -594,7 +594,7 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
         default:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -649,7 +649,11 @@ struct ConnectionStateMachine {
     mutating func readyForQueryReceived() -> ConnectionAction {
         switch self.state {
         case .extendedQuery(let extendedQuery):
-            guard extendedQuery.isComplete else { preconditionFailure() }
+            guard extendedQuery.isComplete else {
+                preconditionFailure("""
+                Ready for query received when query is still being executed
+                """)
+            }
 
             self.state = .readyForQuery
             return self.executeNextQueryFromQueue()
@@ -657,7 +661,7 @@ struct ConnectionStateMachine {
             self.state = .readyForQuery
             return self.executeNextQueryFromQueue()
         default:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -675,7 +679,7 @@ struct ConnectionStateMachine {
             }
 
         default:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -683,7 +687,7 @@ struct ConnectionStateMachine {
         _ vector: OracleBackendMessage.InOutVector
     ) -> ConnectionAction {
         guard case var .extendedQuery(queryState) = self.state else {
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         }
 
         return self.avoidingStateMachineCoW { machine in
@@ -787,7 +791,7 @@ struct ConnectionStateMachine {
                 .forwardCancelComplete,
                 .read,
                 .wait:
-                preconditionFailure("invalid state")
+                preconditionFailure("Invalid state: \(self.state)")
 
             case .evaluateErrorAtConnectionLevel:
                 return .closeConnectionAndCleanup(cleanupContext)
@@ -822,7 +826,7 @@ struct ConnectionStateMachine {
             return .wait
 
         case .modifying:
-            preconditionFailure("Invalid state")
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 

@@ -173,7 +173,13 @@ struct ExtendedQueryStateMachine {
             }
             return .wait
 
-        case .initialized, .streamingAndWaiting, .drain, .error, .commandComplete:
+        case .drain:
+            // This state might occur, if the client cancelled the query,
+            // but the server did not yet receive/process the cancellation
+            // marker. Due to that it might send more data without knowing yet.
+            return .wait
+
+        case .initialized, .streamingAndWaiting, .error, .commandComplete:
             preconditionFailure("Invalid state: \(self.state)")
 
         case .modifying:
@@ -263,7 +269,13 @@ struct ExtendedQueryStateMachine {
                 return action
             }
 
-        default: 
+        case .drain:
+            // This state might occur, if the client cancelled the query,
+            // but the server did not yet receive/process the cancellation
+            // marker. Due to that it might send more data without knowing yet.
+            return .wait
+
+        default:
             preconditionFailure("Invalid state: \(self.state)")
         }
     }

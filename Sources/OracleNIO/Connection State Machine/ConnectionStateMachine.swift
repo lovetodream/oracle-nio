@@ -615,7 +615,9 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
         default:
-            fatalError()
+            return self.closeConnectionAndCleanup(
+                .unexpectedBackendMessage(.error(error))
+            )
         }
     }
 
@@ -660,6 +662,14 @@ struct ConnectionStateMachine {
         case .ping, .commit, .rollback:
             self.state = .readyForQuery
             return self.executeNextQueryFromQueue()
+
+        case .loggingOff, .closing:
+            // Might happen if the connection is getting closed immediately
+            // after a ping. In that case the ping's success or failure response
+            // triggers a readyForQueryReceived, while we are already closing.
+            // (This race might not be exclusive to ping's)
+            return .wait
+
         default:
             preconditionFailure("Invalid state: \(self.state)")
         }

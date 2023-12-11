@@ -687,6 +687,39 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testDecodingFailureInStreamCausesDecodingError() async {
+        var received: Int64 = 0
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.close().wait()) }
+
+            let rows = try await conn.query(
+                "SELECT CASE TO_NUMBER(column_value) WHEN 6969 THEN NULL ELSE TO_NUMBER(column_value) END AS id FROM xmltable ('1 to 10000')",
+                logger: .oracleTest
+            )
+            for try await _ in rows.decode(Int64.self) {
+                received += 1
+            }
+        } catch is OracleDecodingError {
+            // desired result
+            XCTAssertEqual(received, 6968)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testPingAndCloseDontCrash() async {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            Task {
+                try await conn.ping() // on different thread
+            }
+            try await conn.close()
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

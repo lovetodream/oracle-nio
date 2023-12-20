@@ -437,7 +437,7 @@ struct ExtendedQueryStateMachine {
 
                     if !context.options.fetchLOBs {
                         var describeInfo = describeInfo
-                        self.avoidingStateMachineCoW { state in
+                        self.avoidingStateMachineCoW { state -> Void in
                             describeInfo.columns = describeInfo.columns.map {
                                 var col = $0
                                 if col.dataType == .blob {
@@ -1077,13 +1077,20 @@ extension ExtendedQueryStateMachine {
     /// machine never remains in this bad state.
     ///
     /// A key note here is that all callers must ensure that they return to a good state before they exit.
-    ///
-    /// Sadly, because it's generic and has a closure, we need to force it to be inlined at all call sites,
-    /// which is not idea.
-    @inline(__always)
-    private mutating func avoidingStateMachineCoW<ReturnType>(
-        _ body: (inout State) -> ReturnType
-    ) -> ReturnType {
+    private mutating func avoidingStateMachineCoW(
+        _ body: (inout State) -> Action
+    ) -> Action {
+        self.state = .modifying
+        defer {
+            assert(!self.isModifying)
+        }
+
+        return body(&self.state)
+    }
+
+    private mutating func avoidingStateMachineCoW(
+        _ body: (inout State) -> Void
+    ) {
         self.state = .modifying
         defer {
             assert(!self.isModifying)

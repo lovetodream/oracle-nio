@@ -39,6 +39,10 @@ public final class OracleConnection: @unchecked Sendable {
     var currentSchema: String?
     var edition: String?
 
+    var noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
+        SwiftLogNoOpLogHandler()
+    }
+
     init(
         configuration: OracleConnection.Configuration,
         channel: Channel,
@@ -310,7 +314,7 @@ extension OracleConnection {
     ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
     ///              be ignored, but feel free to experiment based on your needs. Every option and
     ///              its impact is documented.
-    ///   - logger: The `Logger` to log into for the query.
+    ///   - logger: The `Logger` to log into for the query. If none is provided, a no-op logger will be used.
     ///   - file: The file, the query was started in. Used for better error reporting.
     ///   - line: The line, the query was started in. Used for better error reporting.
     /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the query
@@ -319,10 +323,10 @@ extension OracleConnection {
     public func query(
         _ query: OracleQuery,
         options: QueryOptions = .init(),
-        logger: Logger,
+        logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
-        var logger = logger
+        var logger = logger ?? self.noopLogger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
 
         let promise = self.channel.eventLoop.makePromise(

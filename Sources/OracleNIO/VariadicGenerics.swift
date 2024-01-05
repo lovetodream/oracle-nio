@@ -1,4 +1,3 @@
-#if compiler(>=5.9)
 extension OracleRow {
     // --- snip TODO: Remove once bug is fixed, that disallows tuples of one
     @inlinable
@@ -172,5 +171,3 @@ enum ComputeParameterPackLength {
         MemoryLayout<(repeat BoolConverter<each T>.Bool)>.size / MemoryLayout<Bool>.stride
     }
 }
-#endif // compiler(>=5.9)
-

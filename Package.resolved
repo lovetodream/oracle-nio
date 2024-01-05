@@ -1,15 +1,6 @@
 {
   "pins" : [
     {
-      "identity" : "cryptoswift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/krzyzanowskim/CryptoSwift.git",
-      "state" : {
-        "revision" : "db51c407d3be4a051484a141bf0bff36c43d3b1e",
-        "version" : "1.8.0"
-      }
-    },
-    {
       "identity" : "postgres-nio",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/postgres-nio.git",
@@ -41,8 +32,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "60f13f60c4d093691934dc6cfdf5f508ada1f894",
-        "version" : "2.6.0"
+        "branch" : "main",
+        "revision" : "3e8497753ea016b01c6a7e8ada3bea4aa39e965f"
       }
     },
     {

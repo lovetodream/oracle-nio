@@ -367,7 +367,7 @@ enum Constants {
         .data(using: .utf8)!
     static let TNS_BASE64_ALPHABET = TNS_ALPHABET_DATA.base64EncodedString()
     static let TNS_BASE64_ALPHABET_ARRAY = TNS_ALPHABET_DATA.base64EncodedData()
-    static let TNS_EXTENT_OID = Data(hex: "00000000000000000000000000010001")
+    static let TNS_EXTENT_OID = 0x00000000000000000000000000010001
 
     // MARK: Timezone offsets
     static let TZ_HOUR_OFFSET: UInt8 = 20

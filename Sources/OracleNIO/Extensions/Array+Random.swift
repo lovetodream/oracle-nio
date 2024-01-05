@@ -11,16 +11,16 @@ extension FixedWidthInteger {
 }
 
 extension Array where Element: FixedWidthInteger {
-    public static func random(count: Int) -> [Element] {
-        var array: [Element] = .init(repeating: 0, count: count)
+    public static func random(count: Int) -> Self {
+        var array: Self = .init(repeating: 0, count: count)
         (0..<count).forEach { array[$0] = Element.random() }
         return array
     }
 
-    public static func random<T>(count: Int, using generator: inout T) -> [Element]
+    public static func random<T>(count: Int, using generator: inout T) -> Self
         where T: RandomNumberGenerator
     {
-        var array: [Element] = .init(repeating: 0, count: count)
+        var array: Self = .init(repeating: 0, count: count)
         (0..<count).forEach { array[$0] = Element.random(using: &generator) }
         return array
     }

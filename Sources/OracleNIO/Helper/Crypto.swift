@@ -1,11 +1,17 @@
+import struct Foundation.Data
 import Crypto
-import CryptoSwift
+import _CryptoExtras
 import RegexBuilder
+import _PBKDF2
 
 func decryptCBC(_ key: [UInt8], _ encryptedText: [UInt8]) throws -> [UInt8] {
     let iv = [UInt8](repeating: 0, count: 16)
-    let aes = try AES(key: key, blockMode: CBC(iv: iv), padding: .noPadding)
-    return try aes.decrypt(encryptedText)
+    return try Array(Crypto.AES._CBC.decrypt(
+        encryptedText, 
+        using: SymmetricKey(data: key),
+        iv: AES._CBC.IV(ivBytes: iv),
+        noPadding: true
+    ))
 }
 
 func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throws -> [UInt8] {
@@ -16,14 +22,16 @@ func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throw
     if n != 0, !zeros {
         plainText += Array<UInt8>(repeating: UInt8(n), count: n)
     }
-    let aes = try AES(key: key, blockMode: CBC(iv: iv), padding: zeros ? .zeroPadding : .noPadding)
-    var encryptor = try aes.makeEncryptor()
-    return try encryptor.update(withBytes: plainText, isLast: true) + encryptor.finish()
+    return try Array(AES._CBC.encrypt(
+        plainText,
+        using: .init(data: key),
+        iv: AES._CBC.IV(ivBytes: iv),
+        noPadding: true
+    ))
 }
 
-func getDerivedKey(key: [UInt8], salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
-    let kdf = try PKCS5.PBKDF2(password: key, salt: salt, iterations: iterations, keyLength: length, variant: .sha2(.sha512))
-    return try kdf.calculate()
+func getDerivedKey(key: Data, salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
+    Array(try PBKDF2<SHA512>.calculate(length: length, password: key, salt: salt, rounds: iterations))
 }
 
 /// Returns a signed version of the given payload (used for Oracle IAM token authentication) in base64
@@ -44,10 +52,8 @@ func getSignature(key: String, payload: String) throws -> String {
         key = "-----BEGIN PRIVATE KEY-----" + "\n" +
             key + "\n" + "-----END PRIVATE KEY-----"
     }
-    let rsa = try RSA(
-        rawRepresentation: key.data(using: .utf8) ?? .init()
-    )
-    let signature = try rsa
-        .sign(payload.bytes, variant: .message_pkcs1v15_SHA256)
-    return signature.toBase64()
+    guard let payload = payload.data(using: .utf8) else {
+        throw CryptoKitError.invalidParameter
+    }
+    return try _RSA.Signing.PrivateKey(pemRepresentation: key).signature(for: payload, padding: .insecurePKCS1v1_5).rawRepresentation.base64EncodedString()
 }

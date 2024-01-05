@@ -1,4 +1,5 @@
 import NIOSSL
+import struct Foundation.Data
 import struct Foundation.URL
 import class Foundation.ProcessInfo
 import struct Foundation.TimeZone
@@ -151,7 +152,7 @@ extension OracleConnection {
             didSet {
                 self.connectionID = sanitize(
                     value: self._connectionIDPrefix +
-                        [UInt8].random(count: 16).toBase64()
+                    Data([UInt8].random(count: 16)).base64EncodedString()
                 )
             }
         }

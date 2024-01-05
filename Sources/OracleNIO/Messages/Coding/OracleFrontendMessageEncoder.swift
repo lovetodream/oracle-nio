@@ -871,7 +871,7 @@ extension OracleFrontendMessageEncoder {
         let encodedPassword: String
         let encodedNewPassword: String?
 
-        let password = password.bytes
+        let password = password.data(using: .utf8) ?? .init()
 
         guard let authVFRData = parameters["AUTH_VFR_DATA"] else {
             throw OracleSQLError.missingParameter(
@@ -902,7 +902,7 @@ extension OracleFrontendMessageEncoder {
                 )
             }
             let iterations = vgenCount
-            let speedyKey = "AUTH_PBKDF2_SPEEDY_KEY".bytes
+            let speedyKey = "AUTH_PBKDF2_SPEEDY_KEY".data(using: .utf8) ?? .init()
             let salt = verifierData + speedyKey
             passwordKey = try getDerivedKey(
                 key: password,
@@ -927,7 +927,7 @@ extension OracleFrontendMessageEncoder {
         let sessionKeyPartB = [UInt8].random(count: 32)
         let encodedClientKey = try encryptCBC(passwordHash, sessionKeyPartB)
         sessionKey = String(
-            encodedClientKey.toHexString().uppercased().prefix(64)
+            encodedClientKey.hexString.uppercased().prefix(64)
         )
 
         // create session key from combo key
@@ -951,7 +951,7 @@ extension OracleFrontendMessageEncoder {
             sessionKeyPartA.prefix(keyLength)
         )
         let derivedKey = try getDerivedKey(
-            key: comboKey.toHexString().uppercased().bytes,
+            key: comboKey.hexString.uppercased().data(using: .utf8) ?? .init(),
             salt: mixingSalt, length: keyLength, iterations: iterations
         )
 
@@ -959,9 +959,7 @@ extension OracleFrontendMessageEncoder {
         if !verifier11g, let passwordKey {
             let salt = [UInt8].random(count: 16)
             let speedyKeyCBC = try encryptCBC(derivedKey, salt + passwordKey)
-            speedyKey = Array(speedyKeyCBC.prefix(80))
-                .toHexString()
-                .uppercased()
+            speedyKey = speedyKeyCBC.prefix(80).hexString.uppercased()
         } else {
             speedyKey = nil
         }
@@ -970,13 +968,13 @@ extension OracleFrontendMessageEncoder {
         let pwSalt = [UInt8].random(count: 16)
         let passwordWithSalt = pwSalt + password
         let encryptedPassword = try encryptCBC(derivedKey, passwordWithSalt)
-        encodedPassword = encryptedPassword.toHexString().uppercased()
+        encodedPassword = encryptedPassword.hexString.uppercased()
 
         // encrypt new password
-        if let newPassword = newPassword?.bytes {
+        if let newPassword = newPassword?.data(using: .utf8) {
             let newPasswordWithSalt = pwSalt + newPassword
             let encryptedNewPassword = try encryptCBC(derivedKey, newPasswordWithSalt)
-            encodedNewPassword = encryptedNewPassword.toHexString().uppercased()
+            encodedNewPassword = encryptedNewPassword.hexString.uppercased()
         } else {
             encodedNewPassword = nil
         }
@@ -1025,7 +1023,7 @@ extension OracleFrontendMessageEncoder {
         switch authContext.method.base {
         case .usernamePassword(let user, _, _):
             username = user
-            usernameLength = user.bytes.count
+            usernameLength = user.data(using: .utf8)?.count ?? 0
         case .token:
             username = ""
             usernameLength = 0

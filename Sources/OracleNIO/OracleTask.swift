@@ -87,7 +87,7 @@ final class ExtendedQueryContext {
         self.logger = logger
         self.query = query
         self.options = options
-        self.sqlLength = .init(query.sql.bytes.count)
+        self.sqlLength = .init(query.sql.data(using: .utf8)?.count ?? 0)
 
         // strip single/multiline comments and and strings from the sql
         var sql = query.sql

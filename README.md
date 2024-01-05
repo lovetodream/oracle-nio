@@ -1,5 +1,8 @@
 # OracleNIO
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/lovetodream/oracle-nio)
+ [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio2%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/lovetodream/oracle-nio)
+
 Non-blocking, event-driven Swift client for Oracle Databases built on [SwiftNIO](https://github.com/apple/swift-nio).
 
 It's like [PostgresNIO](https://github.com/vapor/postgres-nio), but written for Oracle Databases.
@@ -30,7 +33,32 @@ Oracle Database 12.1 or later.
 
 All connections can be TLS encrypted using `OracleConnection.Configuration.TLS`.
 
+## API Docs
+
+Check out the [OracleNIO API docs](https://swiftpackageindex.com/lovetodream/oracle-nio/documentation/oraclenio) for a detailed look at all of the classes, structs, protocols, and more.
+
 ## Getting started
+
+### Adding the dependency
+
+Add `OracleNIO` as a dependency to your `Package.swift`:
+
+```swift
+    dependencies: [
+        .package(url: "https://github.com/lovetodream/oracle-nio.git", from: "1.0.0-alpha"),
+        ...
+    ]
+```
+
+Add `OracleNIO` to the target you want to use it in:
+
+```swift
+    targets: [
+        .target(name: "MyFancyTarget", dependencies: [
+            .product(name: "OracleNIO", package: "oracle-nio"),
+        ])
+    ]
+```
 
 ### Creating a connection
 

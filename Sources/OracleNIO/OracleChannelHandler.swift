@@ -153,12 +153,24 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = .wait
         case .ioVector(let vector):
             action = self.state.ioVectorReceived(vector)
-        case .serverSidePiggyback(let piggyback):
-            // TODO: we need to inform state about this event
-            fatalError()
+        case .serverSidePiggyback(let piggybacks):
+            // This should only happen if one is using `LOB`s.
+            // These are not implemented as of now, so this _should_ never happen.
+            fatalError("""
+            Received server side piggybacks (\(piggybacks)), this is not \
+            implemented and should never happen. Please open an issue here: \
+            https://github.com/lovetodream/oracle-nio/issues with a \
+            reproduction of the crash.
+            """)
         case .lobData(let lobData):
-            // TODO: we need to inform state about this event
-            fatalError()
+            // This should only happen if one is using `LOB`s.
+            // These are not implemented as of now, so this _should_ never happen.
+            fatalError("""
+            Received LOB data (\(lobData)), this is not implemented and should \
+            never happen. Please open an issue here: \
+            https://github.com/lovetodream/oracle-nio/issues with a \
+            reproduction of the crash.
+            """)
 
         case .chunk(let buffer):
             action = self.state.chunkReceived(

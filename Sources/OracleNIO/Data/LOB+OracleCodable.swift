@@ -1,5 +1,10 @@
 import NIOCore
 
+// T.Z.: LOB is only used for data > 1 GB, this feels very unlikely to be an
+// actual use-case. If you need this implementation, open an issue on
+// https://github.com/lovetodream/oracle-nio/issues with your desired use-case
+// and it will be implemented as a public API
+
 final class LOB: @unchecked Sendable {
     var size: UInt64
     var chunkSize: UInt32

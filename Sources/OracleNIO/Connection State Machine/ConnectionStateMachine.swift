@@ -688,6 +688,11 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
 
+        case .loggingOff, .closing:
+            // Might happen if an error is thrown in row decoding and the
+            // connection is closed immediately after.
+            return .wait
+
         default:
             preconditionFailure("Invalid state: \(self.state)")
         }

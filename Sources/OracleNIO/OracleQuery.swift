@@ -1,4 +1,5 @@
 import NIOCore
+import NIOConcurrencyHelpers
 
 /// A Oracle SQL query, that can be executed on a Oracle server. Contains the raw sql string and bindings.
 public struct OracleQuery: Sendable, Hashable {
@@ -299,16 +300,20 @@ public struct OracleBindings: Sendable, Hashable {
     public mutating func append<Value: OracleRef>(
         _ value: Value, bindName: String
     ) {
-        value.metadata.bindName = bindName
-        var metadata = value.metadata
-        metadata.bindName = bindName
-        metadata.outContainer = value
-        if var bytes = value.storage {
-            self.bytes.writeBuffer(&bytes)
-        } else if !metadata.isReturnBind { // return binds do not send null
-            self.bytes.writeInteger(UInt8(0)) // null
+        value.metadata.withLockedValue { valueMetadata in
+            valueMetadata.bindName = bindName
+            var metadata = valueMetadata
+            metadata.bindName = bindName
+            metadata.outContainer = value
+            value.storage.withLockedValue { valueStorage in
+                if var bytes = valueStorage {
+                    self.bytes.writeBuffer(&bytes)
+                } else if !metadata.isReturnBind { // return binds do not send null
+                    self.bytes.writeInteger(UInt8(0)) // null
+                }
+            }
+            self.metadata.append(metadata)
         }
-        self.metadata.append(metadata)
     }
 
     @inlinable

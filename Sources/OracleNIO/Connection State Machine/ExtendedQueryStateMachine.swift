@@ -198,7 +198,7 @@ struct ExtendedQueryStateMachine {
             var buffer = rowData.slice
             if context.isReturning {
                 for outBind in outBinds {
-                    outBind.storage = nil
+                    outBind.storage.withLockedValue { $0 = nil }
                     let rowCount = buffer.readUB4() ?? 0
                     guard rowCount > 0 else {
                         continue
@@ -228,7 +228,7 @@ struct ExtendedQueryStateMachine {
                 )
             } else {
                 for outBind in outBinds {
-                    outBind.storage = nil
+                    outBind.storage.withLockedValue { $0 = nil }
                     do {
                         try self.processBindData(
                             from: &buffer,
@@ -914,17 +914,17 @@ struct ExtendedQueryStateMachine {
         outBind: OracleRef,
         capabilities: Capabilities
     ) throws {
+        let metadata = outBind.metadata.withLockedValue { $0 }
         var columnData = try self.processColumnData(
             from: &buffer,
-            oracleType: outBind.metadata.dataType._oracleType,
-            csfrm: outBind.metadata.dataType.csfrm,
-            bufferSize: outBind.metadata.bufferSize,
+            oracleType: metadata.dataType._oracleType,
+            csfrm: metadata.dataType.csfrm,
+            bufferSize: metadata.bufferSize,
             capabilities: capabilities
         )
 
         let actualBytesCount = buffer.readSB4() ?? 0
-        if actualBytesCount < 0 &&
-            outBind.metadata.dataType._oracleType == .boolean {
+        if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {
             return
         } else if actualBytesCount != 0 && columnData != nil {
             // TODO: throw this as error?
@@ -939,10 +939,12 @@ struct ExtendedQueryStateMachine {
             """)
         }
 
-        if outBind.storage == nil {
-            outBind.storage = columnData!
-        } else {
-            outBind.storage!.writeBuffer(&columnData!)
+        outBind.storage.withLockedValue { storage in
+            if storage == nil {
+                storage = columnData!
+            } else {
+                storage!.writeBuffer(&columnData!)
+            }
         }
     }
 

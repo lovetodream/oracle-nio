@@ -1,4 +1,5 @@
 import NIOCore
+import NIOPosix
 #if canImport(Network)
 import NIOTransportServices
 #endif

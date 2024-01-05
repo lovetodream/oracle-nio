@@ -1,3 +1,6 @@
+import NIOCore
+import NIOEmbedded
+import NIOPosix
 import XCTest
 @testable import OracleNIO
 

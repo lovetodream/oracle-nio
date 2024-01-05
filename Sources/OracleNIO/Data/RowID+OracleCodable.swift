@@ -1,3 +1,5 @@
+import NIOCore
+
 public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
     public var rba: UInt32 = 0
     public var partitionID: UInt16 = 0

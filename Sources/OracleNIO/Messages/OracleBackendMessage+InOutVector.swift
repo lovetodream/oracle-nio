@@ -1,3 +1,5 @@
+import NIOCore
+
 extension OracleBackendMessage {
     struct InOutVector: PayloadDecodable, Hashable {
         var bindMetadata: [BindMetadatum]

@@ -1,3 +1,5 @@
+import NIOCore
+
 extension OracleBackendMessage {
     struct RowHeader: PayloadDecodable, Hashable {
 

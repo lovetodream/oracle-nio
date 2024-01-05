@@ -1,4 +1,5 @@
 import NIOCore
+import Logging
 
 struct QueryResult {
     enum Value: Equatable {

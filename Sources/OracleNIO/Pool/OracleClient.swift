@@ -1,3 +1,4 @@
+import NIOCore
 import Logging
 import Atomics
 import _ConnectionPoolModule

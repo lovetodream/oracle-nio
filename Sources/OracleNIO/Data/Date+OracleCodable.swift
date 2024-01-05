@@ -3,6 +3,7 @@ import struct Foundation.Calendar
 import struct Foundation.Date
 import struct Foundation.DateComponents
 import struct Foundation.TimeZone
+import func Foundation.pow
 
 extension Date: OracleEncodable {
     public var oracleType: DBType { .timestampTZ }

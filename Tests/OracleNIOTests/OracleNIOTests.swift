@@ -1,4 +1,6 @@
 import XCTest
+import NIOCore
+import NIOPosix
 import Logging
 import OracleNIO
 

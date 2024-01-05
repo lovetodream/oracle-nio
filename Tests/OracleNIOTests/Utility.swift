@@ -1,5 +1,8 @@
-import OracleNIO
+import Foundation
+import Logging
+import NIOCore
 import NIOSSL
+import OracleNIO
 
 extension OracleConnection {
 

@@ -1,3 +1,5 @@
+import NIOCore
+import NIOPosix
 import NIOSSL
 import struct Foundation.Data
 import struct Foundation.URL

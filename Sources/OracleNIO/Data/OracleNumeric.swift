@@ -1,4 +1,5 @@
 import NIOCore
+import func Foundation.pow
 
 private let NUMBER_MAX_DIGITS = 40
 private let NUMBER_AS_SINGLE_CHARS = 172

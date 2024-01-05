@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.25.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "2.2.4"),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.6.0"),
-        .package(url: "https://github.com/vapor/postgres-nio.git", exact: "1.19.1"), // has to be updated explicitly to avoid source breaking changes, as `_ConnectionPoolModule` is not guaranteed to be stable across versions
+        .package(url: "https://github.com/vapor/postgres-nio.git", exact: "1.20.0"), // has to be updated explicitly to avoid source breaking changes, as `_ConnectionPoolModule` is not guaranteed to be stable across versions
     ],
     targets: [
         .target(
@@ -31,6 +31,7 @@ let package = Package(
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "NIOTLS", package: "swift-nio"),
                 .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "CryptoSwift", package: "CryptoSwift"),
                 .product(name: "_ConnectionPoolModule", package: "postgres-nio"),
             ]

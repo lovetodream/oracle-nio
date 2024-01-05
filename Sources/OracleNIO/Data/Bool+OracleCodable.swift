@@ -1,7 +1,7 @@
 import NIOCore
 
 extension Bool: OracleEncodable {
-    public var oracleType: DBType { .boolean }
+    public var oracleType: OracleDataType { .boolean }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

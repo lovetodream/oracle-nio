@@ -1,7 +1,7 @@
 import NIOCore
 
 extension OracleEncodable where Self: Collection, Self.Element == UInt8 {
-    public var oracleType: DBType { .raw }
+    public var oracleType: OracleDataType { .raw }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

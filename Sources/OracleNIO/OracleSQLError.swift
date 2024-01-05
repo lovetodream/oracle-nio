@@ -92,7 +92,7 @@ public struct OracleSQLError: Error {
         }
     }
 
-    /// The ``struct Code`` code.
+    /// The ``OracleSQLError/Code`` code.
     public internal(set) var code: Code {
         get { self.backing.code }
         set {
@@ -203,7 +203,7 @@ public struct OracleSQLError: Error {
             self.underlying.number
         }
 
-        /// The error message, typically prefixed with `ORA-` & ``ServerInfo.number``.
+        /// The error message, typically prefixed with `ORA-` & ``number``.
         public var message: String? {
             self.underlying.message
         }

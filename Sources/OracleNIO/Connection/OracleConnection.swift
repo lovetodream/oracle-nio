@@ -10,6 +10,7 @@ import class Foundation.ProcessInfo
 import Logging
 #endif
 
+/// An Oracle connection. Use it to run queries against an Oracle server.
 public final class OracleConnection: @unchecked Sendable {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int

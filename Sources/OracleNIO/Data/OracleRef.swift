@@ -63,13 +63,13 @@ public final class OracleRef: Sendable, Hashable {
     /// Use this initializer to create an OUT bind.
     ///
     /// Please be aware that you still have to decode the database response into the Swift type you want
-    /// after completing the query (using ``OracleRef.decode()``).
-    /// 
+    /// after completing the query (using ``decode(of:)``).
+    ///
     /// - Parameter dataType: The desired datatype within the Oracle database.
     /// - Parameter isReturnBind: Set this to `true` if the bind is used as part of a DML
     ///                           statement in the `RETURNING ... INTO binds` where
     ///                           binds are x `OracleRef`'s.
-    public init(dataType: DBType, isReturnBind: Bool = false) {
+    public init(dataType: OracleDataType, isReturnBind: Bool = false) {
         self.storage = NIOLockedValueBox(nil)
         self.metadata = NIOLockedValueBox(.init(
             dataType: dataType,
@@ -106,7 +106,7 @@ public final class OracleRef: Sendable, Hashable {
     
     /// Decodes a value of the given type from the bind.
     ///
-    /// This method uses the ``OracleDecodable.init(from:type:context:)`` to decode
+    /// This method uses the ``OracleDecodable/init(from:type:context:)`` to decode
     /// the value internally.
     ///
     /// - Parameter of: The type of the returned value.

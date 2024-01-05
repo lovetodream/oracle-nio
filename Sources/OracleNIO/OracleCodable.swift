@@ -9,25 +9,28 @@ import class Foundation.JSONDecoder
 /// stable between databases.
 public protocol OracleThrowingDynamicTypeEncodable: Sendable, Equatable {
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
-    var oracleType: DBType { get }
+    var oracleType: OracleDataType { get }
 
     /// Identifies the byte size indicator which will be sent to Oracle.
     ///
     /// This doesn't need to be the actual size. Mostly it is the corresponding
-    /// ``DBType.defaultSize``.
+    /// ``OracleDataType.defaultSize``. A default
+    /// implementation based on that is provided.
     var size: UInt32 { get }
 
     /// Indicates if the data type is an array.
+    ///
+    /// A default implementation is provided.
     static var isArray: Bool { get }
 
     /// Indicates the number of elements in the array if the value is an array.
     ///
-    /// Typically ``Array.count``.
+    /// Typically `Array.count`. A default implementation is provided.
     var arrayCount: Int? { get }
 
     /// Indicates the array size sent to Oracle.
     ///
-    /// Only required if ``isArray`` is `true`.
+    /// Only required if ``isArray`` is `true`. A default implementation is provided.
     var arraySize: Int? { get }
 
     /// Encode the entity into the `ByteBuffer` in Oracle binary format, without setting the byte count.
@@ -58,7 +61,7 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable, Equatable {
 /// users to create ``OracleQuery``s via `ExpressibleByStringInterpolation` without having
 /// to spell `try`.
 public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
-    /// Encode the entity into ``buffer``, using the provided ``context`` as needed, without setting
+    /// Encode the entity into `buffer`, using the provided `context` as needed, without setting
     /// the byte count.
     func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
@@ -96,8 +99,8 @@ public extension Array where Element: OracleThrowingDynamicTypeEncodable {
 
 /// A type that can encode itself to a oracle wire binary representation.
 ///
-/// It enforces that the ``OracleEncodable.encode(into:context:)`` does not throw.
-/// This allows users to create ``OracleQuery``'s using the
+/// It enforces that the ``OracleThrowingDynamicTypeEncodable.encode(into:context:)``
+/// does not throw. This allows users to create ``OracleQuery``'s using the
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
 public protocol OracleEncodable: 
     OracleThrowingEncodable, OracleDynamicTypeEncodable

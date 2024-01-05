@@ -164,7 +164,7 @@ extension UInt: OracleDecodable {
 // MARK: Int
 
 extension Int: OracleEncodable {
-    public var oracleType: DBType { .binaryInteger }
+    public var oracleType: OracleDataType { .binaryInteger }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

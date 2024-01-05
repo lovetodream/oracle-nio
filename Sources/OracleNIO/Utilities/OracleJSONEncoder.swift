@@ -6,7 +6,7 @@ import NIOCore
 /// A protocol that mimics the Foundation `JSONEncoder.encode(_:)` function.
 ///
 /// Conform a non-Foundation JSON encoder to this protocol if you want OracleNIO to be able to use it
-/// when encoding JSON values (see ``_defaultJSONEncoder``).
+/// when encoding JSON values.
 public protocol OracleJSONEncoder {
     func encode<T>(_ value: T) throws -> Data where T: Encodable
 

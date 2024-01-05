@@ -6,7 +6,7 @@ import struct Foundation.TimeZone
 import func Foundation.pow
 
 extension Date: OracleEncodable {
-    public var oracleType: DBType { .timestampTZ }
+    public var oracleType: OracleDataType { .timestampTZ }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

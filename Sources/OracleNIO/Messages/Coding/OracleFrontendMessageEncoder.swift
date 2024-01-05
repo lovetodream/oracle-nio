@@ -1222,7 +1222,7 @@ extension OracleFrontendMessageEncoder {
 }
 
 private protocol ColumnMetadata {
-    var dataType: DBType { get }
+    var dataType: OracleDataType { get }
     var bufferSize: UInt32 { get }
     var isArray: Bool { get }
     var maxArraySize: Int { get }

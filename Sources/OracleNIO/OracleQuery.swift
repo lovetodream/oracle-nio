@@ -141,7 +141,7 @@ public struct OracleBindings: Sendable, Hashable {
     @usableFromInline
     struct Metadata: Sendable, Hashable {
         @usableFromInline
-        var dataType: DBType
+        var dataType: OracleDataType
         @usableFromInline
         var protected: Bool
         @usableFromInline
@@ -165,7 +165,7 @@ public struct OracleBindings: Sendable, Hashable {
 
         @inlinable
         init(
-            dataType: DBType,
+            dataType: OracleDataType,
             protected: Bool,
             isReturnBind: Bool,
             size: UInt32 = 0,
@@ -400,13 +400,13 @@ extension OracleBindings:
     }
 
     private static func makeDebugDescription(
-        protected: Bool, type: DBType, buffer: ByteBuffer?
+        protected: Bool, type: OracleDataType, buffer: ByteBuffer?
     ) -> String {
         "(\(Self.makeBindingPrintable(protected: protected, type: type, buffer: buffer)); \(type))"
     }
 
     private static func makeBindingPrintable(
-        protected: Bool, type: DBType, buffer: ByteBuffer?
+        protected: Bool, type: OracleDataType, buffer: ByteBuffer?
     ) -> String {
         if protected {
             return "****"

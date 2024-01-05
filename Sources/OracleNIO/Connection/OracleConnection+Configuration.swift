@@ -7,6 +7,7 @@ import class Foundation.ProcessInfo
 import struct Foundation.TimeZone
 
 extension OracleConnection {
+    /// A configuration object for a connection.
     public struct Configuration: Sendable {
 
         // MARK: - TLS
@@ -54,7 +55,7 @@ extension OracleConnection {
             ///
             /// > When set to `nil`:
             /// If the connection is made to a server over TCP using
-            /// ``OracleConnection/Configuration/init(host:port:serviceName:username:password:tls:)``, 
+            /// ``OracleConnection/Configuration/init(host:port:service:username:password:tls:)``,
             /// the given `host` is used, unless it was an IP address string. If it _was_ an IP, or the
             /// connection is made by any other method, SNI is disabled.
             public var tlsServerName: String?
@@ -143,7 +144,7 @@ extension OracleConnection {
 
         /// Prefix for the connection id sent to the database server.
         ///
-        /// - Note: This has nothing to do with ``OracleConnection.connectionID``. This
+        /// - Note: This has nothing to do with ``OracleConnection.id``. This
         ///         prefix can be used to identify the connection on the oracle server. It will be
         ///         sanitized.
         public var connectionIDPrefix: String {

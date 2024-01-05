@@ -3,7 +3,7 @@ import Logging
 import Atomics
 import _ConnectionPoolModule
 
-/// A Oracle client that is backed by an underlying connection pool. Use ``Configuration`` to change the client's
+/// A Oracle client that is backed by an underlying connection pool. Use ``Options`` to change the client's
 /// behavior.
 ///
 /// > Important:
@@ -36,7 +36,7 @@ public final class OracleClient: Sendable {
         /// A keep-alive behavior for Oracle connections. The ``frequency`` defines after which time an idle
         /// connection shall run a keep-alive ping.
         public struct KeepAliveBehavior: Sendable {
-            /// The amount of time that shall pass before an idle connection runs a keep-alive ``query``.
+            /// The amount of time that shall pass before an idle connection runs a keep-alive `ping`.
             public var frequency: Duration
 
             /// Create a new `KeepAliveBehavior`.

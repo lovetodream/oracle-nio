@@ -17,7 +17,7 @@ extension String: OracleEncodable {
             ._encodeRaw(into: &buffer, context: context)
     }
 
-    public var oracleType: DBType {
+    public var oracleType: OracleDataType {
         .varchar
     }
 

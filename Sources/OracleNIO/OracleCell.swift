@@ -5,7 +5,7 @@ public struct OracleCell: Sendable, Equatable {
     /// The cell's value as raw bytes.
     public var bytes: ByteBuffer?
     /// The cell's data type. This is important metadata when decoding the cell.
-    public var dataType: DBType
+    public var dataType: OracleDataType
 
     /// The cell's column name within the row.
     public var columnName: String
@@ -14,7 +14,7 @@ public struct OracleCell: Sendable, Equatable {
 
     public init(
         bytes: ByteBuffer? = nil,
-        dataType: DBType,
+        dataType: OracleDataType,
         columnName: String,
         columnIndex: Int
     ) {

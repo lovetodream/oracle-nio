@@ -189,9 +189,6 @@ public struct QueryOptions {
     ///                   the database. Refer to ``prefetchRows`` for additional explanation.
     ///   - arraySize: Indicates how many rows will be returned by any subsequent fetch calls to the
     ///                database. Refer to ``arraySize`` for additional explanation.
-    ///   - fetchLOBs: Defines if LOBs should be fetched as LOBs (lazy loaded) or inline as raw bytes.
-    ///                by default, this is set to `false`. Refer to ``fetchLOBs`` for additional
-    ///                explanation.
     public init(
         autoCommit: Bool = false,
         prefetchRows: Int = 2,

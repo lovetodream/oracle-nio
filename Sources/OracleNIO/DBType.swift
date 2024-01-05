@@ -5,7 +5,8 @@ enum DatabaseNumericType: Int {
     case string = 3
 }
 
-public struct DBTypeNumber: Sendable, Hashable {
+/// A numeric value used to identify a oracle data type.
+public struct OracleDataTypeNumber: Sendable, Hashable {
     internal enum Backing: Int, Sendable {
         case bFile = 2020
         case binaryDouble = 2008
@@ -75,17 +76,20 @@ public struct DBTypeNumber: Sendable, Hashable {
     public static let varchar: Self = .init(.varchar)
 }
 
-public struct DBType: Sendable, Equatable, Hashable {
+/// A data type used by the Oracle Wire Protocol (TNS) and the database.
+///
+/// It's information is used to encode/decode and send data from and to the database.
+public struct OracleDataType: Sendable, Equatable, Hashable {
     @usableFromInline
     var key: UInt16
     @usableFromInline
-    var number: DBTypeNumber
+    var number: OracleDataTypeNumber
     @usableFromInline
     var name: String
     @usableFromInline
     var oracleName: String
     @usableFromInline
-    var _oracleType: DataType.Value?
+    var _oracleType: TNSDataType?
     @usableFromInline
     var defaultSize: Int = 0
     @usableFromInline
@@ -94,10 +98,10 @@ public struct DBType: Sendable, Equatable, Hashable {
     var bufferSizeFactor: Int = 0
 
     public init(
-        number: DBTypeNumber,
+        number: OracleDataTypeNumber,
         name: String,
         oracleName: String,
-        oracleType: DataType.Value? = nil,
+        oracleType: TNSDataType? = nil,
         defaultSize: Int = 0,
         csfrm: UInt8 = 0,
         bufferSizeFactor: Int = 0
@@ -115,7 +119,7 @@ public struct DBType: Sendable, Equatable, Hashable {
     @usableFromInline
     static func fromORATypeAndCSFRM(
         typeNumber: UInt8, csfrm: UInt8?
-    ) throws -> DBType {
+    ) throws -> OracleDataType {
         let key = UInt16(csfrm ?? 0) * 256 + UInt16(typeNumber)
         guard let dbType = supported.first(where: { $0.key == key }) else {
             throw OracleError.ErrorType.oracleTypeNotSupported
@@ -123,48 +127,48 @@ public struct DBType: Sendable, Equatable, Hashable {
         return dbType
     }
 
-    public static let bFile = DBType(
+    public static let bFile = OracleDataType(
         number: .bFile,
         name: "DB_TYPE_BFILE",
         oracleName: "BFILE",
         oracleType: .init(rawValue: 114)!
     )
-    public static let binaryDouble = DBType(
+    public static let binaryDouble = OracleDataType(
         number: .binaryDouble,
         name: "DB_TYPE_BINARY_DOUBLE",
         oracleName: "BINARY_DOUBLE",
         oracleType: .init(rawValue: 101)!,
         bufferSizeFactor: 8
     )
-    public static let binaryFloat = DBType(
+    public static let binaryFloat = OracleDataType(
         number: .binaryFloat,
         name: "DB_TYPE_BINARY_FLOAT",
         oracleName: "BINARY_FLOAT",
         oracleType: .init(rawValue: 100)!,
         bufferSizeFactor: 4
     )
-    public static let binaryInteger = DBType(
+    public static let binaryInteger = OracleDataType(
         number: .binaryInteger,
         name: "DB_TYPE_BINARY_INTEGER",
         oracleName: "BINARY_INTEGER",
         oracleType: .init(rawValue: 3)!,
         bufferSizeFactor: 22
     )
-    public static let blob = DBType(
+    public static let blob = OracleDataType(
         number: .blob,
         name: "DB_TYPE_BLOB",
         oracleName: "BLOB",
         oracleType: .init(rawValue: 113)!,
         bufferSizeFactor: 112
     )
-    public static let boolean = DBType(
+    public static let boolean = OracleDataType(
         number: .boolean,
         name: "DB_TYPE_BOOLEAN",
         oracleName: "BOOLEAN", 
         oracleType: .init(rawValue: 252)!,
         bufferSizeFactor: 4
     )
-    public static let char = DBType(
+    public static let char = OracleDataType(
         number: .char,
         name: "DB_TYPE_CHAR",
         oracleName: "CHAR",
@@ -173,7 +177,7 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 1,
         bufferSizeFactor: 4
     )
-    public static let clob = DBType(
+    public static let clob = OracleDataType(
         number: .clob,
         name: "DB_TYPE_CLOB",
         oracleName: "CLOB",
@@ -181,40 +185,40 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 1,
         bufferSizeFactor: 112
     )
-    public static let cursor = DBType(
+    public static let cursor = OracleDataType(
         number: .cursor,
         name: "DB_TYPE_CURSOR", 
         oracleName: "CURSOR",
         oracleType: .init(rawValue: 102)!,
         bufferSizeFactor: 4
     )
-    public static let date = DBType(
+    public static let date = OracleDataType(
         number: .date,
         name: "DB_TYPE_DATE",
         oracleName: "DATE",
         oracleType: .init(rawValue: 12)!,
         bufferSizeFactor: 7
     )
-    public static let intervalDS = DBType(
+    public static let intervalDS = OracleDataType(
         number: .intervalDS,
         name: "DB_TYPE_INTERVAL_DS",
         oracleName: "INTERVAL DAY TO SECOND",
         oracleType: .init(rawValue: 183)!,
         bufferSizeFactor: 11
     )
-    public static let intervalYM = DBType(
+    public static let intervalYM = OracleDataType(
         number: .intervalYM,
         name: "DB_TYPE_INTERVAL_YM",
         oracleName: "INTERVAL YEAR TO MONTH",
         oracleType: .init(rawValue: 182)!
     )
-    public static let json = DBType(
+    public static let json = OracleDataType(
         number: .json,
         name: "DB_TYPE_JSON",
         oracleName: "JSON",
         oracleType: .init(rawValue: 119)!
     )
-    public static let long = DBType(
+    public static let long = OracleDataType(
         number: .longVarchar,
         name: "DB_TYPE_LONG",
         oracleName: "LONG",
@@ -222,7 +226,7 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 1,
         bufferSizeFactor: 2147483647
     )
-    public static let longNVarchar = DBType(
+    public static let longNVarchar = OracleDataType(
         number: .longNVarchar,
         name: "DB_TYPE_LONG_NVARCHAR",
         oracleName: "LONG NVARCHAR",
@@ -230,14 +234,14 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 2,
         bufferSizeFactor: 2147483647
     )
-    public static let longRAW = DBType(
+    public static let longRAW = OracleDataType(
         number: .longRAW,
         name: "DB_TYPE_LONG_RAW",
         oracleName: "LONG RAW",
         oracleType: .init(rawValue: 24)!,
         bufferSizeFactor: 2147483647
     )
-    public static let nChar = DBType(
+    public static let nChar = OracleDataType(
         number: .nChar,
         name: "DB_TYPE_NCHAR",
         oracleName: "NCHAR",
@@ -246,7 +250,7 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 2,
         bufferSizeFactor: 4
     )
-    public static let nCLOB = DBType(
+    public static let nCLOB = OracleDataType(
         number: .nCLOB,
         name: "DB_TYPE_NCLOB",
         oracleName: "NCLOB",
@@ -254,14 +258,14 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 2,
         bufferSizeFactor: 112
     )
-    public static let number = DBType(
+    public static let number = OracleDataType(
         number: .number,
         name: "DB_TYPE_NUMBER",
         oracleName: "NUMBER",
         oracleType: .init(rawValue: 2)!,
         bufferSizeFactor: 22
     )
-    public static let nVarchar = DBType(
+    public static let nVarchar = OracleDataType(
         number: .nVarchar,
         name: "DB_TYPE_NVARCHAR",
         oracleName: "NVARCHAR2",
@@ -270,13 +274,13 @@ public struct DBType: Sendable, Equatable, Hashable {
         csfrm: 2,
         bufferSizeFactor: 4
     )
-    public static let object = DBType(
+    public static let object = OracleDataType(
         number: .object,
         name: "DB_TYPE_OBJECT",
         oracleName: "OBJECT",
         oracleType: .init(rawValue: 109)!
     )
-    public static let raw = DBType(
+    public static let raw = OracleDataType(
         number: .raw,
         name: "DB_TYPE_RAW",
         oracleName: "RAW",
@@ -284,46 +288,46 @@ public struct DBType: Sendable, Equatable, Hashable {
         defaultSize: 4000,
         bufferSizeFactor: 1
     )
-    public static let rowID = DBType(
+    public static let rowID = OracleDataType(
         number: .rowID,
         name: "DB_TYPE_ROWID",
         oracleName: "ROWID",
         oracleType: .init(rawValue: 11)!,
         bufferSizeFactor: 18
     )
-    public static let timestamp = DBType(
+    public static let timestamp = OracleDataType(
         number: .timestamp,
         name: "DB_TYPE_TIMESTAMP",
         oracleName: "TIMESTAMP",
         oracleType: .init(rawValue: 180)!,
         bufferSizeFactor: 11
     )
-    public static let timestampLTZ = DBType(
+    public static let timestampLTZ = OracleDataType(
         number: .timestampLTZ,
         name: "DB_TYPE_TIMESTAMP_LTZ",
         oracleName: "TIMESTAMP WITH LOCAL TZ",
         oracleType: .init(rawValue: 231)!,
         bufferSizeFactor: 11
     )
-    public static let timestampTZ = DBType(
+    public static let timestampTZ = OracleDataType(
         number: .timestampTZ,
         name: "DB_TYPE_TIMESTAMP_TZ",
         oracleName: "TIMESTAMP WITH TZ",
         oracleType: .init(rawValue: 181)!,
         bufferSizeFactor: 13
     )
-    public static let unknown = DBType(
+    public static let unknown = OracleDataType(
         number: .unknown,
         name: "DB_TYPE_UNKNOWN",
         oracleName: "UNKNOWN"
     )
-    public static let uRowID = DBType(
+    public static let uRowID = OracleDataType(
         number: .uRowID,
         name: "DB_TYPE_UROWID",
         oracleName: "UROWID",
         oracleType: .init(rawValue: 208)!
     )
-    public static let varchar = DBType(
+    public static let varchar = OracleDataType(
         number: .varchar,
         name: "DB_TYPE_VARCHAR",
         oracleName: "VARCHAR2",
@@ -334,7 +338,7 @@ public struct DBType: Sendable, Equatable, Hashable {
     )
 
     @usableFromInline
-    static let supported: [DBType] = [
+    static let supported: [OracleDataType] = [
         .bFile, .binaryDouble, .binaryFloat, .binaryInteger, .blob, .boolean,
         .char, .clob, .cursor, .date, .intervalDS, .intervalYM, .json, .long,
         .longNVarchar, .longRAW, .nChar, .nCLOB, .number, .nVarchar, .object,

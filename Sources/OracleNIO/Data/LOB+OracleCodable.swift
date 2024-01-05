@@ -10,7 +10,7 @@ final class LOB: @unchecked Sendable {
     var chunkSize: UInt32
     internal var locator: ByteBuffer
     private(set) var hasMetadata: Bool
-    public let dbType: DBType
+    public let dbType: OracleDataType
 
     private(set) weak var cleanupContext: CleanupContext?
 
@@ -19,7 +19,7 @@ final class LOB: @unchecked Sendable {
         chunkSize: UInt32,
         locator: ByteBuffer,
         hasMetadata: Bool,
-        dbType: DBType
+        dbType: OracleDataType
     ) {
         self.size = size
         self.chunkSize = chunkSize
@@ -29,7 +29,7 @@ final class LOB: @unchecked Sendable {
     }
     deinit { self.free() }
 
-    static func create(dbType: DBType, locator: ByteBuffer?) -> Self {
+    static func create(dbType: OracleDataType, locator: ByteBuffer?) -> Self {
         if let locator {
             return self.init(
                 size: 0,
@@ -99,7 +99,7 @@ extension LOB: OracleEncodable {
         lhs.dbType == rhs.dbType
     }
     
-    public var oracleType: DBType { .blob }
+    public var oracleType: OracleDataType { .blob }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

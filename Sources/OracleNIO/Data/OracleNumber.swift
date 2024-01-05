@@ -79,7 +79,7 @@ extension OracleNumber: OracleDecodable {
 }
 
 extension OracleNumber: OracleEncodable {
-    public var oracleType: DBType { .number }
+    public var oracleType: OracleDataType { .number }
     
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

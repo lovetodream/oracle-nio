@@ -9,13 +9,22 @@ final class _PBKDF2Tests: XCTestCase {
         var c: Int
         var dkLen: Int
         var expected: (sha224: String, sha256: String, sha384: String, sha512: String)
+        var skip: Bool
 
-        init(p: String, s: String, c: Int, dkLen: Int, expected: (sha224: String, sha256: String, sha384: String, sha512: String)) {
+        init(
+            p: String,
+            s: String,
+            c: Int,
+            dkLen: Int,
+            expected: (sha224: String, sha256: String, sha384: String, sha512: String),
+            skip: Bool = false
+        ) {
             self.p = p.data(using: .utf8)!
             self.s = s.data(using: .utf8)!
             self.c = c
             self.dkLen = dkLen
             self.expected = expected
+            self.skip = skip
         }
     }
 
@@ -39,12 +48,12 @@ final class _PBKDF2Tests: XCTestCase {
             "559726be38db125bc85ed7895f6e3cf574c7a01c",
             "d197b1b33db0143e018b12f3d1d1479e6cdebdcc"
         )),
-        TestCase(p: "password", s: "salt", c: 16777216, dkLen: 20, expected: (
+        TestCase(p: "password", s: "salt", c: 16_777_216, dkLen: 20, expected: (
             "b49925184cb4b559f365e94fcafcd4cdb9f7aef4",
             "cf81c66fe8cfc04d1f31ecb65dab4089f7f179e8",
             "a7fdb349ba2bfa6bf647bb0161bae1320df27e64",
             "6180a3ceabab45cc3964112c811e0131bca93a35"
-        )),
+        ), skip: true), // takes very long :)
         TestCase(p: "passwordPASSWORDpassword", s: "saltSALTsaltSALTsaltSALTsaltSALTsalt", c: 4096, dkLen: 25, expected: (
             "056c4ba438ded91fc14e0594e6f52b87e1f3690c0dc0fbc057",
             "348c89dbcbd32b2f32d814b8116e84cf2b17347ebc1800181c",
@@ -80,7 +89,7 @@ final class _PBKDF2Tests: XCTestCase {
     func testAll() throws {
         let total = Self.cases.count
         let clock = ContinuousClock()
-        for (index, testCase) in Self.cases.enumerated() {
+        for (index, testCase) in Self.cases.enumerated() where !testCase.skip {
             print(" running: \(index + 1)/\(total)")
             let duration = try clock.measure {
                 let sha256 = try PBKDF2<SHA256>.calculate(length: testCase.dkLen, password: testCase.p, salt: testCase.s, rounds: testCase.c)

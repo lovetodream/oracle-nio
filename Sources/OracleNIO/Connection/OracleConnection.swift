@@ -5,10 +5,7 @@ import NIOTransportServices
 #endif
 import NIOSSL
 import class Foundation.ProcessInfo
-
-#if DEBUG
 import Logging
-#endif
 
 /// An Oracle connection. Use it to run queries against an Oracle server.
 public final class OracleConnection: @unchecked Sendable {

@@ -90,7 +90,7 @@ final class _PBKDF2Tests: XCTestCase {
                 XCTAssertEqual(sha384.hexString, testCase.expected.sha384)
                 XCTAssertEqual(sha512.hexString, testCase.expected.sha512)
             }
-            print("finished: \(index + 1)/\(total) - took: \(duration.formatted())")
+            print("finished: \(index + 1)/\(total) - took: \(duration)")
         }
     }
 }

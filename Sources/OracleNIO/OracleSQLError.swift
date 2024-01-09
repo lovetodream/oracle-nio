@@ -300,6 +300,59 @@ public struct OracleSQLError: Error {
 
 }
 
+extension OracleSQLError: CustomStringConvertible {
+    public var description: String {
+        // This may seem very odd... But we are afraid that users might accidentally send the
+        // unfiltered errors out to end-users. This may leak security relevant information. For this
+        // reason we overwrite the error description by default to this generic "Database error"
+        """
+        OracleSQLError – Generic description to prevent accidental leakage of \
+        sensitive data. For debugging details, use `String(reflecting: error)`.
+        """
+    }
+}
+
+extension OracleSQLError: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        var result = #"OracleSQLError(code: \#(self.code)"#
+
+        if let serverInfo = self.serverInfo?.underlying {
+            result.append(", serverInfo: ")
+            result.append("BackendError(")
+            result.append("number: \(String(reflecting: serverInfo.number))")
+            result.append(", message: \(String(reflecting: serverInfo.message))")
+            result.append(", position: \(String(reflecting: serverInfo.position))")
+            result.append(", cursorID: \(String(reflecting: serverInfo.cursorID))")
+            result.append(", rowCount: \(String(reflecting: serverInfo.rowCount))")
+            result.append(", rowID: \(String(reflecting: serverInfo.rowID))")
+            result.append(")")
+        }
+
+        if let backendMessage = self.backendMessage {
+            result.append(", backendMessage: \(String(reflecting: backendMessage))")
+        }
+
+        if let underlying = self.underlying {
+            result.append(", underlying: \(String(reflecting: underlying))")
+        }
+
+        if let file = self.file {
+            result.append(", triggeredFromRequestInFile: \(file)")
+            if let line = self.line {
+                result.append(", line: \(line)")
+            }
+        }
+
+        if let query = self.query {
+            result.append(", query: \(String(reflecting: query))")
+        }
+
+        result.append(")")
+
+        return result
+    }
+}
+
 
 // MARK: - Error Implementations -
 

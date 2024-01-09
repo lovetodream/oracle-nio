@@ -660,7 +660,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         }
 
         // 2. fire an error
-        context.fireErrorCaught(cleanup.error)
+        if cleanup.error.code != .clientClosedConnection {
+            context.fireErrorCaught(cleanup.error)
+        }
 
         // 3. close the connection or fire channel inactive
         switch cleanup.action {

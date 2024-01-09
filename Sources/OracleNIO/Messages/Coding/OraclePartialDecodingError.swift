@@ -25,7 +25,7 @@ struct OraclePartialDecodingError: Error {
     }
 
     static func unsupportedDataType(
-        type: TNSDataType, file: String = #fileID, line: Int = #line
+        type: _TNSDataType, file: String = #fileID, line: Int = #line
     ) -> Self {
         OraclePartialDecodingError(
             description: "Could not process unsupported data type '\(type)'.",

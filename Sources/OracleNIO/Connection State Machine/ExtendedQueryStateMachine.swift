@@ -950,7 +950,7 @@ struct ExtendedQueryStateMachine {
 
     private func processColumnData(
         from buffer: inout ByteBuffer,
-        oracleType: TNSDataType?,
+        oracleType: _TNSDataType?,
         csfrm: UInt8,
         bufferSize: UInt32,
         capabilities: Capabilities

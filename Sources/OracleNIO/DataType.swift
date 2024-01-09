@@ -1,6 +1,6 @@
 struct DataType: Sendable, Hashable {
-    var dataType: TNSDataType
-    var convDataType: TNSDataType
+    var dataType: _TNSDataType
+    var convDataType: _TNSDataType
     var representation: DataType.Representation
 
     /// Data type representations

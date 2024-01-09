@@ -1,5 +1,8 @@
 /// A data type used by the TNS wire protocol.
-public enum TNSDataType: UInt16, Sendable, Hashable, CustomStringConvertible {
+///
+/// - Warning: This enum might receive additional cases without a SemVer major release.
+///            It should only be used in the context of ``OracleDataType``.
+public enum _TNSDataType: UInt16, Sendable, Hashable, CustomStringConvertible {
     case undefined = 0
     case varchar = 1
     case number = 2
@@ -941,4 +944,4 @@ public enum TNSDataType: UInt16, Sendable, Hashable, CustomStringConvertible {
             return "TNP"
         }
     }
-    }
+}

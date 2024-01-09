@@ -89,7 +89,7 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
     @usableFromInline
     var oracleName: String
     @usableFromInline
-    var _oracleType: TNSDataType?
+    var _oracleType: _TNSDataType?
     @usableFromInline
     var defaultSize: Int = 0
     @usableFromInline
@@ -101,7 +101,7 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         number: OracleDataTypeNumber,
         name: String,
         oracleName: String,
-        oracleType: TNSDataType? = nil,
+        oracleType: _TNSDataType? = nil,
         defaultSize: Int = 0,
         csfrm: UInt8 = 0,
         bufferSizeFactor: Int = 0

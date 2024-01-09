@@ -55,7 +55,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             let scale: Int16
             if
-                let dataType = TNSDataType(rawValue: UInt16(dataType)),
+                let dataType = _TNSDataType(rawValue: UInt16(dataType)),
                 [.number, .intervalDS, .timestamp, .timestampLTZ, .timestampTZ]
                     .contains(dataType)
             {
@@ -90,7 +90,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             }
 
             var size = try buffer.throwingReadUB4()
-            if dataType == TNSDataType.raw.rawValue {
+            if dataType == _TNSDataType.raw.rawValue {
                 size = bufferSize
             }
 
@@ -126,7 +126,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             buffer.skipUB2() // column position
             buffer.skipUB4() // uds flag
 
-            if dataType == TNSDataType.intNamed.rawValue {
+            if dataType == _TNSDataType.intNamed.rawValue {
                 throw OraclePartialDecodingError
                     .unsupportedDataType(type: .intNamed)
             }

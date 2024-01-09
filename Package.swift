@@ -15,7 +15,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.58.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.19.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.25.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", branch: "main"), // TODO: switch back to 3.x.x with their next release
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.2.0"),
         .package(url: "https://github.com/vapor/postgres-nio.git", exact: "1.20.0"), // has to be updated explicitly to avoid source breaking changes, as `_ConnectionPoolModule` is not guaranteed to be stable across versions
     ],
     targets: [

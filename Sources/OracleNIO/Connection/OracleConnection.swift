@@ -1,9 +1,11 @@
+import Dispatch
 import NIOCore
 import NIOPosix
 #if canImport(Network)
 import NIOTransportServices
 #endif
 import NIOSSL
+import NIOConcurrencyHelpers
 import class Foundation.ProcessInfo
 import Logging
 
@@ -140,7 +142,7 @@ public final class OracleConnection: @unchecked Sendable {
     ///   - logger: A logger to log background events into.
     /// - Returns: A SwiftNIO `EventLoopFuture` that will provide a ``OracleConnection``
     ///            at a later point in time.
-    public static func connect(
+    private static func connect(
         on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
         configuration: OracleConnection.Configuration,
         id connectionID: ID,
@@ -190,8 +192,51 @@ public final class OracleConnection: @unchecked Sendable {
                 .socket(SocketOptionLevel(IPPROTO_TCP), TCP_NODELAY), value: 1)
     }
 
+    /// Closes the connection to the database server synchronously.
+    ///
+    /// - Note: This method blocks the thread indefinitely, prefer using ``close()-4ny0f``.
+    @available(*, noasync, message: "syncClose() can block indefinitely, prefer close()", renamed: "close()")
+    public func syncClose() throws {
+        guard !self.isClosed else { return }
+
+        if let eventLoop = MultiThreadedEventLoopGroup.currentEventLoop {
+            preconditionFailure("""
+            syncClose() must not be called when on an NIO EventLoop.
+            Calling syncClose() on any EventLoop can lead to deadlocks.
+            Current eventLoop: \(eventLoop)
+            """)
+        }
+
+        self.channel.close(mode: .all, promise: nil)
+
+        func close(queue: DispatchQueue, _ callback: @escaping @Sendable (Error?) -> Void) {
+            self.closeFuture.whenComplete { result in
+                let error: Error? = switch result {
+                case .failure(let error): error
+                case .success: nil
+                }
+                queue.async {
+                    callback(error)
+                }
+            }
+        }
+
+        let errorStorage = NIOLockedValueBox<Error?>(nil)
+        let continuation = DispatchWorkItem { }
+        close(queue: DispatchQueue(label: "oracle-nio.close-connection-\(self.id)")) { error in
+            if let error {
+                errorStorage.withLockedValue { $0 = error }
+            }
+            continuation.perform()
+        }
+        continuation.wait()
+        try errorStorage.withLockedValue { error in
+            if let error { throw error }
+        }
+    }
+
     /// Closes the connection to the database server.
-    public func close() -> EventLoopFuture<Void> {
+    private func close() -> EventLoopFuture<Void> {
         guard !self.isClosed else {
             return self.eventLoop.makeSucceededVoidFuture()
         }
@@ -201,21 +246,21 @@ public final class OracleConnection: @unchecked Sendable {
     }
 
     /// Sends a ping to the database server.
-    public func ping() -> EventLoopFuture<Void> {
+    private func ping() -> EventLoopFuture<Void> {
         let promise = self.eventLoop.makePromise(of: Void.self)
         self.channel.write(OracleTask.ping(promise), promise: nil)
         return promise.futureResult
     }
 
     /// Sends a commit to the database server.
-    public func commit() -> EventLoopFuture<Void> {
+    private func commit() -> EventLoopFuture<Void> {
         let promise = self.eventLoop.makePromise(of: Void.self)
         self.channel.write(OracleTask.commit(promise), promise: nil)
         return promise.futureResult
     }
 
     /// Sends a rollback to the database server.
-    public func rollback() -> EventLoopFuture<Void> {
+    private func rollback() -> EventLoopFuture<Void> {
         let promise = self.eventLoop.makePromise(of: Void.self)
         self.channel.write(OracleTask.rollback(promise), promise: nil)
         return promise.futureResult
@@ -312,7 +357,7 @@ extension OracleConnection {
     ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
     ///              be ignored, but feel free to experiment based on your needs. Every option and
     ///              its impact is documented.
-    ///   - logger: The `Logger` to log into for the query. If none is provided, a no-op logger will be used.
+    ///   - logger: The `Logger` to log into for the query. If none, the query does not log anything.
     ///   - file: The file, the query was started in. Used for better error reporting.
     ///   - line: The line, the query was started in. Used for better error reporting.
     /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the query

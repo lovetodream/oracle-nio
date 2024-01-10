@@ -14,7 +14,7 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable, Equatable {
     /// Identifies the byte size indicator which will be sent to Oracle.
     ///
     /// This doesn't need to be the actual size. Mostly it is the corresponding
-    /// ``OracleDataType.defaultSize``. A default
+    /// ``OracleDataType/defaultSize-property``. A default
     /// implementation based on that is provided.
     var size: UInt32 { get }
 
@@ -99,7 +99,7 @@ public extension Array where Element: OracleThrowingDynamicTypeEncodable {
 
 /// A type that can encode itself to a oracle wire binary representation.
 ///
-/// It enforces that the ``OracleThrowingDynamicTypeEncodable.encode(into:context:)``
+/// It enforces that the ``OracleThrowingDynamicTypeEncodable-Implementations``
 /// does not throw. This allows users to create ``OracleQuery``'s using the
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
 public protocol OracleEncodable: 

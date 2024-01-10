@@ -144,7 +144,7 @@ extension OracleConnection {
 
         /// Prefix for the connection id sent to the database server.
         ///
-        /// - Note: This has nothing to do with ``OracleConnection.id``. This
+        /// - Note: This has nothing to do with ``OracleConnection/id-property``. This
         ///         prefix can be used to identify the connection on the oracle server. It will be
         ///         sanitized.
         public var connectionIDPrefix: String {

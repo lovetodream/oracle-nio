@@ -55,7 +55,6 @@ Oracle Database 12.1 or later.
 - ``OracleJSONDecoder``
 - ``OracleDataType``
 - ``OracleDataTypeNumber``
-- ``TNSDataType``
 - ``OracleNumber``
 - ``OracleRef``
 - ``Cursor``

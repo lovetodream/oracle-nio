@@ -26,10 +26,10 @@ final class OracleNIOTests: XCTestCase {
 
     func testConnectionAndClose() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        XCTAssertNoThrow(try conn.close().wait())
+        XCTAssertNoThrow(try conn.syncClose())
     }
 
-    func testAuthenticationFailure() throws {
+    func testAuthenticationFailure() async throws {
         let config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",
             port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
@@ -39,21 +39,22 @@ final class OracleNIOTests: XCTestCase {
         )
 
         var conn: OracleConnection?
-        XCTAssertThrowsError(
-            conn = try OracleConnection.connect(
+        do {
+            conn = try await OracleConnection.connect(
                 configuration: config, id: 1, logger: .oracleTest
-            ).wait()
-        ) {
-            XCTAssertTrue($0 is OracleSQLError)
+            )
+            XCTFail("Authentication should fail")
+        } catch {
+            // expected
         }
 
         // In case of a test failure the connection must be closed.
-        XCTAssertNoThrow(try conn?.close().wait())
+        XCTAssertNoThrow(try conn?.syncClose())
     }
 
     func testSimpleQuery() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         let rows = try await conn.query(
             "SELECT 'test' FROM dual", logger: .oracleTest
         ).collect()
@@ -63,7 +64,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testSimpleDateQuery() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         let rows = try await conn.query(
                 "SELECT systimestamp FROM dual", logger: .oracleTest
         ).collect()
@@ -75,7 +76,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testSimpleOptionalBinds() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         var rows = try await conn.query(
             "SELECT \(Optional("test")) FROM dual", logger: .oracleTest
         ).collect()
@@ -90,7 +91,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testQuery10kItems() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
 
         let rows = try await conn.query(
             "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
@@ -112,7 +113,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testFloatingPointNumbers() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
 
         var received: Int64 = 0
         let rows = try await conn.query(
@@ -140,7 +141,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testDuplicateColumn() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE duplicate", logger: .oracleTest
@@ -198,7 +199,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testDuplicateColumnInEveryRow() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE duplicate", logger: .oracleTest
@@ -245,7 +246,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testNoRowsQueryFromDual() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         let rows = try await conn.query(
             "SELECT null FROM dual where rownum = 0", logger: .oracleTest
         ).collect()
@@ -254,7 +255,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testNoRowsQueryFromActual() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE empty", logger: .oracleTest
@@ -276,15 +277,15 @@ final class OracleNIOTests: XCTestCase {
 
     func testPing() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
-        XCTAssertNoThrow(try conn.ping().wait())
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        try await conn.ping()
     }
 
     func testCommit() async throws {
         let conn1 = try await OracleConnection.test(on: self.eventLoop)
         let conn2 = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn1.close().wait()) }
-        defer { XCTAssertNoThrow(try conn2.close().wait()) }
+        defer { XCTAssertNoThrow(try conn1.syncClose()) }
+        defer { XCTAssertNoThrow(try conn2.syncClose()) }
         do {
             try await conn1.query(
                 "DROP TABLE test_commit", logger: .oracleTest
@@ -334,7 +335,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testRollback() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE test_rollback", logger: .oracleTest
@@ -379,7 +380,7 @@ final class OracleNIOTests: XCTestCase {
         let data = try Data(contentsOf: fileURL)
 
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE test_simple_blob", logger: .oracleTest
@@ -423,7 +424,7 @@ final class OracleNIOTests: XCTestCase {
         let buffer = ByteBuffer(data: data)
 
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE test_simple_blob", logger: .oracleTest
@@ -467,7 +468,7 @@ final class OracleNIOTests: XCTestCase {
         let buffer = ByteBuffer(data: data)
 
         let conn = try await OracleConnection.test(on: self.eventLoop)
-        defer { XCTAssertNoThrow(try conn.close().wait()) }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query(
                 "DROP TABLE test_simple_blob", logger: .oracleTest
@@ -538,7 +539,7 @@ final class OracleNIOTests: XCTestCase {
     func testSimplePlSQL() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
 
             let input = 42
             try await conn.query("""
@@ -556,7 +557,7 @@ final class OracleNIOTests: XCTestCase {
     func testSimpleMalformedPlSQL() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
 
             let input = 42
             // The following query misses a required semicolon in line 4
@@ -577,7 +578,7 @@ final class OracleNIOTests: XCTestCase {
     func testEmptyStringBind() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
 
             let row = try await conn
                 .query("SELECT \("") FROM dual", logger: .oracleTest)
@@ -593,7 +594,7 @@ final class OracleNIOTests: XCTestCase {
     func testOutBind() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
             // table creation errors can be ignored
             _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
 
@@ -613,7 +614,7 @@ final class OracleNIOTests: XCTestCase {
     func testOutBindInPLSQL() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
             let out = OracleRef(dataType: .number)
             try await conn.query("""
             begin 
@@ -629,7 +630,7 @@ final class OracleNIOTests: XCTestCase {
     func testOutBindDuplicateInPLSQL() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
             let out1 = OracleRef(dataType: .number)
             let out2 = OracleRef(dataType: .number)
             try await conn.query("""
@@ -648,7 +649,7 @@ final class OracleNIOTests: XCTestCase {
     func testInOutBindInPLSQL() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
             let ref = OracleRef(OracleNumber(25))
             try await conn.query("""
             begin
@@ -665,7 +666,7 @@ final class OracleNIOTests: XCTestCase {
     func testMultipleRowsWithFourColumnsWork() async {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
             let result = try await conn.query(
                 """
                 SELECT
@@ -693,7 +694,7 @@ final class OracleNIOTests: XCTestCase {
         var received: Int64 = 0
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.close().wait()) }
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
 
             let rows = try await conn.query(
                 "SELECT CASE TO_NUMBER(column_value) WHEN 6969 THEN NULL ELSE TO_NUMBER(column_value) END AS id FROM xmltable ('1 to 10000')",

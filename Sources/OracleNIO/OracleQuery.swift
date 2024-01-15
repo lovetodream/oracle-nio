@@ -457,7 +457,7 @@ private struct BindingsReader: Sequence {
         }
 
         mutating func next() -> Optional<Optional<ByteBuffer>> {
-            guard let length = self.buffer.readInteger(as: Int32.self) else {
+            guard let length = self.buffer.readInteger(as: UInt8.self) else {
                 return .none
             }
 

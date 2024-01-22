@@ -1205,7 +1205,6 @@ extension OracleFrontendMessageEncoder {
         let now = Date.now
         var offset = timezone.secondsFromGMT(for: now)
         let isDaylightSavingTime = timezone.isDaylightSavingTime(for: now)
-        offset -= offset
         if isDaylightSavingTime {
             offset -= Int(timezone.daylightSavingTimeOffset(for: now))
         }

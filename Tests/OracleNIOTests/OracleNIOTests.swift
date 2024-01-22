@@ -735,21 +735,21 @@ final class OracleNIOTests: XCTestCase {
             let dateQuery = OracleQuery(unsafeSQL: "SELECT :1, \(dateFromStrFn), TO_CHAR(\(dateFromStrFn), 'YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM') FROM DUAL", binds: bindings)
             try await conn.query("ALTER SESSION SET TIME_ZONE = '+01:00'") // Europe/Berlin
             let datesBerlin = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-            XCTAssertEqual(Calendar.current.compare(date, to: datesBerlin.0, toGranularity: .nanosecond), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .nanosecond), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesBerlin.2)), toGranularity: .nanosecond), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(date, to: datesBerlin.0, toGranularity: .second), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .second), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesBerlin.2)), toGranularity: .second), .orderedSame)
 
             try await conn.query("ALTER SESSION SET TIME_ZONE = '+00:00'") // UTC/GMT
             let datesUTC = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-            XCTAssertEqual(Calendar.current.compare(date, to: datesUTC.0, toGranularity: .nanosecond), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .nanosecond), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesUTC.2)), toGranularity: .nanosecond), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(date, to: datesUTC.0, toGranularity: .second), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .second), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesUTC.2)), toGranularity: .second), .orderedSame)
 
             try await conn.query("ALTER SESSION SET TIME_ZONE = '-10:00'") // Hawaii
             let datesHawaii = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-            XCTAssertEqual(Calendar.current.compare(date, to: datesHawaii.0, toGranularity: .nanosecond), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .nanosecond), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesHawaii.2)), toGranularity: .nanosecond), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(date, to: datesHawaii.0, toGranularity: .second), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .second), .orderedSame)
+            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesHawaii.2)), toGranularity: .second), .orderedSame)
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }

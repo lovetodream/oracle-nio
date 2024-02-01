@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 /// Oracle authentication modes.
 public enum AuthenticationMode: UInt32, Sendable, CustomStringConvertible {
     case `default` = 0

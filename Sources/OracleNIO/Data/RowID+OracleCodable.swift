@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 import NIOCore
 
 public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {

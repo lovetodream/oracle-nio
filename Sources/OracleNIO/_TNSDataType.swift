@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 /// A data type used by the TNS wire protocol.
 ///
 /// - Warning: This enum might receive additional cases without a SemVer major release.

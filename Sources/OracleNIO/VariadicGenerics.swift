@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 extension OracleRow {
     // --- snip TODO: Remove once bug is fixed, that disallows tuples of one
     @inlinable

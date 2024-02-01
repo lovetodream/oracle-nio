@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 extension FixedWidthInteger {
     public static func random() -> Self {
         return Self.random(in: .min ... .max)

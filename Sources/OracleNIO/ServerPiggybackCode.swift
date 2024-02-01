@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 /// Server side piggyback operation codes
 enum ServerPiggybackCode: UInt8, CustomStringConvertible {
     case queryCacheInvalidation = 1

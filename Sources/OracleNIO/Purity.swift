@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 /// Purity types.
 enum Purity: UInt32, CustomStringConvertible {
     case `default` = 0

@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 struct OraclePartialDecodingError: Error {
     /// A textual description of the error.
     let description: String

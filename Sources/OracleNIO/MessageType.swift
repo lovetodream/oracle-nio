@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 /// TNS Message Types
 enum MessageType: UInt8, CustomStringConvertible {
     case `protocol` = 1

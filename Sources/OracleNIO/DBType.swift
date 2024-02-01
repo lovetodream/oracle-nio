@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 enum DatabaseNumericType: Int {
     case float = 0
     case int = 1

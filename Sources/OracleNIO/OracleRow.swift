@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 import NIOCore
 
 /// `OracleRow` represents a single table row that is received from the server for a query.

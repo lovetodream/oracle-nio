@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 extension Optional {
     /// Gets the value contained in an optional.
     ///

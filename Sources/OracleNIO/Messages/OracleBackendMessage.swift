@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 import NIOCore
 
 /// A protocol to implement for all associated values in the ``OracleBackendMessage`` enum.

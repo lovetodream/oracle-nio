@@ -1,0 +1,27 @@
+name: License
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+    - '**.swift'
+  pull_requests:
+    branches: ["main"]
+    paths:
+    - '**.swift'
+
+jobs:
+  addlicense:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '^1.21.0'
+    - name: Check if source code files have license header
+      run: |
+        go install github.com/google/addlicense@latest
+        find * \( -name vendor -type d -prune \) -o \( -name \*.swift -exec addlicense --check -- {} + \)

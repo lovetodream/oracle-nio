@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 struct DataType: Sendable, Hashable {
     var dataType: _TNSDataType
     var convDataType: _TNSDataType

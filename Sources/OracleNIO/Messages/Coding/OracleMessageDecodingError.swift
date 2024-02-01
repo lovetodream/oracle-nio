@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 import NIOCore
 
 /// An error representing a failure to decode a Oracle wire message to the Swift structure

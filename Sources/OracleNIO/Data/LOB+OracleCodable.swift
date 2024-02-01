@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 import NIOCore
 
 // T.Z.: LOB is only used for data > 1 GB, this feels very unlikely to be an

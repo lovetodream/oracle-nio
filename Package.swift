@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.19.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.25.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.2.0"),
-        .package(url: "https://github.com/vapor/postgres-nio.git", exact: "1.20.0"), // has to be updated explicitly to avoid source breaking changes, as `_ConnectionPoolModule` is not guaranteed to be stable across versions
+        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.20.2"),
     ],
     targets: [
         .target(name: "_PBKDF2", dependencies: [.product(name: "Crypto", package: "swift-crypto")]),

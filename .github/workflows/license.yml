@@ -5,7 +5,7 @@ on:
     branches: ["main"]
     paths:
     - '**.swift'
-  pull_requests:
+  pull_request:
     branches: ["main"]
     paths:
     - '**.swift'

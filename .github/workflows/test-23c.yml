@@ -34,10 +34,17 @@ jobs:
     - name: Build
       run: swift build
     - name: Run tests
-      run: swift test
+      run: swift test --enable-code-coverage
       env:
         ORA_HOSTNAME: localhost
         ORA_PORT: 1521
         ORA_SERVICE_NAME: FREEPDB1
         ORA_USERNAME: my_user
         ORA_PASSWORD: my_password
+    - name: Prepare Code Coverage
+      run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: info.lcov

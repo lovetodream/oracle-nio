@@ -38,7 +38,7 @@ jobs:
     - name: Run tests
       run: swift test --enable-code-coverage
       env:
-        ORA_HOSTNAME: localhost
+        ORA_HOSTNAME: oracle
         ORA_PORT: 1521
         ORA_SERVICE_NAME: FREEPDB1
         ORA_USERNAME: my_user

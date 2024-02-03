@@ -10,7 +10,7 @@ import NIOCore
 ///
 /// Conform a non-Foundation JSON decoder to this protocol if you want OracleNIO to be able to use it
 /// when decoding JSON values (see ``_defaultJSONDecoder``).
-public protocol OracleJSONDecoder {
+public protocol OracleJSONDecoder: Sendable {
     func decode<T>(
         _ type: T.Type, from data: Data
     ) throws -> T where T: Decodable

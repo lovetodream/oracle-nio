@@ -4,7 +4,7 @@
 import NIOCore
 
 /// An error that is thrown from the OracleClient.
-public struct OracleSQLError: Error {
+public struct OracleSQLError: Sendable, Error {
 
     public struct Code: Sendable, Hashable, CustomStringConvertible {
         enum Base: Sendable, Hashable {
@@ -173,7 +173,7 @@ public struct OracleSQLError: Error {
         self.backing = .init(code: code)
     }
 
-    private final class Backing {
+    private final class Backing: @unchecked Sendable {
         fileprivate var code: Code
         fileprivate var serverInfo: ServerInfo?
         fileprivate var underlying: Error?
@@ -198,7 +198,7 @@ public struct OracleSQLError: Error {
         }
     }
 
-    public struct ServerInfo {
+    public struct ServerInfo: Sendable {
         let underlying: OracleBackendMessage.BackendError
 
         /// The error number/identifier.

@@ -10,7 +10,7 @@ import NIOCore
 ///
 /// Conform a non-Foundation JSON encoder to this protocol if you want OracleNIO to be able to use it
 /// when encoding JSON values.
-public protocol OracleJSONEncoder {
+public protocol OracleJSONEncoder: Sendable {
     func encode<T>(_ value: T) throws -> Data where T: Encodable
 
     func encode<T: Encodable>(_ value: T, into buffer: inout ByteBuffer) throws

@@ -464,10 +464,6 @@ private struct BindingsReader: Sequence {
                 return .none
             }
 
-            if length < 0 {
-                return .some(.none)
-            }
-
             return .some(self.buffer.readSlice(length: Int(length))!)
         }
     }

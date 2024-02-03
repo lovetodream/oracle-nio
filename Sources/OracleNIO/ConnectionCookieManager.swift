@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import NIOCore
+import NIOConcurrencyHelpers
 import struct Foundation.UUID
 
-struct ConnectionCookieManager: Sendable {
-    static var shared = ConnectionCookieManager()
+final class ConnectionCookieManager: Sendable {
+    static let shared = ConnectionCookieManager()
 
-    private var store: [String: ConnectionCookie] = [:]
+    private let store: NIOLockedValueBox<[String: ConnectionCookie]> = .init([:])
 
     private init() { }
 
@@ -22,7 +23,7 @@ struct ConnectionCookieManager: Sendable {
             suffix = sid
         }
         let key = uuid.uuidString + suffix
-        return store[key]
+        return self.store.withLockedValue { $0[key] }
     }
 
     func set() {

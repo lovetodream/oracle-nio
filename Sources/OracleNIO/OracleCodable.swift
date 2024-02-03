@@ -208,7 +208,7 @@ extension OracleEncodable {
 /// A context hat is passed to Swift objects that are encoded into the oracle wire format.
 ///
 /// Used to pass further information to the encoding method.
-public struct OracleEncodingContext<JSONEncoder: OracleJSONEncoder> {
+public struct OracleEncodingContext<JSONEncoder: OracleJSONEncoder>: Sendable {
     /// A ``OracleJSONEncoder`` used to encode the object to JSON.
     public var jsonEncoder: JSONEncoder
 
@@ -240,7 +240,7 @@ extension OracleDecodingContext where JSONDecoder == Foundation.JSONDecoder {
 /// A context that is passed to Swift objects that are decoded from the Oracle wire format.
 ///
 /// Used to pass further information to the decoding method.
-public struct OracleDecodingContext<JSONDecoder: OracleJSONDecoder> {
+public struct OracleDecodingContext<JSONDecoder: OracleJSONDecoder>: Sendable {
     /// A ``OracleJSONDecoder`` used to decode the object from JSON.
     public var jsonDecoder: JSONDecoder
 

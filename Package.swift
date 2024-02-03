@@ -38,6 +38,9 @@ let package = Package(
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "_ConnectionPoolModule", package: "postgres-nio"),
                 "_PBKDF2",
+            ],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency=complete")
             ]
         ),
         .testTarget(

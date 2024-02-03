@@ -1,7 +1,7 @@
 // Copyright 2024 Timo Zacherl
 // SPDX-License-Identifier: Apache-2.0
 
-import Dispatch
+@preconcurrency import Dispatch
 import NIOCore
 import NIOPosix
 #if canImport(Network)
@@ -154,7 +154,7 @@ public final class OracleConnection: @unchecked Sendable {
         var logger = logger
         logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
 
-        return eventLoop.flatSubmit {
+        return eventLoop.flatSubmit { [logger] in
             makeBootstrap(on: eventLoop, configuration: configuration)
                 .connect(host: configuration.host, port: configuration.port)
                 .flatMap { channel -> EventLoopFuture<OracleConnection> in

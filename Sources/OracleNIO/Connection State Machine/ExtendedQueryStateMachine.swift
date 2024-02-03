@@ -315,7 +315,8 @@ struct ExtendedQueryStateMachine {
             switch self.state {
             case .commandComplete, .error, .drain:
                 preconditionFailure("Invalid state: \(self.state)")
-            case .initialized(let context), .describeInfoReceived(let context, _):
+            case .initialized(let context),
+                 .describeInfoReceived(let context, _):
                 context.cursorID = error.cursorID ?? context.cursorID
 
                 self.avoidingStateMachineCoW { state in
@@ -861,7 +862,8 @@ struct ExtendedQueryStateMachine {
 
     private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
         switch self.state {
-        case .initialized(let context), .describeInfoReceived(let context, _):
+        case .initialized(let context),
+             .describeInfoReceived(let context, _):
             if self.isCancelled {
                 return .evaluateErrorAtConnectionLevel(error)
             } else {
@@ -918,23 +920,13 @@ struct ExtendedQueryStateMachine {
         capabilities: Capabilities
     ) throws {
         let metadata = outBind.metadata.withLockedValue { $0 }
-        var columnData = try self.processColumnData(
+        guard var columnData = try self.processColumnData(
             from: &buffer,
             oracleType: metadata.dataType._oracleType,
             csfrm: metadata.dataType.csfrm,
             bufferSize: metadata.bufferSize,
             capabilities: capabilities
-        )
-
-        let actualBytesCount = buffer.readSB4() ?? 0
-        if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {
-            return
-        } else if actualBytesCount != 0 && columnData != nil {
-            // TODO: throw this as error?
-            preconditionFailure("column truncated, length: \(actualBytesCount)")
-        }
-
-        guard columnData != nil else {
+        ) else {
             preconditionFailure("""
             unhandled need more data in bind processing: please file a issue \
             on https://github.com/lovetodream/oracle-nio/issues with steps to \
@@ -942,11 +934,19 @@ struct ExtendedQueryStateMachine {
             """)
         }
 
+        let actualBytesCount = buffer.readSB4() ?? 0
+        if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {
+            return
+        } else if actualBytesCount != 0 && !columnData.oracleColumnIsEmpty {
+            // TODO: throw this as error?
+            preconditionFailure("column truncated, length: \(actualBytesCount)")
+        }
+
         outBind.storage.withLockedValue { storage in
             if storage == nil {
-                storage = columnData!
+                storage = columnData
             } else {
-                storage!.writeBuffer(&columnData!)
+                storage!.writeBuffer(&columnData)
             }
         }
     }
@@ -1057,10 +1057,10 @@ struct ExtendedQueryStateMachine {
     var isComplete: Bool {
         switch self.state {
         case .initialized,
-            .describeInfoReceived,
-            .streaming,
-            .streamingAndWaiting,
-            .drain:
+             .describeInfoReceived,
+             .streaming,
+             .streamingAndWaiting,
+             .drain:
             return false
         case .commandComplete, .error:
             return true

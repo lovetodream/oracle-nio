@@ -45,9 +45,12 @@ extension ByteBuffer {
     /// read from the channel to complete the operation.
     mutating func readOracleSlice() -> ByteBuffer? {
         guard
-            let length = self.getInteger(at: self.readerIndex, as: UInt8.self)
+            var length = self.getInteger(at: self.readerIndex, as: UInt8.self)
         else {
             preconditionFailure()
+        }
+        if length == Constants.TNS_NULL_LENGTH_INDICATOR {
+            length = 0
         }
 
         if length == Constants.TNS_LONG_LENGTH_INDICATOR {

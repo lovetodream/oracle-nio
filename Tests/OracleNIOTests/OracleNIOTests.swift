@@ -758,6 +758,25 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testUnusedBindDoesNotCrash() async throws {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
+            let bind = OracleRef(OracleNumber(0))
+            try await conn.query("""
+            BEGIN
+            IF (NULL IS NOT NULL) THEN
+            \(bind) := 1;
+            END IF;
+            END;
+            """)
+            let result = try bind.decode(of: Int?.self)
+            XCTAssertNil(result)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

@@ -349,7 +349,7 @@ enum Constants {
     @usableFromInline
     static let TNS_LONG_LENGTH_INDICATOR: UInt8 = 254
     @usableFromInline
-    static let TNS_NULL_LENGTH_INDICATOR = 255
+    static let TNS_NULL_LENGTH_INDICATOR: UInt8 = 255
     static let TNS_MAX_ROWID_LENGTH = 18
     static let TNS_DURATION_MID: UInt32 = 0x80000000
     static let TNS_DURATION_OFFSET: UInt8 = 60

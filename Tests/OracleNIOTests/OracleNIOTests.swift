@@ -69,7 +69,7 @@ final class OracleNIOTests: XCTestCase {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         let rows = try await conn.query(
-                "SELECT systimestamp FROM dual", logger: .oracleTest
+            "SELECT systimestamp FROM dual", logger: .oracleTest
         ).collect()
         XCTAssertEqual(rows.count, 1)
         var value: Date?
@@ -121,11 +121,11 @@ final class OracleNIOTests: XCTestCase {
         var received: Int64 = 0
         let rows = try await conn.query(
             """
-            SELECT to_number(column_value) / 100 AS id 
+            SELECT to_number(column_value) / 100 AS id
             FROM xmltable ('1 to 100')
             """,
             logger: .oracleTest
-        ) 
+        )
         for try await row in rows {
             func workaround() {
                 var number: Float?
@@ -445,7 +445,7 @@ final class OracleNIOTests: XCTestCase {
             logger: .oracleTest
         )
         let rows = try await conn.query(
-            "SELECT id, content FROM test_simple_blob ORDER BY id", 
+            "SELECT id, content FROM test_simple_blob ORDER BY id",
             logger: .oracleTest
         )
         var index = 0
@@ -620,7 +620,7 @@ final class OracleNIOTests: XCTestCase {
             defer { XCTAssertNoThrow(try conn.syncClose()) }
             let out = OracleRef(dataType: .number)
             try await conn.query("""
-            begin 
+            begin
             \(out) := \(OracleNumber(8)) + \(OracleNumber(7));
             end;
             """, logger: .oracleTest)
@@ -777,10 +777,17 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
-    func testMalformedQueryDoesntCauseLeakedPromise() async throws {
+    func testMalformedQueryDoesNotCauseLeakedPromise() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
-        try await conn.query("\"SELECT 'hello' FROM dual")
+        do {
+            try await conn.query("\"SELECT 'hello' FROM dual")
+        } catch let error as OracleSQLError {
+            print(error)
+            XCTAssertEqual(error.code, .malformedQuery)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
     }
 }
 

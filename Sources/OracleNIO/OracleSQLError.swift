@@ -4,6 +4,8 @@
 import NIOCore
 
 /// An error that is thrown from the OracleClient.
+/// 
+/// - Warning: These errors should not be forwareded to the end user, as they may leak sensitive information.
 public struct OracleSQLError: Sendable, Error {
 
     public struct Code: Sendable, Hashable, CustomStringConvertible {
@@ -305,13 +307,47 @@ public struct OracleSQLError: Sendable, Error {
 
 extension OracleSQLError: CustomStringConvertible {
     public var description: String {
-        // This may seem very odd... But we are afraid that users might accidentally send the
-        // unfiltered errors out to end-users. This may leak security relevant information. For this
-        // reason we overwrite the error description by default to this generic "Database error"
-        """
-        OracleSQLError – Generic description to prevent accidental leakage of \
-        sensitive data. For debugging details, use `String(reflecting: error)`.
-        """
+        var result = #"OracleSQLError(code: \#(self.code)"#
+
+        if let serverInfo = self.serverInfo?.underlying {
+            result.append(", serverInfo: ")
+            result.append("BackendError(")
+            result.append("number: \(String(reflecting: serverInfo.number))")
+            result.append(", message: \(String(reflecting: serverInfo.message))")
+            result.append(", position: \(String(reflecting: serverInfo.position))")
+            result.append(", cursorID: \(String(reflecting: serverInfo.cursorID))")
+            result.append(", rowCount: \(String(reflecting: serverInfo.rowCount))")
+            result.append(", rowID: \(String(reflecting: serverInfo.rowID))")
+            result.append(")")
+        }
+
+        if let backendMessage = self.backendMessage {
+            result.append(", backendMessage: \(String(reflecting: backendMessage))")
+        }
+
+        if let underlying = self.underlying {
+            result.append(", underlying: \(String(reflecting: underlying))")
+        }
+
+        if self.file != nil {
+            result.append(", triggeredFromRequestInFile: ********")
+            if self.line != nil {
+                result.append(", line: ********")
+            }
+        }
+
+        if self.query != nil {
+            result.append(", query: ********")
+        }
+
+        result.append(") ")
+
+        result.append("""
+        Some information has been reducted to prevent accidental leakage of \
+        sensitive data. For additional debugging details, use `String(reflecting: error)`.
+        """)
+
+        return result
     }
 }
 

@@ -654,7 +654,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     ) {
         self.logger.debug(
             "Cleaning up and closing connection.",
-            metadata: [.error: "\(cleanup.error)"]
+            metadata: [.error: "\(String(reflecting: cleanup.error))"]
         )
 
         // 1. fail all tasks

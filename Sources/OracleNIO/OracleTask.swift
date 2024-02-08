@@ -87,23 +87,30 @@ final class ExtendedQueryContext {
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
     ) throws {
-        self.logger = logger
-        self.query = query
-        self.options = options
-        self.sqlLength = .init(query.sql.data(using: .utf8)?.count ?? 0)
+        do {
+            self.logger = logger
+            self.query = query
+            self.options = options
+            self.sqlLength = .init(query.sql.data(using: .utf8)?.count ?? 0)
 
-        // strip single/multiline comments and and strings from the sql
-        var sql = query.sql
-        sql = try sql.replacing(Regex(#"/\*[\S\n ]+?\*/"#), with: "")
-        sql = try sql.replacing(Regex(#"\--.*(\n|$)"#), with: "")
-        sql = try sql.replacing(Regex(#"'[^']*'(?=(?:[^']*[^']*')*[^']*$)"#), with: "")
+            // strip single/multiline comments and and strings from the sql
+            var sql = query.sql
+            sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
+            sql = sql.replacing(/\--.*(\n|$)/, with: "")
+            sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
 
-        self.isReturning = query.binds.metadata
-            .first(where: \.isReturnBind) != nil
-        let query = try Self.determineStatementType(
-            minifiedSQL: sql, promise: promise
-        )
-        self.statement = query
+            self.isReturning = query.binds.metadata
+                .first(where: \.isReturnBind) != nil
+            let query = try Self.determineStatementType(
+                minifiedSQL: sql, promise: promise
+            )
+            self.statement = query
+        } catch let error as OracleSQLError {
+            promise.fail(error)
+            throw error
+        } catch {
+            preconditionFailure("Unexpected error: \(error)")
+        }
     }
 
     private static func determineStatementType(

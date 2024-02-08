@@ -777,6 +777,11 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testMalformedQueryDoesntCauseLeakedPromise() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        try await conn.query("\"SELECT 'hello' FROM dual")
+    }
 }
 
 let isLoggingConfigured: Bool = {

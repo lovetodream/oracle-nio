@@ -40,7 +40,8 @@ let package = Package(
                 "_PBKDF2",
             ],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency=complete")
+                .enableExperimentalFeature("StrictConcurrency=complete"),
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
             ]
         ),
         .testTarget(

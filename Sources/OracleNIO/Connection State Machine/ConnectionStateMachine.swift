@@ -97,6 +97,7 @@ struct ConnectionStateMachine {
         case sendExecute(ExtendedQueryContext, DescribeInfo?)
         case sendReexecute(ExtendedQueryContext, CleanupContext)
         case sendFetch(ExtendedQueryContext)
+        case sendFlushOutBinds
         case failQuery(
             EventLoopPromise<OracleRowStream>,
             with: OracleSQLError, cleanupContext: CleanUpContext?
@@ -715,6 +716,18 @@ struct ConnectionStateMachine {
         }
     }
 
+    mutating func flushOutBindsReceived() -> ConnectionAction {
+        guard case var .extendedQuery(queryState) = self.state else {
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+
+        return self.avoidingStateMachineCoW { machine in
+            let action = queryState.flushOutBindsReceived()
+            machine.state = .extendedQuery(queryState)
+            return machine.modify(with: action)
+        }
+    }
+
     mutating func renegotiatingTLS() {
         self.state = .renegotiatingTLS
     }
@@ -800,15 +813,16 @@ struct ConnectionStateMachine {
 
             switch queryState.errorHappened(error) {
             case .sendExecute,
-                .sendReexecute,
-                .sendFetch,
-                .succeedQuery,
-                .needMoreData,
-                .forwardRows,
-                .forwardStreamComplete,
-                .forwardCancelComplete,
-                .read,
-                .wait:
+                 .sendReexecute,
+                 .sendFetch,
+                 .sendFlushOutBinds,
+                 .succeedQuery,
+                 .needMoreData,
+                 .forwardRows,
+                 .forwardStreamComplete,
+                 .forwardCancelComplete,
+                 .read,
+                 .wait:
                 preconditionFailure("Invalid state: \(self.state)")
 
             case .evaluateErrorAtConnectionLevel:
@@ -1042,6 +1056,8 @@ extension ConnectionStateMachine {
             return .sendReexecute(queryContext, cleanupContext)
         case .sendFetch(let context):
             return .sendFetch(context)
+        case .sendFlushOutBinds:
+            return .sendFlushOutBinds
         case .failQuery(let promise, let error):
             return .failQuery(promise, with: error, cleanupContext: nil)
         case .succeedQuery(let promise, let columns):

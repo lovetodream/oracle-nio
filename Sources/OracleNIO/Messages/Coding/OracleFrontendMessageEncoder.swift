@@ -65,6 +65,14 @@ struct OracleFrontendMessageEncoder {
         self.endRequest()
     }
 
+    mutating func flushOutBinds() {
+        self.clearIfNeeded()
+
+        self.startRequest()
+        self.buffer.writeInteger(MessageType.flushOutBinds.rawValue)
+        self.endRequest()
+    }
+
     /// Connect is a special case, because of it's specific packet size limit based on the
     /// `connectString`'s length.
     /// If the length is exceeded, we have to sent two separate messages to the server.

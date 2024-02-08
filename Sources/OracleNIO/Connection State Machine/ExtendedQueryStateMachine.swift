@@ -35,6 +35,7 @@ struct ExtendedQueryStateMachine {
         case sendExecute(ExtendedQueryContext, DescribeInfo?)
         case sendReexecute(ExtendedQueryContext, CleanupContext)
         case sendFetch(ExtendedQueryContext)
+        case sendFlushOutBinds
 
         case failQuery(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
         case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
@@ -559,6 +560,30 @@ struct ExtendedQueryStateMachine {
         }
     }
 
+    mutating func flushOutBindsReceived() -> Action {
+        switch self.state {
+        case .initialized:
+            // we won't change the state, flush out binds is just a confirmation
+            // to indicate the server can cleanup out binds from the currently
+            // failing DML, after that we receive the actual error in the next
+            // round trip.
+            return .sendFlushOutBinds
+
+        case .describeInfoReceived,
+                .streaming,
+                .streamingAndWaiting,
+                .drain,
+                .commandComplete,
+                .error:
+            return self.errorHappened(
+                .unexpectedBackendMessage(.flushOutBinds)
+            )
+
+        case .modifying:
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+    }
+
     // MARK: Consumer Actions
 
     mutating func requestFetch() -> Action {
@@ -769,6 +794,8 @@ struct ExtendedQueryStateMachine {
                         action = .wait
                     case .error(let error):
                         action = self.errorReceived(error)
+                    case .flushOutBinds:
+                        action = self.flushOutBindsReceived()
                     default:
                         preconditionFailure("Invalid state: \(self.state)")
                     }

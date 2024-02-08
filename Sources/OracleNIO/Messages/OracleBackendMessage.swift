@@ -42,6 +42,7 @@ enum OracleBackendMessage: Sendable, Hashable {
     case status(Status)
     case warning(BackendError)
     case ioVector(InOutVector)
+    case flushOutBinds
 
     case chunk(ByteBuffer)
 }
@@ -68,6 +69,7 @@ extension OracleBackendMessage {
         case lobData = 14
         case warning = 15
         case describeInfo = 16
+        case flushOutBinds = 19
         case bitVector = 21
         case serverSidePiggyback = 23
     }
@@ -224,6 +226,8 @@ extension OracleBackendMessage {
                                 context: context
                             )
                         ))
+                    case .flushOutBinds:
+                        messages.append(.flushOutBinds)
                     case nil:
                         throw OraclePartialDecodingError
                             .unknownMessageIDReceived(messageID: messageIDByte)
@@ -274,6 +278,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".lobData(\(String(reflecting: data)))"
         case .ioVector(let vector):
             return ".ioVector(\(String(reflecting: vector)))"
+        case .flushOutBinds:
+            return ".flushOutBinds"
         }
     }
 }

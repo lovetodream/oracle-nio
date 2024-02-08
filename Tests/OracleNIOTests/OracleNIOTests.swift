@@ -789,6 +789,72 @@ final class OracleNIOTests: XCTestCase {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
+
+    func testReturnBindOnNonExistingTableFails() async throws {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
+            let bind = OracleRef(dataType: .number, isReturnBind: true)
+            try await conn.query("INSERT INTO my_non_existing_table(id) VALUES (1) RETURNING id INTO \(bind)", logger: .oracleTest)
+            _ = try bind.decode(of: Int?.self)
+            XCTFail("Query on non existing table did not return an error, but it should have")
+        } catch let error as OracleSQLError {
+            XCTAssertEqual(error.serverInfo?.number, 942) // Table or view doesn't exist
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
+    func testReturnBindOnTableWithUnfulfilledConstraintFails() async throws {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+            // remove preexisting tables
+            _ = try? await conn.query("DROP TABLE my_constrained_table")
+            _ = try? await conn.query("DROP TABLE my_constraint_table")
+
+            // setup tables
+            try await conn.query("""
+            CREATE TABLE my_constraint_table (
+                id NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE \
+                9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE \
+                20 NOORDER NOCYCLE NOKEEP NOSCALE,
+                title VARCHAR2(20 BYTE)
+            )
+            """)
+            try await conn.query("CREATE UNIQUE INDEX my_constraint_table_pk ON my_constraint_table(id)")
+            try await conn.query("ALTER TABLE my_constraint_table ADD CONSTRAINT my_constraint_table_pk PRIMARY KEY(id) USING INDEX ENABLE")
+
+            try await conn.query("""
+            CREATE TABLE my_constrained_table (
+                id NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE \
+                9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE \
+                20 NOORDER NOCYCLE NOKEEP NOSCALE,
+                title VARCHAR2(20 BYTE),
+                my_type NUMBER
+            )
+            """)
+            try await conn.query("CREATE UNIQUE INDEX my_constrained_table_pk ON my_constrained_table(id)")
+            try await conn.query("ALTER TABLE my_constrained_table ADD CONSTRAINT my_constrained_table_pk PRIMARY KEY(id) USING INDEX ENABLE")
+            try await conn.query("ALTER TABLE my_constrained_table MODIFY (my_type NOT NULL ENABLE)")
+            try await conn.query("ALTER TABLE my_constrained_table ADD CONSTRAINT my_constrained_table_fk1 FOREIGN KEY (my_type) REFERENCES my_constraint_table(id) ENABLE")
+
+            var logger = Logger(label: "test")
+            logger.logLevel = .trace
+            // execute non-working query
+            let bind = OracleRef(dataType: .number, isReturnBind: true)
+            try await conn.query("INSERT INTO my_constrained_table(title, my_type) VALUES ('hello', 2) RETURNING id INTO \(bind)", logger: logger)
+            _ = try bind.decode(of: Int?.self)
+            XCTFail("Query with invalid constraint did not return an error, but it should have")
+        } catch let error as OracleSQLError {
+            //            XCTAssertEqual(error.serverInfo?.number, 942) // Table or view doesn't exist
+            print(String(reflecting: error))
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

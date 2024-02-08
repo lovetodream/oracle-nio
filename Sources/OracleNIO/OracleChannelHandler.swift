@@ -157,6 +157,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = .wait
         case .ioVector(let vector):
             action = self.state.ioVectorReceived(vector)
+        case .flushOutBinds:
+            action = self.state.flushOutBindsReceived()
+
         case .serverSidePiggyback(let piggybacks):
             // This should only happen if one is using `LOB`s.
             // These are not implemented as of now, so this _should_ never happen.
@@ -342,6 +345,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .sendFetch(let queryContext):
             self.sendFetch(queryContext: queryContext, context: context)
+        case .sendFlushOutBinds:
+            self.encoder.flushOutBinds()
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
         case .succeedQuery(let promise, let result):
             self.succeedQuery(promise, result: result, context: context)
         case .failQuery(let promise, let error, let cleanupContext):

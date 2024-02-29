@@ -260,6 +260,7 @@ struct ExtendedQueryStateMachine {
             let action = self.rowDataReceived0(
                 buffer: &buffer, capabilities: capabilities
             )
+
             switch action {
             case .wait:
                 return self.moreDataReceived(
@@ -836,14 +837,14 @@ struct ExtendedQueryStateMachine {
     ) -> Action {
         switch self.state {
         case .streaming(
-            let context, let describeInfo, let rowHeader, var demandStateMachine
+            let context, let describeInfo, var rowHeader, var demandStateMachine
         ):
             let readerIndex = buffer.readerIndex
             do {
                 switch try self.rowDataReceived(
                     buffer: &buffer,
                     describeInfo: describeInfo,
-                    rowHeader: rowHeader,
+                    rowHeader: &rowHeader,
                     capabilities: capabilities,
                     demandStateMachine: &demandStateMachine
                 ) {
@@ -1046,7 +1047,7 @@ struct ExtendedQueryStateMachine {
     private mutating func rowDataReceived(
         buffer: inout ByteBuffer,
         describeInfo: DescribeInfo,
-        rowHeader: OracleBackendMessage.RowHeader,
+        rowHeader: inout OracleBackendMessage.RowHeader,
         capabilities: Capabilities,
         demandStateMachine: inout RowStreamStateMachine
     ) throws -> DataRowResult {
@@ -1077,6 +1078,7 @@ struct ExtendedQueryStateMachine {
         let data = DataRow(
             columnCount: describeInfo.columns.count, bytes: out
         )
+        rowHeader.bitVector = nil // reset bit vector after usage
 
         return .row(data)
     }

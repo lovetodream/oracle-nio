@@ -52,7 +52,7 @@ extension String: OracleDecodable {
         context: OracleDecodingContext<JSONDecoder>
     ) throws {
         switch type {
-        case .varchar, .char, .long:
+        case .varchar, .char, .long, .nVarchar, .longNVarchar:
             if type.csfrm == Constants.TNS_CS_IMPLICIT {
                 self = buffer.readString(length: buffer.readableBytes)!
             } else {

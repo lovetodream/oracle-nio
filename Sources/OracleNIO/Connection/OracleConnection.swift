@@ -42,7 +42,7 @@ public final class OracleConnection: @unchecked Sendable {
     var currentSchema: String?
     var edition: String?
 
-    var noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
+    static let noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
         SwiftLogNoOpLogHandler()
     }
 
@@ -372,7 +372,7 @@ extension OracleConnection {
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
-        var logger = logger ?? self.noopLogger
+        var logger = logger ?? Self.noopLogger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
 
         let promise = self.channel.eventLoop.makePromise(

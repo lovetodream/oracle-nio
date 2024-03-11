@@ -5,35 +5,35 @@ import NIOCore
 import Logging
 import Atomics
 import _ConnectionPoolModule
+import ServiceLifecycle
 
-/// A Oracle client that is backed by an underlying connection pool. Use ``Options`` to change the client's
-/// behavior.
+/// A Oracle client that is backed by an underlying connection pool. Use ``Options`` to change the 
+/// client's behavior and ``OracleConnection/Configuration`` to configure its connections.
 ///
-/// > Important:
-/// The client can only lease connections if the user is running the client's ``run()`` method in a long running task:
+/// ## Creating a client
 ///
-/// ```swift
-/// let client = OracleClient(configuration: configuration, logger: logger)
-/// await withTaskGroup(of: Void.self) {
-///     taskGroup.addTask {
-///         client.run() // !important
-///     }
+/// You create a ``OracleClient`` by first creating a ``OracleConnection/Configuration``
+/// struct that you can use to configure the connections, established by the client.
 ///
-///     taskGroup.addTask {
-///         client.withConnection { connection in
-///             do {
-///                 let rows = try await connection.query("SELECT userID, name, age FROM users;")
-///                 for try await (userID, name, age) in rows.decode((Int, String, Int).self) {
-///                     // do something with the values
-///                 }
-///             } catch {
-///                 // handle errors
-///             }
-///         }
-///     }
-/// }
-/// ```
-public final class OracleClient: Sendable {
+/// @Snippet(path: "oracle-nio/Snippets/OracleClient", slice: "configuration")
+///
+/// You can now create a client with your configuration.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleClient", slice: "makeClient")
+///
+/// ## Running a client
+///
+/// ``OracleClient`` relies on structured concurrency. Because of this, it needs a task in which it can
+/// schedule all the background work it needs to do in order to manage connections on the users behave.
+/// For this reason, developers must provide a task to the client by scheduling the client's run method
+/// in a long running task:
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleClient", slice: "run")
+///
+/// ``OracleClient`` can not lease connections, if its ``run()`` method isn't active. Cancelling
+/// the ``run()`` method is equivalent to closing the client. Once a client's ``run()`` method has
+/// been cancelled, executing queries will fail.
+public final class OracleClient: Sendable, Service {
     /// Describes general client behavior options. Those settings are considered advanced options.
     public struct Options: Sendable {
         /// A keep-alive behavior for Oracle connections. The ``frequency`` defines after which time an idle
@@ -106,6 +106,29 @@ public final class OracleClient: Sendable {
     ///           Defaults to `true`. More information on `DRCP` can be found
     ///           [here](https://www.oracle.com/docs/tech/drcp-technical-brief.pdf).
     ///   - eventLoopGroup: The underlying NIO `EventLoopGroup`. Defaults to ``defaultEventLoopGroup``.
+    public convenience init(
+        configuration: OracleConnection.Configuration,
+        options: Options = .init(),
+        drcp: Bool = true,
+        eventLoopGroup: any EventLoopGroup = OracleClient.defaultEventLoopGroup
+    ) {
+        self.init(
+            configuration: configuration,
+            options: options,
+            drcp: drcp,
+            eventLoopGroup: eventLoopGroup,
+            backgroundLogger: OracleConnection.noopLogger
+        )
+    }
+
+    /// Creates a new ``OracleClient``. Don't forget to run ``run()`` the client in a long running task.
+    /// - Parameters:
+    ///   - configuration: The client's configuration. See ``OracleConnection/Configuration``
+    ///   - options: The pool configuration. See ``Options``
+    ///   - drcp: Whether the database server supports `DRCP` (Database Resident Connection Pooling) or not.
+    ///           Defaults to `true`. More information on `DRCP` can be found
+    ///           [here](https://www.oracle.com/docs/tech/drcp-technical-brief.pdf).
+    ///   - eventLoopGroup: The underlying NIO `EventLoopGroup`. Defaults to ``defaultEventLoopGroup``.
     ///   - backgroundLogger: A `swift-log` `Logger` to log background messages to. A copy of this logger is also
     ///                       forwarded to the created connections as a background logger.
     public init(
@@ -155,7 +178,10 @@ public final class OracleClient: Sendable {
     public func run() async {
         let atomicOp = self.runningAtomic.compareExchange(expected: false, desired: true, ordering: .relaxed)
         precondition(!atomicOp.original, "OracleClient.run() should just be called once!")
-        await self.pool.run()
+
+        await cancelOnGracefulShutdown {
+            await self.pool.run()
+        }
     }
 
 

@@ -1,7 +1,7 @@
 # This workflow will build a Swift project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
 
-name: Swift
+name: Oracle 21c Database
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
   test:
     services:
       oracle:
-        image: gvenzl/oracle-xe:latest
+        image: gvenzl/oracle-xe:21
         env:
           ORACLE_RANDOM_PASSWORD: true
           APP_USER: my_user

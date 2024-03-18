@@ -342,6 +342,27 @@ extension OracleConnection {
     ///   - eventLoop: The `EventLoop` the connection shall be created on.
     ///   - configuration: A ``Configuration`` that shall be used for the connection.
     ///   - connectionID: An `Int` id, used for metadata logging.
+    /// - Returns: An established ``OracleConnection`` asynchronously that can be used to run
+    ///            queries.
+    public static func connect(
+        on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
+        configuration: OracleConnection.Configuration,
+        id connectionID: ID
+    ) async throws -> OracleConnection {
+        try await self.connect(
+            on: eventLoop,
+            configuration: configuration,
+            id: connectionID,
+            logger: self.noopLogger
+        )
+    }
+
+    /// Creates a new connection to an Oracle server.
+    ///
+    /// - Parameters:
+    ///   - eventLoop: The `EventLoop` the connection shall be created on.
+    ///   - configuration: A ``Configuration`` that shall be used for the connection.
+    ///   - connectionID: An `Int` id, used for metadata logging.
     ///   - logger: A logger to log background events into.
     /// - Returns: An established ``OracleConnection`` asynchronously that can be used to run
     ///            queries.

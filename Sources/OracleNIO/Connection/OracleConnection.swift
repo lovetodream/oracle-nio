@@ -13,6 +13,32 @@ import class Foundation.ProcessInfo
 import Logging
 
 /// An Oracle connection. Use it to run queries against an Oracle server.
+///
+/// ## Creating a connection
+///
+/// You create a ``OracleConnection`` by first creating a ``OracleConnection/Configuration``
+/// struct that you can use to configure the connection.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "configuration")
+///
+/// You can now use your configuration to establish a connection using ``OracleConnection/connect(on:configuration:id:)``.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "connect")
+///
+/// ## Usage
+///
+/// Now you can use the connection to run queries on your database using 
+/// ``OracleConnection/query(_:options:logger:file:line:)``.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "use")
+///
+/// After you're done, close the connection with ``OracleConnection/close()-4ny0f``.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "close")
+///
+/// - Note: If you want to create long running connections, e.g. in a HTTP Server, ``OracleClient``
+/// is preferred over ``OracleConnection``. It maintans a pool of connections for you.
+///
 public final class OracleConnection: @unchecked Sendable {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int
@@ -42,7 +68,7 @@ public final class OracleConnection: @unchecked Sendable {
     var currentSchema: String?
     var edition: String?
 
-    var noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
+    static let noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
         SwiftLogNoOpLogHandler()
     }
 
@@ -316,6 +342,27 @@ extension OracleConnection {
     ///   - eventLoop: The `EventLoop` the connection shall be created on.
     ///   - configuration: A ``Configuration`` that shall be used for the connection.
     ///   - connectionID: An `Int` id, used for metadata logging.
+    /// - Returns: An established ``OracleConnection`` asynchronously that can be used to run
+    ///            queries.
+    public static func connect(
+        on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
+        configuration: OracleConnection.Configuration,
+        id connectionID: ID
+    ) async throws -> OracleConnection {
+        try await self.connect(
+            on: eventLoop,
+            configuration: configuration,
+            id: connectionID,
+            logger: self.noopLogger
+        )
+    }
+
+    /// Creates a new connection to an Oracle server.
+    ///
+    /// - Parameters:
+    ///   - eventLoop: The `EventLoop` the connection shall be created on.
+    ///   - configuration: A ``Configuration`` that shall be used for the connection.
+    ///   - connectionID: An `Int` id, used for metadata logging.
     ///   - logger: A logger to log background events into.
     /// - Returns: An established ``OracleConnection`` asynchronously that can be used to run
     ///            queries.
@@ -372,7 +419,7 @@ extension OracleConnection {
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
-        var logger = logger ?? self.noopLogger
+        var logger = logger ?? Self.noopLogger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
 
         let promise = self.channel.eventLoop.makePromise(

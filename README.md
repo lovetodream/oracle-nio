@@ -2,6 +2,10 @@
 
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/lovetodream/oracle-nio)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/lovetodream/oracle-nio)
+[![](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml/badge.svg)](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml)
+[![](https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml/badge.svg)](https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml)
+
+
 
 Non-blocking, event-driven Swift client for Oracle Databases built on [SwiftNIO](https://github.com/apple/swift-nio).
 

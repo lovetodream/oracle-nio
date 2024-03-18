@@ -13,6 +13,32 @@ import class Foundation.ProcessInfo
 import Logging
 
 /// An Oracle connection. Use it to run queries against an Oracle server.
+///
+/// ## Creating a connection
+///
+/// You create a ``OracleConnection`` by first creating a ``OracleConnection/Configuration``
+/// struct that you can use to configure the connection.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "configuration")
+///
+/// You can now use your configuration to establish a connection using ``OracleConnection/connect(on:configuration:id:)``.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "connect")
+///
+/// ## Usage
+///
+/// Now you can use the connection to run queries on your database using 
+/// ``OracleConnection/query(_:options:logger:file:line:)``.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "use")
+///
+/// After you're done, close the connection with ``OracleConnection/close()-4ny0f``.
+///
+/// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "close")
+///
+/// - Note: If you want to create long running connections, e.g. in a HTTP Server, ``OracleClient``
+/// is preferred over ``OracleConnection``. It maintans a pool of connections for you.
+///
 public final class OracleConnection: @unchecked Sendable {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int

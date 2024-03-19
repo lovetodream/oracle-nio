@@ -1,7 +1,7 @@
 // Copyright 2024 Timo Zacherl
 // SPDX-License-Identifier: Apache-2.0
 
-import NIOCore
+@preconcurrency import NIOCore
 import Logging
 
 struct QueryResult {
@@ -95,6 +95,7 @@ final class OracleRowStream: @unchecked Sendable {
             elementType: DataRow.self,
             failureType: Error.self,
             backPressureStrategy: AdaptiveRowBuffer(),
+            finishOnDeinit: true,
             delegate: self
         )
 
@@ -230,7 +231,7 @@ final class OracleRowStream: @unchecked Sendable {
     // MARK: Consume on EventLoop
 
     func onRow(
-        _ onRow: @escaping (OracleRow) throws -> Void
+        _ onRow: @escaping @Sendable (OracleRow) throws -> Void
     ) -> EventLoopFuture<Void> {
         if self.eventLoop.inEventLoop {
             return self.onRow0(onRow)

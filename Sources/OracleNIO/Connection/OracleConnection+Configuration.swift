@@ -207,7 +207,7 @@ extension OracleConnection {
             value: defaultUsername()
         )
         private static func defaultUsername() -> String {
-            #if os(iOS) || os(tvOS) || os(watchOS)
+            #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
             return "unknown"
             #else
             return ProcessInfo.processInfo.userName

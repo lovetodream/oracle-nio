@@ -7,11 +7,6 @@ import NIOSSL
 import NIOTLS
 import class Foundation.ProcessInfo
 
-protocol CapabilitiesProvider: AnyObject {
-    func getCapabilities() -> Capabilities
-    func setCapabilities(to capabilities: Capabilities)
-}
-
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask
     typealias InboundIn = [(flags: UInt8?, OracleBackendMessage)]
@@ -31,20 +26,39 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private var encoder: OracleFrontendMessageEncoder!
     private let configuration: OracleConnection.Configuration
     private let currentSSLHandler: NIOSSLClientHandler?
-
-    weak var capabilitiesProvider: CapabilitiesProvider!
+    
+    private let postprocessor: OracleFrontendMessagePostProcessor
+    private var capabilities: Capabilities {
+        didSet {
+            self.postprocessor.protocolVersion =
+                self.capabilities.protocolVersion
+        }
+    }
 
     let cleanupContext = CleanupContext()
 
     init(
         configuration: OracleConnection.Configuration, 
         logger: Logger,
-        sslHandler: NIOSSLClientHandler?
+        sslHandler: NIOSSLClientHandler?,
+        postprocessor: OracleFrontendMessagePostProcessor
     ) {
         self.state = ConnectionStateMachine()
         self.configuration = configuration
         self.logger = logger
         self.currentSSLHandler = sslHandler
+        self.postprocessor = postprocessor
+
+        var capabilities = Capabilities()
+        #if os(Windows)
+        capabilities.supportsOOB = false
+        #else
+        if !configuration.disableOOB ||
+            configuration._protocol == .tcps {
+            capabilities.supportsOOB = true
+        }
+        #endif
+        self.capabilities = capabilities
     }
 
     // MARK: Handler Lifecycle
@@ -111,9 +125,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         switch message {
         case .accept(let accept):
-            self.capabilitiesProvider.setCapabilities(
-                to: accept.newCapabilities
-            )
+            self.capabilities = accept.newCapabilities
             self.setCoders(context: context)
             action = self.state.acceptReceived(
                 accept, description: configuration.getDescription()
@@ -129,9 +141,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .parameter(let parameter):
             action = self.state.parameterReceived(parameters: parameter)
         case .protocol(let `protocol`):
-            self.capabilitiesProvider.setCapabilities(
-                to: `protocol`.newCapabilities
-            )
+            self.capabilities = `protocol`.newCapabilities
             self.setCoders(context: context)
             action = self.state.protocolReceived()
         case .resend:
@@ -144,7 +154,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.rowHeaderReceived(header)
         case .rowData(let data):
             action = self.state.rowDataReceived(
-                data, capabilities: self.capabilitiesProvider.getCapabilities()
+                data, capabilities: self.capabilities
             )
         case .queryParameter(let parameter):
             action = self.state.queryParameterReceived(parameter)
@@ -181,8 +191,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         case .chunk(let buffer):
             action = self.state.chunkReceived(
-                buffer, 
-                capabilities: self.capabilitiesProvider.getCapabilities()
+                buffer, capabilities: self.capabilities
             )
         }
 
@@ -470,16 +479,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .closeConnection(let promise):
             if context.channel.isActive {
                 self.encoder.close()
-                let writePromise = context.eventLoop.makePromise(of: Void.self)
                 context.writeAndFlush(
                     self.wrapOutboundOut(self.encoder.flush()),
-                    promise: writePromise
+                    promise: nil
                 )
-                writePromise.futureResult.whenComplete { _ in
-                    context.close(mode: .all, promise: promise)
-                }
-            } else {
             }
+            context.close(mode: .all, promise: promise)
         case .fireChannelInactive:
             context.fireChannelInactive()
         }
@@ -501,14 +506,15 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0 {
             let promise = context.eventLoop.makePromise(of: Void.self)
             context.pipeline.removeHandler(currentSSLHandler!, promise: promise)
+            let sslContext = self.configuration.tls.sslContext!
+            let hostname = self.configuration.serverNameForTLS
             promise.futureResult.whenComplete { result in
                 switch result {
                 case .success:
-
                     do {
                         let sslHandler = try NIOSSLClientHandler(
-                            context: self.configuration.tls.sslContext!,
-                            serverHostname: self.configuration.serverNameForTLS
+                            context: sslContext,
+                            serverHostname: hostname
                         )
                         try context.pipeline.syncOperations.addHandler(
                             sslHandler, position: .first
@@ -727,7 +733,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         }
 
         if
-            self.capabilitiesProvider.getCapabilities().ttcFieldVersion >=
+            self.capabilities.ttcFieldVersion >=
                 Constants.TNS_CCAP_FIELD_VERSION_18_1_EXT_1
         {
             return OracleVersion(
@@ -755,7 +761,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.pipeline.removeHandler(decoder, promise: nil)
         }
         self.decoder = ByteToMessageHandler(OracleBackendMessageDecoder(
-            capabilities: self.capabilitiesProvider.getCapabilities(),
+            capabilities: self.capabilities,
             context: self.decoderContext
         ))
         _ = context.pipeline.addHandler(
@@ -764,7 +770,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         )
         self.encoder = OracleFrontendMessageEncoder(
             buffer: context.channel.allocator.buffer(capacity: 256),
-            capabilities: capabilitiesProvider.getCapabilities()
+            capabilities: self.capabilities
         )
     }
 }

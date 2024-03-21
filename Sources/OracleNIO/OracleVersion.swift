@@ -11,18 +11,18 @@
 ///  │ └──────────────────── Database Maintenance Release Number
 ///  └───────────────────────── Major Database Release Number
 ///  ```
-struct OracleVersion: CustomStringConvertible, Sendable {
-    let majorDatabaseReleaseNumber: Int
-    let databaseMaintenanceReleaseNumber: Int
-    let fusionMiddlewareReleaseNumber: Int
-    let componentSpecificReleaseNumber: Int
-    let platformSpecificReleaseNumber: Int
+public struct OracleVersion: CustomStringConvertible, Sendable {
+    public let majorDatabaseReleaseNumber: Int
+    public let databaseMaintenanceReleaseNumber: Int
+    public let fusionMiddlewareReleaseNumber: Int
+    public let componentSpecificReleaseNumber: Int
+    public let platformSpecificReleaseNumber: Int
 
-    var description: String {
-        "\(majorDatabaseReleaseNumber)." +
-        "\(databaseMaintenanceReleaseNumber)." +
-        "\(fusionMiddlewareReleaseNumber)." +
-        "\(componentSpecificReleaseNumber)." +
-        "\(platformSpecificReleaseNumber)"
+    public var description: String {
+        """
+        \(majorDatabaseReleaseNumber).\(databaseMaintenanceReleaseNumber).\
+        \(fusionMiddlewareReleaseNumber).\(componentSpecificReleaseNumber).\
+        \(platformSpecificReleaseNumber)
+        """
     }
 }

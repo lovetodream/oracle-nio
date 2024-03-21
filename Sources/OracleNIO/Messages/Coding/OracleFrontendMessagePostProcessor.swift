@@ -11,7 +11,7 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
     private let headerSize = OracleFrontendMessageEncoder.headerSize
     private let dataFlagsSize = MemoryLayout<UInt16>.size
 
-    weak var capabilitiesProvider: CapabilitiesProvider!
+    var protocolVersion: UInt16 = 0
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         var buffer = self.unwrapOutboundIn(data)
@@ -21,7 +21,6 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
                 .buffer(capacity: maxSize)
             temporaryBuffer.moveWriterIndex(forwardBy: self.headerSize)
 
-            let capabilities = self.capabilitiesProvider.getCapabilities()
             let packetType = buffer
                 .getInteger(at: MemoryLayout<UInt32>.size, as: UInt8.self)!
             let packetFlags = buffer
@@ -56,7 +55,7 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
                 temporaryBuffer.prepareSend(
                     packetTypeByte: packetType,
                     packetFlags: packetFlags,
-                    protocolVersion: capabilities.protocolVersion
+                    protocolVersion: self.protocolVersion
                 )
                 context.writeAndFlush(
                     self.wrapOutboundOut(temporaryBuffer), promise: nil

@@ -39,11 +39,10 @@ import Logging
 /// - Note: If you want to create long running connections, e.g. in a HTTP Server, ``OracleClient``
 /// is preferred over ``OracleConnection``. It maintans a pool of connections for you.
 ///
-public final class OracleConnection: @unchecked Sendable {
+public final class OracleConnection: Sendable {
     /// A Oracle connection ID, used exclusively for logging.
     public typealias ID = Int
 
-    var capabilities: Capabilities
     let configuration: Configuration
     let channel: Channel
     let logger: Logger
@@ -60,40 +59,43 @@ public final class OracleConnection: @unchecked Sendable {
 
     public var eventLoop: EventLoop { channel.eventLoop }
 
-    var drcpEstablishSession = false
-
-    var sessionID: Int?
-    var serialNumber: Int?
-    var serverVersion: OracleVersion?
-    var currentSchema: String?
-    var edition: String?
+    /// The connection's session ID (SID).
+    public let sessionID: Int
+    let serialNumber: Int
+    /// The version of the Oracle server, the connection is established to.
+    public let serverVersion: OracleVersion
 
     static let noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
         SwiftLogNoOpLogHandler()
     }
 
-    init(
+    private init(
         configuration: OracleConnection.Configuration,
         channel: Channel,
         connectionID: ID,
-        logger: Logger
+        logger: Logger,
+        sessionID: Int,
+        serialNumber: Int,
+        serverVersion: OracleVersion
     ) {
         self.id = connectionID
         self.configuration = configuration
         self.logger = logger
         self.channel = channel
-        self.capabilities = .init()
-        // TODO: disable OOB on Windows, if Windows gets to be a supported platform
-        if !configuration.disableOOB ||
-            configuration._protocol == .tcps {
-            self.capabilities.supportsOOB = true
-        }
+        self.sessionID = sessionID
+        self.serialNumber = serialNumber
+        self.serverVersion = serverVersion
     }
     deinit {
         assert(isClosed, "OracleConnection deinitialized before being closed.")
     }
 
-    func start(configuration: Configuration) -> EventLoopFuture<Void> {
+    private static func start(
+        configuration: Configuration,
+        connectionID: OracleConnection.ID,
+        channel: Channel,
+        logger: Logger
+    ) -> EventLoopFuture<OracleConnection> {
         // 1. configure handlers
 
         let sslHandler: NIOSSLClientHandler?
@@ -110,20 +112,19 @@ public final class OracleConnection: @unchecked Sendable {
                     sslHandler!, position: .first
                 )
             } catch {
-                return self.eventLoop.makeFailedFuture(error)
+                return channel.eventLoop.makeFailedFuture(error)
             }
         }
 
+        let frontendMessageHandler = OracleFrontendMessagePostProcessor()
         let channelHandler = OracleChannelHandler(
             configuration: configuration,
             logger: logger,
-            sslHandler: sslHandler
+            sslHandler: sslHandler,
+            postprocessor: frontendMessageHandler
         )
-        channelHandler.capabilitiesProvider = self
 
         let eventHandler = OracleEventsHandler(logger: logger)
-        let frontendMessageHandler = OracleFrontendMessagePostProcessor()
-        frontendMessageHandler.capabilitiesProvider = self
 
         // 2. add handlers
 
@@ -132,16 +133,16 @@ public final class OracleConnection: @unchecked Sendable {
             // This is very useful for sending hex dumps to Oracle to analyze
             // problems in the driver.
             let tracer = Logger(label: "oracle-nio.network-tracing")
-            try self.channel.pipeline.syncOperations
+            try channel.pipeline.syncOperations
                 .addHandler(DebugLogHandler(logger: tracer))
             #endif
-            try self.channel.pipeline.syncOperations.addHandler(eventHandler)
-            try self.channel.pipeline.syncOperations
+            try channel.pipeline.syncOperations.addHandler(eventHandler)
+            try channel.pipeline.syncOperations
                 .addHandler(channelHandler, position: .before(eventHandler))
-            try self.channel.pipeline.syncOperations
+            try channel.pipeline.syncOperations
                 .addHandler(frontendMessageHandler, position: .before(channelHandler))
         } catch {
-            return self.eventLoop.makeFailedFuture(error)
+            return channel.eventLoop.makeFailedFuture(error)
         }
 
         // 3. wait for startup future to succeed.
@@ -150,15 +151,20 @@ public final class OracleConnection: @unchecked Sendable {
             .flatMapError { error in
                 // in case of a startup error, the connection must be closed and
                 // after that the originating error should be surfaced
-                self.channel.closeFuture.flatMapThrowing { _ in
+                channel.closeFuture.flatMapThrowing { _ in
                     throw error
                 }
             }
             .map { context in
-                self.serverVersion = context.version
-                self.sessionID = context.sessionID
-                self.serialNumber = context.serialNumber
-                return Void()
+                OracleConnection(
+                    configuration: configuration,
+                    channel: channel,
+                    connectionID: connectionID,
+                    logger: logger,
+                    sessionID: context.sessionID,
+                    serialNumber: context.serialNumber,
+                    serverVersion: context.version
+                )
             }
     }
     
@@ -184,15 +190,12 @@ public final class OracleConnection: @unchecked Sendable {
             makeBootstrap(on: eventLoop, configuration: configuration)
                 .connect(host: configuration.host, port: configuration.port)
                 .flatMap { channel -> EventLoopFuture<OracleConnection> in
-                    let connection = OracleConnection(
+                    return OracleConnection.start(
                         configuration: configuration,
-                        channel: channel,
                         connectionID: connectionID,
+                        channel: channel,
                         logger: logger
                     )
-                    return connection.start(configuration: configuration).map {
-                        _ in connection
-                    }
                 }
         }
     }
@@ -294,42 +297,6 @@ public final class OracleConnection: @unchecked Sendable {
         self.channel.write(OracleTask.rollback(promise), promise: nil)
         return promise.futureResult
     }
-
-    // MARK: Query
-
-    private func queryStream(
-        _ query: OracleQuery, options: QueryOptions, logger: Logger
-    ) -> EventLoopFuture<OracleRowStream> {
-        var logger = logger
-        logger[oracleMetadataKey: .sessionID] = "\(self.sessionID ?? 0)"
-
-        let promise = self.channel.eventLoop.makePromise(
-            of: OracleRowStream.self
-        )
-        do {
-            let context = try ExtendedQueryContext(
-                query: query,
-                options: options,
-                logger: logger,
-                promise: promise
-            )
-            self.channel.write(OracleTask.extendedQuery(context), promise: nil)
-        } catch {
-            promise.fail(error)
-        }
-
-        return promise.futureResult
-    }
-}
-
-extension OracleConnection: CapabilitiesProvider {
-    func getCapabilities() -> Capabilities {
-        self.capabilities
-    }
-
-    func setCapabilities(to capabilities: Capabilities) {
-        self.capabilities = capabilities
-    }
 }
 
 // MARK: Async/Await Interface
@@ -407,7 +374,7 @@ extension OracleConnection {
     ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
     ///              be ignored, but feel free to experiment based on your needs. Every option and
     ///              its impact is documented.
-    ///   - logger: The `Logger` to log into for the query. If none, the query does not log anything.
+    ///   - logger: The `Logger` to log query related background events into. Defaults to logging disabled.
     ///   - file: The file, the query was started in. Used for better error reporting.
     ///   - line: The line, the query was started in. Used for better error reporting.
     /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the query
@@ -421,6 +388,7 @@ extension OracleConnection {
     ) async throws -> OracleRowSequence {
         var logger = logger ?? Self.noopLogger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
+        logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
 
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
@@ -490,7 +458,7 @@ private final class DebugLogHandler: ChannelDuplexHandler {
         if self.shouldLog {
             let buffer = self.unwrapInboundIn(data)
             self.logger.info(
-                "\(buffer.hexDump(format: .detailed))", 
+                "\n\(buffer.hexDump(format: .detailed))",
                 metadata: ["direction": "incoming"]
             )
         }

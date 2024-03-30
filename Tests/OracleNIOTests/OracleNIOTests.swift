@@ -848,8 +848,7 @@ final class OracleNIOTests: XCTestCase {
             _ = try bind.decode(of: Int?.self)
             XCTFail("Query with invalid constraint did not return an error, but it should have")
         } catch let error as OracleSQLError {
-            //            XCTAssertEqual(error.serverInfo?.number, 942) // Table or view doesn't exist
-            print(String(reflecting: error))
+            XCTAssertEqual(error.serverInfo?.number, 2291) // Constraint error
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }

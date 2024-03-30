@@ -22,6 +22,10 @@ Oracle Database 12.1 or later.
 
 ## Topics
 
+### Guides
+
+- <doc:connect-to-adb>
+
 ### Connections
 
 - ``OracleConnection``

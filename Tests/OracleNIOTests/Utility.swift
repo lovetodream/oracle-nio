@@ -11,13 +11,28 @@ extension OracleConnection {
 
     static func testConfig() throws -> OracleConnection.Configuration {
 
-        let config = OracleConnection.Configuration(
+        var config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",
             port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
             service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
             username: env("ORA_USERNAME") ?? "my_user",
             password: env("ORA_PASSWORD") ?? "my_passwor"
         )
+
+        if let wallet = env("ORA_TEST_WALLET")?.data(using: .utf8).flatMap(Array.init),
+           let walletPassword = env("ORA_TEST_WALLET_PASSWORD") {
+            let key = try NIOSSLPrivateKey(bytes: wallet, format: .pem) { completion in
+                completion(walletPassword.utf8)
+            }
+            let certificate = try NIOSSLCertificate(bytes: wallet, format: .pem)
+
+            var tls = TLSConfiguration.makeClientConfiguration()
+            tls.privateKey = NIOSSLPrivateKeySource.privateKey(key)
+            tls.certificateChain = [.certificate(certificate)]
+            config.tls = try .require(.init(configuration: tls))
+            config.retryCount = 20
+            config.retryDelay = 3
+        }
 
         return config
     }

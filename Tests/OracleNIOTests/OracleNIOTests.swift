@@ -15,6 +15,10 @@ final class OracleNIOTests: XCTestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
+        if env("SMOKE_TEST_ONLY") == "1" {
+            throw XCTSkip("Skipping... running only smoke test suite")
+        }
+
         XCTAssertTrue(isLoggingConfigured)
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     }
@@ -40,6 +44,31 @@ final class OracleNIOTests: XCTestCase {
             username: env("ORA_USERNAME") ?? "my_user",
             password: "wrong_password"
         )
+
+        var conn: OracleConnection?
+        do {
+            conn = try await OracleConnection.connect(
+                configuration: config, id: 1, logger: .oracleTest
+            )
+            XCTFail("Authentication should fail")
+        } catch {
+            // expected
+        }
+
+        // In case of a test failure the connection must be closed.
+        XCTAssertNoThrow(try conn?.syncClose())
+    }
+
+    func testMultipleFailingAttempts() async throws {
+        var config = OracleConnection.Configuration(
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            username: env("ORA_USERNAME") ?? "my_user",
+            password: "wrong_password"
+        )
+        config.retryCount = 3
+        config.retryDelay = 1
 
         var conn: OracleConnection?
         do {
@@ -849,13 +878,48 @@ final class OracleNIOTests: XCTestCase {
             _ = try bind.decode(of: Int?.self)
             XCTFail("Query with invalid constraint did not return an error, but it should have")
         } catch let error as OracleSQLError {
-            //            XCTAssertEqual(error.serverInfo?.number, 942) // Table or view doesn't exist
-            print(String(reflecting: error))
+            XCTAssertEqual(error.serverInfo?.number, 2291) // Constraint error
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
 
+    func testConnectionAttemptCancels() async {
+        var config = OracleConnection.Configuration(
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            username: env("ORA_USERNAME") ?? "my_user",
+            password: "wrong_password"
+        )
+        config.retryCount = 20
+        config.retryDelay = 5
+        let configuration = config
+        let connect = Task {
+            let start = Date().timeIntervalSince1970
+            try await withTaskCancellationHandler {
+                do {
+                    let connection = try await OracleConnection.connect(
+                        on: self.eventLoop,
+                        configuration: configuration,
+                        id: 1,
+                        logger: .oracleTest
+                    )
+                    try await connection.close()
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    XCTFail("Unexpected error: \(String(reflecting: error))")
+                }
+            } onCancel: {
+                let duration = Date().timeIntervalSince1970 - start
+                XCTAssert(duration > 8.0 && duration < 10.0)
+            }
+        }
+        try? await Task.sleep(for: .seconds(8)) // should be in the second attempt
+        connect.cancel()
+    }
+ 
     func testPlainQueryWorks() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }

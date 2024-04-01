@@ -55,6 +55,31 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertNoThrow(try conn?.syncClose())
     }
 
+    func testMultipleFailingAttempts() async throws {
+        var config = OracleConnection.Configuration(
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            username: env("ORA_USERNAME") ?? "my_user",
+            password: "wrong_password"
+        )
+        config.retryCount = 3
+        config.retryDelay = 1
+
+        var conn: OracleConnection?
+        do {
+            conn = try await OracleConnection.connect(
+                configuration: config, id: 1, logger: .oracleTest
+            )
+            XCTFail("Authentication should fail")
+        } catch {
+            // expected
+        }
+
+        // In case of a test failure the connection must be closed.
+        XCTAssertNoThrow(try conn?.syncClose())
+    }
+
     func testSimpleQuery() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }

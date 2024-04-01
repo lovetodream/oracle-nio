@@ -260,9 +260,10 @@ struct ConnectionStateMachine {
         case .extendedQuery(let queryContext):
             switch queryContext.statement {
             case .ddl(let promise),
-                .dml(let promise),
-                .plsql(let promise),
-                .query(let promise):
+                 .dml(let promise),
+                 .plsql(let promise),
+                 .query(let promise),
+                 .plain(let promise):
                 return .failQuery(
                     promise, with: oracleError, cleanupContext: nil
                 )
@@ -933,7 +934,7 @@ extension ConnectionStateMachine {
              .sidNotSupported,
              .uncleanShutdown:
             return true
-        case .queryCancelled, .nationalCharsetNotSupported, .malformedQuery:
+        case .queryCancelled, .nationalCharsetNotSupported:
             return false
         case .server:
             switch error.serverInfo?.number {

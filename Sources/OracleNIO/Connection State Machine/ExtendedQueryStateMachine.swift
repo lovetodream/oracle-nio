@@ -97,9 +97,10 @@ struct ExtendedQueryStateMachine {
             self.isCancelled = true
             switch context.statement {
             case .ddl(let promise),
-                .dml(let promise),
-                .plsql(let promise),
-                .query(let promise):
+                 .dml(let promise),
+                 .plsql(let promise),
+                 .query(let promise),
+                 .plain(let promise):
                 return .failQuery(promise, with: .queryCancelled)
             }
 
@@ -153,9 +154,10 @@ struct ExtendedQueryStateMachine {
 
             switch context.statement {
             case .ddl(let promise),
-                .dml(let promise),
-                .plsql(let promise),
-                .query(let promise):
+                 .dml(let promise),
+                 .plsql(let promise),
+                 .query(let promise),
+                 .plain(let promise):
                 return .succeedQuery(
                     promise,
                     QueryResult(
@@ -329,7 +331,8 @@ struct ExtendedQueryStateMachine {
                 case .query(let promise),
                      .plsql(let promise),
                      .dml(let promise),
-                     .ddl(let promise):
+                     .ddl(let promise),
+                     .plain(let promise):
                     action = .succeedQuery(
                         promise, .init(value: .noRows, logger: context.logger)
                     ) // empty response
@@ -359,9 +362,10 @@ struct ExtendedQueryStateMachine {
 
                 switch context.statement {
                 case .query(let promise),
-                    .plsql(let promise),
-                    .dml(let promise),
-                    .ddl(let promise):
+                     .plsql(let promise),
+                     .dml(let promise),
+                     .ddl(let promise),
+                     .plain(let promise):
                     action = .failQuery(promise, with: .server(error))
                 }
             default:
@@ -384,9 +388,10 @@ struct ExtendedQueryStateMachine {
 
                 switch context.statement {
                 case .query(let promise),
-                    .plsql(let promise),
-                    .dml(let promise),
-                    .ddl(let promise):
+                     .plsql(let promise),
+                     .dml(let promise),
+                     .ddl(let promise),
+                     .plain(let promise):
                     action = .failQuery(promise, with: .server(error))
                 }
             default:
@@ -422,7 +427,8 @@ struct ExtendedQueryStateMachine {
                 case .query(let promise),
                      .plsql(let promise),
                      .dml(let promise),
-                     .ddl(let promise):
+                     .ddl(let promise),
+                     .plain(let promise):
                     action = .succeedQuery(
                         promise, QueryResult(
                             value: .noRows, logger: context.logger
@@ -897,9 +903,10 @@ struct ExtendedQueryStateMachine {
             } else {
                 switch context.statement {
                 case .ddl(let promise),
-                    .dml(let promise),
-                    .plsql(let promise),
-                    .query(let promise):
+                     .dml(let promise),
+                     .plsql(let promise),
+                     .query(let promise),
+                     .plain(let promise):
                     self.state = .error(error)
                     return .failQuery(promise, with: error)
                 }

@@ -24,7 +24,6 @@ public struct OracleSQLError: Sendable, Error {
             case serverVersionNotSupported
             case sidNotSupported
             case missingParameter
-            case malformedQuery
         }
 
         internal var base: Base
@@ -51,7 +50,6 @@ public struct OracleSQLError: Sendable, Error {
             Self(.serverVersionNotSupported)
         public static let sidNotSupported = Self(.sidNotSupported)
         public static let missingParameter = Self(.missingParameter)
-        public static let malformedQuery = Self(.malformedQuery)
 
         public var description: String {
             switch self.base {
@@ -83,8 +81,6 @@ public struct OracleSQLError: Sendable, Error {
                 return "sidNotSupported"
             case .missingParameter:
                 return "missingParameter"
-            case .malformedQuery:
-                return "malformedQuery"
             }
         }
     }
@@ -297,12 +293,6 @@ public struct OracleSQLError: Sendable, Error {
         return error
     }
 
-    static func malformedQuery(minified sql: String) -> OracleSQLError {
-        var error = OracleSQLError(code: .malformedQuery)
-        error.underlying = MalformedQueryError(sql: sql)
-        return error
-    }
-
 }
 
 extension OracleSQLError: CustomStringConvertible {
@@ -400,11 +390,6 @@ extension OracleSQLError {
     struct MissingParameterError: Error {
         var expectedKey: String
         var actualParameters: OracleBackendMessage.Parameter
-    }
-
-    struct MalformedQueryError: Error {
-        /// Minified sql statement which was malformed.
-        var sql: String
     }
 
  }

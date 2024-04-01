@@ -30,6 +30,8 @@ extension OracleConnection {
             tls.privateKey = NIOSSLPrivateKeySource.privateKey(key)
             tls.certificateChain = [.certificate(certificate)]
             config.tls = try .require(.init(configuration: tls))
+            config.retryCount = 20
+            config.retryDelay = 3
         }
 
         return config

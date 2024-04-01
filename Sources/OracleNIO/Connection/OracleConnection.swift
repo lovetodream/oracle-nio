@@ -316,7 +316,24 @@ extension OracleConnection {
         configuration: OracleConnection.Configuration,
         id connectionID: ID
     ) async throws -> OracleConnection {
-        try await self.connect(
+        var attempts = configuration.retryCount
+        while attempts > 0 {
+            attempts -= 1
+            do {
+                return try await self.connect(
+                    on: eventLoop,
+                    configuration: configuration,
+                    id: connectionID,
+                    logger: self.noopLogger
+                )
+            } catch let error as CancellationError {
+                throw error
+            } catch { /* only final attempt throws the error */ }
+            if configuration.retryDelay > 0 {
+                try await Task.sleep(for: .seconds(configuration.retryDelay))
+            }
+        }
+        return try await self.connect(
             on: eventLoop,
             configuration: configuration,
             id: connectionID,

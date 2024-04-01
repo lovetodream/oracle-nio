@@ -163,6 +163,17 @@ extension OracleConnection {
             }
         }
 
+        /// The number of tries that a connection attempt
+        /// should be retried before the attempt is terminated.
+        ///
+        /// Defaults to `0`.
+        public var retryCount: Int = 0
+
+        /// The number of seconds to wait before making a new connection attempt.
+        ///
+        /// Defaults to `0`.
+        public var retryDelay: Int = 0
+
         /// Connection ID on the oracle server.
         public private(set) var connectionID: String = ""
 
@@ -271,6 +282,8 @@ extension OracleConnection {
                 addressLists: [addressList],
                 sourceRoute: false,
                 loadBalance: false,
+                retryCount: self.retryCount,
+                retryDelay: self.retryDelay, 
                 tcpConnectTimeout: self.options.connectTimeout,
                 service: self.service,
                 sslServerDnMatch: self.serverNameForTLS != nil,

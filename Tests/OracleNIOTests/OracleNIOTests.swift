@@ -883,6 +883,42 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testConnectionAttemptCancels() async {
+        var config = OracleConnection.Configuration(
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            username: env("ORA_USERNAME") ?? "my_user",
+            password: "wrong_password"
+        )
+        config.retryCount = 20
+        config.retryDelay = 5
+        let configuration = config
+        let connect = Task {
+            let start = Date().timeIntervalSince1970
+            try await withTaskCancellationHandler {
+                do {
+                    let connection = try await OracleConnection.connect(
+                        on: self.eventLoop,
+                        configuration: configuration,
+                        id: 1,
+                        logger: .oracleTest
+                    )
+                    try await connection.close()
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    XCTFail("Unexpected error: \(String(reflecting: error))")
+                }
+            } onCancel: {
+                let duration = Date().timeIntervalSince1970 - start
+                XCTAssert(duration > 8.0 && duration < 10.0)
+            }
+        }
+        try? await Task.sleep(for: .seconds(8)) // should be in the second attempt
+        connect.cancel()
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

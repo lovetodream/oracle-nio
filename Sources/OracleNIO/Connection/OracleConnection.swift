@@ -410,7 +410,7 @@ extension OracleConnection {
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
-        let context = try ExtendedQueryContext(
+        let context = ExtendedQueryContext(
             query: query,
             options: options,
             logger: logger,

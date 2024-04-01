@@ -806,14 +806,15 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
-    func testMalformedQueryDoesNotCauseLeakedPromise() async throws {
+    func testMalformedQuery() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
             try await conn.query("\"SELECT 'hello' FROM dual")
         } catch let error as OracleSQLError {
             print(error)
-            XCTAssertEqual(error.code, .malformedQuery)
+            XCTAssertEqual(error.code, .server)
+            XCTAssertEqual(error.serverInfo?.number, 1740)
         } catch {
             XCTFail("Unexpected error: \(String(reflecting: error))")
         }
@@ -917,6 +918,12 @@ final class OracleNIOTests: XCTestCase {
         }
         try? await Task.sleep(for: .seconds(8)) // should be in the second attempt
         connect.cancel()
+    }
+ 
+    func testPlainQueryWorks() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        try await conn.query("COMMIT")
     }
 
 }

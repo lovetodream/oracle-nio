@@ -16,9 +16,10 @@ enum OracleTask {
         case .extendedQuery(let context):
             switch context.statement {
             case .ddl(let promise),
-                .dml(let promise),
-                .plsql(let promise),
-                .query(let promise):
+                 .dml(let promise),
+                 .plsql(let promise),
+                 .query(let promise),
+                 .plain(let promise):
                 promise.fail(error)
             }
         case .ping(let promise):
@@ -37,6 +38,7 @@ final class ExtendedQueryContext {
         case plsql(EventLoopPromise<OracleRowStream>)
         case dml(EventLoopPromise<OracleRowStream>)
         case ddl(EventLoopPromise<OracleRowStream>)
+        case plain(EventLoopPromise<OracleRowStream>)
 
         var isQuery: Bool {
             switch self {
@@ -86,37 +88,30 @@ final class ExtendedQueryContext {
         options: QueryOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
-    ) throws {
-        do {
-            self.logger = logger
-            self.query = query
-            self.options = options
-            self.sqlLength = .init(query.sql.data(using: .utf8)?.count ?? 0)
+    ) {
+        self.logger = logger
+        self.query = query
+        self.options = options
+        self.sqlLength = .init(query.sql.data(using: .utf8)?.count ?? 0)
 
-            // strip single/multiline comments and and strings from the sql
-            var sql = query.sql
-            sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
-            sql = sql.replacing(/\--.*(\n|$)/, with: "")
-            sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
+        // strip single/multiline comments and and strings from the sql
+        var sql = query.sql
+        sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
+        sql = sql.replacing(/\--.*(\n|$)/, with: "")
+        sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
 
-            self.isReturning = query.binds.metadata
-                .first(where: \.isReturnBind) != nil
-            let query = try Self.determineStatementType(
-                minifiedSQL: sql, promise: promise
-            )
-            self.statement = query
-        } catch let error as OracleSQLError {
-            promise.fail(error)
-            throw error
-        } catch {
-            preconditionFailure("Unexpected error: \(error)")
-        }
+        self.isReturning = query.binds.metadata
+            .first(where: \.isReturnBind) != nil
+        let query = Self.determineStatementType(
+            minifiedSQL: sql, promise: promise
+        )
+        self.statement = query
     }
 
     private static func determineStatementType(
         minifiedSQL sql: String,
         promise: EventLoopPromise<OracleRowStream>
-    ) throws -> Statement {
+    ) -> Statement {
         var fragment = sql.trimmingCharacters(in: .whitespacesAndNewlines)
         if fragment.first == "(" {
             fragment.removeFirst()
@@ -124,7 +119,7 @@ final class ExtendedQueryContext {
         let tokens = fragment.prefix(10)
             .components(separatedBy: .whitespacesAndNewlines)
         guard let sqlKeyword = tokens.first?.uppercased() else {
-            throw OracleSQLError.malformedQuery(minified: sql)
+            return .plain(promise)
         }
         switch sqlKeyword {
         case "DECLARE", "BEGIN", "CALL":
@@ -136,7 +131,7 @@ final class ExtendedQueryContext {
         case "CREATE", "ALTER", "DROP", "TRUNCATE":
             return .ddl(promise)
         default:
-            throw OracleSQLError.malformedQuery(minified: sql)
+            return .plain(promise)
         }
     }
 }

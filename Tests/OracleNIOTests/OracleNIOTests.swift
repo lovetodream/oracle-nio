@@ -15,6 +15,10 @@ final class OracleNIOTests: XCTestCase {
 
     override func setUpWithError() throws {
         try super.setUpWithError()
+        if env("SMOKE_TEST_ONLY") == "1" {
+            throw XCTSkip("Skipping... running only smoke test suite")
+        }
+
         XCTAssertTrue(isLoggingConfigured)
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     }

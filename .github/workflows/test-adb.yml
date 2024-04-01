@@ -33,6 +33,7 @@ jobs:
         ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD }}
         ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD }}
         ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD }}
+        SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
     - name: Prepare Code Coverage
       if: github.event_name != 'schedule'
       run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov

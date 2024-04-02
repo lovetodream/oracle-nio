@@ -2,4 +2,3 @@ version: 1
 builder: 
   configs:
     - documentation_targets: [OracleNIO]
-      custom_documentation_parameters: [--enable-experimental-snippet-support]

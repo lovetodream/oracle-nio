@@ -134,7 +134,7 @@ public final class OracleConnection: Sendable {
             // problems in the driver.
             let tracer = Logger(label: "oracle-nio.network-tracing")
             try channel.pipeline.syncOperations
-                .addHandler(DebugLogHandler(logger: tracer))
+                .addHandler(DebugLogHandler(connectionID: connectionID, logger: tracer))
             #endif
             try channel.pipeline.syncOperations.addHandler(eventHandler)
             try channel.pipeline.syncOperations
@@ -459,7 +459,7 @@ private final class DebugLogHandler: ChannelDuplexHandler {
     private var logger: Logger
     private var shouldLog: Bool
 
-    init(logger: Logger, shouldLog: Bool? = nil) {
+    init(connectionID: OracleConnection.ID, logger: Logger, shouldLog: Bool? = nil) {
         if let shouldLog {
             self.shouldLog = shouldLog
         } else {
@@ -468,6 +468,8 @@ private final class DebugLogHandler: ChannelDuplexHandler {
                 .flatMap(Int.init) ?? 0
             self.shouldLog = envValue != 0
         }
+        var logger = logger
+        logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
         self.logger = logger
     }
 
@@ -490,7 +492,7 @@ private final class DebugLogHandler: ChannelDuplexHandler {
         if self.shouldLog {
             let buffer = self.unwrapOutboundIn(data)
             self.logger.info(
-                "\(buffer.hexDump(format: .detailed))", 
+                "\n\(buffer.hexDump(format: .detailed))", 
                 metadata: ["direction": "outgoing"]
             )
         }

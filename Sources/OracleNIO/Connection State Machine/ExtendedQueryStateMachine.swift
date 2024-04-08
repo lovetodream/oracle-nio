@@ -318,7 +318,7 @@ struct ExtendedQueryStateMachine {
         {
             switch self.state {
             case .commandComplete, .error, .drain:
-                preconditionFailure("Invalid state: \(self.state)")
+                return .wait // stream has already finished
             case .initialized(let context),
                  .describeInfoReceived(let context, _):
                 context.cursorID = error.cursorID ?? context.cursorID

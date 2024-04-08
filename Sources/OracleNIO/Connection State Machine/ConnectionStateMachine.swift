@@ -124,6 +124,13 @@ struct ConnectionStateMachine {
         self.state = .initialized
     }
 
+    #if DEBUG
+    /// for testing purposes only
+    init(_ state: State) {
+        self.state = state
+    }
+    #endif
+
     mutating func connected() -> ConnectionAction {
         switch self.state {
         case .initialized:

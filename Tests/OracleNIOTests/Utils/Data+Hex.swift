@@ -21,10 +21,6 @@ enum ByteHexEncodingErrors: Error {
 let charA = UInt8(UnicodeScalar("a").value)
 let char0 = UInt8(UnicodeScalar("0").value)
 
-private func itoh(_ value: UInt8) -> UInt8 {
-    return (value > 9) ? (charA + value - 10) : (char0 + value)
-}
-
 private func htoi(_ value: UInt8) throws -> UInt8 {
     switch value {
     case char0...char0 + 9:
@@ -33,30 +29,6 @@ private func htoi(_ value: UInt8) throws -> UInt8 {
         return value - charA + 10
     default:
         throw ByteHexEncodingErrors.incorrectHexValue
-    }
-}
-
-extension DataProtocol {
-    var hexString: String {
-        let hexLen = self.count * 2
-        var hexChars = [UInt8](repeating: 0, count: hexLen)
-        var offset = 0
-
-        self.regions.forEach { (_) in
-            for i in self {
-                hexChars[Int(offset * 2)] = itoh((i >> 4) & 0xF)
-                hexChars[Int(offset * 2 + 1)] = itoh(i & 0xF)
-                offset += 1
-            }
-        }
-
-        return String(bytes: hexChars, encoding: .utf8)!
-    }
-}
-
-extension MutableDataProtocol {
-    mutating func appendByte(_ byte: UInt64) {
-        withUnsafePointer(to: byte.littleEndian, { self.append(contentsOf: UnsafeRawBufferPointer(start: $0, count: 8)) })
     }
 }
 

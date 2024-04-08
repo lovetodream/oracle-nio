@@ -1,3 +1,6 @@
+// Copyright 2024 Timo Zacherl
+// SPDX-License-Identifier: Apache-2.0
+
 @testable import OracleNIO
 
 extension ConnectionStateMachine {

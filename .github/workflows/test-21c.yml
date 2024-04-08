@@ -11,6 +11,8 @@ on:
 
 jobs:
   test:
+    container:
+      image: swift:5.9-jammy
     services:
       oracle:
         image: gvenzl/oracle-xe:21
@@ -37,10 +39,17 @@ jobs:
     - name: Build
       run: swift build
     - name: Run tests
-      run: swift test
+      run: swift test --enable-code-coverage
       env:
-        ORA_HOSTNAME: localhost
+        ORA_HOSTNAME: oracle
         ORA_PORT: 1521
         ORA_SERVICE_NAME: XEPDB1
         ORA_USERNAME: my_user
         ORA_PASSWORD: my_password
+    - name: Prepare Code Coverage
+      run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: info.lcov

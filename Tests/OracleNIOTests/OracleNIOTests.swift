@@ -94,6 +94,16 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(try rows.first?.decode(String.self), "test")
     }
 
+    func testSimpleQuery2() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let rows = try await conn.query(
+            "SELECT 1 as ID FROM dual", logger: .oracleTest
+        ).collect()
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(try rows.first?.decode(Int.self), 1)
+    }
+
     func testSimpleDateQuery() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }

@@ -31,7 +31,7 @@ final class ConnectionCookieManager: Sendable {
     }
 }
 
-struct ConnectionCookie: Sendable {
+struct ConnectionCookie: Sendable, Hashable {
     var protocolVersion: UInt8
     var serverBanner: ByteBuffer
     var charsetID: UInt16

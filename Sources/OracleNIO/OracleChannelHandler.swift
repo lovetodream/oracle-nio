@@ -199,6 +199,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func channelReadComplete(context: ChannelHandlerContext) {
+        self.logger.trace("Channel read complete")
         let action = self.state.channelReadComplete()
         self.run(action, with: context)
     }

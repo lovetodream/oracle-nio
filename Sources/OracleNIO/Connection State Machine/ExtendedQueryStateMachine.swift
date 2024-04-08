@@ -352,6 +352,9 @@ struct ExtendedQueryStateMachine {
             case .modifying:
                 preconditionFailure("Invalid state: \(self.state)")
             }
+        } else if self.isCancelled && error.number == 1013 {
+            self.state = .commandComplete
+            action = .forwardCancelComplete
         } else if 
             error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST,
             let cursor = error.cursorID
@@ -409,9 +412,6 @@ struct ExtendedQueryStateMachine {
             self.avoidingStateMachineCoW { state in
                 state = .error(.server(error))
             }
-        } else if self.isCancelled && error.number == 1013 {
-            self.state = .commandComplete
-            action = .forwardCancelComplete
         } else {
             switch self.state {
             case .drain,

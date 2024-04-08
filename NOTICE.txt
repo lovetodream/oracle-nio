@@ -32,3 +32,12 @@ This product is heavily influenced by PostgresNIO.
     * https://github.com/vapor/postgres-nio/blob/main/LICENSE
   * HOMEPAGE:
     * https://github.com/vapor/postgres-nio
+
+---
+
+This product contains a derivation of various methods from Swift Crypto.
+
+  * LICENSE (Apache License 2.0):
+    * https://github.com/apple/swift-crypto/blob/main/LICENSE.txt
+  * HOMEPAGE:
+    * https://github.com/apple/swift-crypto

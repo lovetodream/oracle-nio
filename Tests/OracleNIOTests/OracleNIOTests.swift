@@ -926,6 +926,17 @@ final class OracleNIOTests: XCTestCase {
         try await conn.query("COMMIT")
     }
 
+    func testEarlyReturnAfterStreamCompleteDoesNotCrash() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let stream = try await conn.query("SELECT 1 FROM dual UNION ALL SELECT 2 FROM dual")
+        for try await (id) in stream.decode(Int.self) {
+            XCTAssertEqual(id, 1)
+            break
+        }
+        try await Task.sleep(for: .seconds(0.5))
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

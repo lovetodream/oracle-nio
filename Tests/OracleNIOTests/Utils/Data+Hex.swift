@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import Foundation
 
 enum ByteHexEncodingErrors: Error {
     case incorrectHexValue
@@ -29,25 +28,6 @@ private func htoi(_ value: UInt8) throws -> UInt8 {
         return value - charA + 10
     default:
         throw ByteHexEncodingErrors.incorrectHexValue
-    }
-}
-
-extension Data {
-    init(hexString: String) throws {
-        self.init()
-
-        if hexString.count % 2 != 0 || hexString.count == 0 {
-            throw ByteHexEncodingErrors.incorrectString
-        }
-
-        let stringBytes: [UInt8] = Array(hexString.lowercased().data(using: String.Encoding.utf8)!)
-
-        for i in stride(from: stringBytes.startIndex, to: stringBytes.endIndex - 1, by: 2) {
-            let char1 = stringBytes[i]
-            let char2 = stringBytes[i + 1]
-
-            try self.append(htoi(char1) << 4 + htoi(char2))
-        }
     }
 }
 

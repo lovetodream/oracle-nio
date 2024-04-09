@@ -15,6 +15,8 @@ enum OracleSQLEvent {
     /// The event that is used to inform upstream handlers that ``OracleChannelHandler`` is
     /// currently idle.
     case readyForQuery
+    /// The event that is used to inform state about an ongoing TLS renegotiation.
+    case renegotiateTLS
 }
 
 final class OracleEventsHandler: ChannelInboundHandler {

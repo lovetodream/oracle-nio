@@ -98,9 +98,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         self.logger.debug("Channel error caught.", metadata: [
             .error: "\(error)"
         ])
-        let action = self.state.errorHappened(
-            .connectionError(underlying: error)
-        )
+        let action = if let error = error as? OracleSQLError {
+            self.state.errorHappened(error)
+        } else {
+            self.state.errorHappened(.connectionError(underlying: error))
+        }
         self.run(action, with: context)
     }
 
@@ -214,6 +216,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case TLSUserEvent.handshakeCompleted:
             let action = self.state.tlsEstablished()
             self.run(action, with: context)
+        case OracleSQLEvent.renegotiateTLS:
+            self.state.renegotiatingTLS()
         default:
             context.fireUserInboundEventTriggered(event)
         }
@@ -519,17 +523,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                         try pipeline.syncOperations.addHandler(
                             sslHandler, position: .first
                         )
-                        self.state.renegotiatingTLS()
+                        pipeline.fireUserInboundEventTriggered(OracleSQLEvent.renegotiateTLS)
                     } catch {
-                        let action = self.state
-                            .errorHappened(.failedToAddSSLHandler(underlying: error))
-                        self.run(action, with: context)
+                        pipeline.fireErrorCaught(OracleSQLError.failedToAddSSLHandler(underlying: error))
                     }
 
                 case .failure(let error):
-                    let action = self.state
-                        .errorHappened(.failedToAddSSLHandler(underlying: error))
-                    self.run(action, with: context)
+                    pipeline.fireErrorCaught(OracleSQLError.failedToAddSSLHandler(underlying: error))
                 }
             }
 

@@ -7,11 +7,11 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = ByteBuffer
 
-    private let maxSize = Int(Constants.TNS_SDU)
     private let headerSize = OracleFrontendMessageEncoder.headerSize
     private let dataFlagsSize = MemoryLayout<UInt16>.size
 
     var protocolVersion: UInt16 = 0
+    var maxSize = Int(Constants.TNS_SDU)
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         var buffer = self.unwrapOutboundIn(data)

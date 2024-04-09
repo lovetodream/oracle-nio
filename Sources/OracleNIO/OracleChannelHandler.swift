@@ -32,6 +32,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         didSet {
             self.postprocessor.protocolVersion =
                 self.capabilities.protocolVersion
+            self.postprocessor.maxSize = Int(self.capabilities.sdu)
         }
     }
 
@@ -300,7 +301,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .provideAuthenticationContext(let cookie):
+        case .provideAuthenticationContext(let fastAuth):
             let authMethod = self.configuration.authenticationMethod()
             let peerAddress = context.remoteAddress
             let authContext = AuthContext(
@@ -316,22 +317,19 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 customTimezone: configuration.customTimezone,
                 mode: configuration.mode,
                 description: configuration.getDescription()
-            )
+           )
             let action = self.state
-                .provideAuthenticationContext(authContext, cookie: cookie)
+                .provideAuthenticationContext(authContext, fastAuth: fastAuth)
             return self.run(action, with: context)
-        case .sendAuthenticationPhaseOne(let authContext, let cookie):
-            switch cookie {
-            case .none:
-                self.sendAuthenticationPhaseOne(
-                    authContext: authContext, context: context
-                )
-            case .some(let cookie):
-                self.encoder.cookie(cookie, authContext: authContext)
-                context.writeAndFlush(
-                    self.wrapOutboundOut(self.encoder.flush()), promise: nil
-                )
-            }
+        case .sendFastAuth(let authContext):
+            self.encoder.fastAuth(authContext: authContext)
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+        case .sendAuthenticationPhaseOne(let authContext):
+            self.sendAuthenticationPhaseOne(
+                authContext: authContext, context: context
+            )
         case .sendAuthenticationPhaseTwo(let authContext, let parameters):
             self.sendAuthenticationPhaseTwo(
                 authContext: authContext,
@@ -506,9 +504,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         if self.configuration._protocol == .tcps &&
             (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0 {
             let promise = context.eventLoop.makePromise(of: Void.self)
-            context.pipeline.removeHandler(currentSSLHandler!, promise: promise)
             let sslContext = self.configuration.tls.sslContext!
             let hostname = self.configuration.serverNameForTLS
+            let pipeline = context.pipeline
+            pipeline.removeHandler(currentSSLHandler!, promise: promise)
             promise.futureResult.whenComplete { result in
                 switch result {
                 case .success:
@@ -517,7 +516,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                             context: sslContext,
                             serverHostname: hostname
                         )
-                        try context.pipeline.syncOperations.addHandler(
+                        try pipeline.syncOperations.addHandler(
                             sslHandler, position: .first
                         )
                         self.state.renegotiatingTLS()

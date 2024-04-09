@@ -139,28 +139,28 @@ struct OracleFrontendMessageEncoder {
         return buffers
     }
 
-    mutating func cookie(_ cookie: ConnectionCookie, authContext: AuthContext) {
+    mutating func fastAuth(authContext: AuthContext) {
         self.clearIfNeeded()
 
         self.startRequest()
 
+        self.buffer.writeMultipleIntegers(
+            OracleFrontendMessageID.fastAuth.rawValue,
+            UInt8(1), // fast auth version
+            Constants.TNS_SERVER_CONVERTS_CHARS, // flag 1
+            UInt8(0) // flag 2
+        )
+
         self.protocol0()
 
-        self.buffer.writeMultipleIntegers(
-            MessageType.cookie.rawValue,
-            UInt8(1), // cookie version
-            cookie.protocolVersion
-        )
-        self.buffer.writeInteger(cookie.charsetID, endianness: .little)
-        self.buffer.writeInteger(cookie.flags)
-        self.buffer.writeInteger(cookie.nationalCharsetID, endianness: .little)
-        cookie.serverBanner._encodeRaw(into: &self.buffer, context: .default)
-        cookie.compileCapabilities
-            ._encodeRaw(into: &self.buffer, context: .default)
-        cookie.runtimeCapabilities
-            ._encodeRaw(into: &self.buffer, context: .default)
+        self.buffer.writeInteger(0, as: UInt16.self) // server charset (unused)
+        self.buffer.writeInteger(0, as: UInt8.self) // server charset flag (unused)
+        self.buffer.writeInteger(0, as: UInt16.self) // server ncharset (unused)
+        self.capabilities.ttcFieldVersion = Constants.TNS_CCAP_FIELD_VERSION_19_1_EXT_1
+        self.buffer.writeInteger(self.capabilities.ttcFieldVersion)
         self.dataTypes0()
         self.authenticationPhaseOne0(authContext: authContext)
+        self.capabilities.ttcFieldVersion = Constants.TNS_CCAP_FIELD_VERSION_MAX
 
         self.endRequest()
     }

@@ -19,8 +19,10 @@ struct Capabilities: Sendable, Hashable {
     var nCharsetID = Constants.TNS_CHARSET_UTF16
     var compileCapabilities = [UInt8](repeating: 0, count: Constants.TNS_CCAP_MAX)
     var runtimeCapabilities = [UInt8](repeating: 0, count: Constants.TNS_RCAP_MAX)
+    var supportsFastAuth = false
     var supportsOOB = false
     var maxStringSize: UInt32 = 0
+    var sdu: UInt32 = UInt32(Constants.TNS_SDU)
 
     // MARK: Compile Capabilities
     var ttcFieldVersion: UInt8 = Constants.TNS_CCAP_FIELD_VERSION_MAX
@@ -58,12 +60,6 @@ struct Capabilities: Sendable, Hashable {
     mutating func adjustForProtocol(version: UInt16, options: UInt16) {
         self.protocolVersion = version
         self.supportsOOB = options & Constants.TNS_GSO_CAN_RECV_ATTENTION != 0
-    }
-
-    func adjustedForProtocol(version: UInt16, options: UInt16) -> Self {
-        var cap = self
-        cap.adjustForProtocol(version: version, options: options)
-        return cap
     }
 
     mutating func adjustForServerCompileCapabilities(

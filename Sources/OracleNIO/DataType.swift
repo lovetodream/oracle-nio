@@ -7,21 +7,10 @@ struct DataType: Sendable, Hashable {
     var representation: DataType.Representation
 
     /// Data type representations
-    enum Representation: UInt16, Sendable, Hashable, CustomStringConvertible {
+    enum Representation: UInt16, Sendable, Hashable {
         case native = 0
         case universal = 1
         case oracle = 10
-
-        public var description: String {
-            switch self {
-            case .native:
-                return "NATIVE"
-            case .universal:
-                return "UNIVERSAL"
-            case .oracle:
-                return "ORACLE"
-            }
-        }
     }
 
     /// The data type array sent to the database server during connect.

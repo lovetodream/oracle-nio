@@ -10,7 +10,7 @@ services:
         ports:
             - 1521:1521
     oracle-23:
-        image: gvenzl/oracle-free:23
+        image: gvenzl/oracle-free:23.3-faststart
         environment:
             ORACLE_RANDOM_PASSWORD: true
             APP_USER: my_user

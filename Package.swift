@@ -48,7 +48,7 @@ let package = Package(
         ),
         .testTarget(
             name: "OracleNIOTests",
-            dependencies: ["OracleNIO"],
+            dependencies: ["OracleNIO", .product(name: "NIOTestUtils", package: "swift-nio")],
             resources: [.process("Data")]
         ),
     ]

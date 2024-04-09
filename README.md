@@ -1,10 +1,14 @@
 # OracleNIO
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/lovetodream/oracle-nio)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/lovetodream/oracle-nio)
-[![](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml/badge.svg)](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml)
-[![](https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml/badge.svg)](https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml)
-[![](https://github.com/lovetodream/oracle-nio/actions/workflows/test-adb.yml/badge.svg)](https://github.com/lovetodream/oracle-nio/actions/workflows/test-adb.yml)
+[![Supported Swift Versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dswift-versions)][SPI]
+[![Supported Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Flovetodream%2Foracle-nio%2Fbadge%3Ftype%3Dplatforms)][SPI]
+[![SSWG Sandbox Incubating Badge](https://img.shields.io/badge/sswg-sandbox-lightgrey.svg)][SSWG Incubation]
+[![Documentation](http://img.shields.io/badge/read_the-docs-2196f3.svg)][Documentation]
+[![Apache 2.0 License](https://img.shields.io/badge/license-Apache%202.0-brightgreen)][Apache License]
+[![codecov](https://codecov.io/gh/lovetodream/oracle-nio/graph/badge.svg?token=QIO79P61YM)][Coverage]
+[![CI 23c](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml/badge.svg)][Test 23c]
+[![CI 21c](https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml/badge.svg)][Test 21c]
+[![CI ADB](https://github.com/lovetodream/oracle-nio/actions/workflows/test-adb.yml/badge.svg)][Test ADB]
 
 
 
@@ -178,3 +182,48 @@ try await connection.query("""
 While this looks at first glance like a classic case of [SQL injection](https://en.wikipedia.org/wiki/SQL_injection) 😱, `OracleNIO`'s API ensures that this usage is safe. The first parameter of the `query(_:logger:)` method is not a plain `String`, but a `OracleQuery`, which implements Swift's `ExpressibleByStringInterpolation` protocol. `OracleNIO` uses the literal parts of the provided string as the SQL query and replaces each interpolated value with a parameter binding. Only values which implement the `OracleEncodable` protocol may be interpolated in this way. As with `OracleDecodable`, `OracleNIO` provides default implementations for most common types.
 
 Some queries do not receive any rows from the server (most often `INSERT`, `UPDATE`, and `DELETE` queries, not to mention most `DDL` queries). To support this, the `query(_:logger:)` method is marked `@discardableResult`, so that the compiler does not issue a warning if the return value is not used.
+
+## Changelog
+
+[SemVer](https://semver.org/) changes are documented for each release on the [releases page][Releases].
+
+## Swift on Server Ecosystem
+
+**Oracle NIO** is part of the [Swift on Server Working Group][SSWG] ecosystem - currently recommended as [**Sandbox Maturity**][SSWG Incubation].
+
+| Proposal | Pitch | Review | Vote |
+|:---:|:---:|:---:|:---:|
+| [SSWG-0028](https://github.com/swift-server/sswg/blob/main/proposals/0028-oracle-nio.md) | [2023-12-20](https://forums.swift.org/t/pitch-oraclenio-oracle-db-driver-built-on-swiftnio/69088) | [2024-01-17](https://forums.swift.org/t/sswg-0028-oracle-nio/69502) | [2024-04-07](https://forums.swift.org/t/sswg-0028-oracle-nio/69502/6) |
+
+## Language and Platform Support
+
+Any given release of **Oracle NIO** will support at least the latest version of Swift on a given platform plus **1** previous version, at the time of the release.
+
+Major version releases will be scheduled around official Swift releases, taking no longer **3 months** from the Swift release.
+
+Major version releases will drop support for any version of Swift older than the last **2** Swift versions.
+
+This policy is to balance the desire for as much backwards compatibility as possible, while also being able to take advantage of new Swift features for the best API design possible.
+
+## License
+
+[Apache 2.0][Apache License]
+
+Copyright (c) 2023-present, Timo Zacherl (@lovetodream)
+
+_This project contains code written by others not affliated with this project. All copyright claims are reserved by them. For a full list, with their claimed rights, see [NOTICE.txt](NOTICE.txt)_
+
+_**Oracle** is a registered trademark of **Oracle Corporation**. Any use of their trademark is under the established [trademark guidelines](https://www.oracle.com/legal/trademarks.html) and does not imply any affiliation with or endorsement by them, and all rights are reserved by them._
+
+_**Swift** is a registered trademark of **Apple, Inc**. Any use of their trademark does not imply any affiliation with or endorsement by them, and all rights are reserved by them._
+
+[SSWG Incubation]: https://www.swift.org/sswg/incubation-process.html
+[SSWG]: https://www.swift.org/sswg/
+[SPI]: https://swiftpackageindex.com/lovetodream/oracle-nio
+[Documentation]: https://swiftpackageindex.com/lovetodream/oracle-nio/documentation
+[Apache License]: LICENSE
+[Releases]: https://github.com/lovetodream/oracle-nio/releases
+[Test 23c]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml
+[Test 21c]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml
+[Test ADB]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-adb.yml
+[Coverage]: https://codecov.io/gh/lovetodream/oracle-nio

@@ -9,7 +9,7 @@ import class Foundation.ProcessInfo
 
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask
-    typealias InboundIn = [(flags: UInt8?, OracleBackendMessage)]
+    typealias InboundIn = [OracleBackendMessageDecoder.Container]
     typealias OutboundOut = ByteBuffer
 
     private let logger: Logger
@@ -32,6 +32,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         didSet {
             self.postprocessor.protocolVersion =
                 self.capabilities.protocolVersion
+            self.postprocessor.maxSize = Int(self.capabilities.sdu)
         }
     }
 
@@ -97,17 +98,19 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         self.logger.debug("Channel error caught.", metadata: [
             .error: "\(error)"
         ])
-        let action = self.state.errorHappened(
-            .connectionError(underlying: error)
-        )
+        let action = if let error = error as? OracleSQLError {
+            self.state.errorHappened(error)
+        } else {
+            self.state.errorHappened(.connectionError(underlying: error))
+        }
         self.run(action, with: context)
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let messages = self.unwrapInboundIn(data)
-        for message in messages {
+        for container in messages {
             self.handleMessage(
-                message.1, flags: message.flags, context: context
+                container.message, flags: container.flags, context: context
             )
         }
     }
@@ -213,6 +216,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case TLSUserEvent.handshakeCompleted:
             let action = self.state.tlsEstablished()
             self.run(action, with: context)
+        case OracleSQLEvent.renegotiateTLS:
+            self.state.renegotiatingTLS()
         default:
             context.fireUserInboundEventTriggered(event)
         }
@@ -300,7 +305,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .provideAuthenticationContext(let cookie):
+        case .provideAuthenticationContext(let fastAuth):
             let authMethod = self.configuration.authenticationMethod()
             let peerAddress = context.remoteAddress
             let authContext = AuthContext(
@@ -316,22 +321,19 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 customTimezone: configuration.customTimezone,
                 mode: configuration.mode,
                 description: configuration.getDescription()
-            )
+           )
             let action = self.state
-                .provideAuthenticationContext(authContext, cookie: cookie)
+                .provideAuthenticationContext(authContext, fastAuth: fastAuth)
             return self.run(action, with: context)
-        case .sendAuthenticationPhaseOne(let authContext, let cookie):
-            switch cookie {
-            case .none:
-                self.sendAuthenticationPhaseOne(
-                    authContext: authContext, context: context
-                )
-            case .some(let cookie):
-                self.encoder.cookie(cookie, authContext: authContext)
-                context.writeAndFlush(
-                    self.wrapOutboundOut(self.encoder.flush()), promise: nil
-                )
-            }
+        case .sendFastAuth(let authContext):
+            self.encoder.fastAuth(authContext: authContext)
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+        case .sendAuthenticationPhaseOne(let authContext):
+            self.sendAuthenticationPhaseOne(
+                authContext: authContext, context: context
+            )
         case .sendAuthenticationPhaseTwo(let authContext, let parameters):
             self.sendAuthenticationPhaseTwo(
                 authContext: authContext,
@@ -412,7 +414,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.decoderContext.columnsCount = nil
 
             if clientCancelled {
-                self.run(.sendMarker, with: context)
+                self.run(self.state.queryStreamCancelled(), with: context)
             } else {
                 self.run(self.state.readyForQueryReceived(), with: context)
             }
@@ -506,9 +508,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         if self.configuration._protocol == .tcps &&
             (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0 {
             let promise = context.eventLoop.makePromise(of: Void.self)
-            context.pipeline.removeHandler(currentSSLHandler!, promise: promise)
             let sslContext = self.configuration.tls.sslContext!
             let hostname = self.configuration.serverNameForTLS
+            let pipeline = context.pipeline
+            pipeline.removeHandler(currentSSLHandler!, promise: promise)
             promise.futureResult.whenComplete { result in
                 switch result {
                 case .success:
@@ -517,20 +520,16 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                             context: sslContext,
                             serverHostname: hostname
                         )
-                        try context.pipeline.syncOperations.addHandler(
+                        try pipeline.syncOperations.addHandler(
                             sslHandler, position: .first
                         )
-                        self.state.renegotiatingTLS()
+                        pipeline.fireUserInboundEventTriggered(OracleSQLEvent.renegotiateTLS)
                     } catch {
-                        let action = self.state
-                            .errorHappened(.failedToAddSSLHandler(underlying: error))
-                        self.run(action, with: context)
+                        pipeline.fireErrorCaught(OracleSQLError.failedToAddSSLHandler(underlying: error))
                     }
 
                 case .failure(let error):
-                    let action = self.state
-                        .errorHappened(.failedToAddSSLHandler(underlying: error))
-                    self.run(action, with: context)
+                    pipeline.fireErrorCaught(OracleSQLError.failedToAddSSLHandler(underlying: error))
                 }
             }
 

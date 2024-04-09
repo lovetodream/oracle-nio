@@ -10,14 +10,24 @@ extension OracleBackendMessage {
         /// Only applicable if we are currently establishing a DRCP session.
         let resetStatementCache: Bool
 
+        /// Server side piggyback operation code.
+        enum Code: UInt8 {
+            case queryCacheInvalidation = 1
+            case osPidMts = 2
+            case traceEvent = 3
+            case sessRet = 4
+            case sync = 5
+            case ltxID = 7
+            case acReplayContext = 8
+            case extSync = 9
+        }
+
         static func decode(
             from buffer: inout ByteBuffer, 
             capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.ServerSidePiggyback {
-            let opCode = ServerPiggybackCode(
-                rawValue: try buffer.throwingReadInteger(as: UInt8.self)
-            )
+            let opCode = Code(rawValue: try buffer.throwingReadInteger())
             var temp16: UInt16 = 0
             switch opCode {
             case .ltxID:

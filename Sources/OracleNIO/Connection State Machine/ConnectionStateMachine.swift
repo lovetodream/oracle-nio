@@ -57,6 +57,11 @@ struct ConnectionStateMachine {
             let closePromise: EventLoopPromise<Void>?
         }
 
+        enum FastAuth {
+            case allowed
+            case denied
+        }
+
         case read
         case wait
         case logoffConnection(EventLoopPromise<Void>?)
@@ -73,8 +78,9 @@ struct ConnectionStateMachine {
         case sendDataTypes
 
         // Authentication Actions
-        case provideAuthenticationContext(ConnectionCookie?)
-        case sendAuthenticationPhaseOne(AuthContext, ConnectionCookie?)
+        case provideAuthenticationContext(FastAuth)
+        case sendFastAuth(AuthContext)
+        case sendAuthenticationPhaseOne(AuthContext)
         case sendAuthenticationPhaseTwo(
             AuthContext, OracleBackendMessage.Parameter
         )
@@ -142,9 +148,9 @@ struct ConnectionStateMachine {
     }
 
     mutating func provideAuthenticationContext(
-        _ authContext: AuthContext, cookie: ConnectionCookie?
+        _ authContext: AuthContext, fastAuth: ConnectionAction.FastAuth
     ) -> ConnectionAction {
-        self.startAuthentication(authContext, cookie: cookie)
+        self.startAuthentication(authContext, fastAuth: fastAuth)
     }
 
     mutating func close(
@@ -357,12 +363,11 @@ struct ConnectionStateMachine {
             // send OUT_OF_BAND + reset marker message through socket
         }
 
-        // Starting in 23c, a cookie can be sent along with the protocol, data
-        // types and authorization messages without waiting for the server to
-        // respond to each of the messages in turn
-        if let dbUUID = accept.dbCookieUUID, let cookie = ConnectionCookieManager.shared.get(by: dbUUID, description: description) {
+        // Starting in 23c, fast authentication is possible.
+        // Let's see if the server supports it.
+        if capabilities.supportsFastAuth {
             self.state = .waitingToStartAuthentication
-            return .provideAuthenticationContext(cookie)
+            return .provideAuthenticationContext(.allowed)
         }
 
         self.state = .protocolMessageSent
@@ -425,7 +430,7 @@ struct ConnectionStateMachine {
             preconditionFailure("Invalid state: \(self.state)")
         }
         self.state = .waitingToStartAuthentication
-        return .provideAuthenticationContext(nil)
+        return .provideAuthenticationContext(.denied)
     }
 
     mutating func parameterReceived(
@@ -646,6 +651,15 @@ struct ConnectionStateMachine {
 
     }
 
+    mutating func queryStreamCancelled() -> ConnectionAction {
+        guard case .extendedQuery = state else {
+            preconditionFailure("Tried to cancel stream without active query")
+        }
+
+        self.markerState = .markerSent
+        return .sendMarker
+    }
+
     mutating func requestQueryRows() -> ConnectionAction {
         guard case .extendedQuery(var queryState) = state else {
             preconditionFailure(
@@ -751,7 +765,7 @@ struct ConnectionStateMachine {
     // MARK: - Private Methods -
 
     private mutating func startAuthentication(
-        _ authContext: AuthContext, cookie: ConnectionCookie?
+        _ authContext: AuthContext, fastAuth: ConnectionAction.FastAuth
     ) -> ConnectionAction {
         guard case .waitingToStartAuthentication = state else {
             preconditionFailure(
@@ -761,7 +775,7 @@ struct ConnectionStateMachine {
 
         return self.avoidingStateMachineCoW { machine in
             var authState = AuthenticationStateMachine(
-                authContext: authContext, cookie: cookie
+                authContext: authContext, useFastAuth: fastAuth == .allowed
             )
             let action = authState.start()
             machine.state = .authenticating(authState)
@@ -1037,8 +1051,10 @@ extension ConnectionStateMachine {
         with action: AuthenticationStateMachine.Action
     ) -> ConnectionAction {
         switch action {
-        case .sendAuthenticationPhaseOne(let authContext, let cookie):
-            return .sendAuthenticationPhaseOne(authContext, cookie)
+        case .sendFastAuth(let authContext):
+            return .sendFastAuth(authContext)
+        case .sendAuthenticationPhaseOne(let authContext):
+            return .sendAuthenticationPhaseOne(authContext)
         case .sendAuthenticationPhaseTwo(let authContext, let parameters):
             return .sendAuthenticationPhaseTwo(authContext, parameters)
         case .wait:
@@ -1086,7 +1102,7 @@ extension ConnectionStateMachine {
                 clientCancelled: clientCancelled
             )
         case .forwardCancelComplete:
-            return .fireEventReadyForQuery
+            return self.readyForQueryReceived()
         case .evaluateErrorAtConnectionLevel(let error):
             if let cleanupContext = 
                 self.setErrorAndCreateCleanupContextIfNeeded(error)

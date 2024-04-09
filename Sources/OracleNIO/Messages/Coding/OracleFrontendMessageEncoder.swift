@@ -20,7 +20,6 @@ struct OracleFrontendMessageEncoder {
     private var state: State = .writable
     private var capabilities: Capabilities
 
-
     init(buffer: ByteBuffer, capabilities: Capabilities) {
         self.buffer = buffer
         self.capabilities = capabilities
@@ -69,7 +68,7 @@ struct OracleFrontendMessageEncoder {
         self.clearIfNeeded()
 
         self.startRequest()
-        self.buffer.writeInteger(MessageType.flushOutBinds.rawValue)
+        self.buffer.writeOracleMessageID(.flushOutBinds)
         self.endRequest()
     }
 
@@ -140,28 +139,28 @@ struct OracleFrontendMessageEncoder {
         return buffers
     }
 
-    mutating func cookie(_ cookie: ConnectionCookie, authContext: AuthContext) {
+    mutating func fastAuth(authContext: AuthContext) {
         self.clearIfNeeded()
 
         self.startRequest()
 
+        self.buffer.writeMultipleIntegers(
+            OracleFrontendMessageID.fastAuth.rawValue,
+            UInt8(1), // fast auth version
+            Constants.TNS_SERVER_CONVERTS_CHARS, // flag 1
+            UInt8(0) // flag 2
+        )
+
         self.protocol0()
 
-        self.buffer.writeMultipleIntegers(
-            MessageType.cookie.rawValue,
-            UInt8(1), // cookie version
-            cookie.protocolVersion
-        )
-        self.buffer.writeInteger(cookie.charsetID, endianness: .little)
-        self.buffer.writeInteger(cookie.flags)
-        self.buffer.writeInteger(cookie.nationalCharsetID, endianness: .little)
-        cookie.serverBanner._encodeRaw(into: &self.buffer, context: .default)
-        cookie.compileCapabilities
-            ._encodeRaw(into: &self.buffer, context: .default)
-        cookie.runtimeCapabilities
-            ._encodeRaw(into: &self.buffer, context: .default)
+        self.buffer.writeInteger(0, as: UInt16.self) // server charset (unused)
+        self.buffer.writeInteger(0, as: UInt8.self) // server charset flag (unused)
+        self.buffer.writeInteger(0, as: UInt16.self) // server ncharset (unused)
+        self.capabilities.ttcFieldVersion = Constants.TNS_CCAP_FIELD_VERSION_19_1_EXT_1
+        self.buffer.writeInteger(self.capabilities.ttcFieldVersion)
         self.dataTypes0()
         self.authenticationPhaseOne0(authContext: authContext)
+        self.capabilities.ttcFieldVersion = Constants.TNS_CCAP_FIELD_VERSION_MAX
 
         self.endRequest()
     }
@@ -175,7 +174,7 @@ struct OracleFrontendMessageEncoder {
     }
 
     private mutating func protocol0() {
-        self.buffer.writeInteger(MessageType.protocol.rawValue)
+        self.buffer.writeOracleMessageID(.protocol)
         self.buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
         self.buffer.writeInteger(UInt8(0)) // `array` terminator
         self.buffer.writeString(Constants.DRIVER_NAME)
@@ -191,7 +190,7 @@ struct OracleFrontendMessageEncoder {
     }
 
     private mutating func dataTypes0() {
-        self.buffer.writeInteger(MessageType.dataTypes.rawValue, as: UInt8.self)
+        self.buffer.writeOracleMessageID(.dataTypes)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
         self.buffer.writeInteger(UInt8(
@@ -644,7 +643,7 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeUB4(executionFlags1)
         self.buffer.writeUB4(executionFlags2)
         if !parameters.metadata.isEmpty {
-            self.buffer.writeInteger(MessageType.rowData.rawValue)
+            self.buffer.writeOracleMessageID(.rowData)
             self.writeBindParameterRow(bindings: parameters)
         }
         self.endRequest()
@@ -720,7 +719,7 @@ struct OracleFrontendMessageEncoder {
             }
         }
         if let data {
-            self.buffer.writeInteger(MessageType.lobData.rawValue)
+            self.buffer.writeOracleMessageID(.lobData)
             data._encodeRaw(into: &self.buffer, context: .default)
         }
         if sendAmount {
@@ -794,7 +793,8 @@ struct OracleFrontendMessageEncoder {
     }
 
     private mutating func writeFunctionCode(
-        messageType: MessageType, functionCode: Constants.FunctionCode
+        messageType: OracleFrontendMessageID,
+        functionCode: Constants.FunctionCode
     ) {
         var sequenceNumber: UInt8 = 0
         self.writeFunctionCode(
@@ -805,7 +805,7 @@ struct OracleFrontendMessageEncoder {
     }
 
     private mutating func writeFunctionCode(
-        messageType: MessageType,
+        messageType: OracleFrontendMessageID,
         functionCode: Constants.FunctionCode,
         sequenceNumber: inout UInt8
     ) {
@@ -1144,7 +1144,7 @@ extension OracleFrontendMessageEncoder {
 
         // write parameter values unless statement contains only return binds
         if !binds.metadata.isEmpty {
-            self.buffer.writeInteger(MessageType.rowData.rawValue)
+            self.buffer.writeOracleMessageID(.rowData)
             self.writeBindParameterRow(bindings: binds)
         }
     }
@@ -1243,4 +1243,11 @@ extension OracleBindings.Metadata: ColumnMetadata { }
 extension DescribeInfo.Column: ColumnMetadata {
     var isArray: Bool { false }
     var maxArraySize: Int { 0 }
+}
+
+enum OracleFrontendMessageID: UInt8 {
+    case function = 3
+    case piggyback = 17
+    case onewayFN = 26
+    case fastAuth = 34
 }

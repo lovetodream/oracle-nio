@@ -38,10 +38,12 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
         case (.sendDataTypes, .sendDataTypes):
             return true
 
-        case (.provideAuthenticationContext(let lhs), .provideAuthenticationContext(let rhs)):
+        case (.provideAuthenticationContext, .provideAuthenticationContext):
+            return true
+        case (.sendFastAuth(let lhs), .sendFastAuth(let rhs)):
             return lhs == rhs
-        case (.sendAuthenticationPhaseOne(let lhsContext, let lhsCookie), .sendAuthenticationPhaseOne(let rhsContext, let rhsCookie)):
-            return lhsContext == rhsContext && lhsCookie == rhsCookie
+        case (.sendAuthenticationPhaseOne(let lhsContext), .sendAuthenticationPhaseOne(let rhsContext)):
+            return lhsContext == rhsContext
         case (.sendAuthenticationPhaseTwo(let lhsContext, let lhsParameters), .sendAuthenticationPhaseTwo(let rhsContext, let rhsParameters)):
             return lhsContext == rhsContext && lhsParameters == rhsParameters
         case (.authenticated(let lhs), .authenticated(let rhs)):

@@ -297,7 +297,7 @@ enum Constants {
     static let TNS_CCAP_FIELD_VERSION_18_1 = 10
     static let TNS_CCAP_FIELD_VERSION_18_1_EXT_1 = 11
     static let TNS_CCAP_FIELD_VERSION_19_1 = 12
-    static let TNS_CCAP_FIELD_VERSION_19_1_EXT_1 = 13
+    static let TNS_CCAP_FIELD_VERSION_19_1_EXT_1: UInt8 = 13
     static let TNS_CCAP_FIELD_VERSION_20_1 = 14
     static let TNS_CCAP_FIELD_VERSION_20_1_EXT_1 = 15
     static let TNS_CCAP_FIELD_VERSION_21_1 = 16
@@ -342,6 +342,9 @@ enum Constants {
     static let TNS_VERIFIER_TYPE_11G_2: UInt32 = 0x1b25
     static let TNS_VERIFIER_TYPE_12C: UInt32 = 0x4815
 
+    // MARK: Accept flags
+    static let TNS_ACCEPT_FLAG_FAST_AUTH: UInt32 = 0x10000000
+
     // MARK: Other constants
     static let TNS_MAX_SHORT_LENGTH = 252
     @usableFromInline
@@ -363,6 +366,7 @@ enum Constants {
     static let TNS_MAX_CONNECT_DATA = 230
     static let TNS_CHUNK_SIZE = 32767
     static let TNS_MAX_UROWID_LENGTH: UInt32 = 5267
+    static let TNS_SERVER_CONVERTS_CHARS: UInt8 = 0x01
     static let TNS_HAS_REGION_ID: UInt8 = 0x80
 
     // MARK: Base 64 encoding alphabet

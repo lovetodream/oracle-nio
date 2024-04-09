@@ -192,7 +192,7 @@ Some queries do not receive any rows from the server (most often `INSERT`, `UPDA
 **Oracle NIO** is part of the [Swift on Server Working Group][SSWG] ecosystem - currently recommended as [**Sandbox Maturity**][SSWG Incubation].
 
 | Proposal | Pitch | Review | Vote |
-|:---:|:---:|:---:|:---:|:---:|
+|:---:|:---:|:---:|:---:|
 | [SSWG-0028](https://github.com/swift-server/sswg/blob/main/proposals/0028-oracle-nio.md) | [2023-12-20](https://forums.swift.org/t/pitch-oraclenio-oracle-db-driver-built-on-swiftnio/69088) | [2024-01-17](https://forums.swift.org/t/sswg-0028-oracle-nio/69502) | [2024-04-07](https://forums.swift.org/t/sswg-0028-oracle-nio/69502/6) |
 
 ## Language and Platform Support

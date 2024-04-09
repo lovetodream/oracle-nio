@@ -414,7 +414,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.decoderContext.columnsCount = nil
 
             if clientCancelled {
-                self.run(.sendMarker, with: context)
+                self.run(self.state.queryStreamCancelled(), with: context)
             } else {
                 self.run(self.state.readyForQueryReceived(), with: context)
             }

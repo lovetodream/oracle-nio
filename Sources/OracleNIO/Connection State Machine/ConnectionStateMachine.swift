@@ -464,6 +464,7 @@ struct ConnectionStateMachine {
         switch self.state {
         case .initialized, 
              .waitingToStartAuthentication,
+             .readyForQuery,
              .readyToLogOff,
              .closed,
              .renegotiatingTLS:
@@ -472,7 +473,6 @@ struct ConnectionStateMachine {
              .protocolMessageSent,
              .dataTypesMessageSent,
              .authenticating,
-             .readyForQuery,
              .extendedQuery,
              .ping,
              .commit,
@@ -649,6 +649,15 @@ struct ConnectionStateMachine {
             return machine.modify(with: action)
         }
 
+    }
+
+    mutating func queryStreamCancelled() -> ConnectionAction {
+        guard case .extendedQuery = state else {
+            preconditionFailure("Tried to cancel stream without active query")
+        }
+
+        self.markerState = .markerSent
+        return .sendMarker
     }
 
     mutating func requestQueryRows() -> ConnectionAction {

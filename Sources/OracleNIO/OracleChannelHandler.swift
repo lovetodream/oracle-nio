@@ -9,7 +9,7 @@ import class Foundation.ProcessInfo
 
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask
-    typealias InboundIn = [(flags: UInt8?, OracleBackendMessage)]
+    typealias InboundIn = [OracleBackendMessageDecoder.Container]
     typealias OutboundOut = ByteBuffer
 
     private let logger: Logger
@@ -108,9 +108,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let messages = self.unwrapInboundIn(data)
-        for message in messages {
+        for container in messages {
             self.handleMessage(
-                message.1, flags: message.flags, context: context
+                container.message, flags: container.flags, context: context
             )
         }
     }

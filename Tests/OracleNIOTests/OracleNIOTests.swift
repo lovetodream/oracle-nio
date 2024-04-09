@@ -947,6 +947,51 @@ final class OracleNIOTests: XCTestCase {
         try await Task.sleep(for: .seconds(0.5))
     }
 
+    func testQueryAfterCancellationDoesNotDeadlock() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        let rows = try await conn.query(
+            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')",
+            logger: .oracleTest
+        )
+        var received: Int64 = 0
+        for try await row in rows {
+            var number: Int64?
+            XCTAssertNoThrow(
+                number = try row.decode(Int64.self, context: .default)
+            )
+            received += 1
+            XCTAssertEqual(number, received)
+            if (number ?? 0) > 100 {
+                break
+            }
+        }
+
+        let rows2 = try await conn.query("SELECT 'next_query' FROM dual", logger: .oracleTest)
+        for try await row in rows2 {
+            XCTAssertEqual("next_query", try? row.decode(String.self))
+            return
+        }
+        XCTFail("Next query must return exactly one row")
+    }
+
+    func testPendingTasksAreExecuted() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await conn.ping()
+            }
+            group.addTask {
+                try await conn.ping()
+            }
+
+            for try await value in group { value }
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

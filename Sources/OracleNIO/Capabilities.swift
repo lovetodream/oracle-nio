@@ -15,6 +15,7 @@ import NIOCore
 
 struct Capabilities: Sendable, Hashable {
     var protocolVersion: UInt16 = 0
+    var protocolOptions: UInt16 = 0
     var charsetID = Constants.TNS_CHARSET_UTF8
     var nCharsetID = Constants.TNS_CHARSET_UTF16
     var compileCapabilities = [UInt8](repeating: 0, count: Constants.TNS_CCAP_MAX)
@@ -59,6 +60,7 @@ struct Capabilities: Sendable, Hashable {
 
     mutating func adjustForProtocol(version: UInt16, options: UInt16) {
         self.protocolVersion = version
+        self.protocolOptions = options
         self.supportsOOB = options & Constants.TNS_GSO_CAN_RECV_ATTENTION != 0
     }
 

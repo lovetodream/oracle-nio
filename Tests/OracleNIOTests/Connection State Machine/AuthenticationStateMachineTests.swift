@@ -37,4 +37,38 @@ final class AuthenticationStateMachineTests: XCTestCase {
         XCTAssertEqual(state.parameterReceived(parameters: .init([:])), .sendAuthenticationPhaseTwo(authContext, .init([:])))
         XCTAssertEqual(state.parameterReceived(parameters: [:]), .authenticated([:]))
     }
+
+    func testAuthHappyPath() {
+        var capabilities = Capabilities()
+        capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
+        let accept = OracleBackendMessage.Accept(newCapabilities: capabilities)
+        let description = Description(
+            connectionID: "1",
+            addressLists: [],
+            service: .serviceName("service_name"),
+            sslServerDnMatch: false,
+            purity: .default
+        )
+        let authContext = AuthContext(
+            method: .init(username: "test", password: "pasword123"),
+            service: .serviceName("service_name"),
+            terminalName: "",
+            programName: "",
+            machineName: "",
+            pid: 1,
+            processUsername: "",
+            mode: .default,
+            description: description
+        )
+
+        var state = ConnectionStateMachine()
+
+        XCTAssertEqual(state.connected(), .sendConnect)
+        XCTAssertEqual(state.acceptReceived(accept, description: description), .sendProtocol)
+        XCTAssertEqual(state.protocolReceived(), .sendDataTypes)
+        XCTAssertEqual(state.dataTypesReceived(), .provideAuthenticationContext(.denied))
+        XCTAssertEqual(state.provideAuthenticationContext(authContext, fastAuth: .denied), .sendAuthenticationPhaseOne(authContext))
+        XCTAssertEqual(state.parameterReceived(parameters: .init([:])), .sendAuthenticationPhaseTwo(authContext, .init([:])))
+        XCTAssertEqual(state.parameterReceived(parameters: [:]), .authenticated([:]))
+    }
 }

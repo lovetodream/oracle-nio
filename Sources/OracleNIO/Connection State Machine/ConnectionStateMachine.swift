@@ -464,7 +464,6 @@ struct ConnectionStateMachine {
         switch self.state {
         case .initialized, 
              .waitingToStartAuthentication,
-             .readyForQuery,
              .readyToLogOff,
              .closed,
              .renegotiatingTLS:
@@ -473,6 +472,7 @@ struct ConnectionStateMachine {
              .protocolMessageSent,
              .dataTypesMessageSent,
              .authenticating,
+             .readyForQuery,
              .extendedQuery,
              .ping,
              .commit,
@@ -1093,7 +1093,7 @@ extension ConnectionStateMachine {
                 clientCancelled: clientCancelled
             )
         case .forwardCancelComplete:
-            return .fireEventReadyForQuery
+            return self.readyForQueryReceived()
         case .evaluateErrorAtConnectionLevel(let error):
             if let cleanupContext = 
                 self.setErrorAndCreateCleanupContextIfNeeded(error)

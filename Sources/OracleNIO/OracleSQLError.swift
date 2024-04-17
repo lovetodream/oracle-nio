@@ -333,7 +333,7 @@ extension OracleSQLError: CustomStringConvertible {
         result.append(") ")
 
         result.append("""
-        Some information has been reducted to prevent accidental leakage of \
+        - Some information has been reducted to prevent accidental leakage of \
         sensitive data. For additional debugging details, use `String(reflecting: error)`.
         """)
 

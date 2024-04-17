@@ -25,6 +25,7 @@ Oracle Database 12.1 or later.
 ### Guides
 
 - <doc:connect-to-adb>
+- <doc:stored-procedures>
 
 ### Connections
 

@@ -578,25 +578,21 @@ final class OracleNIOTests: XCTestCase {
         try await conn.query("DROP TABLE test_simple_blob", logger: .oracleTest)
     }
 
-    func testSimplePlSQL() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
+    func testSimplePlSQL() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
 
-            let input = 42
-            try await conn.query("""
-            declare
-            result number;
-            begin
-            result := \(OracleNumber(input)) + 69;
-            end;
-            """, logger: .oracleTest)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+        let input = 42
+        try await conn.query("""
+        declare
+        result number;
+        begin
+        result := \(OracleNumber(input)) + 69;
+        end;
+        """, logger: .oracleTest)
     }
 
-    func testSimpleMalformedPlSQL() async {
+    func testSimpleMalformedPlSQL() async throws {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
             defer { XCTAssertNoThrow(try conn.syncClose()) }
@@ -612,127 +608,101 @@ final class OracleNIOTests: XCTestCase {
             """, logger: .oracleTest)
         } catch let error as OracleSQLError {
             XCTAssertEqual(error.serverInfo?.number, 6550)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
 
-    func testEmptyStringBind() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
+    func testEmptyStringBind() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
 
-            let row = try await conn
-                .query("SELECT \("") FROM dual", logger: .oracleTest)
-                .collect()
-                .first
-            XCTAssertNil(try row?.decode(String?.self))
-            XCTAssertEqual(try row?.decode(String.self), "")
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+        let row = try await conn
+            .query("SELECT \("") FROM dual", logger: .oracleTest)
+            .collect()
+            .first
+        XCTAssertNil(try row?.decode(String?.self))
+        XCTAssertEqual(try row?.decode(String.self), "")
     }
 
-    func testOutBind() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            // table creation errors can be ignored
-            _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
+    func testOutBind() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        // table creation errors can be ignored
+        _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
 
-            let out = OracleRef(dataType: .number, isReturnBind: true)
-            try await conn.query("""
-            INSERT INTO test_out VALUES (\(OracleNumber(1)))
-            RETURNING value INTO \(out)
-            """, logger: .oracleTest)
-            XCTAssertEqual(try out.decode(), 1)
+        let out = OracleRef(dataType: .number, isReturnBind: true)
+        try await conn.query("""
+        INSERT INTO test_out VALUES (\(OracleNumber(1)))
+        RETURNING value INTO \(out)
+        """, logger: .oracleTest)
+        XCTAssertEqual(try out.decode(), 1)
 
-            _ = try? await conn.query("DROP TABLE test_out", logger: .oracleTest)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+        _ = try? await conn.query("DROP TABLE test_out", logger: .oracleTest)
     }
 
-    func testOutBindInPLSQL() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            let out = OracleRef(dataType: .number)
-            try await conn.query("""
-            begin
-            \(out) := \(OracleNumber(8)) + \(OracleNumber(7));
-            end;
-            """, logger: .oracleTest)
-            XCTAssertEqual(try out.decode(), 15)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+    func testOutBindInPLSQL() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let out = OracleRef(dataType: .number)
+        try await conn.query("""
+        begin
+        \(out) := \(OracleNumber(8)) + \(OracleNumber(7));
+        end;
+        """, logger: .oracleTest)
+        XCTAssertEqual(try out.decode(), 15)
     }
 
-    func testOutBindDuplicateInPLSQL() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            let out1 = OracleRef(dataType: .number)
-            let out2 = OracleRef(dataType: .number)
-            try await conn.query("""
-            begin
-            \(out1) := \(OracleNumber(8)) + \(OracleNumber(7));
-            \(out2) := 15;
-            end;
-            """, logger: .oracleTest)
-            XCTAssertEqual(try out1.decode(), 15)
-            XCTAssertEqual(try out2.decode(), 15)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+    func testOutBindDuplicateInPLSQL() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let out1 = OracleRef(dataType: .number)
+        let out2 = OracleRef(dataType: .number)
+        try await conn.query("""
+        begin
+        \(out1) := \(OracleNumber(8)) + \(OracleNumber(7));
+        \(out2) := 15;
+        end;
+        """, logger: .oracleTest)
+        XCTAssertEqual(try out1.decode(), 15)
+        XCTAssertEqual(try out2.decode(), 15)
     }
 
-    func testInOutBindInPLSQL() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            let ref = OracleRef(OracleNumber(25))
-            try await conn.query("""
-            begin
-            \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
-            end;
-            """, logger: .oracleTest)
-            XCTAssertEqual(try ref.decode(), 40)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+    func testInOutBindInPLSQL() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let ref = OracleRef(OracleNumber(25))
+        try await conn.query("""
+        begin
+        \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
+        end;
+        """, logger: .oracleTest)
+        XCTAssertEqual(try ref.decode(), 40)
     }
 
     /// Reference: [#6](https://github.com/lovetodream/oracle-nio/issues/6)
-    func testMultipleRowsWithFourColumnsWork() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            let result = try await conn.query(
-                """
-                SELECT
-                    level,
-                    sysdate,
-                    'user_' || level username,
-                    'test' suffix
-                FROM dual CONNECT BY level <= 4
-                """, logger: .oracleTest
-            ).collect()
-            var i = 1
-            for row in result {
-                let (level, _, username, suffix) = try row.decode((Int, Date, String, String).self)
-                XCTAssertEqual(level, i)
-                XCTAssertEqual(username, "user_\(i)")
-                XCTAssertEqual(suffix, "test")
-                i += 1
-            }
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
+    func testMultipleRowsWithFourColumnsWork() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let result = try await conn.query(
+            """
+            SELECT
+                level,
+                sysdate,
+                'user_' || level username,
+                'test' suffix
+            FROM dual CONNECT BY level <= 4
+            """, logger: .oracleTest
+        ).collect()
+        var i = 1
+        for row in result {
+            let (level, _, username, suffix) = try row.decode((Int, Date, String, String).self)
+            XCTAssertEqual(level, i)
+            XCTAssertEqual(username, "user_\(i)")
+            XCTAssertEqual(suffix, "test")
+            i += 1
         }
     }
 
-    func testDecodingFailureInStreamCausesDecodingError() async {
+    func testDecodingFailureInStreamCausesDecodingError() async throws {
         var received: Int64 = 0
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
@@ -748,72 +718,58 @@ final class OracleNIOTests: XCTestCase {
         } catch is OracleDecodingError {
             // desired result
             XCTAssertEqual(received, 6968)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
 
-    func testPingAndCloseDontCrash() async {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            Task {
-                try await conn.ping() // on different thread
-            }
-            try await conn.close()
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
+    func testPingAndCloseDontCrash() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        Task {
+            try await conn.ping() // on different thread
         }
+        try await conn.close()
     }
 
-    func testDatesOrCorrectlyCoded() async {
-        do {
-            let formatter = ISO8601DateFormatter()
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            let date = Date(timeIntervalSince1970: 1705920378.71279)
-            let dateFromStrFn = #"TO_TIMESTAMP_TZ('2024-01-22T10:46:18+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM')"#
-            var bindings = OracleBindings(capacity: 1)
-            bindings.append(date, context: .default, bindName: "1")
-            let dateQuery = OracleQuery(unsafeSQL: "SELECT :1, \(dateFromStrFn), TO_CHAR(\(dateFromStrFn), 'YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM') FROM DUAL", binds: bindings)
-            try await conn.query("ALTER SESSION SET TIME_ZONE = '+01:00'") // Europe/Berlin
-            let datesBerlin = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-            XCTAssertEqual(Calendar.current.compare(date, to: datesBerlin.0, toGranularity: .second), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .second), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesBerlin.2)), toGranularity: .second), .orderedSame)
+    func testDatesOrCorrectlyCoded() async throws {
+        let formatter = ISO8601DateFormatter()
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let date = Date(timeIntervalSince1970: 1705920378.71279)
+        let dateFromStrFn = #"TO_TIMESTAMP_TZ('2024-01-22T10:46:18+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM')"#
+        var bindings = OracleBindings(capacity: 1)
+        bindings.append(date, context: .default, bindName: "1")
+        let dateQuery = OracleQuery(unsafeSQL: "SELECT :1, \(dateFromStrFn), TO_CHAR(\(dateFromStrFn), 'YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM') FROM DUAL", binds: bindings)
+        try await conn.query("ALTER SESSION SET TIME_ZONE = '+01:00'") // Europe/Berlin
+        let datesBerlin = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
+        XCTAssertEqual(Calendar.current.compare(date, to: datesBerlin.0, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesBerlin.2)), toGranularity: .second), .orderedSame)
 
-            try await conn.query("ALTER SESSION SET TIME_ZONE = '+00:00'") // UTC/GMT
-            let datesUTC = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-            XCTAssertEqual(Calendar.current.compare(date, to: datesUTC.0, toGranularity: .second), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .second), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesUTC.2)), toGranularity: .second), .orderedSame)
+        try await conn.query("ALTER SESSION SET TIME_ZONE = '+00:00'") // UTC/GMT
+        let datesUTC = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
+        XCTAssertEqual(Calendar.current.compare(date, to: datesUTC.0, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesUTC.2)), toGranularity: .second), .orderedSame)
 
-            try await conn.query("ALTER SESSION SET TIME_ZONE = '-10:00'") // Hawaii
-            let datesHawaii = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-            XCTAssertEqual(Calendar.current.compare(date, to: datesHawaii.0, toGranularity: .second), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .second), .orderedSame)
-            XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesHawaii.2)), toGranularity: .second), .orderedSame)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+        try await conn.query("ALTER SESSION SET TIME_ZONE = '-10:00'") // Hawaii
+        let datesHawaii = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
+        XCTAssertEqual(Calendar.current.compare(date, to: datesHawaii.0, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesHawaii.2)), toGranularity: .second), .orderedSame)
     }
 
     func testUnusedBindDoesNotCrash() async throws {
-        do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-            let bind = OracleRef(OracleNumber(0))
-            try await conn.query("""
-            BEGIN
-            IF (NULL IS NOT NULL) THEN
-            \(bind) := 1;
-            END IF;
-            END;
-            """)
-            let result = try bind.decode(of: Int?.self)
-            XCTAssertNil(result)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
-        }
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let bind = OracleRef(OracleNumber(0))
+        try await conn.query("""
+        BEGIN
+        IF (NULL IS NOT NULL) THEN
+        \(bind) := 1;
+        END IF;
+        END;
+        """)
+        let result = try bind.decode(of: Int?.self)
+        XCTAssertNil(result)
     }
 
     func testMalformedQuery() async throws {
@@ -825,8 +781,6 @@ final class OracleNIOTests: XCTestCase {
             print(error)
             XCTAssertEqual(error.code, .server)
             XCTAssertEqual(error.serverInfo?.number, 1740)
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
 
@@ -840,8 +794,6 @@ final class OracleNIOTests: XCTestCase {
             XCTFail("Query on non existing table did not return an error, but it should have")
         } catch let error as OracleSQLError {
             XCTAssertEqual(error.serverInfo?.number, 942) // Table or view doesn't exist
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
 
@@ -889,8 +841,6 @@ final class OracleNIOTests: XCTestCase {
             XCTFail("Query with invalid constraint did not return an error, but it should have")
         } catch let error as OracleSQLError {
             XCTAssertEqual(error.serverInfo?.number, 2291) // Constraint error
-        } catch {
-            XCTFail("Unexpected error: \(String(reflecting: error))")
         }
     }
 
@@ -990,6 +940,30 @@ final class OracleNIOTests: XCTestCase {
 
             for try await value in group { value }
         }
+    }
+
+    func testStoredProcedure() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        let createProcedureQuery: OracleQuery = """
+        CREATE OR REPLACE PROCEDURE get_length (value VARCHAR2, value_length OUT BINARY_INTEGER) AS
+        BEGIN
+            SELECT length(value) INTO value_length FROM dual;
+        END;
+        """
+        try await conn.query(createProcedureQuery)
+
+        let myValue = "Hello, there!"
+        let myCountBind = OracleRef(0)
+        try await conn.query("""
+        BEGIN
+            get_length(\(myValue), \(myCountBind));
+        END;
+        """)
+        let myCount = try myCountBind.decode(of: Int.self)
+        print(myCount) // 13
+        XCTAssertEqual(myCount, 13)
     }
 
 }

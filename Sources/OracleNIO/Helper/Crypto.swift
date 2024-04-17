@@ -40,24 +40,7 @@ func getDerivedKey(key: Data, salt: [UInt8], length: Int, iterations: Int) throw
 /// Returns a signed version of the given payload (used for Oracle IAM token authentication) in base64
 /// encoding.
 func getSignature(key: String, payload: String) throws -> String {
-    var key = key
-    if !key.contains({
-        Regex {
-            Anchor.startOfSubject
-            One("-----BEGIN RSA PRIVATE KEY-----")
-            One(.newlineSequence)
-            ZeroOrMore(.any)
-            One(.newlineSequence)
-            One("-----END RSA PRIVATE KEY-----")
-            Anchor.endOfSubject
-        }
-    }) {
-        key = "-----BEGIN RSA PRIVATE KEY-----" + "\n" +
-            key + "\n" + "-----END RSA PRIVATE KEY-----"
-    }
-    guard let payload = payload.data(using: .utf8) else {
-        throw CryptoKitError.invalidParameter
-    }
+    let payload = Array(payload.utf8)
     return try _RSA.Signing.PrivateKey(pemRepresentation: key)
         .signature(for: payload, padding: .insecurePKCS1v1_5)
         .rawRepresentation

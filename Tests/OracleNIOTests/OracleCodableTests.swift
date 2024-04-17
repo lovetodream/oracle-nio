@@ -154,6 +154,31 @@ final class OracleCodableTests: XCTestCase {
         XCTAssertEqual(result.2, 420.081500420)
     }
 
+    func testDecodeMalformedRowFailsWithDetails() {
+        let row = OracleRow(
+            lookupTable: ["int": 0],
+            data: .init(columnCount: 1, bytes: .init(bytes: [1, 0])),
+            columns: [
+                .init(
+                    name: "int",
+                    dataType: .binaryInteger,
+                    dataTypeSize: 1,
+                    precision: 1,
+                    scale: 1,
+                    bufferSize: 1,
+                    nullsAllowed: true
+                )
+            ]
+        )
+
+        do {
+            _ = try row.decode(String.self)
+        } catch {
+            XCTAssertTrue("\(error)".contains("columnName: ***")) // should be redacted
+            XCTAssertTrue(String(reflecting: error).contains(#"columnName: "int""#))
+        }
+    }
+
 }
 
 extension DataRow: ExpressibleByArrayLiteral {

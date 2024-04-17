@@ -44,19 +44,22 @@ func getSignature(key: String, payload: String) throws -> String {
     if !key.contains({
         Regex {
             Anchor.startOfSubject
-            One("-----BEGIN PRIVATE KEY-----")
+            One("-----BEGIN RSA PRIVATE KEY-----")
             One(.newlineSequence)
             ZeroOrMore(.any)
             One(.newlineSequence)
-            One("-----END PRIVATE KEY-----")
+            One("-----END RSA PRIVATE KEY-----")
             Anchor.endOfSubject
         }
     }) {
-        key = "-----BEGIN PRIVATE KEY-----" + "\n" +
-            key + "\n" + "-----END PRIVATE KEY-----"
+        key = "-----BEGIN RSA PRIVATE KEY-----" + "\n" +
+            key + "\n" + "-----END RSA PRIVATE KEY-----"
     }
     guard let payload = payload.data(using: .utf8) else {
         throw CryptoKitError.invalidParameter
     }
-    return try _RSA.Signing.PrivateKey(pemRepresentation: key).signature(for: payload, padding: .insecurePKCS1v1_5).rawRepresentation.base64EncodedString()
+    return try _RSA.Signing.PrivateKey(pemRepresentation: key)
+        .signature(for: payload, padding: .insecurePKCS1v1_5)
+        .rawRepresentation
+        .base64EncodedString()
 }

@@ -341,12 +341,7 @@ struct OracleFrontendMessageEncoder {
                 self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
             case .tokenAndPrivateKey(let token, let key):
                 self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
-                let format = "E, dd MMM yyyy HH:mm:ss 'GMT'"
-                let formatter = DateFormatter()
-                formatter.dateFormat = format
-                formatter.locale = Locale(identifier: "en_US_POSIX")
-                formatter.timeZone = TimeZone(abbreviation: "GMT")
-                let now = formatter.string(from: .now)
+                let now = authHeaderDateFormatter.string(from: .now)
                 let hostInfo = """
                 \(authContext.peerAddress?.ipAddress ?? ""):\
                 \(authContext.peerAddress?.port ?? 0)
@@ -408,7 +403,7 @@ struct OracleFrontendMessageEncoder {
         )
         self.writeKeyValuePair(
             key: "AUTH_ALTER_SESSION",
-            value: self.getAlterTimezoneStatement(
+            value: self._getAlterTimezoneStatement(
                 customTimezone: authContext.customTimezone
             ),
             flags: 1
@@ -1209,16 +1204,13 @@ extension OracleFrontendMessageEncoder {
         self.buffer.writeImmutableBuffer(bindings.bytes)
     }
 
-    /// Returns the statement required to change the session time zone to match the time zone in use
-    /// by the client (us).
-    private mutating func getAlterTimezoneStatement(customTimezone: TimeZone?) -> String {
+    /// Returns the statement required to change the session time zone 
+    /// to match the time zone in use by the client (us).
+    ///
+    /// _Not private due to tests._
+    internal func _getAlterTimezoneStatement(customTimezone: TimeZone?, atDate date: Date = .init()) -> String {
         let timezone = customTimezone ?? TimeZone.current
-        let now = Date.now
-        var offset = timezone.secondsFromGMT(for: now)
-        let isDaylightSavingTime = timezone.isDaylightSavingTime(for: now)
-        if isDaylightSavingTime {
-            offset -= Int(timezone.daylightSavingTimeOffset(for: now))
-        }
+        let offset = timezone.secondsFromGMT(for: date)
         let tzHour = abs(offset / 3600)
         let tzMinute = (abs(offset) % 3600) / 60
         let sign = offset >= 0 ? "+" : "-"
@@ -1251,3 +1243,12 @@ enum OracleFrontendMessageID: UInt8 {
     case onewayFN = 26
     case fastAuth = 34
 }
+
+private let authHeaderDateFormatter: DateFormatter = {
+    let format = "E, dd MMM yyyy HH:mm:ss 'GMT'"
+    let formatter = DateFormatter()
+    formatter.dateFormat = format
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(abbreviation: "GMT")
+    return formatter
+}()

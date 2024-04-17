@@ -113,15 +113,24 @@ public struct OracleDecodingError: Error, Equatable {
 
 extension OracleDecodingError: CustomStringConvertible {
     public var description: String {
-        // This may seem very odd... But we are afraid that users might 
-        // accidentally send the unfiltered errors out to end-users. This may
-        // leak security relevant information. For this reason we overwrite
-        // the error description by default to this generic "Database error"
-        """
-        OracleDecodingError – Generic description to prevent accidental \
-        leakage of sensitive data. For debugging details, use \
+        var result = #"OracleDecodingError(code: \#(self.code)"#
+
+        result.append(#", columnName: \#(String(repeating: "*", count: self.columnName.count))"#)
+        result.append(#", columnIndex: \#(self.columnIndex)"#)
+        result.append(#", targetType: \#(String(reflecting: self.targetType))"#)
+        result.append(#", oracleType: \#(self.oracleType)"#)
+        if let oracleData {
+            result.append(#", oracleData: \#(String(reflecting: oracleData))"#)
+        }
+        result.append(") ")
+
+        result.append("""
+        - Some information has been reducted to prevent accidental leakage of \
+        sensitive data. For additional debugging details, use \
         `String(reflecting: error)`.
-        """
+        """)
+
+        return result
     }
 }
 

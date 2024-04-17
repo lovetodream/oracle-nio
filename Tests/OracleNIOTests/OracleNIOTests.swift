@@ -992,6 +992,34 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testStoredProcedure() async throws {
+        do {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+            let createProcedureQuery: OracleQuery = """
+            CREATE OR REPLACE PROCEDURE get_length (value VARCHAR2, value_length OUT BINARY_INTEGER) AS
+            BEGIN
+                SELECT length(value) INTO value_length FROM dual;
+            END;
+            """
+            try await conn.query(createProcedureQuery)
+
+            let myValue = "Hello, there!"
+            let myCountBind = OracleRef(0)
+            try await conn.query("""
+            BEGIN
+                get_length(\(myValue), \(myCountBind));
+            END;
+            """)
+            let myCount = try myCountBind.decode(of: Int.self)
+            print(myCount) // 13
+            XCTAssertEqual(myCount, 13)
+        } catch {
+            XCTFail("Unexpected error: \(String(reflecting: error))")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

@@ -4,7 +4,23 @@
 import NIOCore
 import struct Foundation.Decimal
 
-public struct OracleNumber: 
+/// A primitive type used to encode numeric values to Oracle's `NUMBER` datatype.
+///
+/// If you want to send `NUMBER` values to your database, you need to wrap your numerics
+/// (Int, Float, Double) in this type. Otherwise they will be sent as their corresponding Oracle datatype.
+///
+///
+/// ## Numeric type conversions
+///
+/// | Swift type | Oracle type |
+/// | --- | --- |
+/// | `Int` | `BINARY_INTEGER` |
+/// | `Float` | `BINARY_FLOAT` |
+/// | `Double` | `BINARY_DOUBLE` |
+/// | `OracleNumber` | `NUMBER` |
+///
+/// > Note: It's possible to decode `OracleNumber` to any numeric Swift type.
+public struct OracleNumber:
     CustomStringConvertible, CustomDebugStringConvertible,
     ExpressibleByStringLiteral, ExpressibleByIntegerLiteral,
     ExpressibleByFloatLiteral, Equatable, Hashable, Sendable

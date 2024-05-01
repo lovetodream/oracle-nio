@@ -1,8 +1,19 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import NIOCore
 import Crypto
+import NIOCore
+
 import struct Foundation.Date
 import class Foundation.DateFormatter
 import struct Foundation.Locale
@@ -85,13 +96,15 @@ struct OracleFrontendMessageEncoder {
         var serviceOptions = Constants.TNS_GSO_DONT_CARE
         let connectFlags1: UInt32 = 0
         var connectFlags2: UInt32 = 0
-        let nsiFlags: UInt8 = Constants.TNS_NSI_SUPPORT_SECURITY_RENEG
+        let nsiFlags: UInt8 =
+            Constants.TNS_NSI_SUPPORT_SECURITY_RENEG
             | Constants.TNS_NSI_DISABLE_NA
         if capabilities.supportsOOB {
             serviceOptions |= Constants.TNS_GSO_CAN_RECV_ATTENTION
             connectFlags2 |= Constants.TNS_CHECK_OOB
         }
-        let connectStringByteLength = connectString
+        let connectStringByteLength =
+            connectString
             .lengthOfBytes(using: .utf8)
 
         self.startRequest(packetType: .connect)
@@ -103,20 +116,20 @@ struct OracleFrontendMessageEncoder {
             Constants.TNS_SDU,
             Constants.TNS_TDU,
             Constants.TNS_PROTOCOL_CHARACTERISTICS,
-            UInt16(0), // line turnaround
-            UInt16(1), // value of 1
+            UInt16(0),  // line turnaround
+            UInt16(1),  // value of 1
             UInt16(connectStringByteLength)
         )
         self.buffer.writeMultipleIntegers(
-            UInt16(74), // offset to connect data
-            UInt32(0), // max receivable data
+            UInt16(74),  // offset to connect data
+            UInt32(0),  // max receivable data
             nsiFlags,
             nsiFlags,
-            UInt64(0), // obsolete
-            UInt64(0), // obsolete
-            UInt64(0), // obsolete
-            UInt32(Constants.TNS_SDU), // SDU (large)
-            UInt32(Constants.TNS_TDU), // SDU (large)
+            UInt64(0),  // obsolete
+            UInt64(0),  // obsolete
+            UInt64(0),  // obsolete
+            UInt32(Constants.TNS_SDU),  // SDU (large)
+            UInt32(Constants.TNS_TDU),  // SDU (large)
             connectFlags1,
             connectFlags2
         )
@@ -146,16 +159,16 @@ struct OracleFrontendMessageEncoder {
 
         self.buffer.writeMultipleIntegers(
             OracleFrontendMessageID.fastAuth.rawValue,
-            UInt8(1), // fast auth version
-            Constants.TNS_SERVER_CONVERTS_CHARS, // flag 1
-            UInt8(0) // flag 2
+            UInt8(1),  // fast auth version
+            Constants.TNS_SERVER_CONVERTS_CHARS,  // flag 1
+            UInt8(0)  // flag 2
         )
 
         self.protocol0()
 
-        self.buffer.writeInteger(0, as: UInt16.self) // server charset (unused)
-        self.buffer.writeInteger(0, as: UInt8.self) // server charset flag (unused)
-        self.buffer.writeInteger(0, as: UInt16.self) // server ncharset (unused)
+        self.buffer.writeInteger(0, as: UInt16.self)  // server charset (unused)
+        self.buffer.writeInteger(0, as: UInt8.self)  // server charset flag (unused)
+        self.buffer.writeInteger(0, as: UInt16.self)  // server ncharset (unused)
         self.capabilities.ttcFieldVersion = Constants.TNS_CCAP_FIELD_VERSION_19_1_EXT_1
         self.buffer.writeInteger(self.capabilities.ttcFieldVersion)
         self.dataTypes0()
@@ -175,10 +188,10 @@ struct OracleFrontendMessageEncoder {
 
     private mutating func protocol0() {
         self.buffer.writeOracleMessageID(.protocol)
-        self.buffer.writeInteger(UInt8(6)) // protocol version (8.1 and higher)
-        self.buffer.writeInteger(UInt8(0)) // `array` terminator
+        self.buffer.writeInteger(UInt8(6))  // protocol version (8.1 and higher)
+        self.buffer.writeInteger(UInt8(0))  // `array` terminator
         self.buffer.writeString(Constants.DRIVER_NAME)
-        self.buffer.writeInteger(UInt8(0)) // `NULL` terminator
+        self.buffer.writeInteger(UInt8(0))  // `NULL` terminator
     }
 
     mutating func dataTypes() {
@@ -193,9 +206,10 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeOracleMessageID(.dataTypes)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
         self.buffer.writeInteger(Constants.TNS_CHARSET_UTF8, endianness: .little)
-        self.buffer.writeInteger(UInt8(
-            Constants.TNS_ENCODING_MULTI_BYTE | Constants.TNS_ENCODING_CONV_LENGTH
-        ))
+        self.buffer.writeInteger(
+            UInt8(
+                Constants.TNS_ENCODING_MULTI_BYTE | Constants.TNS_ENCODING_CONV_LENGTH
+            ))
         self.buffer.writeInteger(UInt8(capabilities.compileCapabilities.count))
         self.buffer.writeBytes(capabilities.compileCapabilities)
         self.buffer.writeInteger(UInt8(capabilities.runtimeCapabilities.count))
@@ -279,7 +293,7 @@ struct OracleFrontendMessageEncoder {
         switch authContext.method.base {
         case .token(let token):
             numberOfPairs += 1
-            verifier11g = false // ignored
+            verifier11g = false  // ignored
 
             switch token {
             case .oAuth2: break
@@ -290,11 +304,10 @@ struct OracleFrontendMessageEncoder {
             numberOfPairs += 2
             authMode |= Constants.TNS_AUTH_MODE_WITH_PASSWORD
 
-            if
-                [
-                    Constants.TNS_VERIFIER_TYPE_11G_1,
-                    Constants.TNS_VERIFIER_TYPE_11G_2
-                ].contains(verifierType) {
+            if [
+                Constants.TNS_VERIFIER_TYPE_11G_1,
+                Constants.TNS_VERIFIER_TYPE_11G_2,
+            ].contains(verifierType) {
                 verifier11g = true
             } else if verifierType != Constants.TNS_VERIFIER_TYPE_12C {
                 throw OracleSQLError.serverVersionNotSupported
@@ -343,19 +356,19 @@ struct OracleFrontendMessageEncoder {
                 self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
                 let now = authHeaderDateFormatter.string(from: .now)
                 let hostInfo = """
-                \(authContext.peerAddress?.ipAddress ?? ""):\
-                \(authContext.peerAddress?.port ?? 0)
-                """
+                    \(authContext.peerAddress?.ipAddress ?? ""):\
+                    \(authContext.peerAddress?.port ?? 0)
+                    """
                 guard
-                    case let .serviceName(serviceName) = authContext.service
+                    case .serviceName(let serviceName) = authContext.service
                 else {
                     throw OracleSQLError.sidNotSupported
                 }
                 let header = """
-                date: \(now)
-                (request-target): \(serviceName)
-                host: \(hostInfo)
-                """
+                    date: \(now)
+                    (request-target): \(serviceName)
+                    host: \(hostInfo)
+                    """
                 let signature = try getSignature(key: key, payload: header)
                 self.writeKeyValuePair(key: "AUTH_HEADER", value: header)
                 self.writeKeyValuePair(key: "AUTH_SIGNATURE", value: signature)
@@ -378,10 +391,11 @@ struct OracleFrontendMessageEncoder {
             self.writeKeyValuePair(key: "AUTH_PASSWORD", value: encodedPassword)
             if !verifier11g {
                 guard let speedyKey else {
-                    preconditionFailure("""
-                    speedy key needs to be generated before running \
-                    authentication phase two
-                    """)
+                    preconditionFailure(
+                        """
+                        speedy key needs to be generated before running \
+                        authentication phase two
+                        """)
                 }
                 self.writeKeyValuePair(
                     key: "AUTH_PBKDF2_SPEEDY_KEY", value: speedyKey
@@ -454,7 +468,7 @@ struct OracleFrontendMessageEncoder {
             } else {
                 iterationsCount = UInt32(queryOptions.arraySize)
             }
-            if (iterationsCount > 0 && !queryContext.noPrefetch) {
+            if iterationsCount > 0 && !queryContext.noPrefetch {
                 options |= Constants.TNS_EXEC_OPTION_FETCH
             }
         }
@@ -489,102 +503,104 @@ struct OracleFrontendMessageEncoder {
         )
 
         // 4. write body of message
-        self.buffer.writeUB4(options) // execute options
-        self.buffer.writeUB4(UInt32(queryContext.cursorID)) // cursor ID
+        self.buffer.writeUB4(options)  // execute options
+        self.buffer.writeUB4(UInt32(queryContext.cursorID))  // cursor ID
         if queryContext.cursorID == 0 || queryContext.statement.isDDL {
-            self.buffer.writeInteger(UInt8(1)) // pointer (cursor ID)
+            self.buffer.writeInteger(UInt8(1))  // pointer (cursor ID)
             self.buffer.writeUB4(queryContext.sqlLength)
         } else {
-            self.buffer.writeInteger(UInt8(0)) // pointer (cursor ID)
+            self.buffer.writeInteger(UInt8(0))  // pointer (cursor ID)
             self.buffer.writeUB4(0)
         }
-        self.buffer.writeInteger(UInt8(1)) // pointer (vector)
-        self.buffer.writeUB4(13) // al8i4 array length
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8o4)
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8o4l)
-        self.buffer.writeUB4(0) // prefetch buffer size
-        self.buffer.writeUB4(iterationsCount) // prefetch number of rows
-        self.buffer.writeUB4(Constants.TNS_MAX_LONG_LENGTH) // maximum long size
+        self.buffer.writeInteger(UInt8(1))  // pointer (vector)
+        self.buffer.writeUB4(13)  // al8i4 array length
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8o4)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8o4l)
+        self.buffer.writeUB4(0)  // prefetch buffer size
+        self.buffer.writeUB4(iterationsCount)  // prefetch number of rows
+        self.buffer.writeUB4(Constants.TNS_MAX_LONG_LENGTH)  // maximum long size
         if parametersCount == 0 {
-            self.buffer.writeInteger(UInt8(0)) // pointer (binds)
-            self.buffer.writeUB4(0) // number of binds
+            self.buffer.writeInteger(UInt8(0))  // pointer (binds)
+            self.buffer.writeUB4(0)  // number of binds
         } else {
-            self.buffer.writeInteger(UInt8(1)) // pointer (binds)
-            self.buffer.writeUB4(parametersCount) // number of binds
+            self.buffer.writeInteger(UInt8(1))  // pointer (binds)
+            self.buffer.writeUB4(parametersCount)  // number of binds
         }
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8app)
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8txn)
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8txl)
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8kv)
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8kvl)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8app)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8txn)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8txl)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8kv)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8kvl)
         if queryContext.requiresDefine {
-            self.buffer.writeInteger(UInt8(1)) // pointer (al8doac)
+            self.buffer.writeInteger(UInt8(1))  // pointer (al8doac)
             self.buffer.writeUB4(
                 UInt32(describeInfo?.columns.count ?? 0)
-            ) // number of defines
+            )  // number of defines
         } else {
             self.buffer.writeInteger(UInt8(0))
             self.buffer.writeUB4(0)
         }
-        self.buffer.writeUB4(0) // registration id
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8objlist)
-        self.buffer.writeInteger(UInt8(1)) // pointer (al8objlen)
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8blv)
-        self.buffer.writeUB4(0) // al8blvl
-        self.buffer.writeInteger(UInt8(0)) // pointer (al8dnam)
-        self.buffer.writeUB4(0) // al8dnaml
-        self.buffer.writeUB4(0) // al8regid_msb
+        self.buffer.writeUB4(0)  // registration id
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8objlist)
+        self.buffer.writeInteger(UInt8(1))  // pointer (al8objlen)
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8blv)
+        self.buffer.writeUB4(0)  // al8blvl
+        self.buffer.writeInteger(UInt8(0))  // pointer (al8dnam)
+        self.buffer.writeUB4(0)  // al8dnaml
+        self.buffer.writeUB4(0)  // al8regid_msb
         if queryOptions.arrayDMLRowCounts {
-            self.buffer.writeInteger(UInt8(1)) // pointer (al8pidmlrc)
-            self.buffer.writeUB4(1) // al8pidmlrcbl / numberOfExecutions
-            self.buffer.writeInteger(UInt8(1)) // pointer (al8pidmlrcl)
+            self.buffer.writeInteger(UInt8(1))  // pointer (al8pidmlrc)
+            self.buffer.writeUB4(1)  // al8pidmlrcbl / numberOfExecutions
+            self.buffer.writeInteger(UInt8(1))  // pointer (al8pidmlrcl)
         } else {
-            self.buffer.writeInteger(UInt8(0)) // pointer (al8pidmlrc)
-            self.buffer.writeUB4(0) // al8pidmlrcbl
-            self.buffer.writeInteger(UInt8(0)) // pointer (al8pidmlrcl)
+            self.buffer.writeInteger(UInt8(0))  // pointer (al8pidmlrc)
+            self.buffer.writeUB4(0)  // al8pidmlrcbl
+            self.buffer.writeInteger(UInt8(0))  // pointer (al8pidmlrcl)
         }
-        if self.capabilities.ttcFieldVersion 
-            >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
-            self.buffer.writeInteger(UInt8(0)) // pointer (al8sqlsig)
-            self.buffer.writeUB4(0) // SQL signature length
-            self.buffer.writeInteger(UInt8(0)) // pointer (SQL ID)
-            self.buffer.writeUB4(0) // allocated size of SQL ID
-            self.buffer.writeInteger(UInt8(0)) // pointer (length of SQL ID)
-            if self.capabilities.ttcFieldVersion 
-                >= Constants.TNS_CCAP_FIELD_VERSION_12_2_EXT1 {
-                self.buffer.writeInteger(UInt8(0)) // pointer (chunk ids)
-                self.buffer.writeUB4(0) // number of chunk ids
+        if self.capabilities.ttcFieldVersion
+            >= Constants.TNS_CCAP_FIELD_VERSION_12_2
+        {
+            self.buffer.writeInteger(UInt8(0))  // pointer (al8sqlsig)
+            self.buffer.writeUB4(0)  // SQL signature length
+            self.buffer.writeInteger(UInt8(0))  // pointer (SQL ID)
+            self.buffer.writeUB4(0)  // allocated size of SQL ID
+            self.buffer.writeInteger(UInt8(0))  // pointer (length of SQL ID)
+            if self.capabilities.ttcFieldVersion
+                >= Constants.TNS_CCAP_FIELD_VERSION_12_2_EXT1
+            {
+                self.buffer.writeInteger(UInt8(0))  // pointer (chunk ids)
+                self.buffer.writeUB4(0)  // number of chunk ids
             }
         }
         if queryContext.cursorID == 0 || queryContext.statement.isDDL {
             queryContext.query.sql
                 ._encodeRaw(into: &self.buffer, context: .default)
-            self.buffer.writeUB4(1) // al8i4[0] parse
+            self.buffer.writeUB4(1)  // al8i4[0] parse
         } else {
-            self.buffer.writeUB4(0) // al8i4[0] parse
+            self.buffer.writeUB4(0)  // al8i4[0] parse
         }
         if queryContext.statement.isQuery {
             if queryContext.cursorID == 0 {
-                self.buffer.writeUB4(0) // al8i4[1] execution count
+                self.buffer.writeUB4(0)  // al8i4[1] execution count
             } else {
                 self.buffer.writeUB4(iterationsCount)
             }
         } else {
-            self.buffer.writeUB4(1) // al8i4[1] execution count
+            self.buffer.writeUB4(1)  // al8i4[1] execution count
         }
-        self.buffer.writeUB4(0) // al8i4[2]
-        self.buffer.writeUB4(0) // al8i4[3]
-        self.buffer.writeUB4(0) // al8i4[4]
-        self.buffer.writeUB4(0) // al8i4[5] SCN (part 1)
-        self.buffer.writeUB4(0) // al8i4[6] SCN (part 2)
+        self.buffer.writeUB4(0)  // al8i4[2]
+        self.buffer.writeUB4(0)  // al8i4[3]
+        self.buffer.writeUB4(0)  // al8i4[4]
+        self.buffer.writeUB4(0)  // al8i4[5] SCN (part 1)
+        self.buffer.writeUB4(0)  // al8i4[6] SCN (part 2)
         self.buffer.writeUB4(
             queryContext.statement.isQuery ? 1 : 0
-        ) // al8i4[7] is query
-        self.buffer.writeUB4(0) // al8i4[8]
-        self.buffer.writeUB4(dmlOptions) // al8i4[9] DML row counts/implicit
-        self.buffer.writeUB4(0) // al8i4[10]
-        self.buffer.writeUB4(0) // al8i4[11]
-        self.buffer.writeUB4(0) // al8i4[12]
+        )  // al8i4[7] is query
+        self.buffer.writeUB4(0)  // al8i4[8]
+        self.buffer.writeUB4(dmlOptions)  // al8i4[9] DML row counts/implicit
+        self.buffer.writeUB4(0)  // al8i4[10]
+        self.buffer.writeUB4(0)  // al8i4[11]
+        self.buffer.writeUB4(0)  // al8i4[12]
         if queryContext.requiresDefine {
             guard let columns = describeInfo?.columns else {
                 preconditionFailure()
@@ -604,9 +620,9 @@ struct OracleFrontendMessageEncoder {
         self.clearIfNeeded()
 
         self.startRequest()
-        
+
         let functionCode: Constants.FunctionCode
-        if queryContext.statement.isQuery && !queryContext.requiresDefine 
+        if queryContext.statement.isQuery && !queryContext.requiresDefine
             && queryContext.options.prefetchRows > 0
         {
             functionCode = .reexecuteAndFetch
@@ -666,38 +682,38 @@ struct OracleFrontendMessageEncoder {
         self.writeFunctionCode(messageType: .function, functionCode: .lobOp)
         if let sourceLOB {
             sourceLOB.locator.moveReaderIndex(to: 0)
-            self.buffer.writeInteger(UInt8(1)) // source pointer
+            self.buffer.writeInteger(UInt8(1))  // source pointer
             self.buffer.writeUB4(UInt32(sourceLOB.locator.readableBytes))
         } else {
-            self.buffer.writeInteger(UInt8(0)) // source pointer
-            self.buffer.writeInteger(UInt8(0)) // source length
+            self.buffer.writeInteger(UInt8(0))  // source pointer
+            self.buffer.writeInteger(UInt8(0))  // source length
         }
         if let destinationLOB {
             destinationLOB.locator.moveReaderIndex(to: 0)
-            self.buffer.writeInteger(UInt8(1)) // destination pointer
+            self.buffer.writeInteger(UInt8(1))  // destination pointer
             self.buffer.writeUB4(UInt32(destinationLOB.locator.readableBytes))
         } else {
-            self.buffer.writeInteger(UInt8(0)) // destination pointer
-            self.buffer.writeInteger(UInt8(0)) // destination length
+            self.buffer.writeInteger(UInt8(0))  // destination pointer
+            self.buffer.writeInteger(UInt8(0))  // destination length
         }
-        self.buffer.writeUB4(0) // short source offset
-        self.buffer.writeUB4(0) // short destination offset
+        self.buffer.writeUB4(0)  // short source offset
+        self.buffer.writeUB4(0)  // short destination offset
         self.buffer.writeInteger(UInt8(operation == .createTemp ? 1 : 0))
-            // pointer (character set)
-        self.buffer.writeInteger(UInt8(0)) // pointer (short amount)
+        // pointer (character set)
+        self.buffer.writeInteger(UInt8(0))  // pointer (short amount)
         if operation == .createTemp || operation == .isOpen {
-            self.buffer.writeInteger(UInt8(1)) // pointer (NULL LOB)
+            self.buffer.writeInteger(UInt8(1))  // pointer (NULL LOB)
         } else {
-            self.buffer.writeInteger(UInt8(0)) // pointer (NULL LOB)
+            self.buffer.writeInteger(UInt8(0))  // pointer (NULL LOB)
         }
         self.buffer.writeUB4(operation.rawValue)
-        self.buffer.writeInteger(UInt8(0)) // pointer (SCN array)
-        self.buffer.writeInteger(UInt8(0)) // SCN array length
+        self.buffer.writeInteger(UInt8(0))  // pointer (SCN array)
+        self.buffer.writeInteger(UInt8(0))  // SCN array length
         self.buffer.writeUB8(sourceOffset)
         self.buffer.writeUB8(destinationOffset)
-        self.buffer.writeInteger(UInt8(sendAmount ? 1 : 0)) // pointer (amount)
+        self.buffer.writeInteger(UInt8(sendAmount ? 1 : 0))  // pointer (amount)
         for _ in 0..<3 {
-            self.buffer.writeInteger(UInt16(0)) // array LOB (not used)
+            self.buffer.writeInteger(UInt16(0))  // array LOB (not used)
         }
         if let sourceLOB {
             self.buffer.writeBuffer(&sourceLOB.locator)
@@ -718,7 +734,7 @@ struct OracleFrontendMessageEncoder {
             data._encodeRaw(into: &self.buffer, context: .default)
         }
         if sendAmount {
-            self.buffer.writeUB8(UInt64(amount)) // LOB amount
+            self.buffer.writeUB8(UInt64(amount))  // LOB amount
         }
         self.endRequest()
     }
@@ -731,8 +747,8 @@ struct OracleFrontendMessageEncoder {
         self.writeFunctionCode(
             messageType: .onewayFN, functionCode: .sessionRelease
         )
-        self.buffer.writeInteger(UInt8(0)) // pointer (tag name)
-        self.buffer.writeInteger(UInt8(0)) // tag name length
+        self.buffer.writeInteger(UInt8(0))  // pointer (tag name)
+        self.buffer.writeInteger(UInt8(0))  // tag name length
         self.buffer.writeUB4(deauthenticate ? Constants.DRCP_DEAUTHENTICATE : 0)
         self.endRequest()
     }
@@ -808,9 +824,8 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeInteger(functionCode.rawValue)
         sequenceNumber += 1
         self.buffer.writeInteger(sequenceNumber)
-        if self.capabilities.ttcFieldVersion >=
-            Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
-            buffer.writeUB8(0) // token number
+        if self.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
+            buffer.writeUB8(0)  // token number
         }
     }
 }
@@ -824,7 +839,7 @@ extension OracleFrontendMessageEncoder {
         method: OracleAuthenticationMethod
     ) -> UInt32 {
         let newPassword: String?
-        if case let .usernamePassword(_, _, newPW) = method.base {
+        if case .usernamePassword(_, _, let newPW) = method.base {
             newPassword = newPW
         } else {
             newPassword = nil
@@ -953,8 +968,7 @@ extension OracleFrontendMessageEncoder {
         }
         let iterations = sderCount
         let comboKey = Array(
-            sessionKeyPartB.prefix(keyLength) +
-            sessionKeyPartA.prefix(keyLength)
+            sessionKeyPartB.prefix(keyLength) + sessionKeyPartA.prefix(keyLength)
         )
         let derivedKey = try getDerivedKey(
             key: comboKey.hexString.uppercased().data(using: .utf8) ?? .init(),
@@ -1008,7 +1022,7 @@ extension OracleFrontendMessageEncoder {
         let stringArray = Array(string)
         var data = [UInt8]()
         for i in stride(from: 0, to: string.count, by: 2) {
-            let pair: String = String(stringArray[i]) + String(stringArray[i+1])
+            let pair: String = String(stringArray[i]) + String(stringArray[i + 1])
             if let byte = UInt8(pair, radix: 16) {
                 data.append(byte)
             } else {
@@ -1045,13 +1059,13 @@ extension OracleFrontendMessageEncoder {
         )
 
         // 2. write basic data
-        self.buffer.writeInteger(hasUser) // pointer (authuser)
+        self.buffer.writeInteger(hasUser)  // pointer (authuser)
         self.buffer.writeUB4(UInt32(usernameLength))
-        self.buffer.writeUB4(authMode) // authentication mode
-        self.buffer.writeInteger(UInt8(1)) // pointer (authiv1)
-        self.buffer.writeUB4(pairsCount) // number of key/value pairs
-        self.buffer.writeInteger(UInt8(1)) // pointer (authovl)
-        self.buffer.writeInteger(UInt8(1)) // pointer (authovln)
+        self.buffer.writeUB4(authMode)  // authentication mode
+        self.buffer.writeInteger(UInt8(1))  // pointer (authiv1)
+        self.buffer.writeUB4(pairsCount)  // number of key/value pairs
+        self.buffer.writeInteger(UInt8(1))  // pointer (authovl)
+        self.buffer.writeInteger(UInt8(1))  // pointer (authovln)
         if hasUser != 0 {
             username._encodeRaw(into: &self.buffer, context: .default)
         }
@@ -1089,7 +1103,7 @@ extension OracleFrontendMessageEncoder {
         _ cursorsToClose: Set<UInt16>
     ) {
         self.writePiggybackCode(code: .closeCursors)
-        self.buffer.writeInteger(UInt8(1)) // pointer
+        self.buffer.writeInteger(UInt8(1))  // pointer
         self.buffer.writeUB4(UInt32(cursorsToClose.count))
         for cursorID in cursorsToClose {
             self.buffer.writeUB4(UInt32(cursorID))
@@ -1101,23 +1115,24 @@ extension OracleFrontendMessageEncoder {
         totalSize tempLOBsTotalSize: Int
     ) {
         self.writePiggybackCode(code: .lobOp)
-        let opCode = Constants.LOBOperation.freeTemp.rawValue 
+        let opCode =
+            Constants.LOBOperation.freeTemp.rawValue
             | Constants.LOBOperation.array.rawValue
 
         // temp lob data
-        self.buffer.writeInteger(UInt8(1)) // pointer
+        self.buffer.writeInteger(UInt8(1))  // pointer
         self.buffer.writeUB4(UInt32(tempLOBsTotalSize))
-        self.buffer.writeInteger(UInt8(0)) // destination lob locator
+        self.buffer.writeInteger(UInt8(0))  // destination lob locator
         self.buffer.writeUB4(0)
-        self.buffer.writeUB4(0) // source lob locator
+        self.buffer.writeUB4(0)  // source lob locator
         self.buffer.writeUB4(0)
-        self.buffer.writeInteger(UInt8(0)) // source lob offset
-        self.buffer.writeInteger(UInt8(0)) // destination lob offset
-        self.buffer.writeInteger(UInt8(0)) // charset
+        self.buffer.writeInteger(UInt8(0))  // source lob offset
+        self.buffer.writeInteger(UInt8(0))  // destination lob offset
+        self.buffer.writeInteger(UInt8(0))  // charset
         self.buffer.writeUB4(opCode)
-        self.buffer.writeInteger(UInt8(0)) // scn
-        self.buffer.writeUB4(0) // losbscn
-        self.buffer.writeUB8(0) // lobscnl
+        self.buffer.writeInteger(UInt8(0))  // scn
+        self.buffer.writeUB4(0)  // losbscn
+        self.buffer.writeUB8(0)  // lobscnl
         self.buffer.writeUB8(0)
         self.buffer.writeInteger(UInt8(0))
 
@@ -1181,21 +1196,22 @@ extension OracleFrontendMessageEncoder {
             if info.isArray {
                 self.buffer.writeUB4(UInt32(info.maxArraySize))
             } else {
-                self.buffer.writeUB4(0) // max num elements
+                self.buffer.writeUB4(0)  // max num elements
             }
             self.buffer.writeUB8(UInt64(contFlag))
-            self.buffer.writeUB4(0) // OID
-            self.buffer.writeUB2(0) // version
+            self.buffer.writeUB4(0)  // OID
+            self.buffer.writeUB2(0)  // version
             if info.dataType.csfrm != 0 {
                 self.buffer.writeUB2(Constants.TNS_CHARSET_UTF8)
             } else {
                 self.buffer.writeUB2(0)
             }
             self.buffer.writeInteger(info.dataType.csfrm)
-            self.buffer.writeUB4(lobPrefetchLength) // max chars (LOB prefetch)
+            self.buffer.writeUB4(lobPrefetchLength)  // max chars (LOB prefetch)
             if self.capabilities.ttcFieldVersion
-                >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
-                self.buffer.writeUB4(0) // oaccolid
+                >= Constants.TNS_CCAP_FIELD_VERSION_12_2
+            {
+                self.buffer.writeUB4(0)  // oaccolid
             }
         }
     }
@@ -1204,20 +1220,22 @@ extension OracleFrontendMessageEncoder {
         self.buffer.writeImmutableBuffer(bindings.bytes)
     }
 
-    /// Returns the statement required to change the session time zone 
+    /// Returns the statement required to change the session time zone
     /// to match the time zone in use by the client (us).
     ///
     /// _Not private due to tests._
-    internal func _getAlterTimezoneStatement(customTimezone: TimeZone?, atDate date: Date = .init()) -> String {
+    internal func _getAlterTimezoneStatement(customTimezone: TimeZone?, atDate date: Date = .init())
+        -> String
+    {
         let timezone = customTimezone ?? TimeZone.current
         let offset = timezone.secondsFromGMT(for: date)
         let tzHour = abs(offset / 3600)
         let tzMinute = (abs(offset) % 3600) / 60
         let sign = offset >= 0 ? "+" : "-"
         let tzRepresentation = """
-        \(sign)\(String(format: "%02d", tzHour))\
-        :\(String(format: "%02d", tzMinute))
-        """
+            \(sign)\(String(format: "%02d", tzHour))\
+            :\(String(format: "%02d", tzMinute))
+            """
         return "ALTER SESSION SET TIME_ZONE='\(tzRepresentation)'\0"
     }
 
@@ -1230,7 +1248,7 @@ private protocol ColumnMetadata {
     var maxArraySize: Int { get }
 }
 
-extension OracleBindings.Metadata: ColumnMetadata { }
+extension OracleBindings.Metadata: ColumnMetadata {}
 
 extension DescribeInfo.Column: ColumnMetadata {
     var isArray: Bool { false }

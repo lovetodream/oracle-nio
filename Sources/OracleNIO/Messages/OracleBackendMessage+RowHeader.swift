@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -17,18 +27,18 @@ extension OracleBackendMessage {
             capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.RowHeader {
-            buffer.moveReaderIndex(forwardBy: 1) // flags
-            buffer.skipUB2() // number of requests
-            buffer.skipUB4() // iteration number
-            buffer.skipUB4() // number of iterations
-            buffer.skipUB2() // buffer length
+            buffer.moveReaderIndex(forwardBy: 1)  // flags
+            buffer.skipUB2()  // number of requests
+            buffer.skipUB4()  // iteration number
+            buffer.skipUB4()  // number of iterations
+            buffer.skipUB2()  // buffer length
             var bitVector: [UInt8]? = nil
             if let bytesCount = buffer.readUB4(), bytesCount > 0 {
-                buffer.moveReaderIndex(forwardBy: 1) // skip repeated length
+                buffer.moveReaderIndex(forwardBy: 1)  // skip repeated length
                 bitVector = buffer.readBytes(length: Int(bytesCount))
             }
             if let numberOfBytes = buffer.readUB4(), numberOfBytes > 0 {
-                buffer.skipRawBytesChunked() // rxhrid
+                buffer.skipRawBytesChunked()  // rxhrid
             }
             return .init(bitVector: bitVector)
         }

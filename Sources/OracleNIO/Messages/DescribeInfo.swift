@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -23,7 +33,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         @usableFromInline
         var dataTypeSize: UInt32
 
-        /// The number of significant digits. Oracle guarantees the portability of numbers with precision 
+        /// The number of significant digits. Oracle guarantees the portability of numbers with precision
         /// ranging from 1 to 38.
         ///
         /// - NOTE: This is only relevant for the datatype `NUMBER`.
@@ -31,7 +41,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         @usableFromInline
         var precision: Int16
 
-        /// The number of digits to the right (positive) or left (negative) of the decimal point. The scale can 
+        /// The number of digits to the right (positive) or left (negative) of the decimal point. The scale can
         /// range from -84 to 127.
         ///
         /// - NOTE: This is only relevant for the datatype `NUMBER`.
@@ -48,17 +58,16 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         var nullsAllowed: Bool
 
         static func decode(
-            from buffer: inout ByteBuffer, 
+            from buffer: inout ByteBuffer,
             capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> DescribeInfo.Column {
             let dataType = try buffer.throwingReadInteger(as: UInt8.self)
-            buffer.moveReaderIndex(forwardBy: 1) // flags
+            buffer.moveReaderIndex(forwardBy: 1)  // flags
             let precision = try buffer.throwingReadInteger(as: Int8.self)
 
             let scale: Int16
-            if
-                let dataType = _TNSDataType(rawValue: UInt16(dataType)),
+            if let dataType = _TNSDataType(rawValue: UInt16(dataType)),
                 [.number, .intervalDS, .timestamp, .timestampLTZ, .timestampTZ]
                     .contains(dataType)
             {
@@ -69,26 +78,27 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             let bufferSize = try buffer.throwingReadUB4()
 
-            buffer.skipUB4() // max number of array elements
-            buffer.skipUB4() // cont flags
+            buffer.skipUB4()  // max number of array elements
+            buffer.skipUB4()  // cont flags
 
             let oidByteCount = try buffer.throwingReadInteger(as: UInt8.self)
-                // OID
+            // OID
             if oidByteCount > 0 {
                 // oid, only relevant for intNamed
                 _ = try buffer.readOracleSpecificLengthPrefixedSlice()
             }
 
-            buffer.skipUB2() // version
-            buffer.skipUB2() // character set id
+            buffer.skipUB2()  // version
+            buffer.skipUB2()  // character set id
 
             let csfrm = try buffer.throwingReadInteger(as: UInt8.self)
-                // character set form
+            // character set form
             let dbType = try OracleDataType.fromORATypeAndCSFRM(
                 typeNumber: dataType, csfrm: csfrm
             )
             guard dbType._oracleType != nil else {
-                throw OraclePartialDecodingError
+                throw
+                    OraclePartialDecodingError
                     .fieldNotDecodable(type: OracleDataType.self)
             }
 
@@ -97,40 +107,41 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
                 size = bufferSize
             }
 
-            if capabilities.ttcFieldVersion >= 
-                Constants.TNS_CCAP_FIELD_VERSION_12_2
-            {
-                buffer.skipUB4() // oaccolid
+            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
+                buffer.skipUB4()  // oaccolid
             }
 
             let nullsAllowed =
                 try buffer.throwingReadInteger(as: UInt8.self) != 0
 
-            buffer.moveReaderIndex(forwardBy: 1) // v7 length of name
+            buffer.moveReaderIndex(forwardBy: 1)  // v7 length of name
 
-            guard 
+            guard
                 try buffer.throwingReadUB4() > 0,
-                let name = try buffer
+                let name =
+                    try buffer
                     .readString(with: Constants.TNS_CS_IMPLICIT)
             else {
-                throw OraclePartialDecodingError
+                throw
+                    OraclePartialDecodingError
                     .fieldNotDecodable(type: String.self)
             }
 
             if try buffer.throwingReadUB4() > 0 {
                 _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
-                    // current schema name, for intNamed
+                // current schema name, for intNamed
             }
             if try buffer.throwingReadUB4() > 0 {
-                _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? "" 
-                    // name of intNamed
+                _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+                // name of intNamed
             }
 
-            buffer.skipUB2() // column position
-            buffer.skipUB4() // uds flag
+            buffer.skipUB2()  // column position
+            buffer.skipUB4()  // uds flag
 
             if dataType == _TNSDataType.intNamed.rawValue {
-                throw OraclePartialDecodingError
+                throw
+                    OraclePartialDecodingError
                     .unsupportedDataType(type: .intNamed)
             }
 
@@ -148,7 +159,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         context: OracleBackendMessageDecoder.Context
     ) throws -> DescribeInfo {
         buffer.skipRawBytesChunked()
-        buffer.skipUB4() // max row size
+        buffer.skipUB4()  // max row size
         let columnCount = try buffer.throwingReadUB4()
         context.columnsCount = Int(columnCount)
 
@@ -161,7 +172,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
         for _ in 0..<columnCount {
             let field = try Column.decode(
-                from: &buffer, 
+                from: &buffer,
                 capabilities: capabilities,
                 context: context
             )
@@ -169,14 +180,14 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         }
 
         if try buffer.throwingReadUB4() > 0 {
-            buffer.skipRawBytesChunked() // current date
+            buffer.skipRawBytesChunked()  // current date
         }
-        buffer.skipUB4() // dcbflag
-        buffer.skipUB4() // dcbmdbz
-        buffer.skipUB4() // dcbmnpr
-        buffer.skipUB4() // dcbmxpr
+        buffer.skipUB4()  // dcbflag
+        buffer.skipUB4()  // dcbmdbz
+        buffer.skipUB4()  // dcbmnpr
+        buffer.skipUB4()  // dcbmxpr
         if try buffer.throwingReadUB4() > 0 {
-            buffer.skipRawBytesChunked() // dcbqcky
+            buffer.skipRawBytesChunked()  // dcbqcky
         }
 
         return DescribeInfo(columns: result)

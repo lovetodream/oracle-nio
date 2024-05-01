@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -88,18 +98,19 @@ extension OracleBackendMessage {
         case .resend:
             messages.append(.resend)
         case .accept:
-            messages.append(try .accept(
-                .decode(
-                    from: &buffer, 
-                    capabilities: capabilities,
-                    context: context
-                )
-            ))
+            messages.append(
+                try .accept(
+                    .decode(
+                        from: &buffer,
+                        capabilities: capabilities,
+                        context: context
+                    )
+                ))
         case .marker:
             messages.append(.marker)
         case .data:
             if skipDataFlags {
-                buffer.moveReaderIndex(forwardBy: 2) // skip data flags
+                buffer.moveReaderIndex(forwardBy: 2)  // skip data flags
             }
             if context.performingChunkedRead {
                 messages.append(.chunk(buffer.slice()))
@@ -112,124 +123,138 @@ extension OracleBackendMessage {
                         messages.append(.dataTypes)
                         break readLoop
                     case .protocol:
-                        messages.append(try .protocol(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .protocol(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                         break readLoop
                     case .error:
-                        messages.append(try .error(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .error(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .parameter:
                         switch context.queryOptions {
                         case .some:
-                            messages.append(try .queryParameter(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
+                            messages.append(
+                                try .queryParameter(
+                                    .decode(
+                                        from: &buffer,
+                                        capabilities: capabilities,
+                                        context: context
+                                    )
+                                ))
                         case .none:
-                            messages.append(try .parameter(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
+                            messages.append(
+                                try .parameter(
+                                    .decode(
+                                        from: &buffer,
+                                        capabilities: capabilities,
+                                        context: context
+                                    )
+                                ))
                             break readLoop
                         }
                     case .status:
-                        messages.append(try .status(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .status(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                         break readLoop
                     case .ioVector:
-                        messages.append(try .ioVector(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .ioVector(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .describeInfo:
-                        messages.append(try .describeInfo(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .describeInfo(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .rowHeader:
-                        messages.append(try .rowHeader(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .rowHeader(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .rowData:
-                        messages.append(try .rowData(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .rowData(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                         // Until we handled the current rowData on
                         // OracleChannelHandler, we are performing a chunked
                         // read on all upcoming data packets, because we are
                         // "blind" and don't know what we might get until then.
                         context.performingChunkedRead = true
                     case .bitVector:
-                        messages.append(try .bitVector(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .bitVector(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .warning:
-                        messages.append(try .warning(
-                            .decodeWarning(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .warning(
+                                .decodeWarning(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .serverSidePiggyback:
-                        messages.append(try .serverSidePiggyback(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .serverSidePiggyback(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .lobData:
-                        messages.append(try .lobData(
-                            .decode(
-                                from: &buffer,
-                                capabilities: capabilities,
-                                context: context
-                            )
-                        ))
+                        messages.append(
+                            try .lobData(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            ))
                     case .flushOutBinds:
                         messages.append(.flushOutBinds)
                     case nil:
-                        throw OraclePartialDecodingError
+                        throw
+                            OraclePartialDecodingError
                             .unknownMessageIDReceived(messageID: messageIDByte)
                     }
                 }

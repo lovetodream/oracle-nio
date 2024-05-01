@@ -1,12 +1,23 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import struct Foundation.Data
-import struct Foundation.UUID
 import Atomics
 import Logging
 import NIOConcurrencyHelpers
 import NIOCore
+
+import struct Foundation.Data
+import struct Foundation.UUID
 
 final class ConnectionFactory: Sendable {
 
@@ -38,7 +49,9 @@ final class ConnectionFactory: Sendable {
         self.logger = logger
     }
 
-    func makeConnection(_ connectionID: OracleConnection.ID, pool: OracleClient.Pool) async throws -> OracleConnection {
+    func makeConnection(_ connectionID: OracleConnection.ID, pool: OracleClient.Pool) async throws
+        -> OracleConnection
+    {
         let new: Bool
         self.bootstrapLock.lock()
         if self.isBootstrapped.load(ordering: .relaxed) {
@@ -89,9 +102,8 @@ final class ConnectionFactory: Sendable {
         let uuid = UUID().uuid
         let raw = [
             uuid.0, uuid.1, uuid.2, uuid.3, uuid.4, uuid.5, uuid.6, uuid.7,
-            uuid.8, uuid.9, uuid.10, uuid.11, uuid.12, uuid.13, uuid.14, uuid.15
+            uuid.8, uuid.9, uuid.10, uuid.11, uuid.12, uuid.13, uuid.14, uuid.15,
         ]
         return Data(raw).base64EncodedString()
     }
 }
-

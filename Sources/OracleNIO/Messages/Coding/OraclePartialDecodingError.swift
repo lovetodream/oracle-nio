@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 struct OraclePartialDecodingError: Error {
     /// A textual description of the error.
@@ -24,7 +34,8 @@ struct OraclePartialDecodingError: Error {
     static func fieldNotDecodable(
         type: Any.Type, file: String = #fileID, line: Int = #line
     ) -> Self {
-        OraclePartialDecodingError(description: "Could not read '\(type)' from ByteBuffer.", file: file, line: line)
+        OraclePartialDecodingError(
+            description: "Could not read '\(type)' from ByteBuffer.", file: file, line: line)
     }
 
     static func unsupportedDataType(
@@ -43,9 +54,9 @@ struct OraclePartialDecodingError: Error {
     ) -> Self {
         OraclePartialDecodingError(
             description: """
-            Received a message with messageID '\(messageID)'. There is no \
-            message type associated with this message identifier.
-            """,
+                Received a message with messageID '\(messageID)'. There is no \
+                message type associated with this message identifier.
+                """,
             file: file,
             line: line
         )

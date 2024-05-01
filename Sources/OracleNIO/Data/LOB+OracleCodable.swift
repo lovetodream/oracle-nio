@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -57,11 +67,11 @@ final class LOB: @unchecked Sendable {
 
     func encoding() -> String {
         locator.moveReaderIndex(to: 0)
-        if dbType.csfrm == Constants.TNS_CS_NCHAR ||
-            (locator.readableBytes >= Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3 &&
-             ((locator.getInteger(
-                at: Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3, as: UInt8.self
-             )! & Constants.TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET) != 0))
+        if dbType.csfrm == Constants.TNS_CS_NCHAR
+            || (locator.readableBytes >= Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3
+                && ((locator.getInteger(
+                    at: Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3, as: UInt8.self
+                )! & Constants.TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET) != 0))
         {
             return Constants.TNS_ENCODING_UTF16
         }
@@ -81,8 +91,9 @@ final class LOB: @unchecked Sendable {
         let flags4 = self.locator.getInteger(
             at: Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_4, as: UInt8.self
         )!
-        if flags1 & Constants.TNS_LOB_LOCATOR_FLAGS_ABSTRACT != 0 ||
-            flags4 & Constants.TNS_LOB_LOCATOR_FLAGS_TEMP != 0 {
+        if flags1 & Constants.TNS_LOB_LOCATOR_FLAGS_ABSTRACT != 0
+            || flags4 & Constants.TNS_LOB_LOCATOR_FLAGS_TEMP != 0
+        {
             if self.cleanupContext?.tempLOBsToClose == nil {
                 self.cleanupContext?.tempLOBsToClose = []
             }
@@ -95,13 +106,10 @@ final class LOB: @unchecked Sendable {
 
 extension LOB: OracleEncodable {
     static func == (lhs: LOB, rhs: LOB) -> Bool {
-        lhs.size == rhs.size &&
-        lhs.chunkSize == rhs.chunkSize &&
-        lhs.locator == rhs.locator &&
-        lhs.hasMetadata == rhs.hasMetadata &&
-        lhs.dbType == rhs.dbType
+        lhs.size == rhs.size && lhs.chunkSize == rhs.chunkSize && lhs.locator == rhs.locator
+            && lhs.hasMetadata == rhs.hasMetadata && lhs.dbType == rhs.dbType
     }
-    
+
     public var oracleType: OracleDataType { .blob }
 
     public func encode<JSONEncoder: OracleJSONEncoder>(

@@ -1,18 +1,20 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
-
 //
-//  Capabilities.swift
-//  OracleNIO
-//
-//  Created by Timo Zacherl on 05.01.23.
-//
-//  Defining the capabilities (negotiated at connect time) that both
-//  the database server and the client are capable of.
-//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
+/// Defining the capabilities (negotiated at connect time) that both
+/// the database server and the client are capable of.
 struct Capabilities: Sendable, Hashable {
     var protocolVersion: UInt16 = 0
     var protocolOptions: UInt16 = 0
@@ -30,24 +32,31 @@ struct Capabilities: Sendable, Hashable {
 
     init() {
         // Compile Capabilities
-        self.compileCapabilities[Constants.TNS_CCAP_SQL_VERSION] = Constants.TNS_CCAP_SQL_VERSION_MAX
+        self.compileCapabilities[Constants.TNS_CCAP_SQL_VERSION] =
+            Constants.TNS_CCAP_SQL_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_LOGON_TYPES] =
-            Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP |
-            Constants.TNS_CCAP_O7LOGON | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER
+            Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP | Constants.TNS_CCAP_O7LOGON
+            | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER
         self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = self.ttcFieldVersion
         self.compileCapabilities[Constants.TNS_CCAP_SERVER_DEFINE_CONV] = 1
         self.compileCapabilities[Constants.TNS_CCAP_TTC1] =
-            Constants.TNS_CCAP_FAST_BVEC | Constants.TNS_CCAP_END_OF_CALL_STATUS | Constants.TNS_CCAP_IND_RCD
+            Constants.TNS_CCAP_FAST_BVEC | Constants.TNS_CCAP_END_OF_CALL_STATUS
+            | Constants.TNS_CCAP_IND_RCD
         self.compileCapabilities[Constants.TNS_CCAP_OCI1] =
             Constants.TNS_CCAP_FAST_SESSION_PROPAGATE | Constants.TNS_CCAP_APP_CTX_PIGGYBACK
-        self.compileCapabilities[Constants.TNS_CCAP_TDS_VERSION] = Constants.TNS_CCAP_TDS_VERSION_MAX
-        self.compileCapabilities[Constants.TNS_CCAP_RPC_VERSION] = Constants.TNS_CCAP_RPC_VERSION_MAX
+        self.compileCapabilities[Constants.TNS_CCAP_TDS_VERSION] =
+            Constants.TNS_CCAP_TDS_VERSION_MAX
+        self.compileCapabilities[Constants.TNS_CCAP_RPC_VERSION] =
+            Constants.TNS_CCAP_RPC_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_RPC_SIG] = Constants.TNS_CCAP_RPC_SIG_VALUE
-        self.compileCapabilities[Constants.TNS_CCAP_DBF_VERSION] = Constants.TNS_CCAP_DBF_VERSION_MAX
-        self.compileCapabilities[Constants.TNS_CCAP_LOB] = Constants.TNS_CCAP_LOB_UB8_SIZE | Constants.TNS_CCAP_LOB_ENCS
+        self.compileCapabilities[Constants.TNS_CCAP_DBF_VERSION] =
+            Constants.TNS_CCAP_DBF_VERSION_MAX
+        self.compileCapabilities[Constants.TNS_CCAP_LOB] =
+            Constants.TNS_CCAP_LOB_UB8_SIZE | Constants.TNS_CCAP_LOB_ENCS
         self.compileCapabilities[Constants.TNS_CCAP_UB2_DTY] = 1
         self.compileCapabilities[Constants.TNS_CCAP_TTC3] =
-            Constants.TNS_CCAP_IMPLICIT_RESULTS | Constants.TNS_CCAP_BIG_CHUNK_CLR | Constants.TNS_CCAP_KEEP_OUT_ORDER
+            Constants.TNS_CCAP_IMPLICIT_RESULTS | Constants.TNS_CCAP_BIG_CHUNK_CLR
+            | Constants.TNS_CCAP_KEEP_OUT_ORDER
         self.compileCapabilities[Constants.TNS_CCAP_TTC2] = Constants.TNS_CCAP_ZLNP
         self.compileCapabilities[Constants.TNS_CCAP_OCI2] = Constants.TNS_CCAP_DRCP
         self.compileCapabilities[Constants.TNS_CCAP_CLIENT_FN] = Constants.TNS_CCAP_CLIENT_FN_MAX
@@ -55,7 +64,8 @@ struct Capabilities: Sendable, Hashable {
 
         // Runtime Capabilities
         self.runtimeCapabilities[Constants.TNS_RCAP_COMPAT] = Constants.TNS_RCAP_COMPAT_81
-        self.runtimeCapabilities[Constants.TNS_RCAP_TTC] = Constants.TNS_RCAP_TTC_ZERO_COPY | Constants.TNS_RCAP_TTC_32K
+        self.runtimeCapabilities[Constants.TNS_RCAP_TTC] =
+            Constants.TNS_RCAP_TTC_ZERO_COPY | Constants.TNS_RCAP_TTC_32K
     }
 
     mutating func adjustForProtocol(version: UInt16, options: UInt16) {
@@ -67,13 +77,14 @@ struct Capabilities: Sendable, Hashable {
     mutating func adjustForServerCompileCapabilities(
         _ serverCapabilities: ByteBuffer
     ) {
-        let ttcFieldVersion = serverCapabilities
+        let ttcFieldVersion =
+            serverCapabilities
             .getInteger(
                 at: Constants.TNS_CCAP_FIELD_VERSION, as: UInt8.self
             )
         if let ttcFieldVersion, ttcFieldVersion < self.ttcFieldVersion {
             self.ttcFieldVersion = ttcFieldVersion
-            self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = 
+            self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] =
                 self.ttcFieldVersion
         }
     }
@@ -81,7 +92,8 @@ struct Capabilities: Sendable, Hashable {
     mutating func adjustForServerRuntimeCapabilities(
         _ serverCapabilities: ByteBuffer
     ) {
-        let rcapTTC = serverCapabilities
+        let rcapTTC =
+            serverCapabilities
             .getInteger(at: Constants.TNS_RCAP_TTC, as: UInt8.self)
         if let rcapTTC, (rcapTTC & Constants.TNS_RCAP_TTC_32K) != 0 {
             self.maxStringSize = 32767
@@ -92,7 +104,8 @@ struct Capabilities: Sendable, Hashable {
 
     func checkNCharsetID() throws {
         if ![Constants.TNS_CHARSET_UTF16, Constants.TNS_CHARSET_AL16UTF8]
-            .contains(self.nCharsetID) {
+            .contains(self.nCharsetID)
+        {
             throw OracleSQLError.nationalCharsetNotSupported
         }
     }

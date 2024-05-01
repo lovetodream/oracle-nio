@@ -1,11 +1,22 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import class Foundation.JSONEncoder
-import struct Foundation.Data
-import NIOFoundationCompat
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
+import NIOFoundationCompat
+
+import struct Foundation.Data
+import class Foundation.JSONEncoder
 
 /// A protocol that mimics the Foundation `JSONEncoder.encode(_:)` function.
 ///
@@ -27,9 +38,10 @@ extension OracleJSONEncoder {
     }
 }
 
-extension JSONEncoder: OracleJSONEncoder { }
+extension JSONEncoder: OracleJSONEncoder {}
 
-private let jsonEncoderLocked: NIOLockedValueBox<OracleJSONEncoder> = NIOLockedValueBox(JSONEncoder())
+private let jsonEncoderLocked: NIOLockedValueBox<OracleJSONEncoder> = NIOLockedValueBox(
+    JSONEncoder())
 
 /// The default JSON encoder used by OracleNIO when encoding JSON values.
 ///

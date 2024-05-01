@@ -1,9 +1,20 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
-import class Foundation.JSONEncoder
+
 import class Foundation.JSONDecoder
+import class Foundation.JSONEncoder
 
 /// A type that can encode itself to a Oracle wire binary representation.
 ///
@@ -60,7 +71,7 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable, Equatable {
 /// For example, custom types created at runtime, such as enums, or extension types whose OID is not
 /// stable between databases.
 ///
-/// This is the non-throwing alternative to ``OracleThrowingDynamicTypeEncodable``. It allows 
+/// This is the non-throwing alternative to ``OracleThrowingDynamicTypeEncodable``. It allows
 /// users to create ``OracleQuery``s via `ExpressibleByStringInterpolation` without having
 /// to spell `try`.
 public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
@@ -70,7 +81,7 @@ public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     )
-    
+
     /// Encode an entity from the `ByteBuffer` in oracle wire format.
     ///
     /// This method has a default implementation and is only overwritten if length needs to be specially
@@ -84,20 +95,21 @@ public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
 }
 
 /// A type that can encode itself to a Oracle wire binary representation.
-public protocol OracleThrowingEncodable: OracleThrowingDynamicTypeEncodable { }
+public protocol OracleThrowingEncodable: OracleThrowingDynamicTypeEncodable {}
 
-public extension OracleThrowingEncodable {
-    var size: UInt32 { UInt32(self.oracleType.defaultSize) }
+extension OracleThrowingEncodable {
+    public var size: UInt32 { UInt32(self.oracleType.defaultSize) }
 
-    static var isArray: Bool { false }
-    var arrayCount: Int? { nil }
-    var arraySize: Int? { Self.isArray ? 1 : nil }
+    public static var isArray: Bool { false }
+    public var arrayCount: Int? { nil }
+    public var arraySize: Int? { Self.isArray ? 1 : nil }
 }
 
-public extension Array where Element: OracleThrowingDynamicTypeEncodable {
-    static var isArray: Bool { true }
-    var arrayCount: Int? { self.count }
-    var arraySize: Int? { self.capacity }
+// swift-format-ignore: DontRepeatTypeInStaticProperties
+extension Array where Element: OracleThrowingDynamicTypeEncodable {
+    public static var isArray: Bool { true }
+    public var arrayCount: Int? { self.count }
+    public var arraySize: Int? { self.capacity }
 }
 
 /// A type that can encode itself to a oracle wire binary representation.
@@ -105,9 +117,9 @@ public extension Array where Element: OracleThrowingDynamicTypeEncodable {
 /// It enforces that the ``OracleThrowingDynamicTypeEncodable-Implementations``
 /// does not throw. This allows users to create ``OracleQuery``'s using the
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
-public protocol OracleEncodable: 
+public protocol OracleEncodable:
     OracleThrowingEncodable, OracleDynamicTypeEncodable
-{ }
+{}
 
 /// A type that can decode itself from a oracle wire binary representation.
 ///
@@ -256,9 +268,8 @@ public struct OracleDecodingContext<JSONDecoder: OracleJSONDecoder>: Sendable {
     }
 }
 
-extension Optional: OracleDecodable 
-    where Wrapped: OracleDecodable, Wrapped._DecodableType == Wrapped
-{
+extension Optional: OracleDecodable
+where Wrapped: OracleDecodable, Wrapped._DecodableType == Wrapped {
     public typealias _DecodableType = Wrapped
 
     public init<JSONDecoder: OracleJSONDecoder>(

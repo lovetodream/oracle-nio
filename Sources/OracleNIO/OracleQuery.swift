@@ -1,8 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 
 /// A Oracle SQL query, that can be executed on a Oracle server. Contains the raw sql string and bindings.
 public struct OracleQuery: Sendable, Hashable {
@@ -62,7 +72,7 @@ extension OracleQuery {
         @inlinable
         public mutating func appendInterpolation<
             Value: OracleThrowingDynamicTypeEncodable
-        >(_ value: Optional<Value>) throws {
+        >(_ value: Value?) throws {
             let bindName = "\(self.binds.count)"
             switch value {
             case .none:
@@ -86,7 +96,7 @@ extension OracleQuery {
 
         @inlinable
         public mutating func appendInterpolation<Value: OracleDynamicTypeEncodable>(
-            _ value: Optional<Value>
+            _ value: Value?
         ) {
             let bindName = "\(self.binds.count)"
             switch value {
@@ -113,7 +123,7 @@ extension OracleQuery {
 
         @inlinable
         public mutating func appendInterpolation<
-            Value: OracleThrowingDynamicTypeEncodable, 
+            Value: OracleThrowingDynamicTypeEncodable,
             JSONEncoder: OracleJSONEncoder
         >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
             let bindName = "\(self.binds.count)"
@@ -164,7 +174,7 @@ public struct OracleBindings: Sendable, Hashable {
         @usableFromInline
         var bindName: String?
         @usableFromInline
-        var outContainer: OracleRef? // reference type for return binds
+        var outContainer: OracleRef?  // reference type for return binds
 
         @inlinable
         init(
@@ -245,41 +255,43 @@ public struct OracleBindings: Sendable, Hashable {
             self.bytes.writeInteger(Constants.TNS_ESCAPE_CHAR)
             self.bytes.writeInteger(UInt8(1))
         } else if dataType._oracleType == .intNamed {
-            self.bytes.writeUB4(0) // TOID
-            self.bytes.writeUB4(0) // OID
-            self.bytes.writeUB4(0) // snapshot
-            self.bytes.writeUB4(0) // version
-            self.bytes.writeUB4(0) // packed data length
-            self.bytes.writeUB4(Constants.TNS_OBJ_TOP_LEVEL) // flags
+            self.bytes.writeUB4(0)  // TOID
+            self.bytes.writeUB4(0)  // OID
+            self.bytes.writeUB4(0)  // snapshot
+            self.bytes.writeUB4(0)  // version
+            self.bytes.writeUB4(0)  // packed data length
+            self.bytes.writeUB4(Constants.TNS_OBJ_TOP_LEVEL)  // flags
         } else {
             self.bytes.writeInteger(UInt8(0))
         }
-        self.metadata.append(.init(
-            dataType: dataType,
-            protected: false,
-            isReturnBind: false,
-            size: 1,
-            isArray: false,
-            arrayCount: nil,
-            maxArraySize: nil,
-            bindName: bindName
-        ))
+        self.metadata.append(
+            .init(
+                dataType: dataType,
+                protected: false,
+                isReturnBind: false,
+                size: 1,
+                isArray: false,
+                arrayCount: nil,
+                maxArraySize: nil,
+                bindName: bindName
+            ))
     }
 
     @inlinable
     public mutating func append<
-        Value: OracleThrowingDynamicTypeEncodable, 
+        Value: OracleThrowingDynamicTypeEncodable,
         JSONEncoder: OracleJSONEncoder
     >(
         _ value: Value, context: OracleEncodingContext<JSONEncoder>, bindName: String
     ) throws {
         try value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(.init(
-            value: value,
-            protected: true,
-            isReturnBind: false,
-            bindName: bindName
-        ))
+        self.metadata.append(
+            .init(
+                value: value,
+                protected: true,
+                isReturnBind: false,
+                bindName: bindName
+            ))
     }
 
     @inlinable
@@ -291,12 +303,13 @@ public struct OracleBindings: Sendable, Hashable {
         bindName: String
     ) {
         value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(.init(
-            value: value,
-            protected: true,
-            isReturnBind: false,
-            bindName: bindName
-        ))
+        self.metadata.append(
+            .init(
+                value: value,
+                protected: true,
+                isReturnBind: false,
+                bindName: bindName
+            ))
     }
 
     @inlinable
@@ -311,8 +324,8 @@ public struct OracleBindings: Sendable, Hashable {
             value.storage.withLockedValue { valueStorage in
                 if var bytes = valueStorage {
                     self.bytes.writeBuffer(&bytes)
-                } else if !metadata.isReturnBind { // return binds do not send null
-                    self.bytes.writeInteger(UInt8(0)) // null
+                } else if !metadata.isReturnBind {  // return binds do not send null
+                    self.bytes.writeInteger(UInt8(0))  // null
                 }
             }
             self.metadata.append(metadata)
@@ -324,17 +337,18 @@ public struct OracleBindings: Sendable, Hashable {
         Value: OracleThrowingDynamicTypeEncodable,
         JSONEncoder: OracleJSONEncoder
     >(
-        _ value: Value, 
+        _ value: Value,
         context: OracleEncodingContext<JSONEncoder>,
         bindName: String
     ) throws {
         try value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(.init(
-            value: value,
-            protected: false,
-            isReturnBind: false,
-            bindName: bindName
-        ))
+        self.metadata.append(
+            .init(
+                value: value,
+                protected: false,
+                isReturnBind: false,
+                bindName: bindName
+            ))
     }
 
     @inlinable
@@ -346,12 +360,13 @@ public struct OracleBindings: Sendable, Hashable {
         bindName: String
     ) {
         value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(.init(
-            value: value,
-            protected: false,
-            isReturnBind: false,
-            bindName: bindName
-        ))
+        self.metadata.append(
+            .init(
+                value: value,
+                protected: false,
+                isReturnBind: false,
+                bindName: bindName
+            ))
     }
 
     /// Checks if a INOUT bind is already present and returns its bind name to be reused.
@@ -367,7 +382,8 @@ public struct OracleBindings: Sendable, Hashable {
 }
 
 extension OracleBindings:
-    CustomStringConvertible, CustomDebugStringConvertible {
+    CustomStringConvertible, CustomDebugStringConvertible
+{
     public var description: String {
         """
         [
@@ -435,7 +451,7 @@ extension OracleBindings:
                 let value = try String(
                     from: &buffer, type: type, context: .default
                 )
-                return String(reflecting: value) // adds quotes
+                return String(reflecting: value)  // adds quotes
             default:
                 return "\(buffer.readableBytes) bytes"
             }
@@ -447,19 +463,19 @@ extension OracleBindings:
 
 /// A small helper to inspect encoded bindings
 private struct BindingsReader: Sequence {
-    typealias Element = Optional<ByteBuffer>
+    typealias Element = ByteBuffer?
 
     var buffer: ByteBuffer
 
     struct Iterator: IteratorProtocol {
-        typealias Element = Optional<ByteBuffer>
+        typealias Element = ByteBuffer?
         private var buffer: ByteBuffer
 
         init(buffer: ByteBuffer) {
             self.buffer = buffer
         }
 
-        mutating func next() -> Optional<Optional<ByteBuffer>> {
+        mutating func next() -> ByteBuffer?? {
             guard let length = self.buffer.readInteger(as: UInt8.self) else {
                 return .none
             }

@@ -11,7 +11,7 @@ let package = Package(
         .library(
             name: "OracleNIO",
             targets: ["OracleNIO"]
-        ),
+        )
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.4.4"),

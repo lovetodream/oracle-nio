@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 enum DatabaseNumericType: Int {
     case float = 0
@@ -167,7 +177,7 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
     public static let boolean = OracleDataType(
         number: .boolean,
         name: "DB_TYPE_BOOLEAN",
-        oracleName: "BOOLEAN", 
+        oracleName: "BOOLEAN",
         oracleType: .init(rawValue: 252)!,
         bufferSizeFactor: 4
     )
@@ -190,7 +200,7 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
     )
     public static let cursor = OracleDataType(
         number: .cursor,
-        name: "DB_TYPE_CURSOR", 
+        name: "DB_TYPE_CURSOR",
         oracleName: "CURSOR",
         oracleType: .init(rawValue: 102)!,
         bufferSizeFactor: 4
@@ -227,7 +237,7 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         oracleName: "LONG",
         oracleType: .init(rawValue: 8)!,
         csfrm: 1,
-        bufferSizeFactor: 2147483647
+        bufferSizeFactor: 2_147_483_647
     )
     public static let longNVarchar = OracleDataType(
         number: .longNVarchar,
@@ -235,14 +245,14 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         oracleName: "LONG NVARCHAR",
         oracleType: .init(rawValue: 8)!,
         csfrm: 2,
-        bufferSizeFactor: 2147483647
+        bufferSizeFactor: 2_147_483_647
     )
     public static let longRAW = OracleDataType(
         number: .longRAW,
         name: "DB_TYPE_LONG_RAW",
         oracleName: "LONG RAW",
         oracleType: .init(rawValue: 24)!,
-        bufferSizeFactor: 2147483647
+        bufferSizeFactor: 2_147_483_647
     )
     public static let nChar = OracleDataType(
         number: .nChar,
@@ -346,6 +356,6 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         .char, .clob, .cursor, .date, .intervalDS, .intervalYM, .json, .long,
         .longNVarchar, .longRAW, .nChar, .nCLOB, .number, .nVarchar, .object,
         .raw, .rowID, .timestamp, .timestampLTZ, .timestampTZ, .unknown,
-        .uRowID, .varchar
+        .uRowID, .varchar,
     ]
 }

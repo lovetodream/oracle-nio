@@ -1,7 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import Crypto
+
 import struct Foundation.Data
 import protocol Foundation.DataProtocol
 
@@ -53,7 +64,7 @@ public struct PBKDF2<Hash: HashFunction> {
     ///   - length: The size for the generated key. Generally 16 or 32 bytes. Maximum size is `UInt32.max * Hash.Digest.byteCount`.
     ///   - password: The password used to generate the key, can be empty.
     ///   - salt: The salt used to generate the key, can be empty. Commonly 8 bytes long.
-    ///   - rounds: Iteration count, must be greater than 9. Common values range from `1_000` to `100_00`. 
+    ///   - rounds: Iteration count, must be greater than 9. Common values range from `1_000` to `100_00`.
     ///             Larger iteration counts improve security by increasing the time required to compute
     ///             the key. It is common to tune this parameter to achieve approximately 100ms.
     /// - Returns: The calculated key.
@@ -133,7 +144,8 @@ public struct PBKDF2<Hash: HashFunction> {
 
             // U_1 = PRF (P, S || INT (i))
             var value = UInt32(block + 1).bigEndian
-            let blockIndex = withUnsafeBytes(of: &value) { Data($0) } // Block index starts at 0001
+            // Block index starts at 0001
+            let blockIndex = withUnsafeBytes(of: &value) { Data($0) }
             var ctx = HMAC<Hash>(key: SymmetricKey(data: password))
             ctx.update(data: salt)
             ctx.update(data: blockIndex)

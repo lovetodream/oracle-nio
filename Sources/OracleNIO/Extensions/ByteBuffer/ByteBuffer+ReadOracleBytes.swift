@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -21,7 +31,8 @@ extension ByteBuffer {
                     return out
                 }
                 guard var temp = self.readSlice(length: Int(chunkLength)) else {
-                    throw OraclePartialDecodingError
+                    throw
+                        OraclePartialDecodingError
                         .expectedAtLeastNRemainingBytes(
                             Int(chunkLength), actual: self.readableBytes,
                             file: file, line: line
@@ -33,7 +44,7 @@ extension ByteBuffer {
         }
 
         if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
-            return .init() // empty buffer
+            return .init()  // empty buffer
         }
 
         return self.readSlice(length: length)!
@@ -61,15 +72,15 @@ extension ByteBuffer {
             while true {
                 guard let chunkLength = self.readUB4() else {
                     self.moveReaderIndex(to: startReaderIndex)
-                    return nil // need more data
+                    return nil  // need more data
                 }
                 guard chunkLength > 0 else {
-                    out.writeInteger(0, as: UInt32.self) // chunk length of zero
+                    out.writeInteger(0, as: UInt32.self)  // chunk length of zero
                     return out
                 }
                 guard var temp = self.readSlice(length: Int(chunkLength)) else {
                     self.moveReaderIndex(to: startReaderIndex)
-                    return nil // need more data
+                    return nil  // need more data
                 }
                 out.writeInteger(chunkLength)
                 out.writeBuffer(&temp)
@@ -79,7 +90,7 @@ extension ByteBuffer {
 
         let sliceLength = Int(length) + MemoryLayout<UInt8>.size
         if self.readableBytes < sliceLength {
-            return nil // need more data
+            return nil  // need more data
         }
         return self.readSlice(length: sliceLength)
     }

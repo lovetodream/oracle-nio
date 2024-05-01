@@ -1,16 +1,28 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 @preconcurrency import Dispatch
+import Logging
+import NIOConcurrencyHelpers
 import NIOCore
 import NIOPosix
-#if canImport(Network)
-import NIOTransportServices
-#endif
 import NIOSSL
-import NIOConcurrencyHelpers
+
 import class Foundation.ProcessInfo
-import Logging
+
+#if canImport(Network)
+    import NIOTransportServices
+#endif
 
 /// An Oracle connection. Use it to run queries against an Oracle server.
 ///
@@ -27,7 +39,7 @@ import Logging
 ///
 /// ## Usage
 ///
-/// Now you can use the connection to run queries on your database using 
+/// Now you can use the connection to run queries on your database using
 /// ``OracleConnection/query(_:options:logger:file:line:)``.
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "use")
@@ -100,7 +112,7 @@ public final class OracleConnection: Sendable {
 
         let sslHandler: NIOSSLClientHandler?
         switch configuration.tls.base {
-        case .disable: 
+        case .disable:
             sslHandler = nil
         case .require(let context):
             do {
@@ -130,11 +142,11 @@ public final class OracleConnection: Sendable {
 
         do {
             #if DEBUG
-            // This is very useful for sending hex dumps to Oracle to analyze
-            // problems in the driver.
-            let tracer = Logger(label: "oracle-nio.network-tracing")
-            try channel.pipeline.syncOperations
-                .addHandler(DebugLogHandler(connectionID: connectionID, logger: tracer))
+                // This is very useful for sending hex dumps to Oracle to analyze
+                // problems in the driver.
+                let tracer = Logger(label: "oracle-nio.network-tracing")
+                try channel.pipeline.syncOperations
+                    .addHandler(DebugLogHandler(connectionID: connectionID, logger: tracer))
             #endif
             try channel.pipeline.syncOperations.addHandler(eventHandler)
             try channel.pipeline.syncOperations
@@ -167,7 +179,7 @@ public final class OracleConnection: Sendable {
                 )
             }
     }
-    
+
     /// Create a new connection to an Oracle server.
     ///
     /// - Parameters:
@@ -205,48 +217,58 @@ public final class OracleConnection: Sendable {
         configuration: OracleConnection.Configuration
     ) -> NIOClientTCPBootstrapProtocol {
         #if canImport(Network)
-        if let tsBootstrap = 
-            NIOTSConnectionBootstrap(validatingGroup: eventLoop)
-        {
-            return tsBootstrap
-                .connectTimeout(configuration.options.connectTimeout)
-        }
+            if let tsBootstrap =
+                NIOTSConnectionBootstrap(validatingGroup: eventLoop)
+            {
+                return
+                    tsBootstrap
+                    .connectTimeout(configuration.options.connectTimeout)
+            }
         #endif
 
         guard let bootstrap = ClientBootstrap(validatingGroup: eventLoop) else {
             fatalError("No matching bootstrap found")
         }
-        return bootstrap
+        return
+            bootstrap
             .connectTimeout(configuration.options.connectTimeout)
-            .channelOption(ChannelOptions
-                .socket(SocketOptionLevel(SOL_SOCKET), SO_KEEPALIVE), value: 1)
-            .channelOption(ChannelOptions
-                .socket(SocketOptionLevel(IPPROTO_TCP), TCP_NODELAY), value: 1)
+            .channelOption(
+                ChannelOptions
+                    .socket(SocketOptionLevel(SOL_SOCKET), SO_KEEPALIVE), value: 1
+            )
+            .channelOption(
+                ChannelOptions
+                    .socket(SocketOptionLevel(IPPROTO_TCP), TCP_NODELAY), value: 1)
     }
 
     /// Closes the connection to the database server synchronously.
     ///
     /// - Note: This method blocks the thread indefinitely, prefer using ``close()-4ny0f``.
-    @available(*, noasync, message: "syncClose() can block indefinitely, prefer close()", renamed: "close()")
+    @available(
+        *, noasync, message: "syncClose() can block indefinitely, prefer close()",
+        renamed: "close()"
+    )
     public func syncClose() throws {
         guard !self.isClosed else { return }
 
         if let eventLoop = MultiThreadedEventLoopGroup.currentEventLoop {
-            preconditionFailure("""
-            syncClose() must not be called when on an NIO EventLoop.
-            Calling syncClose() on any EventLoop can lead to deadlocks.
-            Current eventLoop: \(eventLoop)
-            """)
+            preconditionFailure(
+                """
+                syncClose() must not be called when on an NIO EventLoop.
+                Calling syncClose() on any EventLoop can lead to deadlocks.
+                Current eventLoop: \(eventLoop)
+                """)
         }
 
         self.channel.close(mode: .all, promise: nil)
 
         func close(queue: DispatchQueue, _ callback: @escaping @Sendable (Error?) -> Void) {
             self.closeFuture.whenComplete { result in
-                let error: Error? = switch result {
-                case .failure(let error): error
-                case .success: nil
-                }
+                let error: Error? =
+                    switch result {
+                    case .failure(let error): error
+                    case .success: nil
+                    }
                 queue.async {
                     callback(error)
                 }
@@ -254,7 +276,7 @@ public final class OracleConnection: Sendable {
         }
 
         let errorStorage = NIOLockedValueBox<Error?>(nil)
-        let continuation = DispatchWorkItem { }
+        let continuation = DispatchWorkItem {}
         close(queue: DispatchQueue(label: "oracle-nio.close-connection-\(self.id)")) { error in
             if let error {
                 errorStorage.withLockedValue { $0 = error }
@@ -351,7 +373,9 @@ extension OracleConnection {
                 ).get()
             } catch let error as CancellationError {
                 throw error
-            } catch { /* only final attempt throws the error */ }
+            } catch {
+                // only final attempt throws the error
+            }
             if configuration.retryDelay > 0 {
                 try await Task.sleep(for: .seconds(configuration.retryDelay))
             }
@@ -427,7 +451,7 @@ extension OracleConnection {
             error.file = file
             error.line = line
             error.query = query
-            throw error // rethrow with more metadata
+            throw error  // rethrow with more metadata
         }
     }
 }
@@ -439,64 +463,65 @@ extension OracleConnection {
     /// This will select the concrete `EventLoopGroup` depending on which platform this is running on.
     public static var defaultEventLoopGroup: EventLoopGroup {
         #if canImport(Network)
-        if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *) {
-            return NIOTSEventLoopGroup.singleton
-        } else {
-            return MultiThreadedEventLoopGroup.singleton
-        }
+            if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *) {
+                return NIOTSEventLoopGroup.singleton
+            } else {
+                return MultiThreadedEventLoopGroup.singleton
+            }
         #else
-        return MultiThreadedEventLoopGroup.singleton
+            return MultiThreadedEventLoopGroup.singleton
         #endif
     }
 }
 
 
 #if DEBUG
-private final class DebugLogHandler: ChannelDuplexHandler {
-    typealias InboundIn = ByteBuffer
-    typealias OutboundIn = ByteBuffer
+    private final class DebugLogHandler: ChannelDuplexHandler {
+        typealias InboundIn = ByteBuffer
+        typealias OutboundIn = ByteBuffer
 
-    private var logger: Logger
-    private var shouldLog: Bool
+        private var logger: Logger
+        private var shouldLog: Bool
 
-    init(connectionID: OracleConnection.ID, logger: Logger, shouldLog: Bool? = nil) {
-        if let shouldLog {
-            self.shouldLog = shouldLog
-        } else {
-            let envValue = getenv("ORANIO_TRACE_PACKETS")
-                .flatMap { String(cString: $0) }
-                .flatMap(Int.init) ?? 0
-            self.shouldLog = envValue != 0
+        init(connectionID: OracleConnection.ID, logger: Logger, shouldLog: Bool? = nil) {
+            if let shouldLog {
+                self.shouldLog = shouldLog
+            } else {
+                let envValue =
+                    getenv("ORANIO_TRACE_PACKETS")
+                    .flatMap { String(cString: $0) }
+                    .flatMap(Int.init) ?? 0
+                self.shouldLog = envValue != 0
+            }
+            var logger = logger
+            logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
+            self.logger = logger
         }
-        var logger = logger
-        logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
-        self.logger = logger
-    }
 
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        if self.shouldLog {
-            let buffer = self.unwrapInboundIn(data)
-            self.logger.info(
-                "\n\(buffer.hexDump(format: .detailed))",
-                metadata: ["direction": "incoming"]
-            )
+        func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+            if self.shouldLog {
+                let buffer = self.unwrapInboundIn(data)
+                self.logger.info(
+                    "\n\(buffer.hexDump(format: .detailed))",
+                    metadata: ["direction": "incoming"]
+                )
+            }
+            context.fireChannelRead(data)
         }
-        context.fireChannelRead(data)
-    }
 
-    func write(
-        context: ChannelHandlerContext, 
-        data: NIOAny,
-        promise: EventLoopPromise<Void>?
-    ) {
-        if self.shouldLog {
-            let buffer = self.unwrapOutboundIn(data)
-            self.logger.info(
-                "\n\(buffer.hexDump(format: .detailed))", 
-                metadata: ["direction": "outgoing"]
-            )
+        func write(
+            context: ChannelHandlerContext,
+            data: NIOAny,
+            promise: EventLoopPromise<Void>?
+        ) {
+            if self.shouldLog {
+                let buffer = self.unwrapOutboundIn(data)
+                self.logger.info(
+                    "\n\(buffer.hexDump(format: .detailed))",
+                    metadata: ["direction": "outgoing"]
+                )
+            }
+            context.write(data, promise: promise)
         }
-        context.write(data, promise: promise)
     }
-}
 #endif

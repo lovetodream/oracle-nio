@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -36,12 +46,12 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     }
 
     #if DEBUG
-    /// For testing only!
-    init() {
-        self.capabilities = .init()
-        self.context = .init()
-        self.sendSingleMessages = true
-    }
+        /// For testing only!
+        init() {
+            self.capabilities = .init()
+            self.context = .init()
+            self.sendSingleMessages = true
+        }
     #endif
 
     mutating func decode(
@@ -49,15 +59,15 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     ) throws -> DecodingState {
         while let message = try decodeMessage(from: &buffer) {
             #if DEBUG
-            if sendSingleMessages {
-                for part in message {
-                    context.fireChannelRead(self.wrapInboundOut([part]))
+                if sendSingleMessages {
+                    for part in message {
+                        context.fireChannelRead(self.wrapInboundOut([part]))
+                    }
+                } else {
+                    context.fireChannelRead(self.wrapInboundOut(message))
                 }
-            } else {
-                context.fireChannelRead(self.wrapInboundOut(message))
-            }
             #else
-            context.fireChannelRead(self.wrapInboundOut(message))
+                context.fireChannelRead(self.wrapInboundOut(message))
             #endif
             if buffer.readableBytes > 0 {
                 return .needMoreData
@@ -94,10 +104,11 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             length = buffer.getInteger(at: startReaderIndex, as: UInt16.self).map(Int.init)
         }
 
-        let packetFlags = buffer.getInteger(
-            at: startReaderIndex + MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
-            as: UInt8.self
-        ) ?? 0
+        let packetFlags =
+            buffer.getInteger(
+                at: startReaderIndex + MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
+                as: UInt8.self
+            ) ?? 0
 
         guard
             let length,
@@ -113,10 +124,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         }
 
         // skip header
-        if
-            packet.readerIndex < Self.headerSize &&
-            packet.capacity >= Self.headerSize
-        {
+        if packet.readerIndex < Self.headerSize && packet.capacity >= Self.headerSize {
             packet.moveReaderIndex(to: Self.headerSize)
         }
 
@@ -130,7 +138,8 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         } catch let error as OraclePartialDecodingError {
             buffer.moveReaderIndex(to: startReaderIndex)
             let completeMessage = buffer.readSlice(length: length)!
-            throw OracleMessageDecodingError
+            throw
+                OracleMessageDecodingError
                 .withPartialError(
                     error,
                     packetID: type.rawValue,

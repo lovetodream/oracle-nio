@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import Foundation
 import Logging
@@ -20,7 +30,8 @@ extension OracleConnection {
         )
 
         if let wallet = env("ORA_TEST_WALLET")?.data(using: .utf8).flatMap(Array.init),
-           let walletPassword = env("ORA_TEST_WALLET_PASSWORD") {
+            let walletPassword = env("ORA_TEST_WALLET_PASSWORD")
+        {
             let key = try NIOSSLPrivateKey(bytes: wallet, format: .pem) { completion in
                 completion(walletPassword.utf8)
             }

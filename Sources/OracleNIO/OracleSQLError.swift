@@ -1,10 +1,20 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
 /// An error that is thrown from the OracleClient.
-/// 
+///
 /// - Warning: These errors should not be forwareded to the end user, as they may leak sensitive information.
 public struct OracleSQLError: Sendable, Error {
 
@@ -273,12 +283,12 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     static let nationalCharsetNotSupported =
-    OracleSQLError(code: .nationalCharsetNotSupported)
+        OracleSQLError(code: .nationalCharsetNotSupported)
 
     static let queryCancelled = OracleSQLError(code: .queryCancelled)
 
     static let serverVersionNotSupported =
-    OracleSQLError(code: .serverVersionNotSupported)
+        OracleSQLError(code: .serverVersionNotSupported)
 
     static let sidNotSupported = OracleSQLError(code: .sidNotSupported)
 
@@ -332,10 +342,11 @@ extension OracleSQLError: CustomStringConvertible {
 
         result.append(") ")
 
-        result.append("""
-        - Some information has been reducted to prevent accidental leakage of \
-        sensitive data. For additional debugging details, use `String(reflecting: error)`.
-        """)
+        result.append(
+            """
+            - Some information has been reducted to prevent accidental leakage of \
+            sensitive data. For additional debugging details, use `String(reflecting: error)`.
+            """)
 
         return result
     }
@@ -392,4 +403,4 @@ extension OracleSQLError {
         var actualParameters: OracleBackendMessage.Parameter
     }
 
- }
+}

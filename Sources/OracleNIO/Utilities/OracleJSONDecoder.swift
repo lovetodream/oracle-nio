@@ -1,11 +1,22 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import class Foundation.JSONDecoder
-import struct Foundation.Data
-import NIOFoundationCompat
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
+import NIOFoundationCompat
+
+import struct Foundation.Data
+import class Foundation.JSONDecoder
 
 /// A protocol that mimics the Foundation `JSONDecoder.decode(_:from:)` function.
 ///
@@ -35,7 +46,8 @@ extension OracleJSONDecoder {
 
 extension JSONDecoder: OracleJSONDecoder {}
 
-private let jsonDecoderLocked: NIOLockedValueBox<OracleJSONDecoder> = NIOLockedValueBox(JSONDecoder())
+private let jsonDecoderLocked: NIOLockedValueBox<OracleJSONDecoder> = NIOLockedValueBox(
+    JSONDecoder())
 
 /// The default JSON decoder used by OracleNIO when decoding JSON values.
 ///

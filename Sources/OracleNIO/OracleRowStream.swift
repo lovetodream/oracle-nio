@@ -1,8 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-@preconcurrency import NIOCore
 import Logging
+@preconcurrency import NIOCore
 
 struct QueryResult {
     enum Value: Equatable {
@@ -15,9 +25,10 @@ struct QueryResult {
 }
 
 final class OracleRowStream: @unchecked Sendable {
-    
-    private typealias AsyncSequenceSource = NIOThrowingAsyncSequenceProducer
-        <DataRow, Error, AdaptiveRowBuffer, OracleRowStream>.Source
+
+    private typealias AsyncSequenceSource = NIOThrowingAsyncSequenceProducer<
+        DataRow, Error, AdaptiveRowBuffer, OracleRowStream
+    >.Source
 
     enum Source {
         case stream([DescribeInfo.Column], OracleRowsDataSource)
@@ -38,7 +49,7 @@ final class OracleRowStream: @unchecked Sendable {
     private enum DownstreamState {
         case waitingForConsumer(BufferState)
         case iteratingRows(
-            onRow: (OracleRow) throws -> (), EventLoopPromise<Void>, OracleRowsDataSource
+            onRow: (OracleRow) throws -> Void, EventLoopPromise<Void>, OracleRowsDataSource
         )
         case waitingForAll(
             [OracleRow], EventLoopPromise<[OracleRow]>, OracleRowsDataSource
@@ -76,7 +87,7 @@ final class OracleRowStream: @unchecked Sendable {
 
         var lookup: [String: Int] = [:]
         lookup.reserveCapacity(rowDescription.count)
-        rowDescription.enumerated().forEach { (index, column) in
+        for (index, column) in rowDescription.enumerated() {
             lookup[column.name] = index
         }
         self.lookupTable = lookup
@@ -304,9 +315,11 @@ final class OracleRowStream: @unchecked Sendable {
     internal func receive(_ newRows: [DataRow]) {
         precondition(!newRows.isEmpty, "Expected to get rows!")
         self.eventLoop.preconditionInEventLoop()
-        self.logger.trace("Row stream received rows", metadata: [
-            "row_count": "\(newRows.count)"
-        ])
+        self.logger.trace(
+            "Row stream received rows",
+            metadata: [
+                "row_count": "\(newRows.count)"
+            ])
 
         switch self.downstreamState {
         case .waitingForConsumer(.streaming(var buffer, let dataSource)):
@@ -340,7 +353,7 @@ final class OracleRowStream: @unchecked Sendable {
             }
 
         case .waitingForAll(var rows, let promise, let dataSource):
-            newRows.forEach { data in
+            for data in newRows {
                 let row = OracleRow(
                     lookupTable: self.lookupTable,
                     data: data,

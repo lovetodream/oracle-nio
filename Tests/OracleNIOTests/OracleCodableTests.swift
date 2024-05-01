@@ -1,9 +1,20 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import XCTest
-@testable import OracleNIO
 import NIOCore
+import XCTest
+
+@testable import OracleNIO
 
 final class OracleCodableTests: XCTestCase {
 
@@ -25,8 +36,9 @@ final class OracleCodableTests: XCTestCase {
         )
 
         var result: (String?, String?)
-        XCTAssertNoThrow(result = try row.decode(
-            (String?, String?).self, context: .default)
+        XCTAssertNoThrow(
+            result = try row.decode(
+                (String?, String?).self, context: .default)
         )
         XCTAssertNil(result.0)
         XCTAssertEqual(result.1, "Hello world!")
@@ -72,9 +84,10 @@ final class OracleCodableTests: XCTestCase {
         )
 
         var result: (OracleNumber?, OracleNumber?, OracleNumber?)
-        XCTAssertNoThrow(result = try row.decode(
-            (OracleNumber?, OracleNumber?, OracleNumber?).self,
-            context: .default)
+        XCTAssertNoThrow(
+            result = try row.decode(
+                (OracleNumber?, OracleNumber?, OracleNumber?).self,
+                context: .default)
         )
         XCTAssert(result.0?.double == 42)
         XCTAssert(result.1?.double == -24.42)
@@ -100,9 +113,10 @@ final class OracleCodableTests: XCTestCase {
         )
 
         var result: (Date?)
-        XCTAssertNoThrow(result = try row.decode(
-            (Date?).self, context: .default
-        ))
+        XCTAssertNoThrow(
+            result = try row.decode(
+                (Date?).self, context: .default
+            ))
         XCTAssert(
             Calendar.current.isDate(
                 date, equalTo: result ?? .distantPast, toGranularity: .second
@@ -146,8 +160,9 @@ final class OracleCodableTests: XCTestCase {
         )
 
         var result: (Int?, Float?, Double?)
-        XCTAssertNoThrow(result = try row.decode(
-            (Int?, Float?, Double?).self, context: .default)
+        XCTAssertNoThrow(
+            result = try row.decode(
+                (Int?, Float?, Double?).self, context: .default)
         )
         XCTAssertEqual(result.0, 42)
         XCTAssertEqual(result.1, 24.42)
@@ -174,7 +189,7 @@ final class OracleCodableTests: XCTestCase {
         do {
             _ = try row.decode(String.self)
         } catch {
-            XCTAssertTrue("\(error)".contains("columnName: ***")) // should be redacted
+            XCTAssertTrue("\(error)".contains("columnName: ***"))  // should be redacted
             XCTAssertTrue(String(reflecting: error).contains(#"columnName: "int""#))
         }
     }
@@ -187,7 +202,7 @@ extension DataRow: ExpressibleByArrayLiteral {
     public init(arrayLiteral elements: any OracleThrowingEncodable...) {
         var buffer = ByteBuffer()
         let encodingContext = OracleEncodingContext(jsonEncoder: JSONEncoder())
-        elements.forEach { element in
+        for element in elements {
             try! element._encodeRaw(into: &buffer, context: encodingContext)
         }
         self.init(columnCount: elements.count, bytes: buffer)
@@ -195,7 +210,7 @@ extension DataRow: ExpressibleByArrayLiteral {
 
     static func makeTestDataRow(_ encodables: (any OracleEncodable)?...) -> DataRow {
         var bytes = ByteBuffer()
-        encodables.forEach { column in
+        for column in encodables {
             switch column {
             case .none:
                 bytes.writeInteger(UInt8(0))

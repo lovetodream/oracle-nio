@@ -1,8 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 
 /// An async sequence of ``OracleRow``'s
 ///
@@ -10,8 +20,9 @@ import NIOConcurrencyHelpers
 public struct OracleRowSequence: AsyncSequence {
     public typealias Element = OracleRow
 
-    typealias BackingSequence = NIOThrowingAsyncSequenceProducer
-        <DataRow, Error, AdaptiveRowBuffer, OracleRowStream>
+    typealias BackingSequence = NIOThrowingAsyncSequenceProducer<
+        DataRow, Error, AdaptiveRowBuffer, OracleRowStream
+    >
 
     let backing: BackingSequence
     let lookupTable: [String: Int]
@@ -44,16 +55,6 @@ extension OracleRowSequence {
 
         let lookupTable: [String: Int]
         let columns: [DescribeInfo.Column]
-
-        init(
-            backing: BackingSequence.AsyncIterator,
-            lookupTable: [String: Int],
-            columns: [DescribeInfo.Column]
-        ) {
-            self.backing = backing
-            self.lookupTable = lookupTable
-            self.columns = columns
-        }
 
         public mutating func next() async throws -> OracleRow? {
             guard let dataRow = try await self.backing.next() else {
@@ -105,16 +106,15 @@ struct AdaptiveRowBuffer: NIOAsyncSequenceProducerBackPressureStrategy {
     }
 
     mutating func didYield(bufferDepth: Int) -> Bool {
-        if 
-            bufferDepth > self.target,
-            self.canShrink, 
+        if bufferDepth > self.target,
+            self.canShrink,
             self.target > self.minimum
         {
             self.target &>>= 1
         }
         self.canShrink = true
 
-        return false // bufferDepth < self.target
+        return false  // bufferDepth < self.target
     }
 
     mutating func didConsume(bufferDepth: Int) -> Bool {

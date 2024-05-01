@@ -1,9 +1,20 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOTestUtils
+import XCTest
+
 @testable import OracleNIO
 
 final class AcceptMessageTests: XCTestCase {
@@ -35,11 +46,12 @@ final class AcceptMessageTests: XCTestCase {
         encoder.encode(data: message3, out: &buffer)
         expected.append(message3)
 
-        XCTAssertNoThrow(try ByteToMessageDecoderVerifier.verifyDecoder(
-            inputOutputPairs: [(buffer, expected.map({ [$0] }))],
-            decoderFactory: {
-                OracleBackendMessageDecoder()
-            }
-        ))
+        XCTAssertNoThrow(
+            try ByteToMessageDecoderVerifier.verifyDecoder(
+                inputOutputPairs: [(buffer, expected.map({ [$0] }))],
+                decoderFactory: {
+                    OracleBackendMessageDecoder()
+                }
+            ))
     }
 }

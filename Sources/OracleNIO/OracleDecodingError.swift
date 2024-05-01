@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -28,7 +38,7 @@ public struct OracleDecodingError: Error, Equatable {
         ///         `BinaryFloatingPoint` to  `FixedWithInteger`. So we rather fail,
         ///         instead of causing undefined behavior.
         ///
-        /// - Tip: To fix this error you should either decode as `Float`, `Double` or `Decimal`, 
+        /// - Tip: To fix this error you should either decode as `Float`, `Double` or `Decimal`,
         ///      depending on your needs.
         public static let decimalPointFound = Self(.typeMismatch)
         /// Occurs if you're trying to decode a negative signed `FixedWithInteger` to an
@@ -124,11 +134,12 @@ extension OracleDecodingError: CustomStringConvertible {
         }
         result.append(") ")
 
-        result.append("""
-        - Some information has been reducted to prevent accidental leakage of \
-        sensitive data. For additional debugging details, use \
-        `String(reflecting: error)`.
-        """)
+        result.append(
+            """
+            - Some information has been reducted to prevent accidental leakage of \
+            sensitive data. For additional debugging details, use \
+            `String(reflecting: error)`.
+            """)
 
         return result
     }

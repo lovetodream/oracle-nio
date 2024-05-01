@@ -1,14 +1,25 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
+
 import func Foundation.pow
 
-private let NUMBER_MAX_DIGITS = 40
-private let NUMBER_AS_SINGLE_CHARS = 172
+private let numberMaxDigits = 40
+private let numberAsSingleChars = 172
 
-private extension SignedInteger {
-    init(_ bytes: [UInt8]) {
+extension SignedInteger {
+    fileprivate init(_ bytes: [UInt8]) {
         precondition(bytes.count <= MemoryLayout<Self>.size)
 
         var value: Int64 = 0
@@ -23,15 +34,15 @@ private extension SignedInteger {
 }
 
 
-internal extension StringProtocol  {
+extension StringProtocol {
     var ascii: [UInt8] { compactMap(\.asciiValue) }
 }
 
-internal extension LosslessStringConvertible {
+extension LosslessStringConvertible {
     var string: String { .init(self) }
 }
 
-internal extension Numeric where Self: LosslessStringConvertible {
+extension Numeric where Self: LosslessStringConvertible {
     var ascii: [UInt8] { string.ascii }
 }
 
@@ -49,7 +60,7 @@ internal enum OracleNumeric {
         _ value: [UInt8], into buffer: inout ByteBuffer
     ) {
         var numberOfDigits = 0
-        var digits = [UInt8](repeating: 0, count: NUMBER_AS_SINGLE_CHARS)
+        var digits = [UInt8](repeating: 0, count: numberAsSingleChars)
         var isNegative = false
         var exponentIsNegative = false
         var position = 0
@@ -68,15 +79,12 @@ internal enum OracleNumeric {
 
         // scan for digits until the decimal point or exponent indicator found
         while position < length {
-            if value[position] == ".".ascii.first || 
-                value[position] == "e".ascii.first ||
-                value[position] == "E".ascii.first
+            if value[position] == ".".ascii.first || value[position] == "e".ascii.first
+                || value[position] == "E".ascii.first
             {
                 break
             }
-            if value[position] < "0".ascii.first! || 
-                value[position] > "9".ascii.first!
-            {
+            if value[position] < "0".ascii.first! || value[position] > "9".ascii.first! {
                 preconditionFailure("\(value) can't logically be a numeric")
             }
             let digit = value[position] - "0".ascii.first!
@@ -93,9 +101,7 @@ internal enum OracleNumeric {
         if position < length && value[position] == ".".ascii.first {
             position += 1
             while position < length {
-                if value[position] == "e".ascii.first || 
-                    value[position] == "E".ascii.first
-                {
+                if value[position] == "e".ascii.first || value[position] == "E".ascii.first {
                     break
                 }
                 let digit = value[position] - "0".ascii.first!
@@ -110,8 +116,8 @@ internal enum OracleNumeric {
         }
 
         // handle exponent, if applicable
-        if position < length && (value[position] == "e".ascii.first || 
-                                 value[position] == "E".ascii.first)
+        if position < length
+            && (value[position] == "e".ascii.first || value[position] == "E".ascii.first)
         {
             position += 1
             if position < length {
@@ -124,9 +130,7 @@ internal enum OracleNumeric {
             }
             exponentPosition = position
             while position < length {
-                if value[position] < "0".ascii.first! || 
-                    value[position] > "9".ascii.first!
-                {
+                if value[position] < "0".ascii.first! || value[position] > "9".ascii.first! {
                     preconditionFailure("\(value) can't logically be a numeric")
                 }
                 position += 1
@@ -143,7 +147,7 @@ internal enum OracleNumeric {
             decimalPointIndex += Int(exponent)
         }
 
-        // if there is anything left in the string, that indicates an 
+        // if there is anything left in the string, that indicates an
         // invalid number as well
         if position < length {
             preconditionFailure("\(value) can't logically be a numeric")
@@ -155,11 +159,9 @@ internal enum OracleNumeric {
         }
 
         // value must be less than 1e126 and greater than 1e-129;
-        // the number of digits also cannot exceed the maximum precision of 
+        // the number of digits also cannot exceed the maximum precision of
         // Oracle numbers
-        if numberOfDigits > NUMBER_MAX_DIGITS || decimalPointIndex > 126 ||
-            decimalPointIndex < -129
-        {
+        if numberOfDigits > numberMaxDigits || decimalPointIndex > 126 || decimalPointIndex < -129 {
             preconditionFailure("\(value) can't logically be a numeric")
         }
 
@@ -182,14 +184,12 @@ internal enum OracleNumeric {
         let numberOfPairs = numberOfDigits / 2
 
         // append a sentinel 102 byte for negative numbers if there is room
-        if isNegative && numberOfDigits > 0 && 
-            numberOfDigits < NUMBER_MAX_DIGITS
-        {
+        if isNegative && numberOfDigits > 0 && numberOfDigits < numberMaxDigits {
             appendSentinel = true
         }
 
         // if the number of digits is zero, the value is itself zero since all
-        // leading and trailing zeros are removed from the digits string; this 
+        // leading and trailing zeros are removed from the digits string; this
         // is a special case
         if numberOfDigits == 0 {
             buffer.writeInteger(UInt8(128))
@@ -249,14 +249,14 @@ internal enum OracleNumeric {
             let isPositive
         ):
             var data = [UInt8]()
-            data.reserveCapacity(NUMBER_AS_SINGLE_CHARS)
+            data.reserveCapacity(numberAsSingleChars)
             // if the decimal point index is 0 or less, we've received a decimal value
             if decimalPointIndex <= 0 {
                 throw OracleDecodingError.Code.decimalPointFound
             }
 
             // add each of the digits
-            for i in 0 ..< numberOfDigits {
+            for i in 0..<numberOfDigits {
                 if i > 0, i == decimalPointIndex {
                     throw OracleDecodingError.Code.decimalPointFound
                 }
@@ -264,7 +264,7 @@ internal enum OracleNumeric {
             }
 
             if decimalPointIndex > numberOfDigits {
-                for _ in numberOfDigits ..< Int(decimalPointIndex) {
+                for _ in numberOfDigits..<Int(decimalPointIndex) {
                     data.append(0)
                 }
             }
@@ -306,27 +306,27 @@ internal enum OracleNumeric {
             let isPositive
         ):
             var data = [UInt8]()
-            data.reserveCapacity(NUMBER_AS_SINGLE_CHARS)
+            data.reserveCapacity(numberAsSingleChars)
             // if the decimal point index is 0 or less, add the decimal point and
             // any leading zeroes that are needed
             if decimalPointIndex <= 0 {
-                data.append(0) // zero
-                data.append(UInt8.max) // decimal point
-                for _ in decimalPointIndex ..< 0 {
-                    data.append(0) // zero
+                data.append(0)  // zero
+                data.append(UInt8.max)  // decimal point
+                for _ in decimalPointIndex..<0 {
+                    data.append(0)  // zero
                 }
             }
 
             // add each of the digits
-            for i in 0 ..< numberOfDigits {
+            for i in 0..<numberOfDigits {
                 if i > 0, i == decimalPointIndex {
-                    data.append(UInt8.max) // decimal point
+                    data.append(UInt8.max)  // decimal point
                 }
                 data.append(digits[i])
             }
 
             if decimalPointIndex > numberOfDigits {
-                for _ in numberOfDigits ..< Int(decimalPointIndex) {
+                for _ in numberOfDigits..<Int(decimalPointIndex) {
                     data.append(0)
                 }
             }
@@ -399,7 +399,7 @@ internal enum OracleNumeric {
         }
         let highBits = UInt64(b0) << 24 | UInt64(b1) << 16 | UInt64(b2) << 8 | UInt64(b3)
         let lowBits = UInt64(b4) << 24 | UInt64(b5) << 16 | UInt64(b6) << 8 | UInt64(b7)
-        let allBits = highBits << 32 | (lowBits & 0xffffffff)
+        let allBits = highBits << 32 | (lowBits & 0xffff_ffff)
         let double = Double(bitPattern: allBits)
         return double
     }
@@ -434,17 +434,17 @@ internal enum OracleNumeric {
         // check for the trailing 102 byte for negative numbers and, if present,
         // reduce the number of mantissa digits
         if !isPositive,
-           buffer.getInteger(at: length - 1, as: UInt8.self) == 102
+            buffer.getInteger(at: length - 1, as: UInt8.self) == 102
         {
             length -= 1
         }
 
         var digits = [UInt8]()
-        digits.reserveCapacity(NUMBER_MAX_DIGITS)
+        digits.reserveCapacity(numberMaxDigits)
         // process the mantissa bytes which are the remaining bytes; each
         // mantissa byte is a base-100 digit
         var numberOfDigits = 0
-        for i in 1 ..< length {
+        for i in 1..<length {
             // positive numbers have 1 added to them; negative numbers are
             // subtracted from the value 101
             guard var byte = buffer.getInteger(at: i, as: UInt8.self) else {

@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -12,7 +22,14 @@ extension Double: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        var b0, b1, b2, b3, b4, b5, b6, b7: UInt8
+        var b0: UInt8
+        var b1: UInt8
+        var b2: UInt8
+        var b3: UInt8
+        var b4: UInt8
+        var b5: UInt8
+        var b6: UInt8
+        var b7: UInt8
         let allBits = self.bitPattern
         b7 = UInt8(allBits & 0xff)
         b6 = UInt8((allBits >> 8) & 0xff)

@@ -1,10 +1,20 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 
-/// A reference type used to capture `OUT` and `IN/OUT` binds in `DML` returning statements or 
+/// A reference type used to capture `OUT` and `IN/OUT` binds in `DML` returning statements or
 /// `PL/SQL`.
 ///
 /// - Note: `OracleRef`s used as `IN/OUT` binds without a value will be declared
@@ -74,15 +84,16 @@ public final class OracleRef: Sendable, Hashable {
     ///                           binds are x `OracleRef`'s.
     public init(dataType: OracleDataType, isReturnBind: Bool = false) {
         self.storage = NIOLockedValueBox(nil)
-        self.metadata = NIOLockedValueBox(.init(
-            dataType: dataType,
-            protected: false,
-            isReturnBind: isReturnBind,
-            isArray: false,
-            arrayCount: nil,
-            maxArraySize: nil,
-            bindName: nil
-        ))
+        self.metadata = NIOLockedValueBox(
+            .init(
+                dataType: dataType,
+                protected: false,
+                isReturnBind: isReturnBind,
+                isArray: false,
+                arrayCount: nil,
+                maxArraySize: nil,
+                bindName: nil
+            ))
     }
 
     /// Use this initializer to create an IN/OUT bind.
@@ -91,9 +102,10 @@ public final class OracleRef: Sendable, Hashable {
         var storage = ByteBuffer()
         try value._encodeRaw(into: &storage, context: .default)
         self.storage = NIOLockedValueBox(storage)
-        self.metadata = NIOLockedValueBox(.init(
-            value: value, protected: true, isReturnBind: false, bindName: nil
-        ))
+        self.metadata = NIOLockedValueBox(
+            .init(
+                value: value, protected: true, isReturnBind: false, bindName: nil
+            ))
     }
 
     /// Use this initializer to create a IN/OUT bind.
@@ -102,11 +114,12 @@ public final class OracleRef: Sendable, Hashable {
         var storage = ByteBuffer()
         value._encodeRaw(into: &storage, context: .default)
         self.storage = NIOLockedValueBox(storage)
-        self.metadata = NIOLockedValueBox(.init(
-            value: value, protected: true, isReturnBind: false, bindName: nil
-        ))
+        self.metadata = NIOLockedValueBox(
+            .init(
+                value: value, protected: true, isReturnBind: false, bindName: nil
+            ))
     }
-    
+
     /// Decodes a value of the given type from the bind.
     ///
     /// This method uses the ``OracleDecodable/init(from:type:context:)`` to decode

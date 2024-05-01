@@ -1,8 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import NIOCore
 import Logging
+import NIOCore
 import RegexBuilder
 
 enum OracleTask {
@@ -16,10 +26,10 @@ enum OracleTask {
         case .extendedQuery(let context):
             switch context.statement {
             case .ddl(let promise),
-                 .dml(let promise),
-                 .plsql(let promise),
-                 .query(let promise),
-                 .plain(let promise):
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise),
+                .plain(let promise):
                 promise.fail(error)
             }
         case .ping(let promise):
@@ -100,7 +110,8 @@ final class ExtendedQueryContext {
         sql = sql.replacing(/\--.*(\n|$)/, with: "")
         sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
 
-        self.isReturning = query.binds.metadata
+        self.isReturning =
+            query.binds.metadata
             .first(where: \.isReturnBind) != nil
         let query = Self.determineStatementType(
             minifiedSQL: sql, promise: promise
@@ -176,7 +187,7 @@ public struct QueryOptions {
     /// ```
     public var arraySize: Int = 100
 
-    /// Defines if LOBs (BLOB, CLOB, NCLOB) should be fetched as LOBs, which requires another 
+    /// Defines if LOBs (BLOB, CLOB, NCLOB) should be fetched as LOBs, which requires another
     /// round-trip to the server.
     ///
     /// If this is set to false, LOBs are fetched as bytes and retrieved inline. This doesn't require another
@@ -210,7 +221,7 @@ public struct QueryOptions {
 
 final class CleanupContext {
     var cursorsToClose: Set<UInt16> = []
-    
+
     var tempLOBsTotalSize: Int = 0
     var tempLOBsToClose: [ByteBuffer]? = nil
 }

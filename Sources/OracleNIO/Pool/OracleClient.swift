@@ -1,13 +1,23 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import NIOCore
-import Logging
 import Atomics
-import _ConnectionPoolModule
+import Logging
+import NIOCore
 import ServiceLifecycle
+import _ConnectionPoolModule
 
-/// A Oracle client that is backed by an underlying connection pool. Use ``Options`` to change the 
+/// A Oracle client that is backed by an underlying connection pool. Use ``Options`` to change the
 /// client's behavior and ``OracleConnection/Configuration`` to configure its connections.
 ///
 /// ## Creating a client
@@ -138,7 +148,9 @@ public final class OracleClient: Sendable, Service {
         eventLoopGroup: any EventLoopGroup = OracleClient.defaultEventLoopGroup,
         backgroundLogger: Logger
     ) {
-        let factory = ConnectionFactory(config: configuration, drcp: drcp, eventLoopGroup: eventLoopGroup, logger: backgroundLogger)
+        let factory = ConnectionFactory(
+            config: configuration, drcp: drcp, eventLoopGroup: eventLoopGroup,
+            logger: backgroundLogger)
         self.factory = factory
         self.backgroundLogger = backgroundLogger
 
@@ -162,7 +174,9 @@ public final class OracleClient: Sendable, Service {
     /// - Parameter closure: A closure that uses the passed `OracleConnection`. The closure **must not** capture
     ///                      the provided `OracleConnection`.
     /// - Returns: The closure's return value.
-    public func withConnection<Result>(_ closure: (OracleConnection) async throws -> Result) async throws -> Result {
+    public func withConnection<Result>(_ closure: (OracleConnection) async throws -> Result)
+        async throws -> Result
+    {
         let connection = try await self.leaseConnection()
 
         defer { self.pool.releaseConnection(connection) }
@@ -176,7 +190,8 @@ public final class OracleClient: Sendable, Service {
     ///
     /// Calls to ``withConnection(_:)`` will emit a `logger` warning, if ``run()`` hasn't been called previously.
     public func run() async {
-        let atomicOp = self.runningAtomic.compareExchange(expected: false, desired: true, ordering: .relaxed)
+        let atomicOp = self.runningAtomic.compareExchange(
+            expected: false, desired: true, ordering: .relaxed)
         precondition(!atomicOp.original, "OracleClient.run() should just be called once!")
 
         await cancelOnGracefulShutdown {
@@ -189,7 +204,9 @@ public final class OracleClient: Sendable, Service {
 
     private func leaseConnection() async throws -> OracleConnection {
         if !self.runningAtomic.load(ordering: .relaxed) {
-            self.backgroundLogger.warning("Trying to lease connection from `OracleClient`, but `OracleClient.run()` hasn't been called yet.")
+            self.backgroundLogger.warning(
+                "Trying to lease connection from `OracleClient`, but `OracleClient.run()` hasn't been called yet."
+            )
         }
         return try await self.pool.leaseConnection()
     }
@@ -232,10 +249,10 @@ extension ConnectionPoolConfiguration {
 }
 
 extension OracleConnection: PooledConnection {
-    public func onClose(_ closure: @escaping @Sendable ((Error)?) -> ()) {
+    public func onClose(_ closure: @escaping @Sendable ((Error)?) -> Void) {
         self.closeFuture.whenComplete { _ in closure(nil) }
     }
-    
+
     public func close() {
         self.channel.close(mode: .all, promise: nil)
     }

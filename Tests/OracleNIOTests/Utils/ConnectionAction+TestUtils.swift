@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 @testable import OracleNIO
 
@@ -13,7 +23,9 @@ extension ConnectionStateMachine {
 // MARK: Equatable Conformance on ConnectionAction
 
 extension ConnectionStateMachine.ConnectionAction: Equatable {
-    public static func == (lhs: ConnectionStateMachine.ConnectionAction, rhs: ConnectionStateMachine.ConnectionAction) -> Bool {
+    public static func == (
+        lhs: ConnectionStateMachine.ConnectionAction, rhs: ConnectionStateMachine.ConnectionAction
+    ) -> Bool {
         switch (lhs, rhs) {
         case (.read, .read):
             return true
@@ -42,9 +54,14 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
             return true
         case (.sendFastAuth(let lhs), .sendFastAuth(let rhs)):
             return lhs == rhs
-        case (.sendAuthenticationPhaseOne(let lhsContext), .sendAuthenticationPhaseOne(let rhsContext)):
+        case (
+            .sendAuthenticationPhaseOne(let lhsContext), .sendAuthenticationPhaseOne(let rhsContext)
+        ):
             return lhsContext == rhsContext
-        case (.sendAuthenticationPhaseTwo(let lhsContext, let lhsParameters), .sendAuthenticationPhaseTwo(let rhsContext, let rhsParameters)):
+        case (
+            .sendAuthenticationPhaseTwo(let lhsContext, let lhsParameters),
+            .sendAuthenticationPhaseTwo(let rhsContext, let rhsParameters)
+        ):
             return lhsContext == rhsContext && lhsParameters == rhsParameters
         case (.authenticated(let lhs), .authenticated(let rhs)):
             return lhs == rhs
@@ -64,35 +81,52 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
             return lhs.futureResult === rhs.futureResult
         case (.sendRollback, .sendRollback):
             return true
-        case (.failRollback(let lhsPromise, let lhsError), .failRollback(let rhsPromise, let rhsError)):
+        case (
+            .failRollback(let lhsPromise, let lhsError), .failRollback(let rhsPromise, let rhsError)
+        ):
             return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
         case (.succeedRollback(let lhs), .succeedRollback(let rhs)):
             return lhs.futureResult === rhs.futureResult
 
         case (.sendExecute(let lhsContext, let lhsInfo), .sendExecute(let rhsContext, let rhsInfo)):
             return lhsContext == rhsContext && lhsInfo == rhsInfo
-        case (.sendReexecute(let lhsContext, let lhsCleanup), .sendReexecute(let rhsContext, let rhsCleanup)):
+        case (
+            .sendReexecute(let lhsContext, let lhsCleanup),
+            .sendReexecute(let rhsContext, let rhsCleanup)
+        ):
             return lhsContext == rhsContext && lhsCleanup == rhsCleanup
         case (.sendFetch(let lhs), .sendFetch(let rhs)):
             return lhs == rhs
         case (.sendFlushOutBinds, .sendFlushOutBinds):
             return true
-        case (.failQuery(let lhsPromise, let lhsError, let lhsCleanup), .failQuery(let rhsPromise, let rhsError, let rhsCleanup)):
-            return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError && lhsCleanup == rhsCleanup
-        case (.succeedQuery(let lhsPromise, let lhsResult), .succeedQuery(let rhsPromise, let rhsResult)):
-            return lhsPromise.futureResult === rhsPromise.futureResult && lhsResult.value == rhsResult.value
+        case (
+            .failQuery(let lhsPromise, let lhsError, let lhsCleanup),
+            .failQuery(let rhsPromise, let rhsError, let rhsCleanup)
+        ):
+            return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
+                && lhsCleanup == rhsCleanup
+        case (
+            .succeedQuery(let lhsPromise, let lhsResult),
+            .succeedQuery(let rhsPromise, let rhsResult)
+        ):
+            return lhsPromise.futureResult === rhsPromise.futureResult
+                && lhsResult.value == rhsResult.value
         case (.needMoreData, .needMoreData):
             return true
 
         case (.forwardRows(let lhs), .forwardRows(let rhs)):
             return lhs == rhs
-        case (.forwardStreamComplete(let lhsRows, let lhsCursorID), .forwardStreamComplete(let rhsRows, let rhsCursorID)):
+        case (
+            .forwardStreamComplete(let lhsRows, let lhsCursorID),
+            .forwardStreamComplete(let rhsRows, let rhsCursorID)
+        ):
             return lhsRows == rhsRows && lhsCursorID == rhsCursorID
-        case (.forwardStreamError(let lhsError, let lhsRead, let lhsCursorID, let lhsClientCancelled), .forwardStreamError(let rhsError, let rhsRead, let rhsCursorID, let rhsClientCancelled)):
-            return lhsError == rhsError &&
-            lhsRead == rhsRead &&
-            lhsCursorID == rhsCursorID &&
-            lhsClientCancelled == rhsClientCancelled
+        case (
+            .forwardStreamError(let lhsError, let lhsRead, let lhsCursorID, let lhsClientCancelled),
+            .forwardStreamError(let rhsError, let rhsRead, let rhsCursorID, let rhsClientCancelled)
+        ):
+            return lhsError == rhsError && lhsRead == rhsRead && lhsCursorID == rhsCursorID
+                && lhsClientCancelled == rhsClientCancelled
 
         case (.sendMarker, .sendMarker):
             return true
@@ -104,8 +138,12 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
 }
 
 extension ConnectionStateMachine.ConnectionAction.CleanUpContext: Equatable {
-    public static func == (lhs: ConnectionStateMachine.ConnectionAction.CleanUpContext, rhs: ConnectionStateMachine.ConnectionAction.CleanUpContext) -> Bool {
-        lhs.action == rhs.action && lhs.tasks == rhs.tasks && lhs.error == rhs.error && lhs.closePromise?.futureResult === rhs.closePromise?.futureResult
+    public static func == (
+        lhs: ConnectionStateMachine.ConnectionAction.CleanUpContext,
+        rhs: ConnectionStateMachine.ConnectionAction.CleanUpContext
+    ) -> Bool {
+        lhs.action == rhs.action && lhs.tasks == rhs.tasks && lhs.error == rhs.error
+            && lhs.closePromise?.futureResult === rhs.closePromise?.futureResult
     }
 }
 
@@ -134,9 +172,8 @@ extension OracleTask: Equatable {
 
 extension CleanupContext: Equatable {
     public static func == (lhs: CleanupContext, rhs: CleanupContext) -> Bool {
-        lhs.cursorsToClose == rhs.cursorsToClose &&
-        lhs.tempLOBsTotalSize == rhs.tempLOBsTotalSize &&
-        lhs.tempLOBsToClose == rhs.tempLOBsToClose
+        lhs.cursorsToClose == rhs.cursorsToClose && lhs.tempLOBsTotalSize == rhs.tempLOBsTotalSize
+            && lhs.tempLOBsToClose == rhs.tempLOBsToClose
     }
 }
 

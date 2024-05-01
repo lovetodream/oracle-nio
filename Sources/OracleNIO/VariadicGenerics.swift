@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 extension OracleRow {
     // --- snip TODO: Remove once bug is fixed, that disallows tuples of one
@@ -62,8 +72,8 @@ extension OracleRow {
         var cellIterator = self.data.makeIterator()
         var columnIterator = self.columns.makeIterator()
 
-        return (
-            repeat try Self.decodeNextColumn(
+        return
+            (repeat try Self.decodeNextColumn(
                 (each Column).self,
                 cellIterator: &cellIterator,
                 columnIterator: &columnIterator,
@@ -71,8 +81,7 @@ extension OracleRow {
                 context: context,
                 file: file,
                 line: line
-            )
-        )
+            ))
     }
 
     @inlinable

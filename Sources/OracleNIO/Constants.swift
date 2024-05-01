@@ -1,15 +1,17 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-//
-//  Constants.swift
-//  OracleNIO
-//
-//  Created by Timo Zacherl on 05.01.23.
-//
-//  Defining constants used by the thin implementation classes.
-//
-
+// swift-format-ignore-file
 import Foundation
 
 @usableFromInline
@@ -160,8 +162,8 @@ enum Constants {
     // MARK: Base JSON constants
     static let TNS_JSON_MAX_LENGTH: UInt32 = 32 * 1024 * 1024
     static let TNS_JSON_MAGIC_BYTE_1 = 0xff
-    static let TNS_JSON_MAGIC_BYTE_2 = 0x4a        // 'J'
-    static let TNS_JSON_MAGIC_BYTE_3 = 0x5a        // 'Z'
+    static let TNS_JSON_MAGIC_BYTE_2 = 0x4a  // 'J'
+    static let TNS_JSON_MAGIC_BYTE_3 = 0x5a  // 'Z'
     static let TNS_JSON_VERSION = 1
     static let TNS_JSON_FLAG_HASH_ID_UINT8: UInt16 = 0x0100
     static let TNS_JSON_FLAG_HASH_ID_UINT16: UInt16 = 0x0200
@@ -206,7 +208,7 @@ enum Constants {
     // MARK: Versions
     static let TNS_VERSION_DESIRED: UInt16 = 318
     static let TNS_VERSION_MINIMUM: UInt16 = 300
-    static let TNS_VERSION_MIN_ACCEPTED = 315      // 12.1
+    static let TNS_VERSION_MIN_ACCEPTED = 315  // 12.1
     static let TNS_VERSION_MIN_LARGE_SDU = 315
     static let TNS_VERSION_MIN_OOB_CHECK = 318
     static let TNS_VERSION_MIN_UUID = 319
@@ -246,18 +248,18 @@ enum Constants {
     }
 
     // MARK: TTC authentication modes
-    static let TNS_AUTH_MODE_LOGON: UInt32 = 0x00000001
-    static let TNS_AUTH_MODE_CHANGE_PASSWORD: UInt32 = 0x00000002
-    static let TNS_AUTH_MODE_SYSDBA: UInt32 = 0x00000020
-    static let TNS_AUTH_MODE_SYSOPER: UInt32 = 0x00000040
-    static let TNS_AUTH_MODE_PRELIM: UInt32 = 0x00000080
-    static let TNS_AUTH_MODE_WITH_PASSWORD: UInt32 = 0x00000100
-    static let TNS_AUTH_MODE_SYSASM: UInt32 = 0x00400000
-    static let TNS_AUTH_MODE_SYSBKP: UInt32 = 0x01000000
-    static let TNS_AUTH_MODE_SYSDGD: UInt32 = 0x02000000
-    static let TNS_AUTH_MODE_SYSKMT: UInt32 = 0x04000000
-    static let TNS_AUTH_MODE_SYSRAC: UInt32 = 0x08000000
-    static let TNS_AUTH_MODE_IAM_TOKEN: UInt32 = 0x20000000
+    static let TNS_AUTH_MODE_LOGON: UInt32 = 0x0000_0001
+    static let TNS_AUTH_MODE_CHANGE_PASSWORD: UInt32 = 0x0000_0002
+    static let TNS_AUTH_MODE_SYSDBA: UInt32 = 0x0000_0020
+    static let TNS_AUTH_MODE_SYSOPER: UInt32 = 0x0000_0040
+    static let TNS_AUTH_MODE_PRELIM: UInt32 = 0x0000_0080
+    static let TNS_AUTH_MODE_WITH_PASSWORD: UInt32 = 0x0000_0100
+    static let TNS_AUTH_MODE_SYSASM: UInt32 = 0x0040_0000
+    static let TNS_AUTH_MODE_SYSBKP: UInt32 = 0x0100_0000
+    static let TNS_AUTH_MODE_SYSDGD: UInt32 = 0x0200_0000
+    static let TNS_AUTH_MODE_SYSKMT: UInt32 = 0x0400_0000
+    static let TNS_AUTH_MODE_SYSRAC: UInt32 = 0x0800_0000
+    static let TNS_AUTH_MODE_IAM_TOKEN: UInt32 = 0x2000_0000
 
     // MARK: Character sets and encodings
     static let TNS_CHARSET_AL16UTF8: UInt16 = 208
@@ -343,7 +345,7 @@ enum Constants {
     static let TNS_VERIFIER_TYPE_12C: UInt32 = 0x4815
 
     // MARK: Accept flags
-    static let TNS_ACCEPT_FLAG_FAST_AUTH: UInt32 = 0x10000000
+    static let TNS_ACCEPT_FLAG_FAST_AUTH: UInt32 = 0x1000_0000
 
     // MARK: Other constants
     static let TNS_MAX_SHORT_LENGTH = 252
@@ -354,15 +356,15 @@ enum Constants {
     @usableFromInline
     static let TNS_NULL_LENGTH_INDICATOR: UInt8 = 255
     static let TNS_MAX_ROWID_LENGTH = 18
-    static let TNS_DURATION_MID: UInt32 = 0x80000000
+    static let TNS_DURATION_MID: UInt32 = 0x8000_0000
     static let TNS_DURATION_OFFSET: UInt8 = 60
     static let TNS_DURATION_SESSION: Int64 = 10
     static let TNS_MIN_LONG_LENGTH = 0x8000
-    static let TNS_MAX_LONG_LENGTH: UInt32 = 0x7fffffff
+    static let TNS_MAX_LONG_LENGTH: UInt32 = 0x7fff_ffff
     static let TNS_SDU: UInt16 = 8192
     static let TNS_TDU: UInt16 = 65535
     static let TNS_MAX_CURSORS_TO_CLOSE = 500
-    static let TNS_TXN_IN_PROGRESS = 0x00000002
+    static let TNS_TXN_IN_PROGRESS = 0x0000_0002
     static let TNS_MAX_CONNECT_DATA = 230
     static let TNS_CHUNK_SIZE = 32767
     static let TNS_MAX_UROWID_LENGTH: UInt32 = 5267
@@ -370,18 +372,19 @@ enum Constants {
     static let TNS_HAS_REGION_ID: UInt8 = 0x80
 
     // MARK: Base 64 encoding alphabet
-    private static let TNS_ALPHABET_DATA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    private static let TNS_ALPHABET_DATA =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
         .data(using: .utf8)!
     static let TNS_BASE64_ALPHABET = TNS_ALPHABET_DATA.base64EncodedString()
     static let TNS_BASE64_ALPHABET_ARRAY = TNS_ALPHABET_DATA.base64EncodedData()
-    static let TNS_EXTENT_OID = 0x00000000000000000000000000010001
+    static let TNS_EXTENT_OID = 0x0000_0000_0000_0000_0000_0000_0001_0001
 
     // MARK: Timezone offsets
     static let TZ_HOUR_OFFSET: UInt8 = 20
     static let TZ_MINUTE_OFFSET: UInt8 = 60
 
     // MARK: DRCP release mode
-    static let DRCP_DEAUTHENTICATE: UInt32 = 0x00000002
+    static let DRCP_DEAUTHENTICATE: UInt32 = 0x0000_0002
 
 }
 
@@ -398,7 +401,7 @@ extension Constants {
     static let POOL_GETMODE_TIMEDWAIT = 3
 
     // MARK: AQ delivery modes
-    static let MSG_BUFFERED =  2
+    static let MSG_BUFFERED = 2
     static let MSG_PERSISTENT = 1
     static let MSG_PERSISTENT_OR_BUFFERED = 3
 
@@ -488,19 +491,20 @@ extension Constants {
     static let OPCODE_UPDATE = 0x04
 
     // MARK: Flags for tpc_begin()
-    static let TPC_BEGIN_JOIN = 0x00000002
-    static let TPC_BEGIN_NEW = 0x00000001
-    static let TPC_BEGIN_PROMOTE = 0x00000008
-    static let TPC_BEGIN_RESUME = 0x00000004
+    static let TPC_BEGIN_JOIN = 0x0000_0002
+    static let TPC_BEGIN_NEW = 0x0000_0001
+    static let TPC_BEGIN_PROMOTE = 0x0000_0008
+    static let TPC_BEGIN_RESUME = 0x0000_0004
 
     // MARK: Flags for tpc_end()
     static let TPC_END_NORMAL = 0
-    static let TPC_END_SUSPEND = 0x00100000
+    static let TPC_END_SUSPEND = 0x0010_0000
 
     // MARK: Basic configuration constants
     static let DRIVER_NAME = "oracle-nio"
     static let VERSION_TUPLE = (major: 1, minor: 0, patch: 0)
-    static let VERSION_CODE = VERSION_TUPLE.major << 24 | VERSION_TUPLE.minor << 20 | VERSION_TUPLE.patch << 12
+    static let VERSION_CODE =
+        VERSION_TUPLE.major << 24 | VERSION_TUPLE.minor << 20 | VERSION_TUPLE.patch << 12
     static let VERSION = "\(VERSION_TUPLE.major).\(VERSION_TUPLE.minor).\(VERSION_TUPLE.patch)"
     static let ENCODING = "UTF-8"
 

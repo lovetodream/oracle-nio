@@ -1,13 +1,24 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 import NIOPosix
 import NIOSSL
+
 import struct Foundation.Data
-import struct Foundation.URL
 import class Foundation.ProcessInfo
 import struct Foundation.TimeZone
+import struct Foundation.URL
 
 extension OracleConnection {
     /// A configuration object for a connection.
@@ -122,7 +133,7 @@ extension OracleConnection {
 
         /// The authentication variant used to connect to the database.
         ///
-        /// It is defined as a closure to ensure we'll have an up-to-date token for establishing future 
+        /// It is defined as a closure to ensure we'll have an up-to-date token for establishing future
         /// connections if token based authentication is used.
         public var authenticationMethod: @Sendable () -> OracleAuthenticationMethod
 
@@ -157,8 +168,8 @@ extension OracleConnection {
         private var _connectionIDPrefix: String = "" {
             didSet {
                 self.connectionID = sanitize(
-                    value: self._connectionIDPrefix +
-                    Data([UInt8].random(count: 16)).base64EncodedString()
+                    value: self._connectionIDPrefix
+                        + Data([UInt8].random(count: 16)).base64EncodedString()
                 )
             }
         }
@@ -219,9 +230,9 @@ extension OracleConnection {
         )
         private static func defaultUsername() -> String {
             #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
-            return "unknown"
+                return "unknown"
             #else
-            return ProcessInfo.processInfo.userName
+                return ProcessInfo.processInfo.userName
             #endif
         }
         internal let _terminalName = "unknown"
@@ -283,7 +294,7 @@ extension OracleConnection {
                 sourceRoute: false,
                 loadBalance: false,
                 retryCount: self.retryCount,
-                retryDelay: self.retryDelay, 
+                retryDelay: self.retryDelay,
                 tcpConnectTimeout: self.options.connectTimeout,
                 service: self.service,
                 sslServerDnMatch: self.serverNameForTLS != nil,
@@ -299,33 +310,34 @@ extension OracleConnection {
         internal func getConnectString() -> String {
             let description = self.getDescription()
             let cid = """
-            (PROGRAM=\(self.programName))\
-            (HOST=\(self.machineName))\
-            (USER=\(self.processUsername))
-            """
+                (PROGRAM=\(self.programName))\
+                (HOST=\(self.machineName))\
+                (USER=\(self.processUsername))
+                """
             return description.buildConnectString(cid)
         }
     }
 }
 
 // originally taken from NIOSSL
-private extension String {
-    func isIPAddress() -> Bool {
+extension String {
+    fileprivate func isIPAddress() -> Bool {
         // We need some scratch space to let inet_pton write into.
-        var ipv4Addr = in_addr(), ipv6Addr = in6_addr() 
+        var ipv4Addr = in_addr()
+        var ipv6Addr = in6_addr()
         // inet_pton() assumes the provided address buffer is non-NULL
 
-        /// N.B.: ``String/withCString(_:)`` is much more efficient than directly passing 
+        /// N.B.: ``String/withCString(_:)`` is much more efficient than directly passing
         /// `self`, especially twice.
         return self.withCString { ptr in
-            inet_pton(AF_INET, ptr, &ipv4Addr) == 1 || 
-            inet_pton(AF_INET6, ptr, &ipv6Addr) == 1
+            inet_pton(AF_INET, ptr, &ipv4Addr) == 1 || inet_pton(AF_INET6, ptr, &ipv6Addr) == 1
         }
     }
 }
 
 private func sanitize(value: String) -> String {
-    return value
+    return
+        value
         .replacingOccurrences(of: "(", with: "?")
         .replacingOccurrences(of: ")", with: "?")
         .replacingOccurrences(of: "=", with: "?")
@@ -341,7 +353,8 @@ public enum OracleAccessToken: Equatable {
 }
 
 public struct OracleAuthenticationMethod:
-    Equatable, CustomDebugStringConvertible {
+    Equatable, CustomDebugStringConvertible
+{
     var base: Base
 
     enum Base: Equatable {
@@ -371,10 +384,10 @@ public struct OracleAuthenticationMethod:
         switch self.base {
         case .usernamePassword(let username, _, let newPassword):
             return """
-            OracleAuthenticationVariant(username: \(String(reflecting: username)), \
-            password: ********, \
-            newPassword: \(newPassword != nil ? "********" : "nil"))
-            """
+                OracleAuthenticationVariant(username: \(String(reflecting: username)), \
+                password: ********, \
+                newPassword: \(newPassword != nil ? "********" : "nil"))
+                """
         case .token:
             return "OracleAuthenticationVariant(token: ********)"
         }

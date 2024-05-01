@@ -1,7 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
+
 import struct Foundation.Calendar
 import struct Foundation.Date
 import struct Foundation.DateComponents
@@ -70,8 +81,7 @@ extension Date: OracleDecodable {
                 throw OracleDecodingError.Code.missingData
             }
 
-            let year = (Int(firstSevenBytes[0]) - 100) * 100 +
-                Int(firstSevenBytes[1]) - 100
+            let year = (Int(firstSevenBytes[0]) - 100) * 100 + Int(firstSevenBytes[1]) - 100
             let month = Int(firstSevenBytes[2])
             let day = Int(firstSevenBytes[3])
             let hour = Int(firstSevenBytes[4]) - 1
@@ -82,15 +92,17 @@ extension Date: OracleDecodable {
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = TimeZone(secondsFromGMT: 0)!
 
-            if length >= 11, let value = buffer.readInteger(
-                endianness: .big, as: UInt32.self
-            ) {
-                let fsecond = Double(value) /
-                    pow(10, Double(String(value).count))
+            if length >= 11,
+                let value = buffer.readInteger(
+                    endianness: .big, as: UInt32.self
+                )
+            {
+                let fsecond = Double(value) / pow(10, Double(String(value).count))
                 nanosecond = Int(fsecond * 1_000_000_000)
             }
 
-            let (byte11, byte12) = buffer
+            let (byte11, byte12) =
+                buffer
                 .readMultipleIntegers(as: (UInt8, UInt8).self) ?? (0, 0)
 
             if length > 11 && byte11 != 0 && byte12 != 0 {
@@ -102,9 +114,11 @@ extension Date: OracleDecodable {
                 let tzHour = Int(byte11 - Constants.TZ_HOUR_OFFSET)
                 let tzMinute = Int(byte12 - Constants.TZ_MINUTE_OFFSET)
                 if tzHour != 0 || tzMinute != 0 {
-                    guard let timeZone = TimeZone(
-                        secondsFromGMT: tzHour * 3600 + tzMinute * 60
-                    ) else {
+                    guard
+                        let timeZone = TimeZone(
+                            secondsFromGMT: tzHour * 3600 + tzMinute * 60
+                        )
+                    else {
                         throw OracleDecodingError.Code.failure
                     }
                     calendar.timeZone = timeZone
@@ -113,7 +127,7 @@ extension Date: OracleDecodable {
 
             let components = DateComponents(
                 calendar: calendar,
-                timeZone: TimeZone(secondsFromGMT: 0)!, // dates are always UTC
+                timeZone: TimeZone(secondsFromGMT: 0)!,  // dates are always UTC
                 year: year,
                 month: month,
                 day: day,

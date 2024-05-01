@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -48,7 +58,7 @@ struct ExtendedQueryStateMachine {
         case forwardStreamComplete([DataRow], cursorID: UInt16)
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
         case forwardStreamError(
-            OracleSQLError, 
+            OracleSQLError,
             read: Bool,
             cursorID: UInt16? = nil,
             clientCancelled: Bool = false
@@ -97,10 +107,10 @@ struct ExtendedQueryStateMachine {
             self.isCancelled = true
             switch context.statement {
             case .ddl(let promise),
-                 .dml(let promise),
-                 .plsql(let promise),
-                 .query(let promise),
-                 .plain(let promise):
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise),
+                .plain(let promise):
                 return .failQuery(promise, with: .queryCancelled)
             }
 
@@ -136,7 +146,7 @@ struct ExtendedQueryStateMachine {
             preconditionFailure("Describe info should be the initial response")
         }
 
-        self.avoidingStateMachineCoW { state in
+        self.avoidingStateMachineCoWVoid { state in
             state = .describeInfoReceived(context, describeInfo)
         }
 
@@ -148,16 +158,16 @@ struct ExtendedQueryStateMachine {
     ) -> Action {
         switch self.state {
         case .describeInfoReceived(let context, let describeInfo):
-            self.avoidingStateMachineCoW { state in
+            self.avoidingStateMachineCoWVoid { state in
                 state = .streaming(context, describeInfo, rowHeader, .init())
             }
 
             switch context.statement {
             case .ddl(let promise),
-                 .dml(let promise),
-                 .plsql(let promise),
-                 .query(let promise),
-                 .plain(let promise):
+                .dml(let promise),
+                .plsql(let promise),
+                .query(let promise),
+                .plain(let promise):
                 return .succeedQuery(
                     promise,
                     QueryResult(
@@ -171,7 +181,7 @@ struct ExtendedQueryStateMachine {
             let context, let describeInfo, let prevRowHeader, let streamState
         ):
             if prevRowHeader.bitVector == nil {
-                self.avoidingStateMachineCoW { state in
+                self.avoidingStateMachineCoWVoid { state in
                     state = .streaming(
                         context, describeInfo, rowHeader, streamState
                     )
@@ -295,7 +305,7 @@ struct ExtendedQueryStateMachine {
             let context, let describeInfo, var rowHeader, let streamState
         ):
             rowHeader.bitVector = bitVector.bitVector
-            self.avoidingStateMachineCoW { state in
+            self.avoidingStateMachineCoWVoid { state in
                 state = .streaming(
                     context, describeInfo, rowHeader, streamState
                 )
@@ -312,37 +322,36 @@ struct ExtendedQueryStateMachine {
     ) -> Action {
 
         let action: Action
-        if
-            Constants.TNS_ERR_NO_DATA_FOUND == error.number ||
-            Constants.TNS_ERR_ARRAY_DML_ERRORS == error.number
+        if Constants.TNS_ERR_NO_DATA_FOUND == error.number
+            || Constants.TNS_ERR_ARRAY_DML_ERRORS == error.number
         {
             switch self.state {
             case .commandComplete, .error, .drain:
-                return .wait // stream has already finished
+                return .wait  // stream has already finished
             case .initialized(let context),
-                 .describeInfoReceived(let context, _):
+                .describeInfoReceived(let context, _):
                 context.cursorID = error.cursorID ?? context.cursorID
 
-                self.avoidingStateMachineCoW { state in
+                self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
                 }
 
                 switch context.statement {
                 case .query(let promise),
-                     .plsql(let promise),
-                     .dml(let promise),
-                     .ddl(let promise),
-                     .plain(let promise):
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .plain(let promise):
                     action = .succeedQuery(
                         promise, .init(value: .noRows, logger: context.logger)
-                    ) // empty response
+                    )  // empty response
                 }
 
             case .streaming(let context, _, _, var demandStateMachine),
                 .streamingAndWaiting(let context, _, _, var demandStateMachine, _):
                 context.cursorID = error.cursorID ?? context.cursorID
 
-                self.avoidingStateMachineCoW { state in
+                self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
                 }
 
@@ -355,8 +364,7 @@ struct ExtendedQueryStateMachine {
         } else if self.isCancelled && error.number == 1013 {
             self.state = .commandComplete
             action = .forwardCancelComplete
-        } else if 
-            error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST,
+        } else if error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST,
             let cursor = error.cursorID
         {
             switch self.state {
@@ -365,10 +373,10 @@ struct ExtendedQueryStateMachine {
 
                 switch context.statement {
                 case .query(let promise),
-                     .plsql(let promise),
-                     .dml(let promise),
-                     .ddl(let promise),
-                     .plain(let promise):
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .plain(let promise):
                     action = .failQuery(promise, with: .server(error))
                 }
             default:
@@ -377,11 +385,10 @@ struct ExtendedQueryStateMachine {
                 )
             }
 
-            self.avoidingStateMachineCoW { state in
+            self.avoidingStateMachineCoWVoid { state in
                 state = .error(.server(error))
             }
-        } else if
-            let cursor = error.cursorID,
+        } else if let cursor = error.cursorID,
             error.number != 0 && cursor != 0
         {
             let exception = getExceptionClass(for: Int32(error.number))
@@ -391,10 +398,10 @@ struct ExtendedQueryStateMachine {
 
                 switch context.statement {
                 case .query(let promise),
-                     .plsql(let promise),
-                     .dml(let promise),
-                     .ddl(let promise),
-                     .plain(let promise):
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .plain(let promise):
                     action = .failQuery(promise, with: .server(error))
                 }
             default:
@@ -409,14 +416,14 @@ struct ExtendedQueryStateMachine {
                 }
             }
 
-            self.avoidingStateMachineCoW { state in
+            self.avoidingStateMachineCoWVoid { state in
                 state = .error(.server(error))
             }
         } else {
             switch self.state {
             case .drain,
-                 .commandComplete,
-                 .error:
+                .commandComplete,
+                .error:
                 preconditionFailure("This is impossible...")
 
             case .initialized(let context):
@@ -425,12 +432,13 @@ struct ExtendedQueryStateMachine {
                 }
                 switch context.statement {
                 case .query(let promise),
-                     .plsql(let promise),
-                     .dml(let promise),
-                     .ddl(let promise),
-                     .plain(let promise):
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .plain(let promise):
                     action = .succeedQuery(
-                        promise, QueryResult(
+                        promise,
+                        QueryResult(
                             value: .noRows, logger: context.logger
                         )
                     )
@@ -449,7 +457,7 @@ struct ExtendedQueryStateMachine {
 
                     if !context.options.fetchLOBs {
                         var describeInfo = describeInfo
-                        self.avoidingStateMachineCoW { state -> Void in
+                        self.avoidingStateMachineCoWVoid { state in
                             describeInfo.columns = describeInfo.columns.map {
                                 var col = $0
                                 if col.dataType == .blob {
@@ -464,8 +472,8 @@ struct ExtendedQueryStateMachine {
                                         col.dataTypeSize =
                                             UInt32(col.dataType.defaultSize)
                                     }
-                                    col.bufferSize = col.dataTypeSize *
-                                        UInt32(col.dataType.bufferSizeFactor)
+                                    col.bufferSize =
+                                        col.dataTypeSize * UInt32(col.dataType.bufferSizeFactor)
                                 } else {
                                     col.bufferSize =
                                         UInt32(col.dataType.bufferSizeFactor)
@@ -484,7 +492,7 @@ struct ExtendedQueryStateMachine {
                 }
 
             case .streaming(let extendedQueryContext, _, _, _),
-                 .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
+                .streamingAndWaiting(let extendedQueryContext, _, _, _, _):
                 // no error actually happened, we need more rows
                 if let cursorID = error.cursorID {
                     extendedQueryContext.cursorID = cursorID
@@ -520,7 +528,7 @@ struct ExtendedQueryStateMachine {
             var partial
         ):
             partial.writeImmutableBuffer(buffer)
-            self.avoidingStateMachineCoW { state in
+            self.avoidingStateMachineCoWVoid { state in
                 state = .streaming(
                     extendedQueryContext, describeInfo, rowHeader, streamState
                 )
@@ -543,21 +551,22 @@ struct ExtendedQueryStateMachine {
         switch self.state {
         case .initialized(let context):
             guard context.query.binds.count == vector.bindMetadata.count else {
-                preconditionFailure("""
-                mismatch in binds - sent: \(context.query.binds.count), \
-                received: \(vector.bindMetadata.count)
-                """)
+                preconditionFailure(
+                    """
+                    mismatch in binds - sent: \(context.query.binds.count), \
+                    received: \(vector.bindMetadata.count)
+                    """)
             }
 
             // we won't change the state
             return .wait
 
         case .describeInfoReceived,
-             .streaming,
-             .streamingAndWaiting,
-             .drain,
-             .commandComplete,
-             .error:
+            .streaming,
+            .streamingAndWaiting,
+            .drain,
+            .commandComplete,
+            .error:
             return self.errorHappened(
                 .unexpectedBackendMessage(.ioVector(vector))
             )
@@ -577,11 +586,11 @@ struct ExtendedQueryStateMachine {
             return .sendFlushOutBinds
 
         case .describeInfoReceived,
-                .streaming,
-                .streamingAndWaiting,
-                .drain,
-                .commandComplete,
-                .error:
+            .streaming,
+            .streamingAndWaiting,
+            .drain,
+            .commandComplete,
+            .error:
             return self.errorHappened(
                 .unexpectedBackendMessage(.flushOutBinds)
             )
@@ -596,13 +605,13 @@ struct ExtendedQueryStateMachine {
     mutating func requestFetch() -> Action {
         switch self.state {
         case .initialized(let context),
-             .describeInfoReceived(let context, _),
-             .streaming(let context, _, _, _),
-             .streamingAndWaiting(let context, _, _, _, _):
+            .describeInfoReceived(let context, _),
+            .streaming(let context, _, _, _),
+            .streamingAndWaiting(let context, _, _, _, _):
             return .sendFetch(context)
         case .drain,
-             .commandComplete,
-             .error:
+            .commandComplete,
+            .error:
             preconditionFailure(
                 "We can't send a fetch if the query completed already"
             )
@@ -641,10 +650,11 @@ struct ExtendedQueryStateMachine {
             )
 
         case .commandComplete, .error:
-            preconditionFailure("""
-            The stream is already closed or in a failure state; \
-            rows can not be consumed at this time.
-            """)
+            preconditionFailure(
+                """
+                The stream is already closed or in a failure state; \
+                rows can not be consumed at this time.
+                """)
 
         case .modifying:
             preconditionFailure("Invalid state: \(self.state)")
@@ -656,10 +666,10 @@ struct ExtendedQueryStateMachine {
     mutating func channelReadComplete() -> Action {
         switch self.state {
         case .initialized,
-             .describeInfoReceived,
-             .drain,
-             .commandComplete,
-             .error:
+            .describeInfoReceived,
+            .drain,
+            .commandComplete,
+            .error:
             return .wait
 
         case .streaming(
@@ -737,10 +747,10 @@ struct ExtendedQueryStateMachine {
                 }
             }
         case .initialized,
-             .commandComplete,
-             .drain,
-             .error,
-             .describeInfoReceived:
+            .commandComplete,
+            .drain,
+            .error,
+            .describeInfoReceived:
             // we already have the complete stream received, now we are waiting
             // for a `readyForQuery` package. To receive this we need to read.
             return .read
@@ -856,7 +866,7 @@ struct ExtendedQueryStateMachine {
                 ) {
                 case .row(let row):
                     demandStateMachine.receivedRow(row)
-                    self.avoidingStateMachineCoW { state in
+                    self.avoidingStateMachineCoWVoid { state in
                         state = .streaming(
                             context, describeInfo, rowHeader, demandStateMachine
                         )
@@ -869,7 +879,7 @@ struct ExtendedQueryStateMachine {
                     )
                     partial.writeImmutableBuffer(buffer.slice())
 
-                    self.avoidingStateMachineCoW { state in
+                    self.avoidingStateMachineCoWVoid { state in
                         state = .streamingAndWaiting(
                             context,
                             describeInfo,
@@ -897,16 +907,16 @@ struct ExtendedQueryStateMachine {
     private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
         switch self.state {
         case .initialized(let context),
-             .describeInfoReceived(let context, _):
+            .describeInfoReceived(let context, _):
             if self.isCancelled {
                 return .evaluateErrorAtConnectionLevel(error)
             } else {
                 switch context.statement {
                 case .ddl(let promise),
-                     .dml(let promise),
-                     .plsql(let promise),
-                     .query(let promise),
-                     .plain(let promise):
+                    .dml(let promise),
+                    .plsql(let promise),
+                    .query(let promise),
+                    .plain(let promise):
                     self.state = .error(error)
                     return .failQuery(promise, with: error)
                 }
@@ -927,11 +937,12 @@ struct ExtendedQueryStateMachine {
             }
 
         case .commandComplete, .error:
-            preconditionFailure("""
-            This state must not be reached. If the query `.isComplete`, the 
-            ConnectionStateMachine must not send any further events to the
-            substate machine.
-            """)
+            preconditionFailure(
+                """
+                This state must not be reached. If the query `.isComplete`, the 
+                ConnectionStateMachine must not send any further events to the
+                substate machine.
+                """)
 
         case .modifying:
             preconditionFailure("invalid state")
@@ -950,23 +961,26 @@ struct ExtendedQueryStateMachine {
     }
 
     private func processBindData(
-        from buffer: inout ByteBuffer, 
+        from buffer: inout ByteBuffer,
         outBind: OracleRef,
         capabilities: Capabilities
     ) throws {
         let metadata = outBind.metadata.withLockedValue { $0 }
-        guard var columnData = try self.processColumnData(
-            from: &buffer,
-            oracleType: metadata.dataType._oracleType,
-            csfrm: metadata.dataType.csfrm,
-            bufferSize: metadata.bufferSize,
-            capabilities: capabilities
-        ) else {
-            preconditionFailure("""
-            unhandled need more data in bind processing: please file a issue \
-            on https://github.com/lovetodream/oracle-nio/issues with steps to \
-            reproduce the crash
-            """)
+        guard
+            var columnData = try self.processColumnData(
+                from: &buffer,
+                oracleType: metadata.dataType._oracleType,
+                csfrm: metadata.dataType.csfrm,
+                bufferSize: metadata.bufferSize,
+                capabilities: capabilities
+            )
+        else {
+            preconditionFailure(
+                """
+                unhandled need more data in bind processing: please file a issue \
+                on https://github.com/lovetodream/oracle-nio/issues with steps to \
+                reproduce the crash
+                """)
         }
 
         let actualBytesCount = buffer.readSB4() ?? 0
@@ -995,7 +1009,7 @@ struct ExtendedQueryStateMachine {
     ) throws -> ByteBuffer? {
         let columnValue: ByteBuffer
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
-            columnValue = ByteBuffer(bytes: [0]) // NULL indicator
+            columnValue = ByteBuffer(bytes: [0])  // NULL indicator
             return columnValue
         }
 
@@ -1015,7 +1029,7 @@ struct ExtendedQueryStateMachine {
             case .some(let slice):
                 columnValue = slice
             case .none:
-                return nil // need more data
+                return nil  // need more data
             }
         case .clob, .blob:
 
@@ -1033,7 +1047,7 @@ struct ExtendedQueryStateMachine {
                 tempBuffer.encode(into: &columnValue, context: .default)
                 return columnValue
             } else {
-                columnValue = .init(bytes: [0]) // empty buffer
+                columnValue = .init(bytes: [0])  // empty buffer
             }
         case .json:
             // TODO: OSON
@@ -1044,8 +1058,8 @@ struct ExtendedQueryStateMachine {
         }
 
         if [.long, .longRAW].contains(oracleType) {
-            buffer.skipSB4() // null indicator
-            buffer.skipUB4() // return code
+            buffer.skipSB4()  // null indicator
+            buffer.skipUB4()  // return code
         }
 
         return columnValue
@@ -1085,7 +1099,7 @@ struct ExtendedQueryStateMachine {
         let data = DataRow(
             columnCount: describeInfo.columns.count, bytes: out
         )
-        rowHeader.bitVector = nil // reset bit vector after usage
+        rowHeader.bitVector = nil  // reset bit vector after usage
 
         return .row(data)
     }
@@ -1093,10 +1107,10 @@ struct ExtendedQueryStateMachine {
     var isComplete: Bool {
         switch self.state {
         case .initialized,
-             .describeInfoReceived,
-             .streaming,
-             .streamingAndWaiting,
-             .drain:
+            .describeInfoReceived,
+            .streaming,
+            .streamingAndWaiting,
+            .drain:
             return false
         case .commandComplete, .error:
             return true
@@ -1129,7 +1143,7 @@ extension ExtendedQueryStateMachine {
         return body(&self.state)
     }
 
-    private mutating func avoidingStateMachineCoW(
+    private mutating func avoidingStateMachineCoWVoid(
         _ body: (inout State) -> Void
     ) {
         self.state = .modifying

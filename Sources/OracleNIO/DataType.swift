@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 struct DataType: Sendable, Hashable {
     var dataType: _TNSDataType
@@ -326,6 +336,6 @@ struct DataType: Sendable, Hashable {
         .init(dataType: .chunkinfo, convDataType: .chunkinfo, representation: .universal),
         .init(dataType: .uds, convDataType: .uds, representation: .universal),
         .init(dataType: .tnp, convDataType: .tnp, representation: .universal),
-        .init(dataType: .undefined, convDataType: .undefined, representation: .native)
+        .init(dataType: .undefined, convDataType: .undefined, representation: .native),
     ]
 }

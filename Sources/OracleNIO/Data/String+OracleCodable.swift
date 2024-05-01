@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -37,7 +47,7 @@ extension String: OracleDecodable {
         from buffer: inout ByteBuffer?,
         type: OracleDataType,
         context: OracleDecodingContext<JSONDecoder>
-    ) throws -> String where JSONDecoder : OracleJSONDecoder {
+    ) throws -> String where JSONDecoder: OracleJSONDecoder {
         // because oracle doesn't differentiate between null and empty strings
         // we have to use the internal imp
         guard var buffer else {
@@ -45,7 +55,7 @@ extension String: OracleDecodable {
         }
         return try self.init(from: &buffer, type: type, context: context)
     }
-    
+
     public init<JSONDecoder: OracleJSONDecoder>(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

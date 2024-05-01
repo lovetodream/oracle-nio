@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -21,15 +31,17 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
                 .buffer(capacity: maxSize)
             temporaryBuffer.moveWriterIndex(forwardBy: self.headerSize)
 
-            let packetType = buffer
+            let packetType =
+                buffer
                 .getInteger(at: MemoryLayout<UInt32>.size, as: UInt8.self)!
-            let packetFlags = buffer
+            let packetFlags =
+                buffer
                 .getInteger(
                     at: MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
                     as: UInt8.self
                 ) ?? 0
 
-            // ignore the header, because we need to create a new one for each 
+            // ignore the header, because we need to create a new one for each
             // slice with the size of the slice.
             buffer.moveReaderIndex(to: self.headerSize)
 
@@ -42,8 +54,7 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
                 let final: Bool
                 if buffer.readableBytes > maxContentSize {
                     slice = buffer.readSlice(
-                        length: first ? 
-                            maxContentSize + dataFlagsSize : maxContentSize
+                        length: first ? maxContentSize + dataFlagsSize : maxContentSize
                     )!
                     final = false
                 } else {

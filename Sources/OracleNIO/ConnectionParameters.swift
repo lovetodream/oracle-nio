@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -12,7 +22,7 @@ struct Address: Equatable {
         let parts = [
             "(PROTOCOL=\(self.protocol.description))",
             "(HOST=\(self.host))",
-            "(PORT=\(self.port))"
+            "(PORT=\(self.port))",
         ]
         return "(ADDRESS=\(parts.joined()))"
     }
@@ -49,7 +59,7 @@ struct Description: Equatable {
     var sslServerCertDn: String?
     var walletLocation: String?
     var purity: Purity
-    var serverType: String? // when using drcp: "pooled"
+    var serverType: String?  // when using drcp: "pooled"
     var cclass: String?
 
     private func buildDurationString(_ value: TimeAmount) -> String {

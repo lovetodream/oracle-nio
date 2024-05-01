@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -41,13 +51,13 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
                 offset: offset
             )
             offset = convertBase64(
-                buffer: &buffer, 
+                buffer: &buffer,
                 value: Int(blockNumber),
                 size: 6,
                 offset: offset
             )
             offset = convertBase64(
-                buffer: &buffer, 
+                buffer: &buffer,
                 value: Int(slotNumber),
                 size: 3,
                 offset: offset
@@ -65,7 +75,7 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
     ) -> Int {
         var value = value
         for i in 0..<size {
-            buffer[offset + size - i - 1] = 
+            buffer[offset + size - i - 1] =
                 Constants.TNS_BASE64_ALPHABET_ARRAY[value & 0x3f]
             value = value >> 6
         }
@@ -96,7 +106,7 @@ extension RowID: OracleDecodable {
             throw OracleDecodingError.Code.typeMismatch
         }
     }
-    
+
     internal init(from buffer: inout ByteBuffer) {
         try! self.init(from: &buffer, type: .rowID, context: .default)
     }

@@ -1,7 +1,18 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
+
 import struct Foundation.Date
 
 // TODO: needs refactoring
@@ -17,7 +28,10 @@ struct OSONDecoder {
 
         // Parse root header
         guard let header = buffer.readBytes(length: 3) else { return nil }
-        if header[0] != Constants.TNS_JSON_MAGIC_BYTE_1 || header[1] != Constants.TNS_JSON_MAGIC_BYTE_2 ||  header[2] != Constants.TNS_JSON_MAGIC_BYTE_3 {
+        if header[0] != Constants.TNS_JSON_MAGIC_BYTE_1
+            || header[1] != Constants.TNS_JSON_MAGIC_BYTE_2
+            || header[2] != Constants.TNS_JSON_MAGIC_BYTE_3
+        {
             throw OracleError.ErrorType.unexpectedData
         }
         let version = try buffer.throwingReadInteger(as: UInt8.self)
@@ -115,7 +129,7 @@ struct OSONDecoder {
         return try decodeNode()
     }
 
-    private mutating func decodeNode() throws -> Any? { // TODO: better return type
+    private mutating func decodeNode() throws -> Any? {  // TODO: better return type
         let nodeType = try buffer.throwingReadInteger(as: UInt8.self)
         if nodeType & 0x80 != 0 {
             return try decodeContainerNode(nodeType: nodeType)

@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -8,7 +18,7 @@ import NIOCore
 /// Its element type is ``OracleCell``.
 ///
 /// - Warning: Please note that random access to cells in a ``OracleRow`` has O(n) time complexity.
-///            If you require random access to cells in O(1) create a new 
+///            If you require random access to cells in O(1) create a new
 ///            ``OracleRandomAccessRow`` with the given row and access it instead.
 public struct OracleRow: Sendable {
     @usableFromInline
@@ -17,21 +27,11 @@ public struct OracleRow: Sendable {
     let data: DataRow
     @usableFromInline
     let columns: [DescribeInfo.Column]
-
-    init(
-        lookupTable: [String: Int],
-        data: DataRow,
-        columns: [DescribeInfo.Column]
-    ) {
-        self.lookupTable = lookupTable
-        self.data = data
-        self.columns = columns
-    }
 }
 
 extension OracleRow: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        // we don't need to compare the lookup table here, 
+        // we don't need to compare the lookup table here,
         // as the looup table is only derived from the column description.
         lhs.data == rhs.data && lhs.columns == rhs.columns
     }

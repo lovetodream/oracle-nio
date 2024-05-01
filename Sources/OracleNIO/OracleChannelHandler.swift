@@ -1,10 +1,21 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import Logging
 import NIOCore
 import NIOSSL
 import NIOTLS
+
 import class Foundation.ProcessInfo
 
 final class OracleChannelHandler: ChannelDuplexHandler {
@@ -26,7 +37,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private var encoder: OracleFrontendMessageEncoder!
     private let configuration: OracleConnection.Configuration
     private let currentSSLHandler: NIOSSLClientHandler?
-    
+
     private let postprocessor: OracleFrontendMessagePostProcessor
     private var capabilities: Capabilities {
         didSet {
@@ -39,7 +50,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     let cleanupContext = CleanupContext()
 
     init(
-        configuration: OracleConnection.Configuration, 
+        configuration: OracleConnection.Configuration,
         logger: Logger,
         sslHandler: NIOSSLClientHandler?,
         postprocessor: OracleFrontendMessagePostProcessor
@@ -52,12 +63,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         var capabilities = Capabilities()
         #if os(Windows)
-        capabilities.supportsOOB = false
+            capabilities.supportsOOB = false
         #else
-        if !configuration.disableOOB ||
-            configuration._protocol == .tcps {
-            capabilities.supportsOOB = true
-        }
+            if !configuration.disableOOB || configuration._protocol == .tcps {
+                capabilities.supportsOOB = true
+            }
         #endif
         self.capabilities = capabilities
     }
@@ -95,14 +105,17 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
-        self.logger.debug("Channel error caught.", metadata: [
-            .error: "\(error)"
-        ])
-        let action = if let error = error as? OracleSQLError {
-            self.state.errorHappened(error)
-        } else {
-            self.state.errorHappened(.connectionError(underlying: error))
-        }
+        self.logger.debug(
+            "Channel error caught.",
+            metadata: [
+                .error: "\(error)"
+            ])
+        let action =
+            if let error = error as? OracleSQLError {
+                self.state.errorHappened(error)
+            } else {
+                self.state.errorHappened(.connectionError(underlying: error))
+            }
         self.run(action, with: context)
     }
 
@@ -120,9 +133,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         flags: UInt8?,
         context: ChannelHandlerContext
     ) {
-        self.logger.trace("Backend message received", metadata: [
-            .message: "\(message)"
-        ])
+        self.logger.trace(
+            "Backend message received",
+            metadata: [
+                .message: "\(message)"
+            ])
         self.decoderContext.performingChunkedRead = false
         let action: ConnectionStateMachine.ConnectionAction
 
@@ -176,21 +191,23 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .serverSidePiggyback(let piggybacks):
             // This should only happen if one is using `LOB`s.
             // These are not implemented as of now, so this _should_ never happen.
-            fatalError("""
-            Received server side piggybacks (\(piggybacks)), this is not \
-            implemented and should never happen. Please open an issue here: \
-            https://github.com/lovetodream/oracle-nio/issues with a \
-            reproduction of the crash.
-            """)
+            fatalError(
+                """
+                Received server side piggybacks (\(piggybacks)), this is not \
+                implemented and should never happen. Please open an issue here: \
+                https://github.com/lovetodream/oracle-nio/issues with a \
+                reproduction of the crash.
+                """)
         case .lobData(let lobData):
             // This should only happen if one is using `LOB`s.
             // These are not implemented as of now, so this _should_ never happen.
-            fatalError("""
-            Received LOB data (\(lobData)), this is not implemented and should \
-            never happen. Please open an issue here: \
-            https://github.com/lovetodream/oracle-nio/issues with a \
-            reproduction of the crash.
-            """)
+            fatalError(
+                """
+                Received LOB data (\(lobData)), this is not implemented and should \
+                never happen. Please open an issue here: \
+                https://github.com/lovetodream/oracle-nio/issues with a \
+                reproduction of the crash.
+                """)
 
         case .chunk(let buffer):
             action = self.state.chunkReceived(
@@ -208,9 +225,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
-        self.logger.trace("User inbound event received", metadata: [
-            .userEvent: "\(event)"
-        ])
+        self.logger.trace(
+            "User inbound event received",
+            metadata: [
+                .userEvent: "\(event)"
+            ])
 
         switch event {
         case TLSUserEvent.handshakeCompleted:
@@ -267,9 +286,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         event: Any,
         promise: EventLoopPromise<Void>?
     ) {
-        self.logger.trace("User outbound event received", metadata: [
-            .userEvent: "\(event)"
-        ])
+        self.logger.trace(
+            "User outbound event received",
+            metadata: [
+                .userEvent: "\(event)"
+            ])
 
         switch event {
         default:
@@ -284,9 +305,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         flags: UInt8? = nil,
         with context: ChannelHandlerContext
     ) {
-        self.logger.trace("Run action", metadata: [
-            .connectionAction: "\(action)"
-        ])
+        self.logger.trace(
+            "Run action",
+            metadata: [
+                .connectionAction: "\(action)"
+            ])
 
         switch action {
         case .read:
@@ -321,7 +344,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 customTimezone: configuration.customTimezone,
                 mode: configuration.mode,
                 description: configuration.getDescription()
-           )
+            )
             let action = self.state
                 .provideAuthenticationContext(authContext, fastAuth: fastAuth)
             return self.run(action, with: context)
@@ -501,12 +524,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     private func sendConnect(
-        withFlags flags: UInt8?, 
+        withFlags flags: UInt8?,
         context: ChannelHandlerContext
     ) {
         // Renegotiate TLS if needed
-        if self.configuration._protocol == .tcps &&
-            (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0 {
+        if self.configuration._protocol == .tcps
+            && (flags ?? 0) & Constants.TNS_PACKET_FLAG_TLS_RENEG != 0
+        {
             let promise = context.eventLoop.makePromise(of: Void.self)
             let sslContext = self.configuration.tls.sslContext!
             let hostname = self.configuration.serverNameForTLS
@@ -525,11 +549,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                         )
                         pipeline.fireUserInboundEventTriggered(OracleSQLEvent.renegotiateTLS)
                     } catch {
-                        pipeline.fireErrorCaught(OracleSQLError.failedToAddSSLHandler(underlying: error))
+                        pipeline.fireErrorCaught(
+                            OracleSQLError.failedToAddSSLHandler(underlying: error))
                     }
 
                 case .failure(let error):
-                    pipeline.fireErrorCaught(OracleSQLError.failedToAddSSLHandler(underlying: error))
+                    pipeline.fireErrorCaught(
+                        OracleSQLError.failedToAddSSLHandler(underlying: error))
                 }
             }
 
@@ -580,11 +606,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         let (
             version, sessionID, serialNumber
         ) = getVersionInfo(from: parameters)
-        context.fireUserInboundEventTriggered(OracleSQLEvent.startupDone(
-            version: version,
-            sessionID: sessionID,
-            serialNumber: serialNumber
-        ))
+        context.fireUserInboundEventTriggered(
+            OracleSQLEvent.startupDone(
+                version: version,
+                sessionID: sessionID,
+                serialNumber: serialNumber
+            ))
         context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
     }
 
@@ -594,7 +621,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         context: ChannelHandlerContext
     ) {
         self.encoder.execute(
-            queryContext: queryContext, 
+            queryContext: queryContext,
             cleanupContext: self.cleanupContext,
             describeInfo: describeInfo
         )
@@ -672,7 +699,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         )
 
         // 1. fail all tasks
-        cleanup.tasks.forEach { task in
+        for task in cleanup.tasks {
             task.failWithError(cleanup.error)
         }
 
@@ -732,10 +759,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             preconditionFailure()
         }
 
-        if
-            self.capabilities.ttcFieldVersion >=
-                Constants.TNS_CCAP_FIELD_VERSION_18_1_EXT_1
-        {
+        if self.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_18_1_EXT_1 {
             return OracleVersion(
                 majorDatabaseReleaseNumber: (fullVersionNumber >> 24) & 0xff,
                 databaseMaintenanceReleaseNumber: (fullVersionNumber >> 16) & 0xff,
@@ -760,10 +784,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         if let decoder = self.decoder {
             context.pipeline.removeHandler(decoder, promise: nil)
         }
-        self.decoder = ByteToMessageHandler(OracleBackendMessageDecoder(
-            capabilities: self.capabilities,
-            context: self.decoderContext
-        ))
+        self.decoder = ByteToMessageHandler(
+            OracleBackendMessageDecoder(
+                capabilities: self.capabilities,
+                context: self.decoderContext
+            ))
         _ = context.pipeline.addHandler(
             self.decoder!,
             position: .before(self)
@@ -777,7 +802,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
 extension OracleChannelHandler: OracleRowsDataSource {
     func request(for stream: OracleRowStream) {
-        guard  self.rowStream === stream, let handlerContext else {
+        guard self.rowStream === stream, let handlerContext else {
             return
         }
         let action = self.state.requestQueryRows()

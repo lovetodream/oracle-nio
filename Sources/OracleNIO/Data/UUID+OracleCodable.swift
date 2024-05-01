@@ -1,8 +1,19 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import NIOCore
 
 import struct Foundation.UUID
-import NIOCore
 
 extension UUID: OracleDecodable {
     public init<JSONDecoder: OracleJSONDecoder>(
@@ -18,13 +29,13 @@ extension UUID: OracleDecodable {
             self = uuid
         case .varchar, .long:
             guard buffer.readableBytes == 36 else {
-               throw OracleDecodingError.Code.failure
-           }
+                throw OracleDecodingError.Code.failure
+            }
 
-           guard let uuid = buffer.readString(length: 36).flatMap({ UUID(uuidString: $0) }) else {
-               throw OracleDecodingError.Code.failure
-           }
-           self = uuid
+            guard let uuid = buffer.readString(length: 36).flatMap({ UUID(uuidString: $0) }) else {
+                throw OracleDecodingError.Code.failure
+            }
+            self = uuid
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

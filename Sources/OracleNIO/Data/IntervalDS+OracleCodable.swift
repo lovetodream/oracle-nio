@@ -1,5 +1,15 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 import NIOCore
 
@@ -40,11 +50,8 @@ extension IntervalDS: ExpressibleByFloatLiteral {
     }
 
     public var double: Double {
-        return (Double(days) * 24 * 60 * 60) +
-            (Double(hours) * 60 * 60) +
-            (Double(minutes) * 60) +
-            Double(seconds) +
-            (Double(fractionalSeconds) / 1000)
+        return (Double(days) * 24 * 60 * 60) + (Double(hours) * 60 * 60) + (Double(minutes) * 60)
+            + Double(seconds) + (Double(fractionalSeconds) / 1000)
     }
 }
 
@@ -79,18 +86,18 @@ extension IntervalDS: OracleDecodable {
         case .intervalDS:
             let durationMid = Constants.TNS_DURATION_MID
             let durationOffset = Constants.TNS_DURATION_OFFSET
-            let days = (
-                buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0
-            ) - durationMid
+            let days = (buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0) - durationMid
             buffer.moveReaderIndex(to: 7)
-            let fractionalSeconds = (
-                buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0
-            ) - durationMid
-            let hours = (buffer.getInteger(at: 4, as: UInt8.self) ?? 0)
+            let fractionalSeconds =
+                (buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0) - durationMid
+            let hours =
+                (buffer.getInteger(at: 4, as: UInt8.self) ?? 0)
                 - durationOffset
-            let minutes = (buffer.getInteger(at: 5, as: UInt8.self) ?? 0)
+            let minutes =
+                (buffer.getInteger(at: 5, as: UInt8.self) ?? 0)
                 - durationOffset
-            let seconds = (buffer.getInteger(at: 6, as: UInt8.self) ?? 0)
+            let seconds =
+                (buffer.getInteger(at: 6, as: UInt8.self) ?? 0)
                 - durationOffset
             self = .init(
                 days: Int(days),

@@ -1,11 +1,21 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-import XCTest
+import Logging
 import NIOCore
 import NIOPosix
-import Logging
 import OracleNIO
+import XCTest
 
 final class OracleNIOTests: XCTestCase {
 
@@ -168,8 +178,9 @@ final class OracleNIOTests: XCTestCase {
         for try await row in rows {
             func workaround() {
                 var number: Float?
-                XCTAssertNoThrow(number = try row.decode(
-                    Float.self, context: .default)
+                XCTAssertNoThrow(
+                    number = try row.decode(
+                        Float.self, context: .default)
                 )
                 received += 1
                 XCTAssertEqual(number, (Float(received) / 100))
@@ -365,8 +376,10 @@ final class OracleNIOTests: XCTestCase {
             "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
         )
         index = 0
-        for try await row in rowsFromConn2AfterCommit
-            .decode((Int, String).self) {
+        for try await row
+            in rowsFromConn2AfterCommit
+            .decode((Int, String).self)
+        {
             XCTAssertEqual(index + 1, row.0)
             index = row.0
             XCTAssertEqual(row.1, "hello!")
@@ -415,9 +428,10 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testSimpleBinaryLOBViaData() async throws {
-        let filePath = try XCTUnwrap(Bundle.module.path(
-            forResource: "Isaac_Newton-Opticks", ofType: "txt"
-        ))
+        let filePath = try XCTUnwrap(
+            Bundle.module.path(
+                forResource: "Isaac_Newton-Opticks", ofType: "txt"
+            ))
         let fileURL = URL(fileURLWithPath: filePath)
         let data = try Data(contentsOf: fileURL)
 
@@ -458,9 +472,10 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testSimpleBinaryLOBViaByteBuffer() async throws {
-        let filePath = try XCTUnwrap(Bundle.module.path(
-            forResource: "Isaac_Newton-Opticks", ofType: "txt"
-        ))
+        let filePath = try XCTUnwrap(
+            Bundle.module.path(
+                forResource: "Isaac_Newton-Opticks", ofType: "txt"
+            ))
         let fileURL = URL(fileURLWithPath: filePath)
         let data = try Data(contentsOf: fileURL)
         let buffer = ByteBuffer(data: data)
@@ -502,9 +517,10 @@ final class OracleNIOTests: XCTestCase {
     }
 
     func testSimpleBinaryLOBConcurrently5Times() async throws {
-        let filePath = try XCTUnwrap(Bundle.module.path(
-            forResource: "Isaac_Newton-Opticks", ofType: "txt"
-        ))
+        let filePath = try XCTUnwrap(
+            Bundle.module.path(
+                forResource: "Isaac_Newton-Opticks", ofType: "txt"
+            ))
         let fileURL = URL(fileURLWithPath: filePath)
         let data = try Data(contentsOf: fileURL)
         let buffer = ByteBuffer(data: data)
@@ -583,13 +599,14 @@ final class OracleNIOTests: XCTestCase {
         defer { XCTAssertNoThrow(try conn.syncClose()) }
 
         let input = 42
-        try await conn.query("""
-        declare
-        result number;
-        begin
-        result := \(OracleNumber(input)) + 69;
-        end;
-        """, logger: .oracleTest)
+        try await conn.query(
+            """
+            declare
+            result number;
+            begin
+            result := \(OracleNumber(input)) + 69;
+            end;
+            """, logger: .oracleTest)
     }
 
     func testSimpleMalformedPlSQL() async throws {
@@ -599,13 +616,14 @@ final class OracleNIOTests: XCTestCase {
 
             let input = 42
             // The following query misses a required semicolon in line 4
-            try await conn.query("""
-            declare
-            result number;
-            begin
-            result := \(OracleNumber(input)) + 69
-            end;
-            """, logger: .oracleTest)
+            try await conn.query(
+                """
+                declare
+                result number;
+                begin
+                result := \(OracleNumber(input)) + 69
+                end;
+                """, logger: .oracleTest)
         } catch let error as OracleSQLError {
             XCTAssertEqual(error.serverInfo?.number, 6550)
         }
@@ -615,7 +633,8 @@ final class OracleNIOTests: XCTestCase {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
 
-        let row = try await conn
+        let row =
+            try await conn
             .query("SELECT \("") FROM dual", logger: .oracleTest)
             .collect()
             .first
@@ -630,10 +649,11 @@ final class OracleNIOTests: XCTestCase {
         _ = try? await conn.query("CREATE TABLE test_out (value number)", logger: .oracleTest)
 
         let out = OracleRef(dataType: .number, isReturnBind: true)
-        try await conn.query("""
-        INSERT INTO test_out VALUES (\(OracleNumber(1)))
-        RETURNING value INTO \(out)
-        """, logger: .oracleTest)
+        try await conn.query(
+            """
+            INSERT INTO test_out VALUES (\(OracleNumber(1)))
+            RETURNING value INTO \(out)
+            """, logger: .oracleTest)
         XCTAssertEqual(try out.decode(), 1)
 
         _ = try? await conn.query("DROP TABLE test_out", logger: .oracleTest)
@@ -643,11 +663,12 @@ final class OracleNIOTests: XCTestCase {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         let out = OracleRef(dataType: .number)
-        try await conn.query("""
-        begin
-        \(out) := \(OracleNumber(8)) + \(OracleNumber(7));
-        end;
-        """, logger: .oracleTest)
+        try await conn.query(
+            """
+            begin
+            \(out) := \(OracleNumber(8)) + \(OracleNumber(7));
+            end;
+            """, logger: .oracleTest)
         XCTAssertEqual(try out.decode(), 15)
     }
 
@@ -656,12 +677,13 @@ final class OracleNIOTests: XCTestCase {
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         let out1 = OracleRef(dataType: .number)
         let out2 = OracleRef(dataType: .number)
-        try await conn.query("""
-        begin
-        \(out1) := \(OracleNumber(8)) + \(OracleNumber(7));
-        \(out2) := 15;
-        end;
-        """, logger: .oracleTest)
+        try await conn.query(
+            """
+            begin
+            \(out1) := \(OracleNumber(8)) + \(OracleNumber(7));
+            \(out2) := 15;
+            end;
+            """, logger: .oracleTest)
         XCTAssertEqual(try out1.decode(), 15)
         XCTAssertEqual(try out2.decode(), 15)
     }
@@ -670,11 +692,12 @@ final class OracleNIOTests: XCTestCase {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         let ref = OracleRef(OracleNumber(25))
-        try await conn.query("""
-        begin
-        \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
-        end;
-        """, logger: .oracleTest)
+        try await conn.query(
+            """
+            begin
+            \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
+            end;
+            """, logger: .oracleTest)
         XCTAssertEqual(try ref.decode(), 40)
     }
 
@@ -724,7 +747,7 @@ final class OracleNIOTests: XCTestCase {
     func testPingAndCloseDontCrash() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         Task {
-            try await conn.ping() // on different thread
+            try await conn.ping()  // on different thread
         }
         try await conn.close()
     }
@@ -734,40 +757,66 @@ final class OracleNIOTests: XCTestCase {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         let date = Date(timeIntervalSince1970: 1705920378.71279)
-        let dateFromStrFn = #"TO_TIMESTAMP_TZ('2024-01-22T10:46:18+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM')"#
+        let dateFromStrFn =
+            #"TO_TIMESTAMP_TZ('2024-01-22T10:46:18+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM')"#
         var bindings = OracleBindings(capacity: 1)
         bindings.append(date, context: .default, bindName: "1")
-        let dateQuery = OracleQuery(unsafeSQL: "SELECT :1, \(dateFromStrFn), TO_CHAR(\(dateFromStrFn), 'YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM') FROM DUAL", binds: bindings)
-        try await conn.query("ALTER SESSION SET TIME_ZONE = '+01:00'") // Europe/Berlin
-        let datesBerlin = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-        XCTAssertEqual(Calendar.current.compare(date, to: datesBerlin.0, toGranularity: .second), .orderedSame)
-        XCTAssertEqual(Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .second), .orderedSame)
-        XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesBerlin.2)), toGranularity: .second), .orderedSame)
+        let dateQuery = OracleQuery(
+            unsafeSQL:
+                "SELECT :1, \(dateFromStrFn), TO_CHAR(\(dateFromStrFn), 'YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM') FROM DUAL",
+            binds: bindings)
+        try await conn.query("ALTER SESSION SET TIME_ZONE = '+01:00'")  // Europe/Berlin
+        let datesBerlin = try await conn.query(dateQuery).collect().first!.decode(
+            (Date, Date, String).self)
+        XCTAssertEqual(
+            Calendar.current.compare(date, to: datesBerlin.0, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(
+            Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .second),
+            .orderedSame)
+        XCTAssertEqual(
+            Calendar.current.compare(
+                date, to: try XCTUnwrap(formatter.date(from: datesBerlin.2)), toGranularity: .second
+            ), .orderedSame)
 
-        try await conn.query("ALTER SESSION SET TIME_ZONE = '+00:00'") // UTC/GMT
-        let datesUTC = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-        XCTAssertEqual(Calendar.current.compare(date, to: datesUTC.0, toGranularity: .second), .orderedSame)
-        XCTAssertEqual(Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .second), .orderedSame)
-        XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesUTC.2)), toGranularity: .second), .orderedSame)
+        try await conn.query("ALTER SESSION SET TIME_ZONE = '+00:00'")  // UTC/GMT
+        let datesUTC = try await conn.query(dateQuery).collect().first!.decode(
+            (Date, Date, String).self)
+        XCTAssertEqual(
+            Calendar.current.compare(date, to: datesUTC.0, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(
+            Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .second),
+            .orderedSame)
+        XCTAssertEqual(
+            Calendar.current.compare(
+                date, to: try XCTUnwrap(formatter.date(from: datesUTC.2)), toGranularity: .second),
+            .orderedSame)
 
-        try await conn.query("ALTER SESSION SET TIME_ZONE = '-10:00'") // Hawaii
-        let datesHawaii = try await conn.query(dateQuery).collect().first!.decode((Date, Date, String).self)
-        XCTAssertEqual(Calendar.current.compare(date, to: datesHawaii.0, toGranularity: .second), .orderedSame)
-        XCTAssertEqual(Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .second), .orderedSame)
-        XCTAssertEqual(Calendar.current.compare(date, to: try XCTUnwrap(formatter.date(from: datesHawaii.2)), toGranularity: .second), .orderedSame)
+        try await conn.query("ALTER SESSION SET TIME_ZONE = '-10:00'")  // Hawaii
+        let datesHawaii = try await conn.query(dateQuery).collect().first!.decode(
+            (Date, Date, String).self)
+        XCTAssertEqual(
+            Calendar.current.compare(date, to: datesHawaii.0, toGranularity: .second), .orderedSame)
+        XCTAssertEqual(
+            Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .second),
+            .orderedSame)
+        XCTAssertEqual(
+            Calendar.current.compare(
+                date, to: try XCTUnwrap(formatter.date(from: datesHawaii.2)), toGranularity: .second
+            ), .orderedSame)
     }
 
     func testUnusedBindDoesNotCrash() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
         let bind = OracleRef(OracleNumber(0))
-        try await conn.query("""
-        BEGIN
-        IF (NULL IS NOT NULL) THEN
-        \(bind) := 1;
-        END IF;
-        END;
-        """)
+        try await conn.query(
+            """
+            BEGIN
+            IF (NULL IS NOT NULL) THEN
+            \(bind) := 1;
+            END IF;
+            END;
+            """)
         let result = try bind.decode(of: Int?.self)
         XCTAssertNil(result)
     }
@@ -789,11 +838,13 @@ final class OracleNIOTests: XCTestCase {
             let conn = try await OracleConnection.test(on: self.eventLoop)
             defer { XCTAssertNoThrow(try conn.syncClose()) }
             let bind = OracleRef(dataType: .number, isReturnBind: true)
-            try await conn.query("INSERT INTO my_non_existing_table(id) VALUES (1) RETURNING id INTO \(bind)", logger: .oracleTest)
+            try await conn.query(
+                "INSERT INTO my_non_existing_table(id) VALUES (1) RETURNING id INTO \(bind)",
+                logger: .oracleTest)
             _ = try bind.decode(of: Int?.self)
             XCTFail("Query on non existing table did not return an error, but it should have")
         } catch let error as OracleSQLError {
-            XCTAssertEqual(error.serverInfo?.number, 942) // Table or view doesn't exist
+            XCTAssertEqual(error.serverInfo?.number, 942)  // Table or view doesn't exist
         }
     }
 
@@ -807,40 +858,53 @@ final class OracleNIOTests: XCTestCase {
             _ = try? await conn.query("DROP TABLE my_constraint_table")
 
             // setup tables
-            try await conn.query("""
-            CREATE TABLE my_constraint_table (
-                id NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE \
-                9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE \
-                20 NOORDER NOCYCLE NOKEEP NOSCALE,
-                title VARCHAR2(20 BYTE)
+            try await conn.query(
+                """
+                CREATE TABLE my_constraint_table (
+                    id NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE \
+                    9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE \
+                    20 NOORDER NOCYCLE NOKEEP NOSCALE,
+                    title VARCHAR2(20 BYTE)
+                )
+                """)
+            try await conn.query(
+                "CREATE UNIQUE INDEX my_constraint_table_pk ON my_constraint_table(id)")
+            try await conn.query(
+                "ALTER TABLE my_constraint_table ADD CONSTRAINT my_constraint_table_pk PRIMARY KEY(id) USING INDEX ENABLE"
             )
-            """)
-            try await conn.query("CREATE UNIQUE INDEX my_constraint_table_pk ON my_constraint_table(id)")
-            try await conn.query("ALTER TABLE my_constraint_table ADD CONSTRAINT my_constraint_table_pk PRIMARY KEY(id) USING INDEX ENABLE")
 
-            try await conn.query("""
-            CREATE TABLE my_constrained_table (
-                id NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE \
-                9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE \
-                20 NOORDER NOCYCLE NOKEEP NOSCALE,
-                title VARCHAR2(20 BYTE),
-                my_type NUMBER
+            try await conn.query(
+                """
+                CREATE TABLE my_constrained_table (
+                    id NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE \
+                    9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE \
+                    20 NOORDER NOCYCLE NOKEEP NOSCALE,
+                    title VARCHAR2(20 BYTE),
+                    my_type NUMBER
+                )
+                """)
+            try await conn.query(
+                "CREATE UNIQUE INDEX my_constrained_table_pk ON my_constrained_table(id)")
+            try await conn.query(
+                "ALTER TABLE my_constrained_table ADD CONSTRAINT my_constrained_table_pk PRIMARY KEY(id) USING INDEX ENABLE"
             )
-            """)
-            try await conn.query("CREATE UNIQUE INDEX my_constrained_table_pk ON my_constrained_table(id)")
-            try await conn.query("ALTER TABLE my_constrained_table ADD CONSTRAINT my_constrained_table_pk PRIMARY KEY(id) USING INDEX ENABLE")
-            try await conn.query("ALTER TABLE my_constrained_table MODIFY (my_type NOT NULL ENABLE)")
-            try await conn.query("ALTER TABLE my_constrained_table ADD CONSTRAINT my_constrained_table_fk1 FOREIGN KEY (my_type) REFERENCES my_constraint_table(id) ENABLE")
+            try await conn.query(
+                "ALTER TABLE my_constrained_table MODIFY (my_type NOT NULL ENABLE)")
+            try await conn.query(
+                "ALTER TABLE my_constrained_table ADD CONSTRAINT my_constrained_table_fk1 FOREIGN KEY (my_type) REFERENCES my_constraint_table(id) ENABLE"
+            )
 
             var logger = Logger(label: "test")
             logger.logLevel = .trace
             // execute non-working query
             let bind = OracleRef(dataType: .number, isReturnBind: true)
-            try await conn.query("INSERT INTO my_constrained_table(title, my_type) VALUES ('hello', 2) RETURNING id INTO \(bind)", logger: logger)
+            try await conn.query(
+                "INSERT INTO my_constrained_table(title, my_type) VALUES ('hello', 2) RETURNING id INTO \(bind)",
+                logger: logger)
             _ = try bind.decode(of: Int?.self)
             XCTFail("Query with invalid constraint did not return an error, but it should have")
         } catch let error as OracleSQLError {
-            XCTAssertEqual(error.serverInfo?.number, 2291) // Constraint error
+            XCTAssertEqual(error.serverInfo?.number, 2291)  // Constraint error
         }
     }
 
@@ -876,10 +940,10 @@ final class OracleNIOTests: XCTestCase {
                 XCTAssert(duration > 8.0 && duration < 10.0)
             }
         }
-        try? await Task.sleep(for: .seconds(8)) // should be in the second attempt
+        try? await Task.sleep(for: .seconds(8))  // should be in the second attempt
         connect.cancel()
     }
- 
+
     func testPlainQueryWorks() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
@@ -947,22 +1011,23 @@ final class OracleNIOTests: XCTestCase {
         defer { XCTAssertNoThrow(try conn.syncClose()) }
 
         let createProcedureQuery: OracleQuery = """
-        CREATE OR REPLACE PROCEDURE get_length (value VARCHAR2, value_length OUT BINARY_INTEGER) AS
-        BEGIN
-            SELECT length(value) INTO value_length FROM dual;
-        END;
-        """
+            CREATE OR REPLACE PROCEDURE get_length (value VARCHAR2, value_length OUT BINARY_INTEGER) AS
+            BEGIN
+                SELECT length(value) INTO value_length FROM dual;
+            END;
+            """
         try await conn.query(createProcedureQuery)
 
         let myValue = "Hello, there!"
         let myCountBind = OracleRef(0)
-        try await conn.query("""
-        BEGIN
-            get_length(\(myValue), \(myCountBind));
-        END;
-        """)
+        try await conn.query(
+            """
+            BEGIN
+                get_length(\(myValue), \(myCountBind));
+            END;
+            """)
         let myCount = try myCountBind.decode(of: Int.self)
-        print(myCount) // 13
+        print(myCount)  // 13
         XCTAssertEqual(myCount, 13)
     }
 

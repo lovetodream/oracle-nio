@@ -1,17 +1,27 @@
-// Copyright 2024 Timo Zacherl
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
 // SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 /// Oracle authentication modes.
 public enum AuthenticationMode: UInt32, Sendable, CustomStringConvertible {
     case `default` = 0
-    case prelim = 0x00000008
-    case sysASM = 0x00008000
-    case sysBKP = 0x00020000
-    case sysDBA = 0x00000002
-    case sysDGD = 0x00040000
-    case sysKMT = 0x00080000
-    case sysOPER = 0x00000004
-    case sysRAC = 0x00100000
+    case prelim = 0x0000_0008
+    case sysASM = 0x0000_8000
+    case sysBKP = 0x0002_0000
+    case sysDBA = 0x0000_0002
+    case sysDGD = 0x0004_0000
+    case sysKMT = 0x0008_0000
+    case sysOPER = 0x0000_0004
+    case sysRAC = 0x0010_0000
 
     public var description: String {
         switch self {

@@ -385,11 +385,16 @@ struct ConnectionStateMachine {
     }
 
     mutating func protocolReceived() -> ConnectionAction {
-        guard case .protocolMessageSent = state else {
+        switch self.state {
+        case .protocolMessageSent:
+            self.state = .dataTypesMessageSent
+            return .sendDataTypes
+        case .authenticating(let authState):
+            let action = authState.protocolReceived()
+            return modify(with: action)
+        default:
             preconditionFailure("Invalid state: \(self.state)")
         }
-        self.state = .dataTypesMessageSent
-        return .sendDataTypes
     }
 
     func resendReceived() -> ConnectionAction {
@@ -436,11 +441,16 @@ struct ConnectionStateMachine {
     }
 
     mutating func dataTypesReceived() -> ConnectionAction {
-        guard case .dataTypesMessageSent = state else {
+        switch self.state {
+        case .dataTypesMessageSent:
+            self.state = .waitingToStartAuthentication
+            return .provideAuthenticationContext(.denied)
+        case .authenticating(let authState):
+            let action = authState.dataTypesReceived()
+            return modify(with: action)
+        default:
             preconditionFailure("Invalid state: \(self.state)")
         }
-        self.state = .waitingToStartAuthentication
-        return .provideAuthenticationContext(.denied)
     }
 
     mutating func parameterReceived(

@@ -373,7 +373,7 @@ struct ConnectionStateMachine {
             // send OUT_OF_BAND + reset marker message through socket
         }
 
-        // Starting in 23c, fast authentication is possible.
+        // Starting in 23ai, fast authentication is possible.
         // Let's see if the server supports it.
         if capabilities.supportsFastAuth {
             self.state = .waitingToStartAuthentication

@@ -6,7 +6,7 @@
 [![Documentation](http://img.shields.io/badge/read_the-docs-2196f3.svg)][Documentation]
 [![Apache 2.0 License](https://img.shields.io/badge/license-Apache%202.0-brightgreen)][Apache License]
 [![codecov](https://codecov.io/gh/lovetodream/oracle-nio/graph/badge.svg?token=QIO79P61YM)][Coverage]
-[![CI 23c](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml/badge.svg)][Test 23c]
+[![CI 23ai](https://github.com/lovetodream/oracle-nio/actions/workflows/test-23ai.yml/badge.svg)][Test 23ai]
 [![CI 21c](https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml/badge.svg)][Test 21c]
 [![CI ADB](https://github.com/lovetodream/oracle-nio/actions/workflows/test-adb.yml/badge.svg)][Test ADB]
 
@@ -223,7 +223,7 @@ _**Swift** is a registered trademark of **Apple, Inc**. Any use of their tradema
 [Documentation]: https://swiftpackageindex.com/lovetodream/oracle-nio/documentation
 [Apache License]: LICENSE
 [Releases]: https://github.com/lovetodream/oracle-nio/releases
-[Test 23c]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-23c.yml
+[Test 23ai]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-23ai.yml
 [Test 21c]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-21c.yml
 [Test ADB]: https://github.com/lovetodream/oracle-nio/actions/workflows/test-adb.yml
 [Coverage]: https://codecov.io/gh/lovetodream/oracle-nio

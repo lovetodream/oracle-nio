@@ -1,4 +1,4 @@
-name: Oracle 23c Database
+name: Oracle 23ai Database
 
 on:
   push:

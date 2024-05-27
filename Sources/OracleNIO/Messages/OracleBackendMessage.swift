@@ -37,7 +37,7 @@ enum OracleBackendMessage: Sendable, Hashable {
 
     case accept(Accept)
     case bitVector(BitVector)
-    case dataTypes
+    case dataTypes(DataTypes)
     case describeInfo(DescribeInfo)
     case error(BackendError)
     case marker
@@ -120,8 +120,15 @@ extension OracleBackendMessage {
                     let messageID = MessageID(rawValue: messageIDByte)
                     switch messageID {
                     case .dataTypes:
-                        messages.append(.dataTypes)
-                        break readLoop
+                        messages.append(
+                            try .dataTypes(
+                                .decode(
+                                    from: &buffer,
+                                    capabilities: capabilities,
+                                    context: context
+                                )
+                            )
+                        )
                     case .protocol:
                         messages.append(
                             try .protocol(
@@ -131,7 +138,6 @@ extension OracleBackendMessage {
                                     context: context
                                 )
                             ))
-                        break readLoop
                     case .error:
                         messages.append(
                             try .error(

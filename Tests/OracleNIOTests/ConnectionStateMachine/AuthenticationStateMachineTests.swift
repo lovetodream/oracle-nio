@@ -49,6 +49,8 @@ final class AuthenticationStateMachineTests: XCTestCase {
         XCTAssertEqual(
             state.provideAuthenticationContext(authContext, fastAuth: .allowed),
             .sendFastAuth(authContext))
+        XCTAssertEqual(state.protocolReceived(), .wait)
+        XCTAssertEqual(state.dataTypesReceived(), .wait)
         XCTAssertEqual(
             state.parameterReceived(parameters: .init([:])),
             .sendAuthenticationPhaseTwo(authContext, .init([:])))

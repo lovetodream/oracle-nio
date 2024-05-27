@@ -48,14 +48,31 @@ struct AuthenticationStateMachine {
     }
 
     mutating func start() -> Action {
-        guard case .initialized = state else {
-            preconditionFailure("Unexpected state")
+        guard case .initialized = self.state else {
+            preconditionFailure("Invalid state: \(self.state)")
         }
         self.state = .authenticationPhaseOneSent
-        if useFastAuth {
+        if self.useFastAuth {
             return .sendFastAuth(self.authContext)
         }
         return .sendAuthenticationPhaseOne(self.authContext)
+    }
+
+    func protocolReceived() -> Action {
+        precondition(self.useFastAuth)
+        guard case .authenticationPhaseOneSent = self.state else {
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+        return .wait
+
+    }
+
+    func dataTypesReceived() -> Action {
+        precondition(self.useFastAuth)
+        guard case .authenticationPhaseOneSent = self.state else {
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+        return .wait
     }
 
     mutating func parameterReceived(
@@ -63,7 +80,7 @@ struct AuthenticationStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized, .error, .authenticated:
-            preconditionFailure()
+            preconditionFailure("Invalid state: \(self.state)")
         case .authenticationPhaseOneSent:
             self.state = .authenticationPhaseTwoSent
             return .sendAuthenticationPhaseTwo(self.authContext, parameters)

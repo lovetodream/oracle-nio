@@ -815,13 +815,18 @@ struct ConnectionStateMachine {
             .dataTypesMessageSent,
             .waitingToStartAuthentication,
             .readyForQuery,
-            .ping,
-            .commit,
-            .rollback,
             .renegotiatingTLS:
             let cleanupContext = self.setErrorAndCreateCleanupContext(
                 error, closePromise: closePromise
             )
+            return .closeConnectionAndCleanup(cleanupContext)
+
+        case .ping(let workPromise),
+            .commit(let workPromise),
+            .rollback(let workPromise):
+            workPromise.fail(error)
+            let cleanupContext = self.setErrorAndCreateCleanupContext(
+                error, closePromise: closePromise)
             return .closeConnectionAndCleanup(cleanupContext)
 
         case .authenticating(var authState):

@@ -93,4 +93,35 @@ final class OracleClientTests: XCTestCase {
         }
     }
 
+    @available(macOS 14.0, *)
+    func testPingPong() async throws {
+        let idleTimeout = Duration.seconds(60)
+        let config = try OracleConnection.testConfig()
+        var options = OracleClient.Options()
+        options.keepAliveBehavior?.frequency = .seconds(10)
+        options.connectionIdleTimeout = idleTimeout
+        let client = OracleClient(
+            configuration: config, options: options, backgroundLogger: .oracleTest)
+
+        let task = Task {
+            await client.run()
+        }
+
+        try await withThrowingDiscardingTaskGroup { group in
+            for _ in 0..<options.maximumConnections {
+                group.addTask {
+                    let hello = try await client.withConnection { db in
+                        try await db.query("SELECT 'hello' FROM dual", logger: .oracleTest)
+                    }.collect().first?.decode(String.self)
+                    print(hello as Any)
+
+                    // wait for the connection pool to do ping pong and close
+                    try await Task.sleep(for: idleTimeout + .seconds(1))
+                }
+            }
+        }
+
+        task.cancel()
+    }
+
 }

@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import NIOEmbedded
 import XCTest
 
@@ -29,5 +30,28 @@ final class ConnectionStateMachineTests: XCTestCase {
         XCTAssertEqual(state.enqueue(task: .ping(promise2)), .wait)
         XCTAssertEqual(state.statusReceived(success), .succeedPing(promise1))
         XCTAssertEqual(state.readyForQueryReceived(), .sendPing)
+    }
+
+    func testFailedPingDoesNotLeak() {
+        var state = ConnectionStateMachine(.readyForQuery)
+        let atomic = ManagedAtomic(false)
+        let pingPromise = EmbeddedEventLoop().makePromise(of: Void.self)
+        pingPromise.futureResult.whenFailure { _ in
+            atomic.store(true, ordering: .relaxed)
+        }
+
+        XCTAssertEqual(state.enqueue(task: .ping(pingPromise)), .sendPing)
+        XCTAssertEqual(
+            state.errorHappened(.uncleanShutdown),
+            .closeConnectionAndCleanup(
+                .init(
+                    action: .fireChannelInactive,
+                    tasks: [],
+                    error: .uncleanShutdown,
+                    closePromise: nil
+                )
+            )
+        )
+        XCTAssertTrue(atomic.load(ordering: .relaxed))
     }
 }

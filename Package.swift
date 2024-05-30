@@ -20,7 +20,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.25.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.2.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.4.1"),
-        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.20.2"),
+        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.21.4"),
     ],
     targets: [
         .target(name: "_PBKDF2", dependencies: [.product(name: "Crypto", package: "swift-crypto")]),

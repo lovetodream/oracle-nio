@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/postgres-nio.git",
       "state" : {
-        "revision" : "d3795844d488210b65ace34c5f003e47d812d999",
-        "version" : "1.21.3"
+        "revision" : "ee669e9de721086d2dd8eef83a3a3ddda6904ec2",
+        "version" : "1.21.4"
       }
     },
     {

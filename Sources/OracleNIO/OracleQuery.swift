@@ -476,11 +476,7 @@ private struct BindingsReader: Sequence {
         }
 
         mutating func next() -> ByteBuffer?? {
-            guard let length = self.buffer.readInteger(as: UInt8.self) else {
-                return .none
-            }
-
-            return .some(self.buffer.readSlice(length: Int(length))!)
+            return try? self.buffer.readOracleSpecificLengthPrefixedSlice()
         }
     }
 

@@ -116,6 +116,16 @@ extension OracleBackendMessage {
                 messages.append(.chunk(buffer.slice()))
             } else {
                 readLoop: while buffer.readableBytes > 0 {
+                    // check if end of request byte has been received
+                    if
+                        buffer.readableBytes == 3 &&
+                        buffer.getInteger(at: buffer.readerIndex + 2, as: UInt8.self) == 29
+                    {
+                        // consume remaining bytes and stop
+                        buffer.moveReaderIndex(forwardBy: 3)
+                        break
+                    }
+
                     let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
                     let messageID = MessageID(rawValue: messageIDByte)
                     switch messageID {
@@ -147,6 +157,7 @@ extension OracleBackendMessage {
                                     context: context
                                 )
                             ))
+                        break readLoop // error always ends the response
                     case .parameter:
                         switch context.queryOptions {
                         case .some:

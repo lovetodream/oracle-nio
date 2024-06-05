@@ -97,7 +97,7 @@ public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
 /// A type that can encode itself to a Oracle wire binary representation.
 public protocol OracleThrowingEncodable: OracleThrowingDynamicTypeEncodable {}
 
-extension OracleThrowingEncodable {
+extension OracleThrowingDynamicTypeEncodable {
     public var size: UInt32 { UInt32(self.oracleType.defaultSize) }
 
     public static var isArray: Bool { false }
@@ -171,12 +171,12 @@ extension OracleDecodable {
 /// A type that can be encoded into and decoded from a oracle binary format.
 public typealias OracleCodable = OracleEncodable & OracleDecodable
 
-extension OracleDynamicTypeEncodable {
+extension OracleThrowingDynamicTypeEncodable {
     @inlinable
     public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
-    ) {
+    ) throws {
         // The length of the parameter value, in bytes
         // (this count does not include itself). Can be zero.
         let lengthIndex = buffer.writerIndex
@@ -184,7 +184,7 @@ extension OracleDynamicTypeEncodable {
         let startIndex = buffer.writerIndex
         // The value of the parameter, in the format indicated by the associated
         // format code.
-        self.encode(into: &buffer, context: context)
+        try self.encode(into: &buffer, context: context)
 
         // overwrite the empty length with the real value
         buffer.setInteger(
@@ -194,7 +194,7 @@ extension OracleDynamicTypeEncodable {
     }
 }
 
-extension OracleEncodable {
+extension OracleDynamicTypeEncodable {
     @inlinable
     public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,

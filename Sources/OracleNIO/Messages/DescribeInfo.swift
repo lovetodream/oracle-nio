@@ -23,7 +23,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
     struct Column: OracleBackendMessage.PayloadDecodable, Hashable, Sendable {
         /// The field name.
         @usableFromInline
-        var name: String
+        let name: String
 
         /// The object ID of the field's data type.
         @usableFromInline
@@ -39,7 +39,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         /// - NOTE: This is only relevant for the datatype `NUMBER`.
         ///         For reference: https://docs.oracle.com/cd/B28359_01/server.111/b28318/datatype.htm#CNCPT1832
         @usableFromInline
-        var precision: Int16
+        let precision: Int16
 
         /// The number of digits to the right (positive) or left (negative) of the decimal point. The scale can
         /// range from -84 to 127.
@@ -47,7 +47,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         /// - NOTE: This is only relevant for the datatype `NUMBER`.
         ///         For reference: https://docs.oracle.com/cd/B28359_01/server.111/b28318/datatype.htm#CNCPT1832
         @usableFromInline
-        var scale: Int16
+        let scale: Int16
 
         /// - WARNING: I am unsure what this is for atm! - @lovetodream
         @usableFromInline
@@ -55,7 +55,26 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
         /// Indicates if values for the column are `Optional`.
         @usableFromInline
-        var nullsAllowed: Bool
+        let nullsAllowed: Bool
+
+        /// The schema of the [SQL domain](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-domain.html#GUID-17D3A9C6-D993-4E94-BF6B-CACA56581F41) associated with the fetched column.
+        ///
+        /// `nil`, if there is no SQL domain.
+        /// SQL domains require at least Oracle Database 23ai.
+        let domainSchema: String?
+        /// The name of the [SQL domain](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-domain.html#GUID-17D3A9C6-D993-4E94-BF6B-CACA56581F41) 
+        /// associated with the fetched column.
+        ///
+        /// `nil`, if there is no SQL domain.
+        /// SQL domains require at least Oracle Database 23ai.
+        let domainName: String?
+        /// The [annotations](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/annotations_clause.html#GUID-1AC16117-BBB6-4435-8794-2B99F8F68052) associated with the fetched column.
+        ///
+        /// Annotations require at least Oracle Database 23ai.
+        let annotations: [String: String]
+
+        let vectorDimensions: UInt32?
+        let vectorFormat: UInt8?
 
         static func decode(
             from buffer: inout ByteBuffer,
@@ -139,6 +158,52 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             buffer.skipUB2()  // column position
             buffer.skipUB4()  // uds flag
 
+            var domainSchema: String?
+            var domainName: String?
+            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1 {
+                if try buffer.throwingReadUB4() > 0 {
+                    domainSchema = try buffer.readString(with: Constants.TNS_CS_IMPLICIT)
+                }
+                if try buffer.throwingReadUB4() > 0 {
+                    domainName = try buffer.readString(with: Constants.TNS_CS_IMPLICIT)
+                }
+            }
+
+            var annotations: [String: String] = [:]
+            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_3 {
+                let annotationsCount = try buffer.throwingReadUB4()
+                if annotationsCount > 0 {
+                    buffer.moveReaderIndex(forwardBy: 1)
+                    let actualCount = try buffer.throwingReadUB4()
+                    buffer.moveReaderIndex(forwardBy: 1)
+                    for _ in 0..<actualCount {
+                        buffer.skipUB4()  // length of key
+                        let key = try buffer
+                            .readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+                        let valueLength = try buffer.throwingReadUB4()
+                        let value = if valueLength > 0 {
+                            try buffer.readString(
+                                with: Constants.TNS_CS_IMPLICIT
+                            ) ?? ""
+                        } else { "" }
+                        annotations[key] = value
+                        buffer.skipUB4()  // flags
+                    }
+                    buffer.skipUB4()  // flags
+                }
+            }
+
+            var vectorDimensions: UInt32?
+            var vectorFormat: UInt8?
+            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_4 {
+                vectorDimensions = try buffer.throwingReadUB4()
+                vectorFormat = try buffer.throwingReadInteger(as: UInt8.self)
+                let vectorFlags = try buffer.throwingReadInteger(as: UInt8.self)
+                if (vectorFlags & Constants.VECTOR_META_FLAG_FLEXIBLE_DIM) != 0 {
+                    vectorDimensions = nil
+                }
+            }
+
             if dataType == _TNSDataType.intNamed.rawValue {
                 throw
                     OraclePartialDecodingError
@@ -148,7 +213,10 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             return Column(
                 name: name, dataType: dbType, dataTypeSize: size,
                 precision: Int16(precision), scale: scale,
-                bufferSize: bufferSize, nullsAllowed: nullsAllowed
+                bufferSize: bufferSize, nullsAllowed: nullsAllowed,
+                domainSchema: domainSchema, domainName: domainName,
+                annotations: annotations, vectorDimensions: vectorDimensions,
+                vectorFormat: vectorFormat
             )
         }
     }

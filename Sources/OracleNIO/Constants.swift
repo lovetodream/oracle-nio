@@ -21,6 +21,7 @@ enum Constants {
     static let TNS_PACKET_FLAG_TLS_RENEG: UInt8 = 0x08
 
     // MARK: Data flags
+    static let TNS_DATA_FLAGS_END_OF_REQUEST: UInt16 = 0x2000
     static let TNS_DATA_FLAGS_EOF: UInt16 = 0x0040
 
     // MARK: Marker types
@@ -135,6 +136,7 @@ enum Constants {
     static let TNS_LOB_LOCATOR_OFFSET_FLAG_1 = 4
     static let TNS_LOB_LOCATOR_OFFSET_FLAG_3 = 6
     static let TNS_LOB_LOCATOR_OFFSET_FLAG_4 = 7
+    static let TNS_LOB_QLOCATOR_VERSION: UInt16 = 4
     static let TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET: UInt8 = 0x80
 
     // MARK: Temporary and Abstract LOB constants
@@ -144,12 +146,12 @@ enum Constants {
     static let TNS_LOB_ABSTRACT_VALUE = 0x40
 
     // MARK: LOB locator flags (byte 1)
-    static let TNS_LOB_LOCATOR_FLAGS_BLOB = 0x01
-    static let TNS_LOB_LOCATOR_FLAGS_VALUE_BASED = 0x20
+    static let TNS_LOB_LOCATOR_FLAGS_BLOB: UInt8 = 0x01
+    static let TNS_LOB_LOCATOR_FLAGS_VALUE_BASED: UInt8 = 0x20
     static let TNS_LOB_LOCATOR_FLAGS_ABSTRACT: UInt8 = 0x40
 
     // MARK: LOB locator flags (byte 2)
-    static let TNS_LOB_LOCATOR_FLAGS_INIT = 0x08
+    static let TNS_LOB_LOCATOR_FLAGS_INIT: UInt8 = 0x08
 
     // MARK: LOB locator flags (byte 4)
     static let TNS_LOB_LOCATOR_FLAGS_TEMP: UInt8 = 0x01
@@ -197,6 +199,23 @@ enum Constants {
     static let TNS_JSON_TYPE_BINARY_FLOAT: UInt8 = 0x7f
     static let TNS_JSON_TYPE_OBJECT = 0x84
     static let TNS_JSON_TYPE_ARRAY = 0xc0
+    static let TNS_JSON_TYPE_EXTENDED = 0x7b
+    static let TNS_JSON_TYPE_VECTOR = 0x01
+
+    // MARK: VECTOR constants
+    static let TNS_VECTOR_MAGIC_BYTE = 0xDB
+    static let TNS_VECTOR_VERSION = 0
+    static let TNS_VECTOR_MAX_LENGTH: UInt32 = 1 * 1024 * 1024
+
+    // MARK: VECTOR flags
+    static let TNS_VECTOR_FLAG_NORM: UInt16 = 0x0002
+    static let TNS_VECTOR_FLAG_NORM_RESERVED: UInt16 = 0x0010
+    static let VECTOR_META_FLAG_FLEXIBLE_DIM: UInt8 = 0x01
+
+    // MARK: VECTOR formats
+    static let VECTOR_FORMAT_FLOAT32: UInt8 = 2
+    static let VECTOR_FORMAT_FLOAT64: UInt8 = 3
+    static let VECTOR_FORMAT_INT8: UInt8 = 4
 
     // MARK: End-to-End metrics
     static let TNS_END_TO_END_ACTION = 0x0010
@@ -206,12 +225,12 @@ enum Constants {
     static let TNS_END_TO_END_MODULE = 0x0008
 
     // MARK: Versions
-    static let TNS_VERSION_DESIRED: UInt16 = 318
+    static let TNS_VERSION_DESIRED: UInt16 = 319
     static let TNS_VERSION_MINIMUM: UInt16 = 300
     static let TNS_VERSION_MIN_ACCEPTED = 315  // 12.1
     static let TNS_VERSION_MIN_LARGE_SDU = 315
     static let TNS_VERSION_MIN_OOB_CHECK = 318
-    static let TNS_VERSION_MIN_UUID = 319
+    static let TNS_VERSION_MIN_END_OF_RESPONSE = 319
 
     // MARK: Control packet types
     static let TNS_CONTROL_TYPE_INBAND_NOTIFICATION = 8
@@ -273,6 +292,7 @@ enum Constants {
     // MARK: Compile time capability indices
     static let TNS_CCAP_SQL_VERSION = 0
     static let TNS_CCAP_LOGON_TYPES = 4
+    static let TNS_CCAP_FEATURE_BACKPORT = 5
     static let TNS_CCAP_FIELD_VERSION = 7
     static let TNS_CCAP_SERVER_DEFINE_CONV = 8
     static let TNS_CCAP_TTC1 = 15
@@ -288,7 +308,9 @@ enum Constants {
     static let TNS_CCAP_CLIENT_FN = 34
     static let TNS_CCAP_TTC3 = 37
     static let TNS_CCAP_TTC4 = 40
-    static let TNS_CCAP_MAX = 45
+    static let TNS_CCAP_LOB2 = 42
+    static let TNS_CCAP_TTC5 = 44
+    static let TNS_CCAP_MAX = 51
 
     // MARK: Compile time capability values
     static let TNS_CCAP_SQL_VERSION_MAX: UInt8 = 6
@@ -305,11 +327,19 @@ enum Constants {
     static let TNS_CCAP_FIELD_VERSION_21_1 = 16
     static let TNS_CCAP_FIELD_VERSION_23_1 = 17
     static let TNS_CCAP_FIELD_VERSION_23_1_EXT_1 = 18
-    static let TNS_CCAP_FIELD_VERSION_MAX: UInt8 = 18
+    static let TNS_CCAP_FIELD_VERSION_23_1_EXT_2 = 19
+    static let TNS_CCAP_FIELD_VERSION_23_1_EXT_3 = 20
+    static let TNS_CCAP_FIELD_VERSION_23_1_EXT_4 = 21
+    static let TNS_CCAP_FIELD_VERSION_23_1_EXT_5 = 22
+    static let TNS_CCAP_FIELD_VERSION_23_3_EXT_6 = 23
+    static let TNS_CCAP_FIELD_VERSION_23_4 = 24
+    static let TNS_CCAP_FIELD_VERSION_MAX: UInt8 = 24
     static let TNS_CCAP_O5LOGON: UInt8 = 8
     static let TNS_CCAP_O5LOGON_NP: UInt8 = 2
     static let TNS_CCAP_O7LOGON: UInt8 = 32
     static let TNS_CCAP_O8LOGON_LONG_IDENTIFIER: UInt8 = 64
+    static let TNS_CCAP_O9LOGON_LONG_PASSWORD: UInt8 = 0x80
+    static let TNS_CCAP_CTB_IMPLICIT_POOL: UInt8 = 0x08
     static let TNS_CCAP_END_OF_CALL_STATUS: UInt8 = 0x01
     static let TNS_CCAP_IND_RCD: UInt8 = 0x08
     static let TNS_CCAP_FAST_BVEC: UInt8 = 0x20
@@ -324,15 +354,23 @@ enum Constants {
     static let TNS_CCAP_KEEP_OUT_ORDER: UInt8 = 0x80
     static let TNS_CCAP_LOB_UB8_SIZE: UInt8 = 0x01
     static let TNS_CCAP_LOB_ENCS: UInt8 = 0x02
+    static let TNS_CCAP_LOB_PREFETCH_DATA: UInt8 = 0x04
+    static let TNS_CCAP_LOB_TEMP_SIZE: UInt8 = 0x08
+    static let TNS_CCAP_LOB_PREFETCH_LENGTH: UInt8 = 0x40
+    static let TNS_CCAP_LOB_12C: UInt8 = 0x80
+    static let TNS_CCAP_LOB2_QUASI: UInt8 = 0x01
+    static let TNS_CCAP_LOB2_2GB_PREFETCH: UInt8 = 0x04
     static let TNS_CCAP_DRCP: UInt8 = 0x10
     static let TNS_CCAP_ZLNP: UInt8 = 0x04
     static let TNS_CCAP_INBAND_NOTIFICATION: UInt8 = 0x04
+    static let TNS_CCAP_END_OF_REQUEST: UInt8 = 0x20
     static let TNS_CCAP_CLIENT_FN_MAX: UInt8 = 12
+    static let TNS_CCAP_VECTOR_SUPPORT: UInt8 = 0x08
 
     // MARK: Runtime capability indices
     static let TNS_RCAP_COMPAT = 0
     static let TNS_RCAP_TTC = 6
-    static let TNS_RCAP_MAX = 7
+    static let TNS_RCAP_MAX = 11
 
     // MARK: Runtime capability values
     static let TNS_RCAP_COMPAT_81: UInt8 = 2
@@ -346,6 +384,7 @@ enum Constants {
 
     // MARK: Accept flags
     static let TNS_ACCEPT_FLAG_FAST_AUTH: UInt32 = 0x1000_0000
+    static let TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST: UInt32 = 0x0200_0000
 
     // MARK: Other constants
     static let TNS_MAX_SHORT_LENGTH = 252
@@ -501,7 +540,7 @@ extension Constants {
     static let TPC_END_SUSPEND = 0x0010_0000
 
     // MARK: Basic configuration constants
-    static let DRIVER_NAME = "oracle-nio"
+    static let DRIVER_NAME = "python-oracledb"
     static let VERSION_TUPLE = (major: 1, minor: 0, patch: 0)
     static let VERSION_CODE =
         VERSION_TUPLE.major << 24 | VERSION_TUPLE.minor << 20 | VERSION_TUPLE.patch << 12

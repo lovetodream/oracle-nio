@@ -33,17 +33,17 @@ extension OracleBackendMessage {
             let sdu = try buffer.throwingReadInteger(as: UInt32.self)
 
             var caps = capabilities
+            let flags: UInt32
             if protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK {
                 buffer.moveReaderIndex(forwardBy: 5)
-                let flags = try buffer.throwingReadInteger(as: UInt32.self)
-                if (flags & Constants.TNS_ACCEPT_FLAG_FAST_AUTH) != 0 {
-                    caps.supportsFastAuth = true
-                }
+                flags = try buffer.throwingReadInteger(as: UInt32.self)
+            } else {
+                flags = 0
             }
 
             caps.sdu = sdu
             caps.adjustForProtocol(
-                version: protocolVersion, options: protocolOptions
+                version: protocolVersion, options: protocolOptions, flags: flags
             )
 
             return .init(newCapabilities: caps)

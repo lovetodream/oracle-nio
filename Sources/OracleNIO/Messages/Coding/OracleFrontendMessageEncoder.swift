@@ -109,17 +109,16 @@ struct OracleFrontendMessageEncoder {
 
         self.startRequest(packetType: .connect)
 
-        self.buffer.writeMultipleIntegers(
-            Constants.TNS_VERSION_DESIRED,
-            Constants.TNS_VERSION_MINIMUM,
-            serviceOptions,
-            Constants.TNS_SDU,
-            Constants.TNS_TDU,
-            Constants.TNS_PROTOCOL_CHARACTERISTICS,
-            UInt16(0),  // line turnaround
-            UInt16(1),  // value of 1
-            UInt16(connectStringByteLength)
-        )
+        self.buffer.writeInteger(Constants.TNS_VERSION_DESIRED)
+        self.buffer.writeInteger(Constants.TNS_VERSION_MINIMUM)
+        self.buffer.writeInteger(serviceOptions)
+        self.buffer.writeInteger(Constants.TNS_SDU)
+        self.buffer.writeInteger(Constants.TNS_SDU)
+        self.buffer.writeInteger(Constants.TNS_PROTOCOL_CHARACTERISTICS)
+        self.buffer.writeInteger(UInt16(0))  // line turnaround
+        self.buffer.writeInteger(UInt16(1))  // value of 1
+        self.buffer.writeInteger(UInt16(connectStringByteLength))
+
         self.buffer.writeMultipleIntegers(
             UInt16(74),  // offset to connect data
             UInt32(0),  // max receivable data
@@ -129,7 +128,7 @@ struct OracleFrontendMessageEncoder {
             UInt64(0),  // obsolete
             UInt64(0),  // obsolete
             UInt32(Constants.TNS_SDU),  // SDU (large)
-            UInt32(Constants.TNS_TDU),  // SDU (large)
+            UInt32(Constants.TNS_SDU),  // SDU (large)
             connectFlags1,
             connectFlags2
         )
@@ -1181,6 +1180,10 @@ extension OracleFrontendMessageEncoder {
                 contFlag = Constants.TNS_LOB_PREFETCH_FLAG
                 bufferSize = Constants.TNS_JSON_MAX_LENGTH
                 lobPrefetchLength = Constants.TNS_JSON_MAX_LENGTH
+            } else if oracleType == .vector {
+                contFlag = Constants.TNS_LOB_PREFETCH_FLAG
+                bufferSize = Constants.TNS_VECTOR_MAX_LENGTH
+                lobPrefetchLength = Constants.TNS_VECTOR_MAX_LENGTH
             }
             self.buffer.writeInteger(UInt8(oracleType?.rawValue ?? 0))
             self.buffer.writeInteger(flag)

@@ -450,7 +450,7 @@ struct ExtendedQueryStateMachine {
                     context.cursorID = cursorID
                 }
                 if describeInfo.columns.contains(where: {
-                    [.clob, .nCLOB, .blob, .json].contains($0.dataType)
+                    [.clob, .nCLOB, .blob, .json, .vector].contains($0.dataType)
                 }) {
                     context.requiresDefine = true
                     context.noPrefetch = true
@@ -459,6 +459,9 @@ struct ExtendedQueryStateMachine {
                         var describeInfo = describeInfo
                         self.avoidingStateMachineCoWVoid { state in
                             describeInfo.columns = describeInfo.columns.map {
+                                if ![.blob, .clob, .nCLOB].contains($0.dataType) {
+                                    return $0
+                                }
                                 var col = $0
                                 if col.dataType == .blob {
                                     col.dataType = .longRAW
@@ -1053,6 +1056,21 @@ struct ExtendedQueryStateMachine {
             // TODO: OSON
             // OSON has a UB4 length indicator instead of the usual UInt8
             fatalError("not implemented")
+        case .vector:
+            let length = try buffer.throwingReadUB4()
+            if length > 0 {
+                buffer.skipUB8()  // size (unused)
+                buffer.skipUB4()  // chunk size (unused)
+                switch buffer.readOracleSlice() {
+                case .some(let slice):
+                    columnValue = slice
+                case .none:
+                    return nil  // need more data
+                }
+                buffer.skipRawBytesChunked()  // LOB locator (unused)
+            } else {
+                columnValue = .init(bytes: [0])  // empty buffer
+            }
         default:
             fatalError("not implemented")
         }

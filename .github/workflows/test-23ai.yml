@@ -43,6 +43,7 @@ jobs:
         ORA_SERVICE_NAME: FREEPDB1
         ORA_USERNAME: my_user
         ORA_PASSWORD: my_password
+        TEST_VECTORS: true
     - name: Prepare Code Coverage
       run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload coverage reports to Codecov

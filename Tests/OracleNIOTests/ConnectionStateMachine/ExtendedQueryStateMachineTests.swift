@@ -53,7 +53,12 @@ final class ExtendedQueryStateMachineTests: XCTestCase {
                 precision: 11,
                 scale: 127,
                 bufferSize: 2,
-                nullsAllowed: true
+                nullsAllowed: true,
+                domainSchema: nil,
+                domainName: nil,
+                annotations: [:],
+                vectorDimensions: nil,
+                vectorFormat: nil
             )
         ])
         let rowHeader = OracleBackendMessage.RowHeader()
@@ -89,7 +94,12 @@ final class ExtendedQueryStateMachineTests: XCTestCase {
                 precision: 11,
                 scale: 0,
                 bufferSize: 22,
-                nullsAllowed: true
+                nullsAllowed: true,
+                domainSchema: nil,
+                domainName: nil,
+                annotations: [:],
+                vectorDimensions: nil,
+                vectorFormat: nil
             )
         ])
         let rowHeader = OracleBackendMessage.RowHeader()

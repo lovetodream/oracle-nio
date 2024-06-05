@@ -708,7 +708,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.fireErrorCaught(cleanup.error)
         }
 
-        // 3. close the connection or fire channel inactive
+        // 3. read remaining data if needed
+        if cleanup.read {
+            context.read()
+        }
+
+        // 4. close the connection or fire channel inactive
         switch cleanup.action {
         case .close:
             let action = self.state.close(cleanup.closePromise)

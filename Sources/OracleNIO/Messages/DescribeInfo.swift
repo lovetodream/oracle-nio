@@ -84,21 +84,10 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let dataType = try buffer.throwingReadInteger(as: UInt8.self)
             buffer.moveReaderIndex(forwardBy: 1)  // flags
             let precision = try buffer.throwingReadInteger(as: Int8.self)
-
-            let scale: Int16
-            if let dataType = _TNSDataType(rawValue: UInt16(dataType)),
-                [.number, .intervalDS, .timestamp, .timestampLTZ, .timestampTZ]
-                    .contains(dataType)
-            {
-                scale = try buffer.throwingReadSB2()
-            } else {
-                scale = try Int16(buffer.throwingReadInteger(as: Int8.self))
-            }
-
+            let scale = try Int16(buffer.throwingReadInteger(as: Int8.self))
             let bufferSize = try buffer.throwingReadUB4()
-
             buffer.skipUB4()  // max number of array elements
-            buffer.skipUB4()  // cont flags
+            buffer.skipUB8()  // cont flags
 
             let oidByteCount = try buffer.throwingReadInteger(as: UInt8.self)
             // OID

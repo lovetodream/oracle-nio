@@ -65,7 +65,7 @@ final class ExtendedQueryStateMachineTests: XCTestCase {
         let result = QueryResult(value: .describeInfo(describeInfo.columns), logger: .oracleTest)
         let rowData = try Array(
             hexString:
-                "02 c1 02 08 01 06 03 24 13 32 00 01 01 00 00 00 00 01 01 00 01 0b 0b 80 00 00 00 3d 3c 3c 80 00 00 00 01 a3 00 04 01 01 01 37 01 01 02 05 7b 00 00 01 01 01 14 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 01 01 00 00 00 00 02 05 7b 01 01 19 4f 52 41 2d 30 31 34 30 33 3a 20 6e 6f 20 64 61 74 61 20 66 6f 75 6e 64 0a"
+                "02 c1 02 08 01 06 03 24 13 32 00 01 01 00 00 00 00 01 01 00 01 0b 0b 80 00 00 00 3d 3c 3c 80 00 00 00 01 a3 00 04 01 01 01 37 01 01 02 05 7b 00 00 01 01 01 14 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 01 01 00 00 00 00 02 05 7b 01 01 00 00 19 4f 52 41 2d 30 31 34 30 33 3a 20 6e 6f 20 64 61 74 61 20 66 6f 75 6e 64 0a"
                 .replacingOccurrences(of: " ", with: ""))
 
         var state = ConnectionStateMachine.readyForQuery()

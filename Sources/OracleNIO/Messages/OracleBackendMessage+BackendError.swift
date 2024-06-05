@@ -63,8 +63,8 @@ extension OracleBackendMessage {
             let errorPosition = buffer.readUB2()  // error position
             buffer.moveReaderIndex(forwardBy: 1)  // sql type
             buffer.moveReaderIndex(forwardBy: 1)  // fatal?
-            buffer.skipUB2()  // flags
-            buffer.skipUB2()  // user cursor options
+            buffer.moveReaderIndex(forwardBy: 1)  // flags
+            buffer.moveReaderIndex(forwardBy: 1)  // user cursor options
             buffer.moveReaderIndex(forwardBy: 1)  // UDI parameter
             buffer.moveReaderIndex(forwardBy: 1)  // warning flag
             let rowID = RowID(from: &buffer)
@@ -129,6 +129,13 @@ extension OracleBackendMessage {
 
             let number = try buffer.throwingReadUB4()
             let rowCount = buffer.readUB8()
+
+            // fields added with 20c
+            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_20_1 {
+                buffer.skipUB4()  // sql type
+                buffer.skipUB4() // server checksum
+            }
+
             let errorMessage: String?
             if number != 0 {
                 errorMessage = try buffer

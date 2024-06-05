@@ -65,6 +65,10 @@ struct ConnectionStateMachine {
 
             let error: OracleSQLError
 
+            /// We need to read remaining data from the channel
+            /// if a marker response is pending.
+            let read: Bool
+
             let closePromise: EventLoopPromise<Void>?
         }
 
@@ -267,7 +271,12 @@ struct ConnectionStateMachine {
                 .rollback,
                 .renegotiatingTLS:
                 self.taskQueue.append(task)
-                return .wait
+                switch self.markerState {
+                case .noMarkerSent:
+                    return .wait
+                case .markerSent:
+                    return .read
+                }
 
             case .readyForQuery:
                 return self.executeTask(task)
@@ -1033,6 +1042,7 @@ extension ConnectionStateMachine {
             action: action,
             tasks: tasks,
             error: error,
+            read: self.markerState == .markerSent,
             closePromise: forwardedPromise
         )
     }

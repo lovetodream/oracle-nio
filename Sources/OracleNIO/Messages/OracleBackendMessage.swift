@@ -82,6 +82,7 @@ extension OracleBackendMessage {
         case flushOutBinds = 19
         case bitVector = 21
         case serverSidePiggyback = 23
+        case endOfRequest = 29
     }
 }
 
@@ -119,7 +120,7 @@ extension OracleBackendMessage {
                     // check if end of request byte has been received
                     if
                         buffer.readableBytes == 3 &&
-                        buffer.getInteger(at: buffer.readerIndex + 2, as: UInt8.self) == 29
+                        buffer.getInteger(at: buffer.readerIndex + 2, as: UInt8.self) == MessageID.endOfRequest.rawValue
                     {
                         // consume remaining bytes and stop
                         buffer.moveReaderIndex(forwardBy: 3)
@@ -269,6 +270,8 @@ extension OracleBackendMessage {
                             ))
                     case .flushOutBinds:
                         messages.append(.flushOutBinds)
+                    case .endOfRequest:
+                        break readLoop
                     case nil:
                         throw
                             OraclePartialDecodingError

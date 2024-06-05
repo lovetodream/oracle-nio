@@ -727,10 +727,9 @@ final class OracleNIOTests: XCTestCase {
 
     func testDecodingFailureInStreamCausesDecodingError() async throws {
         var received: Int64 = 0
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-
             let rows = try await conn.query(
                 "SELECT CASE TO_NUMBER(column_value) WHEN 6969 THEN NULL ELSE TO_NUMBER(column_value) END AS id FROM xmltable ('1 to 10000')",
                 logger: .oracleTest
@@ -1031,10 +1030,10 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(myCount, 13)
     }
 
-    func testSIMDVectorTable() async throws {
+    func testBasicVectorTable() async throws {
         try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
         let conn = try await OracleConnection.test(on: eventLoop)
-        defer { try? conn.syncClose() }
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         try await conn.query("""
         CREATE TABLE IF NOT EXISTS sample_vector_table(
             v32 vector(3, float32),

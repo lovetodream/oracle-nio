@@ -133,7 +133,7 @@ extension OracleBackendMessage {
             // fields added with 20c
             if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_20_1 {
                 buffer.skipUB4()  // sql type
-                buffer.skipUB4() // server checksum
+                buffer.skipUB4()  // server checksum
             }
 
             let errorMessage: String?

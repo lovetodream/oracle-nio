@@ -1034,21 +1034,24 @@ final class OracleNIOTests: XCTestCase {
         try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
         let conn = try await OracleConnection.test(on: eventLoop)
         defer { XCTAssertNoThrow(try conn.syncClose()) }
-        try await conn.query("""
-        CREATE TABLE IF NOT EXISTS sample_vector_table(
-            v32 vector(3, float32),
-            v64 vector(3, float64),
-            v8  vector(3, int8)
-        )
-        """)
+        try await conn.query(
+            """
+            CREATE TABLE IF NOT EXISTS sample_vector_table(
+                v32 vector(3, float32),
+                v64 vector(3, float64),
+                v8  vector(3, int8)
+            )
+            """)
         try await conn.query("TRUNCATE TABLE sample_vector_table")
         typealias Row = (OracleVectorFloat32, OracleVectorFloat64, OracleVectorInt8)
         let insertRows: [Row] = [
             ([2.625, 2.5, 2.0], [22.25, 22.75, 22.5], [4, 5, 6]),
-            ([3.625, 3.5, 3.0], [33.25, 33.75, 33.5], [7, 8, 9])
+            ([3.625, 3.5, 3.0], [33.25, 33.75, 33.5], [7, 8, 9]),
         ]
         for row in insertRows {
-            try await conn.query("INSERT INTO sample_vector_table (v32, v64, v8) VALUES (\(row.0), \(row.1), \(row.2))")
+            try await conn.query(
+                "INSERT INTO sample_vector_table (v32, v64, v8) VALUES (\(row.0), \(row.1), \(row.2))"
+            )
         }
 
         let stream = try await conn.query("SELECT v32, v64, v8 FROM sample_vector_table")

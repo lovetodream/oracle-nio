@@ -364,6 +364,6 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         .char, .clob, .cursor, .date, .intervalDS, .intervalYM, .json, .long,
         .longNVarchar, .longRAW, .nChar, .nCLOB, .number, .nVarchar, .object,
         .raw, .rowID, .timestamp, .timestampLTZ, .timestampTZ, .unknown,
-        .uRowID, .varchar, .vector
+        .uRowID, .varchar, .vector,
     ]
 }

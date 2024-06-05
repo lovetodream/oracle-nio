@@ -36,9 +36,8 @@ struct Capabilities: Sendable, Hashable {
         self.compileCapabilities[Constants.TNS_CCAP_SQL_VERSION] =
             Constants.TNS_CCAP_SQL_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_LOGON_TYPES] =
-            Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP |
-            Constants.TNS_CCAP_O7LOGON | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER |
-            Constants.TNS_CCAP_O9LOGON_LONG_PASSWORD
+            Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP | Constants.TNS_CCAP_O7LOGON
+            | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER | Constants.TNS_CCAP_O9LOGON_LONG_PASSWORD
         self.compileCapabilities[Constants.TNS_CCAP_FEATURE_BACKPORT] =
             Constants.TNS_CCAP_CTB_IMPLICIT_POOL
         self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = self.ttcFieldVersion
@@ -56,17 +55,15 @@ struct Capabilities: Sendable, Hashable {
         self.compileCapabilities[Constants.TNS_CCAP_DBF_VERSION] =
             Constants.TNS_CCAP_DBF_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_LOB] =
-            Constants.TNS_CCAP_LOB_UB8_SIZE | Constants.TNS_CCAP_LOB_ENCS |
-            Constants.TNS_CCAP_LOB_PREFETCH_LENGTH |
-            Constants.TNS_CCAP_LOB_TEMP_SIZE |
-            Constants.TNS_CCAP_LOB_12C | Constants.TNS_CCAP_LOB_PREFETCH_DATA
+            Constants.TNS_CCAP_LOB_UB8_SIZE | Constants.TNS_CCAP_LOB_ENCS
+            | Constants.TNS_CCAP_LOB_PREFETCH_LENGTH | Constants.TNS_CCAP_LOB_TEMP_SIZE
+            | Constants.TNS_CCAP_LOB_12C | Constants.TNS_CCAP_LOB_PREFETCH_DATA
         self.compileCapabilities[Constants.TNS_CCAP_UB2_DTY] = 1
         self.compileCapabilities[Constants.TNS_CCAP_LOB2] =
-            Constants.TNS_CCAP_LOB2_QUASI | 
-            Constants.TNS_CCAP_LOB2_2GB_PREFETCH
+            Constants.TNS_CCAP_LOB2_QUASI | Constants.TNS_CCAP_LOB2_2GB_PREFETCH
         self.compileCapabilities[Constants.TNS_CCAP_TTC3] =
-            Constants.TNS_CCAP_IMPLICIT_RESULTS |
-            Constants.TNS_CCAP_BIG_CHUNK_CLR | Constants.TNS_CCAP_KEEP_OUT_ORDER
+            Constants.TNS_CCAP_IMPLICIT_RESULTS | Constants.TNS_CCAP_BIG_CHUNK_CLR
+            | Constants.TNS_CCAP_KEEP_OUT_ORDER
         self.compileCapabilities[Constants.TNS_CCAP_TTC2] = Constants.TNS_CCAP_ZLNP
         self.compileCapabilities[Constants.TNS_CCAP_OCI2] = Constants.TNS_CCAP_DRCP
         self.compileCapabilities[Constants.TNS_CCAP_CLIENT_FN] = Constants.TNS_CCAP_CLIENT_FN_MAX
@@ -87,7 +84,8 @@ struct Capabilities: Sendable, Hashable {
             self.supportsFastAuth = true
         }
         if self.protocolVersion >= Constants.TNS_VERSION_MIN_END_OF_RESPONSE
-            && (flags & Constants.TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST) != 0 {
+            && (flags & Constants.TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST) != 0
+        {
             self.compileCapabilities[Constants.TNS_CCAP_TTC4] |=
                 Constants.TNS_CCAP_END_OF_REQUEST
             self.supportsEndOfRequest = true
@@ -108,7 +106,8 @@ struct Capabilities: Sendable, Hashable {
                 self.ttcFieldVersion
         }
         if self.ttcFieldVersion < Constants.TNS_CCAP_FIELD_VERSION_23_4
-            && self.supportsEndOfRequest {
+            && self.supportsEndOfRequest
+        {
             self.compileCapabilities[Constants.TNS_CCAP_TTC4] ^=
                 Constants.TNS_CCAP_END_OF_REQUEST
             self.supportsEndOfRequest = false

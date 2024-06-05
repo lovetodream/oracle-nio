@@ -1,3 +1,16 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import NIOCore
 
 // MARK: Int8
@@ -41,7 +54,9 @@ public struct OracleVectorInt8: OracleVectorProtocol {
         }
     }
 
-    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> OracleVectorInt8 {
+    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
+        -> OracleVectorInt8
+    {
         var values = [Int8]()
         values.reserveCapacity(elements)
 
@@ -93,7 +108,9 @@ public struct OracleVectorFloat32: OracleVectorProtocol {
         }
     }
 
-    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> OracleVectorFloat32 {
+    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
+        -> OracleVectorFloat32
+    {
         var values = [Float32]()
         values.reserveCapacity(elements)
 
@@ -117,7 +134,7 @@ extension OracleVectorFloat32 {
         public init() {
             self.underlying = []
         }
-       
+
         public init(arrayLiteral elements: Int32...) {
             self.underlying = elements
         }
@@ -174,7 +191,9 @@ public struct OracleVectorFloat64: OracleVectorProtocol {
         }
     }
 
-    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> OracleVectorFloat64 {
+    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
+        -> OracleVectorFloat64
+    {
         var values = [Float64]()
         values.reserveCapacity(elements)
 
@@ -217,7 +236,8 @@ extension OracleVectorFloat64 {
 
 // MARK: - Internal helper protocols
 
-private protocol OracleVectorProtocol: OracleCodable, Equatable, SIMD where ArrayLiteralElement == Scalar {
+private protocol OracleVectorProtocol: OracleCodable, Equatable, SIMD
+where ArrayLiteralElement == Scalar {
     var count: Int { get }
     static var vectorFormat: UInt8 { get }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self
@@ -267,7 +287,8 @@ extension OracleVectorProtocol {
     ) {
         buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
         buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
-        buffer.writeInteger(UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
+        buffer.writeInteger(
+            UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
         buffer.writeInteger(format)
         buffer.writeInteger(elements)
         buffer.writeRepeatingByte(0, count: 8)
@@ -301,4 +322,3 @@ extension OracleVectorProtocol {
     }
 
 }
-

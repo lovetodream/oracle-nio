@@ -62,7 +62,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         /// `nil`, if there is no SQL domain.
         /// SQL domains require at least Oracle Database 23ai.
         let domainSchema: String?
-        /// The name of the [SQL domain](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-domain.html#GUID-17D3A9C6-D993-4E94-BF6B-CACA56581F41) 
+        /// The name of the [SQL domain](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-domain.html#GUID-17D3A9C6-D993-4E94-BF6B-CACA56581F41)
         /// associated with the fetched column.
         ///
         /// `nil`, if there is no SQL domain.
@@ -167,14 +167,16 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
                     buffer.moveReaderIndex(forwardBy: 1)
                     for _ in 0..<actualCount {
                         buffer.skipUB4()  // length of key
-                        let key = try buffer
+                        let key =
+                            try buffer
                             .readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
                         let valueLength = try buffer.throwingReadUB4()
-                        let value = if valueLength > 0 {
-                            try buffer.readString(
-                                with: Constants.TNS_CS_IMPLICIT
-                            ) ?? ""
-                        } else { "" }
+                        let value =
+                            if valueLength > 0 {
+                                try buffer.readString(
+                                    with: Constants.TNS_CS_IMPLICIT
+                                ) ?? ""
+                            } else { "" }
                         annotations[key] = value
                         buffer.skipUB4()  // flags
                     }

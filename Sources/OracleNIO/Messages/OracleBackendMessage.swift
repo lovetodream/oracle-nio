@@ -118,9 +118,9 @@ extension OracleBackendMessage {
             } else {
                 readLoop: while buffer.readableBytes > 0 {
                     // check if end of request byte has been received
-                    if
-                        buffer.readableBytes == 3 &&
-                        buffer.getInteger(at: buffer.readerIndex + 2, as: UInt8.self) == MessageID.endOfRequest.rawValue
+                    if buffer.readableBytes == 3
+                        && buffer.getInteger(at: buffer.readerIndex + 2, as: UInt8.self)
+                            == MessageID.endOfRequest.rawValue
                     {
                         // consume remaining bytes and stop
                         buffer.moveReaderIndex(forwardBy: 3)
@@ -158,7 +158,7 @@ extension OracleBackendMessage {
                                     context: context
                                 )
                             ))
-                        break readLoop // error always ends the response
+                        break readLoop  // error always ends the response
                     case .parameter:
                         switch context.queryOptions {
                         case .some:

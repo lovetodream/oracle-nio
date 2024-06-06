@@ -52,6 +52,56 @@ struct TinySequence<Element>: Sequence {
     }
 
     @usableFromInline
+    subscript(index: Int) -> Element {
+        get {
+            switch self.base {
+            case .none:
+                fatalError("Index out of range")
+            case .one(let element, _):
+                guard index == 0 else {
+                    fatalError("Index out of range")
+                }
+                return element
+            case .two(let element, let element2, _):
+                switch index {
+                case 0:
+                    return element
+                case 1:
+                    return element2
+                default:
+                    fatalError("Index out of range")
+                }
+            case .n(let array):
+                return array[index]
+            }
+        }
+        set(newValue) {
+            switch self.base {
+            case .none:
+                fatalError("Index out of range")
+            case .one(let element, let reserveCapacity):
+                guard index == 0 else {
+                    fatalError("Index out of range")
+                }
+                self.base = .one(newValue, reserveCapacity: reserveCapacity)
+            case .two(let element, let element2, let reserveCapacity):
+                switch index {
+                case 0:
+                    self.base = .two(newValue, element2, reserveCapacity: reserveCapacity)
+                case 1:
+                    self.base = .two(element, newValue, reserveCapacity: reserveCapacity)
+                default:
+                    fatalError("Index out of range")
+                }
+            case .n(var existing):
+                self.base = .none(reserveCapacity: 0)  // prevent CoW
+                existing[index] = newValue
+                self.base = .n(existing)
+            }
+        }
+    }
+
+    @usableFromInline
     var count: Int {
         switch self.base {
         case .none:

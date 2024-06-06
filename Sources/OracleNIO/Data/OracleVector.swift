@@ -22,17 +22,17 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_INT8
     static let zero: Scalar = .zero
 
-    fileprivate var underlying: [Int8]
+    fileprivate var underlying: TinySequence<Int8>
 
     public init() {
         self.underlying = []
     }
 
     public init(arrayLiteral elements: Int8...) {
-        self.underlying = elements
+        self.underlying = .init(elements)
     }
 
-    init(underlying: [Int8]) {
+    init(underlying: TinySequence<Int8>) {
         self.underlying = underlying
     }
 
@@ -48,7 +48,7 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
         -> OracleVectorInt8
     {
-        var values = [Int8]()
+        var values: TinySequence<Int8> = []
         values.reserveCapacity(elements)
 
         for _ in 0..<elements {
@@ -67,17 +67,17 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT32
     static let zero: Scalar = .zero
 
-    fileprivate var underlying: [Float32]
+    fileprivate var underlying: TinySequence<Float32>
 
     public init() {
         self.underlying = []
     }
 
     public init(arrayLiteral elements: Float32...) {
-        self.underlying = elements
+        self.underlying = .init(elements)
     }
 
-    init(underlying: [Float32]) {
+    init(underlying: TinySequence<Float32>) {
         self.underlying = underlying
     }
 
@@ -93,7 +93,7 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
         -> OracleVectorFloat32
     {
-        var values = [Float32]()
+        var values: TinySequence<Float32> = []
         values.reserveCapacity(elements)
 
         for _ in 0..<elements {
@@ -110,7 +110,7 @@ extension OracleVectorFloat32 {
         public typealias ArrayLiteralElement = Scalar
         public typealias Scalar = Int32
 
-        private var underlying: [Int32]
+        private var underlying: TinySequence<Int32>
         public var scalarCount: Int { self.underlying.count }
 
         public init() {
@@ -118,7 +118,7 @@ extension OracleVectorFloat32 {
         }
 
         public init(arrayLiteral elements: Int32...) {
-            self.underlying = elements
+            self.underlying = .init(elements)
         }
 
         public subscript(index: Int) -> Int32 {
@@ -141,17 +141,17 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT64
     static let zero: Scalar = .zero
 
-    fileprivate var underlying: [Float64]
+    fileprivate var underlying: TinySequence<Float64>
 
     public init() {
         self.underlying = []
     }
 
     public init(arrayLiteral elements: Float64...) {
-        self.underlying = elements
+        self.underlying = .init(elements)
     }
 
-    init(underlying: [Float64]) {
+    init(underlying: TinySequence<Float64>) {
         self.underlying = underlying
     }
 
@@ -167,7 +167,7 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
         -> OracleVectorFloat64
     {
-        var values = [Float64]()
+        var values: TinySequence<Float64> = []
         values.reserveCapacity(elements)
 
         for _ in 0..<elements {
@@ -221,7 +221,7 @@ public protocol OracleVectorProtocol {
 private protocol _OracleVectorProtocol: OracleCodable, Equatable, SIMD
 where ArrayLiteralElement == Scalar {
     var count: Int { get }
-    var underlying: [Scalar] { get set }
+    var underlying: TinySequence<Scalar> { get set }
     static var vectorFormat: UInt8 { get }
     static var zero: Scalar { get }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self
@@ -319,11 +319,9 @@ extension _OracleVectorProtocol {
     public mutating func reserveLanes(_ lanes: Int) {
         if self.underlying.count < lanes {
             self.underlying.reserveCapacity(lanes)
-            self.underlying.append(
-                contentsOf: [Scalar](
-                    repeating: Self.zero,
-                    count: lanes - self.underlying.count)
-            )
+            for _ in 0..<(lanes - self.underlying.count) {
+                self.underlying.append(Self.zero)
+            }
         }
     }
 

@@ -681,10 +681,10 @@ struct ConnectionStateMachine {
     }
 
     mutating func queryStreamCancelled() -> ConnectionAction {
-        guard case .extendedQuery = state else {
+        guard case .extendedQuery(var queryState) = state else {
             preconditionFailure("Tried to cancel stream without active query")
         }
-
+        
         self.markerState = .markerSent
         return .sendMarker
     }

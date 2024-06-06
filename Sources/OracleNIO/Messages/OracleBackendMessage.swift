@@ -95,6 +95,10 @@ extension OracleBackendMessage {
         context: OracleBackendMessageDecoder.Context
     ) throws -> [OracleBackendMessage] {
         var messages: [OracleBackendMessage] = []
+        // chunked read is definitely over!
+        if packetID != .data && context.performingChunkedRead {
+            context.performingChunkedRead = false
+        }
         switch packetID {
         case .resend:
             messages.append(.resend)
@@ -140,6 +144,9 @@ extension OracleBackendMessage {
                                 )
                             )
                         )
+                        if !capabilities.supportsEndOfRequest {
+                            break readLoop
+                        }
                     case .protocol:
                         messages.append(
                             try .protocol(
@@ -149,6 +156,9 @@ extension OracleBackendMessage {
                                     context: context
                                 )
                             ))
+                        if !capabilities.supportsEndOfRequest {
+                            break readLoop
+                        }
                     case .error:
                         messages.append(
                             try .error(
@@ -158,7 +168,11 @@ extension OracleBackendMessage {
                                     context: context
                                 )
                             ))
-                        break readLoop  // error always ends the response
+                        // error marks the end of response if no explicit end of
+                        // response is available
+                        if !capabilities.supportsEndOfRequest {
+                            break readLoop
+                        }
                     case .parameter:
                         switch context.queryOptions {
                         case .some:
@@ -190,7 +204,9 @@ extension OracleBackendMessage {
                                     context: context
                                 )
                             ))
-                        break readLoop
+                        if !capabilities.supportsEndOfRequest {
+                            break readLoop
+                        }
                     case .ioVector:
                         messages.append(
                             try .ioVector(

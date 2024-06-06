@@ -1043,10 +1043,11 @@ final class OracleNIOTests: XCTestCase {
             )
             """)
         try await conn.query("TRUNCATE TABLE sample_vector_table")
-        typealias Row = (OracleVectorFloat32, OracleVectorFloat64, OracleVectorInt8)
+        typealias Row = (OracleVectorFloat32?, OracleVectorFloat64, OracleVectorInt8)
         let insertRows: [Row] = [
             ([2.625, 2.5, 2.0], [22.25, 22.75, 22.5], [4, 5, 6]),
             ([3.625, 3.5, 3.0], [33.25, 33.75, 33.5], [7, 8, 9]),
+            (nil, [15.75, 18.5, 9.25], [10, 11, 12]),
         ]
         for row in insertRows {
             try await conn.query(

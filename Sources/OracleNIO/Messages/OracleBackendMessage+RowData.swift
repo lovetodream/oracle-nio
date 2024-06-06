@@ -32,3 +32,9 @@ extension OracleBackendMessage {
         }
     }
 }
+
+extension OracleBackendMessage.RowData: CustomDebugStringConvertible {
+    var debugDescription: String {
+        "RowData(slice: \(self.slice.readableBytes) bytes)"
+    }
+}

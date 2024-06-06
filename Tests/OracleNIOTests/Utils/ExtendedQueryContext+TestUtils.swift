@@ -19,10 +19,10 @@ extension ExtendedQueryContext {
     func cleanup() {
         switch self.statement {
         case .query(let promise),
-                .plsql(let promise),
-                .dml(let promise),
-                .ddl(let promise),
-                .plain(let promise):
+            .plsql(let promise),
+            .dml(let promise),
+            .ddl(let promise),
+            .plain(let promise):
             promise.fail(TestComplete())
         }
     }

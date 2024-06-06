@@ -1,5 +1,5 @@
-import XCTest
 import OracleNIO
+import XCTest
 
 final class OracleVectorTests: XCTestCase {
     func testVectorInt8() {

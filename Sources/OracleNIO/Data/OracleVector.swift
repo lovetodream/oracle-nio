@@ -319,9 +319,10 @@ extension _OracleVectorProtocol {
     public mutating func reserveLanes(_ lanes: Int) {
         if self.underlying.count < lanes {
             self.underlying.reserveCapacity(lanes)
-            self.underlying.append(contentsOf: Array<Scalar>(
-                repeating: Self.zero,
-                count: lanes - self.underlying.count)
+            self.underlying.append(
+                contentsOf: [Scalar](
+                    repeating: Self.zero,
+                    count: lanes - self.underlying.count)
             )
         }
     }

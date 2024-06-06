@@ -1045,11 +1045,12 @@ final class OracleNIOTests: XCTestCase {
         try await conn.query(createProcedureQuery)
 
         let myNameBind = OracleRef(dataType: .varchar)
-        try await conn.query("""
-        BEGIN
-            GET_RANDOM_RECORD_TEST3(\(myNameBind));
-        END;
-        """)
+        try await conn.query(
+            """
+            BEGIN
+                GET_RANDOM_RECORD_TEST3(\(myNameBind));
+            END;
+            """)
         let myName = try myNameBind.decode(of: String.self)
         XCTAssertEqual(myName, "DummyName")
     }

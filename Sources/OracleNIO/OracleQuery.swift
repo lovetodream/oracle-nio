@@ -190,11 +190,12 @@ public struct OracleBindings: Sendable, Hashable {
             self.dataType = dataType
             self.protected = protected
             self.isReturnBind = isReturnBind
-            let size = if size == 0 {
-                UInt32(self.dataType.defaultSize)
-            } else {
-                size
-            }
+            let size =
+                if size == 0 {
+                    UInt32(self.dataType.defaultSize)
+                } else {
+                    size
+                }
             self.size = size
             if dataType.defaultSize > 0 {
                 self.bufferSize = size * UInt32(dataType.bufferSizeFactor)

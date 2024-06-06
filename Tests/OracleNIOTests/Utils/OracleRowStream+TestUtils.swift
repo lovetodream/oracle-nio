@@ -15,5 +15,5 @@ extension OracleRowStream {
             logger: OracleConnection.noopLogger
         )
     }
-    
+
 }

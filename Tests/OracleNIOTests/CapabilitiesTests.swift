@@ -1,5 +1,6 @@
-import XCTest
 import NIOCore
+import XCTest
+
 @testable import OracleNIO
 
 final class CapabilitiesTests: XCTestCase {

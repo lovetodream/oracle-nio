@@ -79,7 +79,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     func handlerAdded(context: ChannelHandlerContext) {
         self.handlerContext = context
-        self.decoder = ByteToMessageHandler(OracleBackendMessageDecoder(context: self.decoderContext))
+        self.decoder = ByteToMessageHandler(
+            OracleBackendMessageDecoder(context: self.decoderContext))
         self.encoder = OracleFrontendMessageEncoder(
             buffer: context.channel.allocator.buffer(capacity: 256),
             capabilities: self.capabilities

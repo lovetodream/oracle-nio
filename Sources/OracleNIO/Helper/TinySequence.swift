@@ -43,7 +43,7 @@ struct TinySequence<Element>: Sequence {
         case 1:
             self.base = .one(collection.first!, reserveCapacity: 0)
         default:
-            if let collection = collection as? Array<Element> {
+            if let collection = collection as? [Element] {
                 self.base = .n(collection)
             } else {
                 self.base = .n(Array(collection))
@@ -97,9 +97,10 @@ struct TinySequence<Element>: Sequence {
         case .one(let element, let reservedCapacity):
             self.base = .one(element, reserveCapacity: Swift.max(reservedCapacity, minimumCapacity))
         case .two(let first, let second, let reservedCapacity):
-            self.base = .two(first, second, reserveCapacity: Swift.max(reservedCapacity, minimumCapacity))
+            self.base = .two(
+                first, second, reserveCapacity: Swift.max(reservedCapacity, minimumCapacity))
         case .n(var array):
-            self.base = .none(reserveCapacity: 0) // prevent CoW
+            self.base = .none(reserveCapacity: 0)  // prevent CoW
             array.reserveCapacity(minimumCapacity)
             self.base = .n(array)
         }
@@ -122,7 +123,7 @@ struct TinySequence<Element>: Sequence {
             self.base = .n(new)
 
         case .n(var existing):
-            self.base = .none(reserveCapacity: 0) // prevent CoW
+            self.base = .none(reserveCapacity: 0)  // prevent CoW
             existing.append(element)
             self.base = .n(existing)
         }
@@ -168,7 +169,7 @@ struct TinySequence<Element>: Sequence {
 
             case .n(let array):
                 if self.index < array.endIndex {
-                    defer { self.index += 1}
+                    defer { self.index += 1 }
                     return array[self.index]
                 }
                 return nil
@@ -182,13 +183,13 @@ extension TinySequence.Base: Equatable where Element: Equatable {
     @usableFromInline
     static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
-        case (.none, .none): 
+        case (.none, .none):
             true
-        case (.one(let lhs, _), .one(let rhs, _)): 
+        case (.one(let lhs, _), .one(let rhs, _)):
             lhs == rhs
-        case (.two(let lhs1, let lhs2, _), .two(let rhs1, let rhs2, _)): 
+        case (.two(let lhs1, let lhs2, _), .two(let rhs1, let rhs2, _)):
             lhs1 == rhs1 && lhs2 == rhs2
-        case (.n(let lhs), .n(let rhs)): 
+        case (.n(let lhs), .n(let rhs)):
             lhs == rhs
         default:
             false
@@ -204,7 +205,7 @@ extension TinySequence.Base: Hashable where Element: Hashable {
         case .none: break
         case .one(let value, _):
             hasher.combine(value)
-        case.two(let value1, let value2, _):
+        case .two(let value1, let value2, _):
             hasher.combine(value1)
             hasher.combine(value2)
         case .n(let values):

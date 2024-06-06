@@ -50,7 +50,7 @@ let package = Package(
             name: "OracleNIOTests",
             dependencies: [
                 "OracleNIO",
-                .product(name: "NIOTestUtils", package: "swift-nio")
+                .product(name: "NIOTestUtils", package: "swift-nio"),
             ]
         ),
         .testTarget(

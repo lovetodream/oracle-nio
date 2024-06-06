@@ -784,7 +784,8 @@ struct ExtendedQueryStateMachine {
             var slice = buffer.slice()
             let startReaderIndex = slice.readerIndex
             do {
-                let decodingContext = OracleBackendMessageDecoder.Context(capabilities: capabilities)
+                let decodingContext = OracleBackendMessageDecoder.Context(
+                    capabilities: capabilities)
                 decodingContext.queryOptions = context.options
                 decodingContext.columnsCount = describeInfo?.columns.count
                 var messages: TinySequence<OracleBackendMessage> = []

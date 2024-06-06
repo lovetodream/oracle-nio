@@ -1030,6 +1030,30 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertEqual(myCount, 13)
     }
 
+    func testStoredProcedureWithVarchar() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        let createProcedureQuery: OracleQuery = """
+            CREATE OR REPLACE PROCEDURE get_random_record_test3 (
+            value_firstname OUT VARCHAR2
+            ) AS
+            BEGIN
+            value_firstname := 'DummyName';
+            END;
+            """
+        try await conn.query(createProcedureQuery)
+
+        let myNameBind = OracleRef(dataType: .varchar)
+        try await conn.query("""
+        BEGIN
+            GET_RANDOM_RECORD_TEST3(\(myNameBind));
+        END;
+        """)
+        let myName = try myNameBind.decode(of: String.self)
+        XCTAssertEqual(myName, "DummyName")
+    }
+
     func testBasicVectorTable() async throws {
         try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
         let conn = try await OracleConnection.test(on: eventLoop)

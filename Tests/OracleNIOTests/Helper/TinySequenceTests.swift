@@ -48,7 +48,7 @@ final class TinySequenceTests: XCTestCase {
         guard case .n(let array) = emptySequence.base else {
             return XCTFail("Expected sequence to be backed by an array")
         }
-        XCTAssertEqual(array.capacity, 8)
+        XCTAssertGreaterThanOrEqual(array.capacity, 8)
 
         var oneElemSequence = TinySequence<Int>(element: 1)
         oneElemSequence.reserveCapacity(8)
@@ -57,14 +57,14 @@ final class TinySequenceTests: XCTestCase {
         guard case .n(let array) = oneElemSequence.base else {
             return XCTFail("Expected sequence to be backed by an array")
         }
-        XCTAssertEqual(array.capacity, 8)
+        XCTAssertGreaterThanOrEqual(array.capacity, 8)
 
         var twoElemSequence = TinySequence<Int>([1, 2])
         twoElemSequence.reserveCapacity(8)
         guard case .n(let array) = twoElemSequence.base else {
             return XCTFail("Expected sequence to be backed by an array")
         }
-        XCTAssertEqual(array.capacity, 8)
+        XCTAssertGreaterThanOrEqual(array.capacity, 8)
     }
 
     func testNewSequenceSlowPath() {

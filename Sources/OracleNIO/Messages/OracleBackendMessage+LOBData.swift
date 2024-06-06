@@ -19,7 +19,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.LOBData {
             let buffer = try buffer.readOracleSpecificLengthPrefixedSlice()

@@ -20,7 +20,7 @@ import class Foundation.ProcessInfo
 
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask
-    typealias InboundIn = [OracleBackendMessageDecoder.Container]
+    typealias InboundIn = TinySequence<OracleBackendMessageDecoder.Container>
     typealias OutboundOut = ByteBuffer
 
     private let logger: Logger
@@ -33,7 +33,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private var handlerContext: ChannelHandlerContext?
     private var rowStream: OracleRowStream?
     private var decoder: ByteToMessageHandler<OracleBackendMessageDecoder>?
-    private let decoderContext: OracleBackendMessageDecoder.Context = .init()
+    private let decoderContext: OracleBackendMessageDecoder.Context
     private var encoder: OracleFrontendMessageEncoder!
     private let configuration: OracleConnection.Configuration
     private let currentSSLHandler: NIOSSLClientHandler?
@@ -41,6 +41,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private let postprocessor: OracleFrontendMessagePostProcessor
     private var capabilities: Capabilities {
         didSet {
+            self.decoderContext.capabilities = self.capabilities
+            self.encoder.capabilities = self.capabilities
             self.postprocessor.protocolVersion =
                 self.capabilities.protocolVersion
             self.postprocessor.maxSize = Int(self.capabilities.sdu)
@@ -69,6 +71,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 capabilities.supportsOOB = true
             }
         #endif
+        self.decoderContext = .init(capabilities: capabilities)
         self.capabilities = capabilities
     }
 
@@ -76,7 +79,18 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     func handlerAdded(context: ChannelHandlerContext) {
         self.handlerContext = context
-        self.setCoders(context: context)
+        self.decoder = ByteToMessageHandler(OracleBackendMessageDecoder(context: self.decoderContext))
+        self.encoder = OracleFrontendMessageEncoder(
+            buffer: context.channel.allocator.buffer(capacity: 256),
+            capabilities: self.capabilities
+        )
+        do {
+            try context.pipeline.syncOperations
+                .addHandler(self.decoder!, position: .before(self))
+        } catch {
+            context.fireErrorCaught(error)
+            return
+        }
 
         if context.channel.isActive {
             self.connected(context: context)
@@ -120,11 +134,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let messages = self.unwrapInboundIn(data)
-        for container in messages {
-            self.handleMessage(
-                container.message, flags: container.flags, context: context
-            )
+        let containers = self.unwrapInboundIn(data)
+        for container in containers {
+            for message in container.messages {
+                self.handleMessage(
+                    message, flags: container.flags, context: context
+                )
+            }
         }
     }
 
@@ -144,7 +160,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         switch message {
         case .accept(let accept):
             self.capabilities = accept.newCapabilities
-            self.setCoders(context: context)
             action = self.state.acceptReceived(
                 accept, description: configuration.getDescription()
             )
@@ -160,7 +175,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.parameterReceived(parameters: parameter)
         case .protocol(let `protocol`):
             self.capabilities = `protocol`.newCapabilities
-            self.setCoders(context: context)
             action = self.state.protocolReceived()
         case .resend:
             action = self.state.resendReceived()
@@ -780,27 +794,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             fusionMiddlewareReleaseNumber: (fullVersionNumber >> 12) & 0x0f,
             componentSpecificReleaseNumber: (fullVersionNumber >> 8) & 0x0f,
             platformSpecificReleaseNumber: fullVersionNumber & 0x0f
-        )
-    }
-
-    private func setCoders(
-        context: ChannelHandlerContext
-    ) {
-        if let decoder = self.decoder {
-            context.pipeline.removeHandler(decoder, promise: nil)
-        }
-        self.decoder = ByteToMessageHandler(
-            OracleBackendMessageDecoder(
-                capabilities: self.capabilities,
-                context: self.decoderContext
-            ))
-        _ = context.pipeline.addHandler(
-            self.decoder!,
-            position: .before(self)
-        )
-        self.encoder = OracleFrontendMessageEncoder(
-            buffer: context.channel.allocator.buffer(capacity: 256),
-            capabilities: self.capabilities
         )
     }
 }

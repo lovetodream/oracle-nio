@@ -19,7 +19,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout NIOCore.ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.`Protocol` {
             buffer.moveReaderIndex(forwardBy: 2) // skip protocol array
@@ -31,7 +30,7 @@ extension OracleBackendMessage {
             let charsetID = try buffer.throwingReadInteger(
                 endianness: .little, as: UInt16.self
             )
-            var capabilities = capabilities
+            var capabilities = context.capabilities
             capabilities.charsetID = charsetID
 
             buffer.moveReaderIndex(forwardBy: 1) // skip server flags

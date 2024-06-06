@@ -26,7 +26,6 @@ protocol OracleMessagePayloadDecodable {
     ///                     `ByteBuffer` must be fully consumed.
     static func decode(
         from buffer: inout ByteBuffer,
-        capabilities: Capabilities,
         context: OracleBackendMessageDecoder.Context
     ) throws -> Self
 }
@@ -90,213 +89,132 @@ extension OracleBackendMessage {
     static func decode(
         from buffer: inout ByteBuffer,
         of packetID: ID,
-        capabilities: Capabilities,
-        skipDataFlags: Bool = true,
         context: OracleBackendMessageDecoder.Context
-    ) throws -> [OracleBackendMessage] {
-        var messages: [OracleBackendMessage] = []
-        // chunked read is definitely over!
+    ) throws -> (TinySequence<OracleBackendMessage>, lastPacket: Bool) {
+        // previous chunked read is definitely over!
         if packetID != .data && context.performingChunkedRead {
             context.performingChunkedRead = false
         }
         switch packetID {
         case .resend:
-            messages.append(.resend)
+            return (.init(element: .resend), true)
         case .accept:
-            messages.append(
-                try .accept(
-                    .decode(
-                        from: &buffer,
-                        capabilities: capabilities,
-                        context: context
-                    )
-                ))
+            return (.init(element:
+                try .accept(.decode(from: &buffer, context: context))), true)
         case .marker:
-            messages.append(.marker)
+            return (.init(element: .marker), true)
         case .data:
-            if skipDataFlags {
-                buffer.moveReaderIndex(forwardBy: 2)  // skip data flags
-            }
+            var messages: TinySequence<OracleBackendMessage> = []
+            let flags = try buffer.throwingReadInteger(as: UInt16.self)
+            let lastPacket = (flags & Constants.TNS_DATA_FLAGS_END_OF_REQUEST) != 0
             if context.performingChunkedRead {
+                print("chunk")
                 messages.append(.chunk(buffer.slice()))
             } else {
-                readLoop: while buffer.readableBytes > 0 {
-                    // check if end of request byte has been received
-                    if buffer.readableBytes == 3
-                        && buffer.getInteger(at: buffer.readerIndex + 2, as: UInt8.self)
-                            == MessageID.endOfRequest.rawValue
-                    {
-                        // consume remaining bytes and stop
-                        buffer.moveReaderIndex(forwardBy: 3)
-                        break
-                    }
-
-                    let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
-                    let messageID = MessageID(rawValue: messageIDByte)
-                    switch messageID {
-                    case .dataTypes:
-                        messages.append(
-                            try .dataTypes(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            )
-                        )
-                        if !capabilities.supportsEndOfRequest {
-                            break readLoop
-                        }
-                    case .protocol:
-                        messages.append(
-                            try .protocol(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                        if !capabilities.supportsEndOfRequest {
-                            break readLoop
-                        }
-                    case .error:
-                        messages.append(
-                            try .error(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                        // error marks the end of response if no explicit end of
-                        // response is available
-                        if !capabilities.supportsEndOfRequest {
-                            break readLoop
-                        }
-                    case .parameter:
-                        switch context.queryOptions {
-                        case .some:
-                            messages.append(
-                                try .queryParameter(
-                                    .decode(
-                                        from: &buffer,
-                                        capabilities: capabilities,
-                                        context: context
-                                    )
-                                ))
-                        case .none:
-                            messages.append(
-                                try .parameter(
-                                    .decode(
-                                        from: &buffer,
-                                        capabilities: capabilities,
-                                        context: context
-                                    )
-                                ))
-                            break readLoop
-                        }
-                    case .status:
-                        messages.append(
-                            try .status(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                        if !capabilities.supportsEndOfRequest {
-                            break readLoop
-                        }
-                    case .ioVector:
-                        messages.append(
-                            try .ioVector(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .describeInfo:
-                        messages.append(
-                            try .describeInfo(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .rowHeader:
-                        messages.append(
-                            try .rowHeader(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .rowData:
-                        messages.append(
-                            try .rowData(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                        // Until we handled the current rowData on
-                        // OracleChannelHandler, we are performing a chunked
-                        // read on all upcoming data packets, because we are
-                        // "blind" and don't know what we might get until then.
-                        context.performingChunkedRead = true
-                    case .bitVector:
-                        messages.append(
-                            try .bitVector(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .warning:
-                        messages.append(
-                            try .warning(
-                                .decodeWarning(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .serverSidePiggyback:
-                        messages.append(
-                            try .serverSidePiggyback(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .lobData:
-                        messages.append(
-                            try .lobData(
-                                .decode(
-                                    from: &buffer,
-                                    capabilities: capabilities,
-                                    context: context
-                                )
-                            ))
-                    case .flushOutBinds:
-                        messages.append(.flushOutBinds)
-                    case .endOfRequest:
-                        break readLoop
-                    case nil:
-                        throw
-                            OraclePartialDecodingError
-                            .unknownMessageIDReceived(messageID: messageIDByte)
-                    }
-                }
+                try self.decodeData(from: &buffer, into: &messages, context: context)
             }
+            return (messages, lastPacket)
         }
-        return messages
+    }
+
+    static func decodeData(
+        from buffer: inout ByteBuffer,
+        into messages: inout TinySequence<OracleBackendMessage>,
+        context: OracleBackendMessageDecoder.Context
+    ) throws {
+    readLoop: while buffer.readableBytes > 0 {
+        let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
+        let messageID = MessageID(rawValue: messageIDByte)
+        switch messageID {
+        case .dataTypes:
+            messages.append(
+                try .dataTypes(.decode(from: &buffer, context: context))
+            )
+            if !context.capabilities.supportsEndOfRequest {
+                break readLoop
+            }
+        case .protocol:
+            messages.append(
+                try .protocol(.decode(from: &buffer, context: context))
+            )
+            if !context.capabilities.supportsEndOfRequest {
+                break readLoop
+            }
+        case .error:
+            messages.append(
+                try .error(.decode(from: &buffer, context: context))
+            )
+            // error marks the end of response if no explicit end of
+            // response is available
+            if !context.capabilities.supportsEndOfRequest {
+                break readLoop
+            }
+        case .parameter:
+            switch context.queryOptions {
+            case .some:
+                messages.append(
+                    try .queryParameter(.decode(from: &buffer, context: context))
+                )
+            case .none:
+                messages.append(
+                    try .parameter(.decode(from: &buffer, context: context))
+                )
+                break readLoop
+            }
+        case .status:
+            messages.append(
+                try .status(.decode(from: &buffer, context: context))
+            )
+            if !context.capabilities.supportsEndOfRequest {
+                break readLoop
+            }
+        case .ioVector:
+            messages.append(
+                try .ioVector(.decode(from: &buffer, context: context))
+            )
+        case .describeInfo:
+            messages.append(
+                try .describeInfo(.decode(from: &buffer, context: context))
+            )
+        case .rowHeader:
+            messages.append(
+                try .rowHeader(.decode(from: &buffer, context: context))
+            )
+        case .rowData:
+            messages.append(
+                try .rowData(.decode(from: &buffer, context: context))
+            )
+            // Until we handled the current rowData on
+            // OracleChannelHandler, we are performing a chunked
+            // read on all upcoming data packets, because we are
+            // "blind" and don't know what we might get until then.
+            context.performingChunkedRead = true
+        case .bitVector:
+            messages.append(
+                try .bitVector(.decode(from: &buffer, context: context))
+            )
+        case .warning:
+            messages.append(
+                try .warning(.decodeWarning(from: &buffer, context: context))
+            )
+        case .serverSidePiggyback:
+            messages.append(
+                try .serverSidePiggyback(.decode(from: &buffer, context: context))
+            )
+        case .lobData:
+            messages.append(
+                try .lobData(.decode(from: &buffer, context: context))
+            )
+        case .flushOutBinds:
+            messages.append(.flushOutBinds)
+        case .endOfRequest:
+            break readLoop
+        case nil:
+            throw
+            OraclePartialDecodingError
+                .unknownMessageIDReceived(messageID: messageIDByte)
+        }
+    }
     }
 }
 

@@ -78,7 +78,6 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> DescribeInfo.Column {
             let dataType = try buffer.throwingReadInteger(as: UInt8.self)
@@ -115,7 +114,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
                 size = bufferSize
             }
 
-            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
+            if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
                 buffer.skipUB4()  // oaccolid
             }
 
@@ -149,7 +148,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             var domainSchema: String?
             var domainName: String?
-            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1 {
+            if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1 {
                 if try buffer.throwingReadUB4() > 0 {
                     domainSchema = try buffer.readString(with: Constants.TNS_CS_IMPLICIT)
                 }
@@ -159,7 +158,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             }
 
             var annotations: [String: String] = [:]
-            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_3 {
+            if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_3 {
                 let annotationsCount = try buffer.throwingReadUB4()
                 if annotationsCount > 0 {
                     buffer.moveReaderIndex(forwardBy: 1)
@@ -186,7 +185,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             var vectorDimensions: UInt32?
             var vectorFormat: UInt8?
-            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_4 {
+            if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_4 {
                 vectorDimensions = try buffer.throwingReadUB4()
                 vectorFormat = try buffer.throwingReadInteger(as: UInt8.self)
                 let vectorFlags = try buffer.throwingReadInteger(as: UInt8.self)
@@ -214,7 +213,6 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
     static func decode(
         from buffer: inout ByteBuffer,
-        capabilities: Capabilities,
         context: OracleBackendMessageDecoder.Context
     ) throws -> DescribeInfo {
         buffer.skipRawBytesChunked()
@@ -230,11 +228,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         result.reserveCapacity(Int(columnCount))
 
         for _ in 0..<columnCount {
-            let field = try Column.decode(
-                from: &buffer,
-                capabilities: capabilities,
-                context: context
-            )
+            let field = try Column.decode(from: &buffer, context: context)
             result.append(field)
         }
 

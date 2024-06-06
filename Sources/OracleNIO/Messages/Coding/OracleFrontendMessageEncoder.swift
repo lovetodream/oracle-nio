@@ -29,7 +29,7 @@ struct OracleFrontendMessageEncoder {
 
     private var buffer: ByteBuffer
     private var state: State = .writable
-    private var capabilities: Capabilities
+    var capabilities: Capabilities
 
     init(buffer: ByteBuffer, capabilities: Capabilities) {
         self.buffer = buffer

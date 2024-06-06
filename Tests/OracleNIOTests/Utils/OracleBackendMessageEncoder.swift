@@ -21,16 +21,18 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
     var protocolVersion: Int
 
     func encode(data container: OutboundIn, out: inout ByteBuffer) {
-        switch container.message {
-        case .accept(let accept):
-            self.encode(
-                id: .accept,
-                flags: container.flags,
-                payload: accept,
-                out: &out
-            )
-        default:
-            fatalError("Not implemented")
+        for message in container.messages {
+            switch message {
+            case .accept(let accept):
+                self.encode(
+                    id: .accept,
+                    flags: container.flags,
+                    payload: accept,
+                    out: &out
+                )
+            default:
+                fatalError("Not implemented")
+            }
         }
     }
 

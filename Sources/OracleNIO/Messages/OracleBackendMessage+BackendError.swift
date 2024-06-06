@@ -26,7 +26,6 @@ extension OracleBackendMessage {
 
         static func decodeWarning(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.BackendError {
             let number = try buffer.throwingReadInteger(as: UInt16.self)
@@ -50,7 +49,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.BackendError {
             _ = try buffer.throwingReadUB4()  // end of call status
@@ -131,7 +129,7 @@ extension OracleBackendMessage {
             let rowCount = buffer.readUB8()
 
             // fields added with 20c
-            if capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_20_1 {
+            if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_20_1 {
                 buffer.skipUB4()  // sql type
                 buffer.skipUB4()  // server checksum
             }

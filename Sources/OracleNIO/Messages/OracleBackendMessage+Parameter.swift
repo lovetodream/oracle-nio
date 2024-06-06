@@ -44,7 +44,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.Parameter {
             let numberOfParameters = buffer.readUB2() ?? 0
@@ -81,7 +80,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.QueryParameter {
             let parametersCount = buffer.readUB2() ?? 0  // al8o4l (ignored)

@@ -21,7 +21,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.Accept {
             let protocolVersion =
@@ -32,7 +31,7 @@ extension OracleBackendMessage {
             buffer.moveReaderIndex(forwardBy: 20)
             let sdu = try buffer.throwingReadInteger(as: UInt32.self)
 
-            var caps = capabilities
+            var caps = context.capabilities
             let flags: UInt32
             if protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK {
                 buffer.moveReaderIndex(forwardBy: 5)

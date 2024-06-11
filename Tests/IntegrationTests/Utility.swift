@@ -68,7 +68,7 @@ extension OracleConnection {
         logger.logLevel = logLevel
 
         return try await OracleConnection.connect(
-            on: eventLoop, 
+            on: eventLoop,
             configuration: config ?? self.testConfig(),
             id: 0,
             logger: logger

@@ -65,6 +65,9 @@ Oracle Database 12.1 or later.
 - ``Cursor``
 - ``RowID``
 - ``IntervalDS``
+- ``OracleVectorInt8``
+- ``OracleVectorFloat32``
+- ``OracleVectorFloat64``
 
 ### Errors
 

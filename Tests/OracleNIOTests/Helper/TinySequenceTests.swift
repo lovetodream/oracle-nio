@@ -147,7 +147,7 @@ final class TinySequenceTests: XCTestCase {
             [UInt8(ascii: "A"), UInt8(ascii: "B"), UInt8(ascii: "C")]
         )
         XCTAssertNotEqual(
-            TinySequence("A".utf8), 
+            TinySequence("A".utf8),
             [UInt8(ascii: "A"), UInt8(ascii: "B")]
         )
 

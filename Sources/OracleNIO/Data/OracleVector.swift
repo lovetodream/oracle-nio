@@ -15,6 +15,8 @@ import NIOCore
 
 // MARK: Int8
 
+/// A dynamically sized vector of type Int8, used to send
+/// and receive `vector(n, int8)` data to and from Oracle databases.
 public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Int8
 
@@ -73,6 +75,8 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
 
 // MARK: Float32
 
+/// A dynamically sized vector of type Float32, used to send
+/// and receive `vector(n, float32)` data to and from Oracle databases.
 public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Float32
 
@@ -132,6 +136,8 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
 
 // MARK: Float64
 
+/// A dynamically sized vector of type Float64, used to send
+/// and receive `vector(n, float64)` data to and from Oracle databases.
 public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Float64
 

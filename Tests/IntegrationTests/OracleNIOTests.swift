@@ -1124,16 +1124,17 @@ final class OracleNIOTests: XCTestCase {
             on: eventLoop, config: OracleConnection.privilegedTestConfig()
         )
         defer { XCTAssertNoThrow(try conn.syncClose()) }
-        
+
         try await conn.query("drop table if exists emp_annotated")
         try await conn.query("create domain SimpleDomain as number(3, 0) NOT NULL")
-        try await conn.query("""
-        create table emp_annotated(
-            empno number domain SimpleDomain,
-            ename varchar2(50) annotations (display 'lastname'),
-            salary number      annotations (person_salary, column_hidden)
-        ) annotations (display 'employees')
-        """)
+        try await conn.query(
+            """
+            create table emp_annotated(
+                empno number domain SimpleDomain,
+                ename varchar2(50) annotations (display 'lastname'),
+                salary number      annotations (person_salary, column_hidden)
+            ) annotations (display 'employees')
+            """)
         try await conn.query("select * from emp_annotated")
     }
 

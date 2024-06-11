@@ -44,7 +44,7 @@ struct TinySequence<Element>: Sequence {
             self.base = .one(collection.first!, reserveCapacity: 0)
         case 2:
             self.base = .two(
-                collection.first!, 
+                collection.first!,
                 collection[collection.index(after: collection.startIndex)],
                 reserveCapacity: 0
             )

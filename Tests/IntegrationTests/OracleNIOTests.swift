@@ -1126,7 +1126,7 @@ final class OracleNIOTests: XCTestCase {
         defer { XCTAssertNoThrow(try conn.syncClose()) }
 
         try await conn.query("drop table if exists emp_annotated")
-        try await conn.query("create domain SimpleDomain as number(3, 0) NOT NULL")
+        try await conn.query("create domain if not exists SimpleDomain as number(3, 0) NOT NULL")
         try await conn.query(
             """
             create table emp_annotated(

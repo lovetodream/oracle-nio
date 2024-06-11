@@ -69,8 +69,29 @@ extension DataRow: Collection {
         guard index < self.endIndex else {
             preconditionFailure("index out of bounds")
         }
-        let elementLength =
+        var elementLength =
             Int(self.bytes.getInteger(at: index.offset, as: UInt8.self)!)
+
+        if elementLength == Constants.TNS_NULL_LENGTH_INDICATOR {
+            elementLength = 0
+        }
+
+        if elementLength == Constants.TNS_LONG_LENGTH_INDICATOR {
+            var totalLength = 0
+            var readerIndex = index.offset + MemoryLayout<UInt8>.size
+            while true {
+                let chunkLength = Int(
+                    self.bytes.getInteger(
+                        at: readerIndex, as: UInt32.self
+                    )!)
+                totalLength += MemoryLayout<UInt32>.size
+                if chunkLength == 0 { break }
+                totalLength += chunkLength
+                readerIndex += MemoryLayout<UInt32>.size + chunkLength
+            }
+            elementLength = totalLength
+        }
+
         return ColumnIndex(
             index.offset + MemoryLayout<UInt8>.size + elementLength
         )

@@ -232,6 +232,10 @@ public struct OracleBindings: Sendable, Hashable {
     var metadata: [Metadata]
     @usableFromInline
     var bytes: ByteBuffer
+    /// LONG binds need to be sent at last, so they require their own buffer.
+    /// In the end ``bytes`` + ``longBytes`` will be written to the wire.
+    @usableFromInline
+    var longBytes: ByteBuffer
 
     public var count: Int {
         self.metadata.count
@@ -240,6 +244,7 @@ public struct OracleBindings: Sendable, Hashable {
     public init() {
         self.metadata = []
         self.bytes = ByteBuffer()
+        self.longBytes = ByteBuffer()
     }
 
     public init(capacity: Int) {
@@ -247,6 +252,7 @@ public struct OracleBindings: Sendable, Hashable {
         self.metadata.reserveCapacity(capacity)
         self.bytes = ByteBuffer()
         self.bytes.reserveCapacity(128 * capacity)
+        self.longBytes = ByteBuffer()  // no capacity as it is rare
     }
 
     public mutating func appendNull(
@@ -286,14 +292,18 @@ public struct OracleBindings: Sendable, Hashable {
     >(
         _ value: Value, context: OracleEncodingContext<JSONEncoder>, bindName: String
     ) throws {
-        try value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(
-            .init(
-                value: value,
-                protected: true,
-                isReturnBind: false,
-                bindName: bindName
-            ))
+        let metadata = Metadata(
+            value: value,
+            protected: true,
+            isReturnBind: false,
+            bindName: bindName
+        )
+        if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+            try value._encodeRaw(into: &self.longBytes, context: context)
+        } else {
+            try value._encodeRaw(into: &self.bytes, context: context)
+        }
+        self.metadata.append(metadata)
     }
 
     @inlinable
@@ -304,14 +314,18 @@ public struct OracleBindings: Sendable, Hashable {
         context: OracleEncodingContext<JSONEncoder>,
         bindName: String
     ) {
-        value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(
-            .init(
-                value: value,
-                protected: true,
-                isReturnBind: false,
-                bindName: bindName
-            ))
+        let metadata = Metadata(
+            value: value,
+            protected: true,
+            isReturnBind: false,
+            bindName: bindName
+        )
+        if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+            value._encodeRaw(into: &self.longBytes, context: context)
+        } else {
+            value._encodeRaw(into: &self.bytes, context: context)
+        }
+        self.metadata.append(metadata)
     }
 
     @inlinable
@@ -325,7 +339,11 @@ public struct OracleBindings: Sendable, Hashable {
             metadata.outContainer = value
             value.storage.withLockedValue { valueStorage in
                 if var bytes = valueStorage {
-                    self.bytes.writeBuffer(&bytes)
+                    if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+                        self.longBytes.writeBuffer(&bytes)
+                    } else {
+                        self.bytes.writeBuffer(&bytes)
+                    }
                 } else if !metadata.isReturnBind {  // return binds do not send null
                     self.bytes.writeInteger(UInt8(0))  // null
                 }
@@ -343,14 +361,18 @@ public struct OracleBindings: Sendable, Hashable {
         context: OracleEncodingContext<JSONEncoder>,
         bindName: String
     ) throws {
-        try value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(
-            .init(
-                value: value,
-                protected: false,
-                isReturnBind: false,
-                bindName: bindName
-            ))
+        let metadata = Metadata(
+            value: value,
+            protected: false,
+            isReturnBind: false,
+            bindName: bindName
+        )
+        if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+            try value._encodeRaw(into: &self.longBytes, context: context)
+        } else {
+            try value._encodeRaw(into: &self.bytes, context: context)
+        }
+        self.metadata.append(metadata)
     }
 
     @inlinable
@@ -361,14 +383,18 @@ public struct OracleBindings: Sendable, Hashable {
         context: OracleEncodingContext<JSONEncoder>,
         bindName: String
     ) {
-        value._encodeRaw(into: &self.bytes, context: context)
-        self.metadata.append(
-            .init(
-                value: value,
-                protected: false,
-                isReturnBind: false,
-                bindName: bindName
-            ))
+        let metadata = Metadata(
+            value: value,
+            protected: false,
+            isReturnBind: false,
+            bindName: bindName
+        )
+        if metadata.bufferSize >= Constants.TNS_LONG_LENGTH_INDICATOR {
+            value._encodeRaw(into: &self.longBytes, context: context)
+        } else {
+            value._encodeRaw(into: &self.bytes, context: context)
+        }
+        self.metadata.append(metadata)
     }
 
     /// Checks if a INOUT bind is already present and returns its bind name to be reused.

@@ -1221,6 +1221,9 @@ extension OracleFrontendMessageEncoder {
 
     private mutating func writeBindParameterRow(bindings: OracleBindings) {
         self.buffer.writeImmutableBuffer(bindings.bytes)
+        if bindings.longBytes.readableBytes > 0 {
+            self.buffer.writeImmutableBuffer(bindings.longBytes)
+        }
     }
 
     /// Returns the statement required to change the session time zone

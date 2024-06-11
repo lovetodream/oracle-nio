@@ -58,4 +58,89 @@ final class OracleQueryTests: XCTestCase {
         XCTAssertFalse(String(reflecting: query).isEmpty)
         XCTAssertEqual(query.binds.bytes, expected)
     }
+
+    func testBindsAreStored() throws {
+        let bind = ByteBuffer(bytes: [UInt8](repeating: 42, count: 50))
+
+        let query1: OracleQuery = "INSERT INTO table (col) VALUES \(bind)"
+        XCTAssertGreaterThan(query1.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query1.binds.longBytes.readableBytes, 0)
+
+        var query2: OracleQuery = "INSERT INTO table (col) VALUES :1"
+        query2.binds.appendUnprotected(bind, context: .default, bindName: "1")
+        XCTAssertGreaterThan(query2.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query2.binds.longBytes.readableBytes, 0)
+
+        let throwingBind = ThrowingByteBuffer(bind)
+
+        let query3: OracleQuery = try "INSERT INTO table (col) VALUES \(throwingBind)"
+        XCTAssertGreaterThan(query3.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query3.binds.longBytes.readableBytes, 0)
+
+        var query4: OracleQuery = "INSERT INTO table (col) VALUES :1"
+        try query4.binds.appendUnprotected(throwingBind, context: .default, bindName: "1")
+        XCTAssertGreaterThan(query4.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query4.binds.longBytes.readableBytes, 0)
+
+        let bindRef = OracleRef(bind)
+        let query5: OracleQuery = "INSERT INTO table (col) VALUES \(bindRef)"
+        XCTAssertGreaterThan(query5.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query5.binds.longBytes.readableBytes, 0)
+    }
+
+    func testLongValuesAreStoredInDedicatedBuffer() throws {
+        let long = ByteBuffer(bytes: [UInt8](repeating: 42, count: 50000))
+
+        let query1: OracleQuery = "INSERT INTO table (col) VALUES \(long)"
+        XCTAssertEqual(query1.binds.bytes.readableBytes, 0)
+        XCTAssertGreaterThan(query1.binds.longBytes.readableBytes, 0)
+
+        var query2: OracleQuery = "INSERT INTO table (col) VALUES :1"
+        query2.binds.appendUnprotected(long, context: .default, bindName: "1")
+        XCTAssertEqual(query2.binds.bytes.readableBytes, 0)
+        XCTAssertGreaterThan(query2.binds.longBytes.readableBytes, 0)
+
+        let throwingLong = ThrowingByteBuffer(long)
+
+        let query3: OracleQuery = try "INSERT INTO table (col) VALUES \(throwingLong)"
+        XCTAssertEqual(query3.binds.bytes.readableBytes, 0)
+        XCTAssertGreaterThan(query3.binds.longBytes.readableBytes, 0)
+
+        var query4: OracleQuery = "INSERT INTO table (col) VALUES :1"
+        try query4.binds.appendUnprotected(throwingLong, context: .default, bindName: "1")
+        XCTAssertEqual(query4.binds.bytes.readableBytes, 0)
+        XCTAssertGreaterThan(query4.binds.longBytes.readableBytes, 0)
+
+        let longRef = OracleRef(long)
+        let query5: OracleQuery = "INSERT INTO table (col) VALUES \(longRef)"
+        XCTAssertEqual(query5.binds.bytes.readableBytes, 0)
+        XCTAssertGreaterThan(query5.binds.longBytes.readableBytes, 0)
+    }
+}
+
+// Testing utility, because we do not have a throwing encodable, luckily :)
+struct ThrowingByteBuffer: OracleThrowingDynamicTypeEncodable {
+    let oracleType: OracleNIO.OracleDataType = .raw
+
+    var size: UInt32 { UInt32(self.base.readableBytes) }
+
+    private let base: ByteBuffer
+
+    init(_ base: ByteBuffer) {
+        self.base = base
+    }
+
+    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) throws {
+        self.base._encodeRaw(into: &buffer, context: context)
+    }
+
+    func encode<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout NIOCore.ByteBuffer,
+        context: OracleNIO.OracleEncodingContext<JSONEncoder>
+    ) throws {
+        preconditionFailure()
+    }
 }

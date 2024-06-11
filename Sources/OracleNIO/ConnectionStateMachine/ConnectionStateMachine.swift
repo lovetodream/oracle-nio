@@ -271,12 +271,7 @@ struct ConnectionStateMachine {
                 .rollback,
                 .renegotiatingTLS:
                 self.taskQueue.append(task)
-                switch self.markerState {
-                case .noMarkerSent:
-                    return .wait
-                case .markerSent:
-                    return .read
-                }
+                return .wait
 
             case .readyForQuery:
                 return self.executeTask(task)

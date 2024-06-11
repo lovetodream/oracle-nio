@@ -73,8 +73,53 @@ final class TinySequenceTests: XCTestCase {
     }
 
     func testSingleItem() {
-        let sequence = TinySequence<UInt8>("A".utf8)
+        var sequence = TinySequence<UInt8>("A".utf8)
+        XCTAssertEqual(sequence[0], UInt8(ascii: "A"))
         XCTAssertEqual(Array(sequence), [UInt8(ascii: "A")])
+        sequence[0] = UInt8(ascii: "B")
+        XCTAssertEqual(sequence[0], UInt8(ascii: "B"))
+        XCTAssertEqual(Array(sequence), [UInt8(ascii: "B")])
+    }
+
+    func testTwoItems() {
+        var sequence = TinySequence([UInt8(ascii: "A"), UInt8(ascii: "B")])
+        XCTAssertEqual(sequence[0], UInt8(ascii: "A"))
+        XCTAssertEqual(sequence[1], UInt8(ascii: "B"))
+        XCTAssertEqual(Array(sequence), [UInt8(ascii: "A"), UInt8(ascii: "B")])
+        sequence[0] = UInt8(ascii: "C")
+        sequence[1] = UInt8(ascii: "D")
+        XCTAssertEqual(sequence[0], UInt8(ascii: "C"))
+        XCTAssertEqual(sequence[1], UInt8(ascii: "D"))
+        XCTAssertEqual(Array(sequence), [UInt8(ascii: "C"), UInt8(ascii: "D")])
+    }
+
+    func testNItems() {
+        var sequence = TinySequence([
+            UInt8(ascii: "A"),
+            UInt8(ascii: "B"),
+            UInt8(ascii: "C"),
+            UInt8(ascii: "D"),
+        ])
+        XCTAssertEqual(sequence[0], UInt8(ascii: "A"))
+        XCTAssertEqual(sequence[1], UInt8(ascii: "B"))
+        XCTAssertEqual(sequence[2], UInt8(ascii: "C"))
+        XCTAssertEqual(sequence[3], UInt8(ascii: "D"))
+        XCTAssertEqual(
+            Array(sequence),
+            [
+                UInt8(ascii: "A"),
+                UInt8(ascii: "B"),
+                UInt8(ascii: "C"),
+                UInt8(ascii: "D"),
+            ])
+        sequence[0] = UInt8(ascii: "F")
+        sequence[1] = UInt8(ascii: "G")
+        sequence[2] = UInt8(ascii: "H")
+        sequence[3] = UInt8(ascii: "I")
+        XCTAssertEqual(sequence[0], UInt8(ascii: "F"))
+        XCTAssertEqual(sequence[1], UInt8(ascii: "G"))
+        XCTAssertEqual(sequence[2], UInt8(ascii: "H"))
+        XCTAssertEqual(sequence[3], UInt8(ascii: "I"))
     }
 
     func testEmptyCollection() {

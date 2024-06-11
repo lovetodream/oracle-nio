@@ -16,31 +16,33 @@ import NIOCore
 // MARK: Int8
 
 public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
-    public typealias MaskStorage = Self
-    public typealias Scalar = Int8
+    public typealias Element = Int8
 
     static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_INT8
-    static let zero: Scalar = .zero
 
-    fileprivate var underlying: TinySequence<Int8>
+    @usableFromInline
+    var base: TinySequence<Element>
 
-    public init() {
-        self.underlying = []
+    @inlinable
+    public init(arrayLiteral elements: Element...) {
+        self.base = .init(elements)
     }
 
-    public init(arrayLiteral elements: Int8...) {
-        self.underlying = .init(elements)
+    @inlinable
+    public init(_ collection: some Collection<Element>) {
+        self.base = .init(collection)
     }
 
-    init(underlying: TinySequence<Int8>) {
-        self.underlying = underlying
+    init(underlying: TinySequence<Element>) {
+        self.base = underlying
     }
 
+    @inlinable
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        for element in self.underlying {
+        for element in self.base {
             buffer.writeInteger(element)
         }
     }
@@ -62,30 +64,33 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
 // MARK: Float32
 
 public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
-    public typealias Scalar = Float32
+    public typealias Element = Float32
 
     static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT32
-    static let zero: Scalar = .zero
 
-    fileprivate var underlying: TinySequence<Float32>
+    @usableFromInline
+    var base: TinySequence<Element>
 
-    public init() {
-        self.underlying = []
+    @inlinable
+    public init(arrayLiteral elements: Element...) {
+        self.base = .init(elements)
     }
 
-    public init(arrayLiteral elements: Float32...) {
-        self.underlying = .init(elements)
+    @inlinable
+    public init(_ collection: some Collection<Element>) {
+        self.base = .init(collection)
     }
 
-    init(underlying: TinySequence<Float32>) {
-        self.underlying = underlying
+    init(underlying: TinySequence<Element>) {
+        self.base = underlying
     }
 
+    @inlinable
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        for element in self.underlying {
+        for element in self.base {
             element.encode(into: &buffer, context: context)
         }
     }
@@ -104,62 +109,37 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     }
 }
 
-extension OracleVectorFloat32 {
-    public struct MaskStorage: SIMD {
-        public typealias MaskStorage = Self
-        public typealias ArrayLiteralElement = Scalar
-        public typealias Scalar = Int32
-
-        private var underlying: TinySequence<Int32>
-        public var scalarCount: Int { self.underlying.count }
-
-        public init() {
-            self.underlying = []
-        }
-
-        public init(arrayLiteral elements: Int32...) {
-            self.underlying = .init(elements)
-        }
-
-        public subscript(index: Int) -> Int32 {
-            get {
-                self.underlying[index]
-            }
-            set(newValue) {
-                self.underlying[index] = newValue
-            }
-        }
-    }
-}
-
 
 // MARK: Float64
 
 public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
-    public typealias Scalar = Float64
+    public typealias Element = Float64
 
     static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT64
-    static let zero: Scalar = .zero
 
-    fileprivate var underlying: TinySequence<Float64>
+    @usableFromInline
+    var base: TinySequence<Element>
 
-    public init() {
-        self.underlying = []
+    @inlinable
+    public init(arrayLiteral elements: Element...) {
+        self.base = .init(elements)
     }
 
-    public init(arrayLiteral elements: Float64...) {
-        self.underlying = .init(elements)
+    @inlinable
+    public init(_ collection: some Collection<Element>) {
+        self.base = .init(collection)
     }
 
-    init(underlying: TinySequence<Float64>) {
-        self.underlying = underlying
+    init(underlying: TinySequence<Element>) {
+        self.base = underlying
     }
 
+    @inlinable
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        for element in self.underlying {
+        for element in self.base {
             element.encode(into: &buffer, context: context)
         }
     }
@@ -178,70 +158,43 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     }
 }
 
-extension OracleVectorFloat64 {
-    public struct MaskStorage: SIMD {
-        public typealias MaskStorage = Self
-        public typealias ArrayLiteralElement = Scalar
-        public typealias Scalar = Int64
 
-        private var underlying: [Int64]
-        public var scalarCount: Int { self.underlying.count }
-
-        public init() {
-            self.underlying = []
-        }
-
-        public init(arrayLiteral elements: Int64...) {
-            self.underlying = elements
-        }
-
-        public subscript(index: Int) -> Int64 {
-            get {
-                self.underlying[index]
-            }
-            set(newValue) {
-                self.underlying[index] = newValue
-            }
-        }
-    }
-}
-
-
-public protocol OracleVectorProtocol {
-    /// Increases the number of lanes to the given amount.
-    ///
-    /// New lanes will be initialised with zero values. Existing lanes remain untouched.
-    /// If lanes is less or equal to the current amount of lanes, nothing happens.
-    mutating func reserveLanes(_ lanes: Int)
-}
+public protocol OracleVectorProtocol {}
 
 
 // MARK: - Internal helper protocols
 
-private protocol _OracleVectorProtocol: OracleCodable, Equatable, SIMD
-where ArrayLiteralElement == Scalar {
+private protocol _OracleVectorProtocol: OracleCodable, Equatable, Collection,
+    ExpressibleByArrayLiteral
+where Index == Int {
     var count: Int { get }
-    var underlying: TinySequence<Scalar> { get set }
+    var base: TinySequence<Element> { get set }
     static var vectorFormat: UInt8 { get }
-    static var zero: Scalar { get }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self
 }
 
 extension _OracleVectorProtocol {
-    public var scalarCount: Int { self.count }
     public var oracleType: OracleDataType { .vector }
+    @inlinable public var count: Int { base.count }
+    @inlinable public var startIndex: Index { 0 }
+    @inlinable public var endIndex: Index { self.base.count }
 
-    var count: Int { underlying.count }
-
-    public subscript(index: Int) -> Scalar {
+    @inlinable
+    public subscript(index: Int) -> Element {
         get {
-            self.underlying[index]
+            self.base[index]
         }
         set(newValue) {
-            self.underlying[index] = newValue
+            self.base[index] = newValue
         }
     }
 
+    @inlinable
+    public func index(after i: Index) -> Index {
+        i + 1
+    }
+
+    @inlinable
     public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
@@ -263,6 +216,7 @@ extension _OracleVectorProtocol {
         buffer.writeBuffer(&temp)
     }
 
+    @inlinable
     public init<JSONDecoder: OracleJSONDecoder>(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -289,11 +243,10 @@ extension _OracleVectorProtocol {
         buffer.writeRepeatingByte(0, count: 8)
     }
 
-
     private static func _decodeOracleVectorHeader(from buffer: inout ByteBuffer) throws -> Int {
         let magicByte = try buffer.throwingReadInteger(as: UInt8.self)
         if magicByte != Constants.TNS_VECTOR_MAGIC_BYTE {
-            throw OracleDecodingError.Code.failure
+            throw OracleDecodingError.Code.typeMismatch
         }
 
         let version = try buffer.throwingReadInteger(as: UInt8.self)
@@ -315,14 +268,4 @@ extension _OracleVectorProtocol {
 
         return elementsCount
     }
-
-    public mutating func reserveLanes(_ lanes: Int) {
-        if self.underlying.count < lanes {
-            self.underlying.reserveCapacity(lanes)
-            for _ in 0..<(lanes - self.underlying.count) {
-                self.underlying.append(Self.zero)
-            }
-        }
-    }
-
 }

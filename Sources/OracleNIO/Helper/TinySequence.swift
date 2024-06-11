@@ -79,7 +79,7 @@ struct TinySequence<Element>: Sequence {
             switch self.base {
             case .none:
                 fatalError("Index out of range")
-            case .one(let element, let reserveCapacity):
+            case .one(_, let reserveCapacity):
                 guard index == 0 else {
                     fatalError("Index out of range")
                 }

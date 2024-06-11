@@ -1140,8 +1140,8 @@ final class OracleNIOTests: XCTestCase {
 
     func testLONGBindBeforeNonLONGBindWorks() async throws {
         var buffer = ByteBuffer()
-        buffer.reserveCapacity("binary data".utf8.count * 1000)
-        for _ in 0..<1000 {
+        buffer.reserveCapacity("binary data".utf8.count * 5000)
+        for _ in 0..<5000 {
             buffer.writeString("binary data")
         }
         let conn = try await OracleConnection.test(on: eventLoop)
@@ -1160,8 +1160,8 @@ final class OracleNIOTests: XCTestCase {
             XCTAssertEqual(data, buffer)
             XCTAssertEqual(filename, "image.jpeg")
         }
-        buffer.clear(minimumCapacity: "binory doto".utf8.count * 1000)
-        for _ in 0..<1000 {
+        buffer.clear(minimumCapacity: "binory doto".utf8.count * 5000)
+        for _ in 0..<5000 {
             buffer.writeString("binory doto")
         }
         try await conn.query(
@@ -1172,9 +1172,6 @@ final class OracleNIOTests: XCTestCase {
             XCTAssertEqual(data, buffer)
             XCTAssertEqual(filename, "image.jpeg")
         }
-
-        try await conn.commit()
-
     }
 
 }

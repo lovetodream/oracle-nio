@@ -21,18 +21,36 @@ final class OracleVectorTests: XCTestCase {
         let vector1 = OracleVectorInt8()
         XCTAssertEqual(vector1, [])
         let vector2: OracleVectorInt8 = [1, 2, 3]
-        XCTAssertEqual(vector2.max(), 3)
         XCTAssertEqual(vector2.count, 3)
-        let vector3 = OracleVectorInt8([1, 2, 3])
+        var vector3 = OracleVectorInt8([1, 2, 2])
+        XCTAssertNotEqual(vector2, vector3)
+        XCTAssertEqual(vector3[2], 2)
+        vector3[2] = 3
         XCTAssertEqual(vector2, vector3)
     }
 
     func testVectorFloat32() {
-        var vector1 = OracleVectorFloat32()
+        let vector1 = OracleVectorFloat32()
         XCTAssertEqual(vector1, [])
         let vector2: OracleVectorFloat32 = [1.1, 2.2, 3.3]
-        XCTAssertEqual(vector2.max(), 3.3)
         XCTAssertEqual(vector2.count, 3)
+        var vector3 = OracleVectorFloat32([1.1, 2.2, 3.2])
+        XCTAssertNotEqual(vector2, vector3)
+        XCTAssertEqual(vector3[2], 3.2)
+        vector3[2] = 3.3
+        XCTAssertEqual(vector2, vector3)
+    }
+
+    func testVectorFloat64() {
+        let vector1 = OracleVectorFloat64()
+        XCTAssertEqual(vector1, [])
+        let vector2: OracleVectorFloat64 = [1.1, 2.2, 3.3]
+        XCTAssertEqual(vector2.count, 3)
+        var vector3 = OracleVectorFloat64([1.1, 2.2, 3.2])
+        XCTAssertNotEqual(vector2, vector3)
+        XCTAssertEqual(vector3[2], 3.2)
+        vector3[2] = 3.3
+        XCTAssertEqual(vector2, vector3)
     }
 
     func testDecodingMalformedVectors() {

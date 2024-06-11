@@ -38,6 +38,16 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
+    public subscript(position: Index) -> Element {
+        get {
+            self.base[position]
+        }
+        set(newValue) {
+            self.base[position] = newValue
+        }
+    }
+
+    @inlinable
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
@@ -83,6 +93,16 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
 
     init(underlying: TinySequence<Element>) {
         self.base = underlying
+    }
+
+    @inlinable
+    public subscript(position: Index) -> Element {
+        get {
+            self.base[position]
+        }
+        set(newValue) {
+            self.base[position] = newValue
+        }
     }
 
     @inlinable
@@ -135,6 +155,16 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
+    public subscript(position: Index) -> Element {
+        get {
+            self.base[position]
+        }
+        set(newValue) {
+            self.base[position] = newValue
+        }
+    }
+
+    @inlinable
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
@@ -178,16 +208,6 @@ extension _OracleVectorProtocol {
     @inlinable public var count: Int { base.count }
     @inlinable public var startIndex: Index { 0 }
     @inlinable public var endIndex: Index { self.base.count }
-
-    @inlinable
-    public subscript(index: Int) -> Element {
-        get {
-            self.base[index]
-        }
-        set(newValue) {
-            self.base[index] = newValue
-        }
-    }
 
     @inlinable
     public func index(after i: Index) -> Index {

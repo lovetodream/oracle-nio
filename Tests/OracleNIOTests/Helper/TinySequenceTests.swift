@@ -61,6 +61,14 @@ final class TinySequenceTests: XCTestCase {
 
         var twoElemSequence = TinySequence<Int>([1, 2])
         twoElemSequence.reserveCapacity(8)
+        twoElemSequence.append(3)
+        guard case .n(let array) = twoElemSequence.base else {
+            return XCTFail("Expected sequence to be backed by an array")
+        }
+        XCTAssertGreaterThanOrEqual(array.capacity, 8)
+
+        var threeElemSequence = TinySequence<Int>([1, 2, 3])
+        threeElemSequence.reserveCapacity(8)
         guard case .n(let array) = twoElemSequence.base else {
             return XCTFail("Expected sequence to be backed by an array")
         }
@@ -82,7 +90,7 @@ final class TinySequenceTests: XCTestCase {
     }
 
     func testTwoItems() {
-        var sequence = TinySequence([UInt8(ascii: "A"), UInt8(ascii: "B")])
+        var sequence = TinySequence<UInt8>("AB".ascii)
         XCTAssertEqual(sequence[0], UInt8(ascii: "A"))
         XCTAssertEqual(sequence[1], UInt8(ascii: "B"))
         XCTAssertEqual(Array(sequence), [UInt8(ascii: "A"), UInt8(ascii: "B")])
@@ -94,12 +102,7 @@ final class TinySequenceTests: XCTestCase {
     }
 
     func testNItems() {
-        var sequence = TinySequence([
-            UInt8(ascii: "A"),
-            UInt8(ascii: "B"),
-            UInt8(ascii: "C"),
-            UInt8(ascii: "D"),
-        ])
+        var sequence = TinySequence<UInt8>("ABCD".ascii)
         XCTAssertEqual(sequence[0], UInt8(ascii: "A"))
         XCTAssertEqual(sequence[1], UInt8(ascii: "B"))
         XCTAssertEqual(sequence[2], UInt8(ascii: "C"))
@@ -116,10 +119,12 @@ final class TinySequenceTests: XCTestCase {
         sequence[1] = UInt8(ascii: "G")
         sequence[2] = UInt8(ascii: "H")
         sequence[3] = UInt8(ascii: "I")
+        sequence.append(UInt8(ascii: "J"))
         XCTAssertEqual(sequence[0], UInt8(ascii: "F"))
         XCTAssertEqual(sequence[1], UInt8(ascii: "G"))
         XCTAssertEqual(sequence[2], UInt8(ascii: "H"))
         XCTAssertEqual(sequence[3], UInt8(ascii: "I"))
+        XCTAssertEqual(sequence[4], UInt8(ascii: "J"))
     }
 
     func testEmptyCollection() {
@@ -127,5 +132,45 @@ final class TinySequenceTests: XCTestCase {
         XCTAssertTrue(sequence.isEmpty)
         XCTAssertEqual(sequence.count, 0)
         XCTAssertEqual(Array(sequence), [])
+    }
+
+    func testCustomEquatableAndHashable() {
+        // Equatable
+        XCTAssertEqual(TinySequence<UInt8>(), [])
+        XCTAssertEqual(TinySequence("A".utf8), [UInt8(ascii: "A")])
+        XCTAssertEqual(
+            TinySequence("AB".utf8),
+            [UInt8(ascii: "A"), UInt8(ascii: "B")]
+        )
+        XCTAssertEqual(
+            TinySequence("ABC".utf8),
+            [UInt8(ascii: "A"), UInt8(ascii: "B"), UInt8(ascii: "C")]
+        )
+        XCTAssertNotEqual(
+            TinySequence("A".utf8), 
+            [UInt8(ascii: "A"), UInt8(ascii: "B")]
+        )
+
+        // Hashable
+        XCTAssertEqual(
+            TinySequence<UInt8>().hashValue,
+            TinySequence<UInt8>().hashValue
+        )
+        XCTAssertEqual(
+            TinySequence("A".utf8).hashValue,
+            TinySequence("A".utf8).hashValue
+        )
+        XCTAssertEqual(
+            TinySequence("AB".utf8).hashValue,
+            TinySequence("AB".utf8).hashValue
+        )
+        XCTAssertEqual(
+            TinySequence("ABC".utf8).hashValue,
+            TinySequence("ABC".utf8).hashValue
+        )
+        XCTAssertNotEqual(
+            TinySequence("A".utf8).hashValue,
+            TinySequence("AB".utf8).hashValue
+        )
     }
 }

@@ -1138,6 +1138,45 @@ final class OracleNIOTests: XCTestCase {
         try await conn.query("select * from emp_annotated")
     }
 
+    func testLONGBindBeforeNonLONGBindWorks() async throws {
+        var buffer = ByteBuffer()
+        buffer.reserveCapacity("binary data".utf8.count * 1000)
+        for _ in 0..<1000 {
+            buffer.writeString("binary data")
+        }
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        _ = try? await conn.query("DROP TABLE buffer_test_table")
+        try await conn.query(
+            "CREATE TABLE buffer_test_table (id number, mimetype varchar2(50), filename varchar2(100), data blob)"
+        )
+        try await conn.query(
+            "INSERT INTO buffer_test_table (id, mimetype, filename, data) VALUES (\(OracleNumber(1)), \("image/jpeg"), \("image.jpeg"), \(buffer))"
+        )
+        let stream1 = try await conn.query(
+            "SELECT data, filename FROM buffer_test_table WHERE id = \(OracleNumber(1))")
+        for try await (data, filename) in stream1.decode((ByteBuffer, String).self) {
+            XCTAssertEqual(data, buffer)
+            XCTAssertEqual(filename, "image.jpeg")
+        }
+        buffer.clear(minimumCapacity: "binory doto".utf8.count * 1000)
+        for _ in 0..<1000 {
+            buffer.writeString("binory doto")
+        }
+        try await conn.query(
+            "UPDATE buffer_test_table SET data = \(buffer) WHERE id = \(OracleNumber(1))")
+        let stream2 = try await conn.query(
+            "SELECT data, filename FROM buffer_test_table WHERE id = \(OracleNumber(1))")
+        for try await (data, filename) in stream2.decode((ByteBuffer, String).self) {
+            XCTAssertEqual(data, buffer)
+            XCTAssertEqual(filename, "image.jpeg")
+        }
+
+        try await conn.commit()
+
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

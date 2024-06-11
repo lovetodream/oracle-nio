@@ -111,7 +111,6 @@ extension OracleBackendMessage {
             let flags = try buffer.throwingReadInteger(as: UInt16.self)
             let lastPacket = (flags & Constants.TNS_DATA_FLAGS_END_OF_REQUEST) != 0
             if context.performingChunkedRead {
-                print("chunk")
                 messages.append(.chunk(buffer.slice()))
             } else {
                 try self.decodeData(from: &buffer, into: &messages, context: context)

@@ -17,7 +17,6 @@ extension OracleBackendMessage {
     struct DataTypes: PayloadDecodable, Sendable, Hashable {
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.DataTypes {
             while true {

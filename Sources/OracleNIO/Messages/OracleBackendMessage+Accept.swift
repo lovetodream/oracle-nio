@@ -21,7 +21,6 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.Accept {
             let protocolVersion =
@@ -32,18 +31,18 @@ extension OracleBackendMessage {
             buffer.moveReaderIndex(forwardBy: 20)
             let sdu = try buffer.throwingReadInteger(as: UInt32.self)
 
-            var caps = capabilities
+            var caps = context.capabilities
+            let flags: UInt32
             if protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK {
                 buffer.moveReaderIndex(forwardBy: 5)
-                let flags = try buffer.throwingReadInteger(as: UInt32.self)
-                if (flags & Constants.TNS_ACCEPT_FLAG_FAST_AUTH) != 0 {
-                    caps.supportsFastAuth = true
-                }
+                flags = try buffer.throwingReadInteger(as: UInt32.self)
+            } else {
+                flags = 0
             }
 
             caps.sdu = sdu
             caps.adjustForProtocol(
-                version: protocolVersion, options: protocolOptions
+                version: protocolVersion, options: protocolOptions, flags: flags
             )
 
             return .init(newCapabilities: caps)

@@ -50,6 +50,7 @@ public struct OracleDataTypeNumber: Sendable, Hashable {
         case unknown = 0
         case uRowID = 2030
         case varchar = 2001
+        case vector = 2033
     }
 
     internal let backing: Backing
@@ -87,6 +88,7 @@ public struct OracleDataTypeNumber: Sendable, Hashable {
     public static let unknown: Self = .init(.unknown)
     public static let uRowID: Self = .init(.uRowID)
     public static let varchar: Self = .init(.varchar)
+    public static let vector: Self = .init(.vector)
 }
 
 /// A data type used by the Oracle Wire Protocol (TNS) and the database.
@@ -349,6 +351,12 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         csfrm: 1,
         bufferSizeFactor: 4
     )
+    public static let vector = OracleDataType(
+        number: .vector,
+        name: "DB_TYPE_VECTOR",
+        oracleName: "VECTOR",
+        oracleType: .init(rawValue: 127)
+    )
 
     @usableFromInline
     static let supported: [OracleDataType] = [
@@ -356,6 +364,6 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         .char, .clob, .cursor, .date, .intervalDS, .intervalYM, .json, .long,
         .longNVarchar, .longRAW, .nChar, .nCLOB, .number, .nVarchar, .object,
         .raw, .rowID, .timestamp, .timestampLTZ, .timestampTZ, .unknown,
-        .uRowID, .varchar,
+        .uRowID, .varchar, .vector,
     ]
 }

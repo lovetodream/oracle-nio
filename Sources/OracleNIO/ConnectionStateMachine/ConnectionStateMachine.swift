@@ -65,6 +65,10 @@ struct ConnectionStateMachine {
 
             let error: OracleSQLError
 
+            /// We need to read remaining data from the channel
+            /// if a marker response is pending.
+            let read: Bool
+
             let closePromise: EventLoopPromise<Void>?
         }
 
@@ -1033,6 +1037,7 @@ extension ConnectionStateMachine {
             action: action,
             tasks: tasks,
             error: error,
+            read: self.markerState == .markerSent,
             closePromise: forwardedPromise
         )
     }

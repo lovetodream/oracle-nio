@@ -19,13 +19,12 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
 
     struct Container: Equatable {
         var flags: UInt8 = 0
-        var message: OracleBackendMessage
+        var messages: TinySequence<OracleBackendMessage>
     }
-    typealias InboundOut = [Container]
-
-    private var capabilities: Capabilities
+    typealias InboundOut = TinySequence<Container>
 
     private let context: Context
+
     /// Used for message testing, to get expected messages one after another
     /// instead of retrieving random amounts, depending on the stream.
     ///
@@ -33,14 +32,26 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     /// is only possible in debug builds.
     private let sendSingleMessages: Bool
 
-    class Context {
+    final class Context {
+        var capabilities: Capabilities
         var performingChunkedRead = false
         var queryOptions: QueryOptions? = nil
         var columnsCount: Int? = nil
+
+        init(
+            capabilities: Capabilities,
+            performingChunkedRead: Bool = false,
+            queryOptions: QueryOptions? = nil,
+            columnsCount: Int? = nil
+        ) {
+            self.capabilities = capabilities
+            self.performingChunkedRead = performingChunkedRead
+            self.queryOptions = queryOptions
+            self.columnsCount = columnsCount
+        }
     }
 
-    init(capabilities: Capabilities, context: Context) {
-        self.capabilities = capabilities
+    init(context: Context) {
         self.context = context
         self.sendSingleMessages = false
     }
@@ -48,8 +59,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     #if DEBUG
         /// For testing only!
         init() {
-            self.capabilities = .init()
-            self.context = .init()
+            self.context = .init(capabilities: .init())
             self.sendSingleMessages = true
         }
     #endif
@@ -57,7 +67,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     mutating func decode(
         context: ChannelHandlerContext, buffer: inout ByteBuffer
     ) throws -> DecodingState {
-        while let message = try decodeMessage(from: &buffer) {
+        while let (message, needMoreData) = try decodeMessage(from: &buffer) {
             #if DEBUG
                 if sendSingleMessages {
                     for part in message {
@@ -69,7 +79,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             #else
                 context.fireChannelRead(self.wrapInboundOut(message))
             #endif
-            if buffer.readableBytes > 0 {
+            if buffer.readableBytes > 0 || needMoreData {
                 return .needMoreData
             } else {
                 buffer = buffer.slice()
@@ -79,26 +89,33 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         return .needMoreData
     }
 
-    private func decodeMessage(from buffer: inout ByteBuffer) throws -> InboundOut? {
+    private func decodeMessage(
+        from buffer: inout ByteBuffer
+    ) throws -> (InboundOut, needMoreData: Bool)? {
         var msgs: InboundOut?
-        while let messages = try self.decodeMessage0(from: &buffer) {
+        var needMoreData = true
+        while let (messages, stillNeedMoreData) = try self.decodeMessage0(from: &buffer) {
+            needMoreData = stillNeedMoreData
             buffer = buffer.slice()
             if msgs != nil {
-                msgs!.append(contentsOf: messages)
+                msgs!.append(messages)
             } else {
-                msgs = messages
+                msgs = [messages]
             }
         }
-        return msgs
+        if let msgs {
+            return (msgs, needMoreData)
+        }
+        return nil
     }
 
     private func decodeMessage0(
         from buffer: inout ByteBuffer
-    ) throws -> InboundOut? {
+    ) throws -> (Container, needMoreData: Bool)? {
         let startReaderIndex = buffer.readerIndex
 
         let length: Int?
-        if self.capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+        if self.context.capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             length = buffer.getInteger(at: startReaderIndex, as: UInt32.self).map(Int.init)
         } else {
             length = buffer.getInteger(at: startReaderIndex, as: UInt16.self).map(Int.init)
@@ -129,12 +146,11 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         }
 
         do {
-            let messages = try OracleBackendMessage.decode(
+            let (messages, lastPacket) = try OracleBackendMessage.decode(
                 from: &packet, of: type,
-                capabilities: self.capabilities,
-                context: context
+                context: self.context
             )
-            return messages.map { .init(flags: packetFlags, message: $0) }
+            return (Container(flags: packetFlags, messages: messages), !lastPacket)
         } catch let error as OraclePartialDecodingError {
             buffer.moveReaderIndex(to: startReaderIndex)
             let completeMessage = buffer.readSlice(length: length)!

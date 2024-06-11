@@ -113,7 +113,7 @@ final class OracleClientTests: XCTestCase {
                     let hello = try await client.withConnection { db in
                         try await db.query("SELECT 'hello' FROM dual", logger: .oracleTest)
                     }.collect().first?.decode(String.self)
-                    print(hello as Any)
+                    XCTAssertEqual(hello, "hello")
 
                     // wait for the connection pool to do ping pong and close
                     try await Task.sleep(for: idleTimeout + .seconds(1))

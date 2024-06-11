@@ -12,17 +12,21 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
+import NIOEmbedded
 
-extension OracleBackendMessage {
-    struct LOBData: PayloadDecodable, Hashable {
-        let buffer: ByteBuffer
+@testable import OracleNIO
 
-        static func decode(
-            from buffer: inout ByteBuffer,
-            context: OracleBackendMessageDecoder.Context
-        ) throws -> OracleBackendMessage.LOBData {
-            let buffer = try buffer.readOracleSpecificLengthPrefixedSlice()
-            return .init(buffer: buffer)
-        }
+extension OracleRowStream {
+
+    convenience init(
+        source: Source,
+        eventLoop: any EventLoop = EmbeddedEventLoop()
+    ) {
+        self.init(
+            source: source,
+            eventLoop: eventLoop,
+            logger: OracleConnection.noopLogger
+        )
     }
+
 }

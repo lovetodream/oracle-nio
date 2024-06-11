@@ -75,28 +75,3 @@ final class OracleQueryContextTests: XCTestCase {
     }
 
 }
-
-extension ExtendedQueryContext {
-
-    convenience init(query: OracleQuery) {
-        self.init(
-            query: query, options: .init(),
-            logger: .oracleTest,
-            promise: OracleConnection.defaultEventLoopGroup.any().makePromise()
-        )
-    }
-
-    func cleanup() {
-        switch self.statement {
-        case .query(let promise),
-            .plsql(let promise),
-            .dml(let promise),
-            .ddl(let promise),
-            .plain(let promise):
-            promise.fail(TestComplete())
-        }
-    }
-
-    struct TestComplete: Error {}
-
-}

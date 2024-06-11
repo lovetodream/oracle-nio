@@ -48,15 +48,30 @@ extension OracleConnection {
         return config
     }
 
+    static func privilegedTestConfig() throws -> OracleConnection.Configuration {
+        var config = try self.testConfig()
+        config.authenticationMethod = {
+            .init(
+                username: "SYS",
+                password: env("ORA_SYS_PASSWORD") ?? "my_very_secure_password")
+        }
+        config.mode = .sysDBA
+        return config
+    }
+
     static func test(
         on eventLoop: EventLoop,
+        config: OracleConnection.Configuration? = nil,
         logLevel: Logger.Level = Logger.getLogLevel()
     ) async throws -> OracleConnection {
         var logger = Logger(label: "oracle.connection.test")
         logger.logLevel = logLevel
 
         return try await OracleConnection.connect(
-            on: eventLoop, configuration: self.testConfig(), id: 0, logger: logger
+            on: eventLoop,
+            configuration: config ?? self.testConfig(),
+            id: 0,
+            logger: logger
         )
     }
 }

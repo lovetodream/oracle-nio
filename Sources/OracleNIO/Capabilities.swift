@@ -24,6 +24,7 @@ struct Capabilities: Sendable, Hashable {
     var runtimeCapabilities = [UInt8](repeating: 0, count: Constants.TNS_RCAP_MAX)
     var supportsFastAuth = false
     var supportsOOB = false
+    var supportsEndOfRequest = false
     var maxStringSize: UInt32 = 0
     var sdu: UInt32 = UInt32(Constants.TNS_SDU)
 
@@ -36,7 +37,9 @@ struct Capabilities: Sendable, Hashable {
             Constants.TNS_CCAP_SQL_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_LOGON_TYPES] =
             Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP | Constants.TNS_CCAP_O7LOGON
-            | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER
+            | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER | Constants.TNS_CCAP_O9LOGON_LONG_PASSWORD
+        self.compileCapabilities[Constants.TNS_CCAP_FEATURE_BACKPORT] =
+            Constants.TNS_CCAP_CTB_IMPLICIT_POOL
         self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = self.ttcFieldVersion
         self.compileCapabilities[Constants.TNS_CCAP_SERVER_DEFINE_CONV] = 1
         self.compileCapabilities[Constants.TNS_CCAP_TTC1] =
@@ -53,7 +56,11 @@ struct Capabilities: Sendable, Hashable {
             Constants.TNS_CCAP_DBF_VERSION_MAX
         self.compileCapabilities[Constants.TNS_CCAP_LOB] =
             Constants.TNS_CCAP_LOB_UB8_SIZE | Constants.TNS_CCAP_LOB_ENCS
+            | Constants.TNS_CCAP_LOB_PREFETCH_LENGTH | Constants.TNS_CCAP_LOB_TEMP_SIZE
+            | Constants.TNS_CCAP_LOB_12C | Constants.TNS_CCAP_LOB_PREFETCH_DATA
         self.compileCapabilities[Constants.TNS_CCAP_UB2_DTY] = 1
+        self.compileCapabilities[Constants.TNS_CCAP_LOB2] =
+            Constants.TNS_CCAP_LOB2_QUASI | Constants.TNS_CCAP_LOB2_2GB_PREFETCH
         self.compileCapabilities[Constants.TNS_CCAP_TTC3] =
             Constants.TNS_CCAP_IMPLICIT_RESULTS | Constants.TNS_CCAP_BIG_CHUNK_CLR
             | Constants.TNS_CCAP_KEEP_OUT_ORDER
@@ -61,6 +68,7 @@ struct Capabilities: Sendable, Hashable {
         self.compileCapabilities[Constants.TNS_CCAP_OCI2] = Constants.TNS_CCAP_DRCP
         self.compileCapabilities[Constants.TNS_CCAP_CLIENT_FN] = Constants.TNS_CCAP_CLIENT_FN_MAX
         self.compileCapabilities[Constants.TNS_CCAP_TTC4] = Constants.TNS_CCAP_INBAND_NOTIFICATION
+        self.compileCapabilities[Constants.TNS_CCAP_TTC5] = Constants.TNS_CCAP_VECTOR_SUPPORT
 
         // Runtime Capabilities
         self.runtimeCapabilities[Constants.TNS_RCAP_COMPAT] = Constants.TNS_RCAP_COMPAT_81
@@ -68,10 +76,20 @@ struct Capabilities: Sendable, Hashable {
             Constants.TNS_RCAP_TTC_ZERO_COPY | Constants.TNS_RCAP_TTC_32K
     }
 
-    mutating func adjustForProtocol(version: UInt16, options: UInt16) {
+    mutating func adjustForProtocol(version: UInt16, options: UInt16, flags: UInt32) {
         self.protocolVersion = version
         self.protocolOptions = options
         self.supportsOOB = options & Constants.TNS_GSO_CAN_RECV_ATTENTION != 0
+        if (flags & Constants.TNS_ACCEPT_FLAG_FAST_AUTH) != 0 {
+            self.supportsFastAuth = true
+        }
+        if self.protocolVersion >= Constants.TNS_VERSION_MIN_END_OF_RESPONSE
+            && (flags & Constants.TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST) != 0
+        {
+            self.compileCapabilities[Constants.TNS_CCAP_TTC4] |=
+                Constants.TNS_CCAP_END_OF_REQUEST
+            self.supportsEndOfRequest = true
+        }
     }
 
     mutating func adjustForServerCompileCapabilities(
@@ -86,6 +104,13 @@ struct Capabilities: Sendable, Hashable {
             self.ttcFieldVersion = ttcFieldVersion
             self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] =
                 self.ttcFieldVersion
+        }
+        if self.ttcFieldVersion < Constants.TNS_CCAP_FIELD_VERSION_23_4
+            && self.supportsEndOfRequest
+        {
+            self.compileCapabilities[Constants.TNS_CCAP_TTC4] ^=
+                Constants.TNS_CCAP_END_OF_REQUEST
+            self.supportsEndOfRequest = false
         }
     }
 

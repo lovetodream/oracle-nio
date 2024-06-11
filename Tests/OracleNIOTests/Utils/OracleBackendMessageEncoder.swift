@@ -21,16 +21,18 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
     var protocolVersion: Int
 
     func encode(data container: OutboundIn, out: inout ByteBuffer) {
-        switch container.message {
-        case .accept(let accept):
-            self.encode(
-                id: .accept,
-                flags: container.flags,
-                payload: accept,
-                out: &out
-            )
-        default:
-            fatalError("Not implemented")
+        for message in container.messages {
+            switch message {
+            case .accept(let accept):
+                self.encode(
+                    id: .accept,
+                    flags: container.flags,
+                    payload: accept,
+                    out: &out
+                )
+            default:
+                fatalError("Not implemented")
+            }
         }
     }
 
@@ -68,7 +70,6 @@ extension OracleBackendMessage.Accept: OracleMessagePayloadEncodable {
         buffer.writeInteger(self.newCapabilities.protocolOptions, as: UInt16.self)
         buffer.writeBytes(Array(repeating: UInt8(0), count: 20))  // random chunk
         buffer.writeInteger(self.newCapabilities.sdu, as: UInt32.self)
-        print("encoded:", self.newCapabilities.sdu, buffer.writerIndex)
         if self.newCapabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK {
             buffer.writeBytes(Array(repeating: UInt8(0), count: 5))  // more chunk
             if self.newCapabilities.supportsFastAuth {

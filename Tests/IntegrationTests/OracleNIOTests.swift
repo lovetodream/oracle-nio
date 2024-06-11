@@ -727,10 +727,9 @@ final class OracleNIOTests: XCTestCase {
 
     func testDecodingFailureInStreamCausesDecodingError() async throws {
         var received: Int64 = 0
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
         do {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { XCTAssertNoThrow(try conn.syncClose()) }
-
             let rows = try await conn.query(
                 "SELECT CASE TO_NUMBER(column_value) WHEN 6969 THEN NULL ELSE TO_NUMBER(column_value) END AS id FROM xmltable ('1 to 10000')",
                 logger: .oracleTest
@@ -1029,6 +1028,114 @@ final class OracleNIOTests: XCTestCase {
         let myCount = try myCountBind.decode(of: Int.self)
         print(myCount)  // 13
         XCTAssertEqual(myCount, 13)
+    }
+
+    func testStoredProcedureWithVarchar() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        let createProcedureQuery: OracleQuery = """
+            CREATE OR REPLACE PROCEDURE get_random_record_test3 (
+            value_firstname OUT VARCHAR2
+            ) AS
+            BEGIN
+            value_firstname := 'DummyName';
+            END;
+            """
+        try await conn.query(createProcedureQuery)
+
+        let myNameBind = OracleRef(dataType: .varchar)
+        try await conn.query(
+            """
+            BEGIN
+                GET_RANDOM_RECORD_TEST3(\(myNameBind));
+            END;
+            """)
+        let myName = try myNameBind.decode(of: String.self)
+        XCTAssertEqual(myName, "DummyName")
+    }
+
+    func testBasicVectorTable() async throws {
+        try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        try await conn.query(
+            """
+            CREATE TABLE IF NOT EXISTS sample_vector_table(
+                v32 vector(3, float32),
+                v64 vector(3, float64),
+                v8  vector(3, int8)
+            )
+            """)
+        try await conn.query("TRUNCATE TABLE sample_vector_table")
+        typealias Row = (OracleVectorFloat32?, OracleVectorFloat64, OracleVectorInt8)
+        let insertRows: [Row] = [
+            ([2.625, 2.5, 2.0], [22.25, 22.75, 22.5], [4, 5, 6]),
+            ([3.625, 3.5, 3.0], [33.25, 33.75, 33.5], [7, 8, 9]),
+            (nil, [15.75, 18.5, 9.25], [10, 11, 12]),
+        ]
+        for row in insertRows {
+            try await conn.query(
+                "INSERT INTO sample_vector_table (v32, v64, v8) VALUES (\(row.0), \(row.1), \(row.2))"
+            )
+        }
+
+        let stream = try await conn.query("SELECT v32, v64, v8 FROM sample_vector_table")
+        var selectedRows: [Row] = []
+        for try await row in stream.decode(Row.self) {
+            selectedRows.append(row)
+        }
+        XCTAssertTrue(!selectedRows.isEmpty)
+        for index in insertRows.indices {
+            XCTAssertEqual(insertRows[index].0, selectedRows[index].0)
+            XCTAssertEqual(insertRows[index].1, selectedRows[index].1)
+            XCTAssertEqual(insertRows[index].2, selectedRows[index].2)
+        }
+    }
+
+    func testFlexibleVector() async throws {
+        try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        try await conn.query(
+            """
+            CREATE TABLE IF NOT EXISTS sample_vector_table2(
+                v32 vector(*, float32)
+            )
+            """)
+        try await conn.query("TRUNCATE TABLE sample_vector_table2")
+        let vector: OracleVectorFloat32 = [1.1, 2.2, 3.3, 4.4, 5.5]
+        try await conn.query(
+            "INSERT INTO sample_vector_table2 (v32) VALUES (\(vector))"
+        )
+
+        let stream = try await conn.query("SELECT v32 FROM sample_vector_table2")
+        var selectedRows: [OracleVectorFloat32] = []
+        for try await row in stream.decode(OracleVectorFloat32.self) {
+            selectedRows.append(row)
+        }
+        XCTAssertEqual(selectedRows.count, 1)
+        XCTAssertEqual(selectedRows[0], vector)
+    }
+
+    func testDomainAndAnnotations() async throws {
+        try XCTSkipIf(env("TEST_PRIVILEGED")?.isEmpty != false)
+        let conn = try await OracleConnection.test(
+            on: eventLoop, config: OracleConnection.privilegedTestConfig()
+        )
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        try await conn.query("drop table if exists emp_annotated")
+        try await conn.query("create domain SimpleDomain as number(3, 0) NOT NULL")
+        try await conn.query(
+            """
+            create table emp_annotated(
+                empno number domain SimpleDomain,
+                ename varchar2(50) annotations (display 'lastname'),
+                salary number      annotations (person_salary, column_hidden)
+            ) annotations (display 'employees')
+            """)
+        try await conn.query("select * from emp_annotated")
     }
 
 }

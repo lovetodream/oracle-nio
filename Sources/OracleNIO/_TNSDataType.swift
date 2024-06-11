@@ -46,7 +46,7 @@ public enum _TNSDataType: UInt16, Sendable, Hashable {
     case aua = 292  // 36 + 256
     case rxh7 = 293  // 37 + 256
     case na6 = 294  // 38 + 256
-    case oac = 39
+    case oac9 = 39
     case ams = 40
     case brn = 41
     case brp = 298  // 42 + 256
@@ -120,10 +120,11 @@ public enum _TNSDataType: UInt16, Sendable, Hashable {
     case rset = 116
     case cwd = 117
     case json = 119
-    case newOAC = 120
+    case oac122 = 120
     case ud12 = 380  // 124 + 256
     case al8 = 381  // 125 + 256
     case lfop = 382  // 126 + 256
+    case vector = 127
     case fcrt = 383  // 127 + 256
     case dny = 384  // 128 + 256
     case opr = 385  // 129 + 256
@@ -307,7 +308,7 @@ public enum _TNSDataType: UInt16, Sendable, Hashable {
     case xsnsop2 = 604
     case xsns2 = 605
     case implres = 611
-    case oer = 612
+    case oer19 = 612
     case ub1array = 613
     case sessstate = 614
     case acReplay = 615
@@ -326,6 +327,9 @@ public enum _TNSDataType: UInt16, Sendable, Hashable {
     case chunkinfo = 636
     case scn = 637
     case scn8 = 638
-    case uds = 639
+    case ud21 = 639
     case tnp = 640
+    case oac = 646
+    case oer = 652
+    case uds = 663
 }

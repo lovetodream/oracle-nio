@@ -30,7 +30,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ), count: 2
             )
         )
@@ -60,7 +65,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ),
                 .init(
                     name: "float",
@@ -69,7 +79,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ),
                 .init(
                     name: "double",
@@ -78,7 +93,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ),
             ]
         )
@@ -107,7 +127,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 )
             ]
         )
@@ -136,7 +161,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ),
                 .init(
                     name: "float",
@@ -145,7 +175,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ),
                 .init(
                     name: "double",
@@ -154,7 +189,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 ),
             ]
         )
@@ -181,7 +221,12 @@ final class OracleCodableTests: XCTestCase {
                     precision: 1,
                     scale: 1,
                     bufferSize: 1,
-                    nullsAllowed: true
+                    nullsAllowed: true,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
                 )
             ]
         )

@@ -23,12 +23,17 @@ extension OracleBackendMessage {
 
         static func decode(
             from buffer: inout ByteBuffer,
-            capabilities: Capabilities,
             context: OracleBackendMessageDecoder.Context
         ) throws -> RowData {
             let data = RowData(slice: buffer.slice())
             buffer.moveReaderIndex(to: buffer.readerIndex + buffer.readableBytes)
             return data
         }
+    }
+}
+
+extension OracleBackendMessage.RowData: CustomDebugStringConvertible {
+    var debugDescription: String {
+        "RowData(slice: \(self.slice.readableBytes) bytes)"
     }
 }

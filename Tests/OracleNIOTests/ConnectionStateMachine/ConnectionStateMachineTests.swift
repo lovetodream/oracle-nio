@@ -48,6 +48,7 @@ final class ConnectionStateMachineTests: XCTestCase {
                     action: .fireChannelInactive,
                     tasks: [],
                     error: .uncleanShutdown,
+                    read: false,
                     closePromise: nil
                 )
             )

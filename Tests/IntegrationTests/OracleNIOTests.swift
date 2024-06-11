@@ -1093,6 +1093,50 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testFlexibleVector() async throws {
+        try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        try await conn.query(
+            """
+            CREATE TABLE IF NOT EXISTS sample_vector_table2(
+                v32 vector(*, float32)
+            )
+            """)
+        try await conn.query("TRUNCATE TABLE sample_vector_table2")
+        let vector: OracleVectorFloat32 = [1.1, 2.2, 3.3, 4.4, 5.5]
+        try await conn.query(
+            "INSERT INTO sample_vector_table2 (v32) VALUES (\(vector))"
+        )
+
+        let stream = try await conn.query("SELECT v32 FROM sample_vector_table2")
+        var selectedRows: [OracleVectorFloat32] = []
+        for try await row in stream.decode(OracleVectorFloat32.self) {
+            selectedRows.append(row)
+        }
+        XCTAssertEqual(selectedRows.count, 1)
+        XCTAssertEqual(selectedRows[0], vector)
+    }
+
+    func testDomainAndAnnotations() async throws {
+        try XCTSkipIf(env("TEST_PRIVILEGED")?.isEmpty != false)
+        let conn = try await OracleConnection.test(
+            on: eventLoop, config: OracleConnection.privilegedTestConfig()
+        )
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        
+        try await conn.query("drop table if exists emp_annotated")
+        try await conn.query("create domain SimpleDomain as number(3, 0) NOT NULL")
+        try await conn.query("""
+        create table emp_annotated(
+            empno number domain SimpleDomain,
+            ename varchar2(50) annotations (display 'lastname'),
+            salary number      annotations (person_salary, column_hidden)
+        ) annotations (display 'employees')
+        """)
+        try await conn.query("select * from emp_annotated")
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

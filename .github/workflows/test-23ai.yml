@@ -14,7 +14,7 @@ jobs:
       oracle:
         image: gvenzl/oracle-free:23
         env:
-          ORACLE_RANDOM_PASSWORD: true
+          ORACLE_PASSWORD: my_very_secure_password
           APP_USER: my_user
           APP_USER_PASSWORD: my_password
         ports:
@@ -44,6 +44,7 @@ jobs:
         ORA_USERNAME: my_user
         ORA_PASSWORD: my_password
         TEST_VECTORS: true
+        TEST_PRIVILEGED: true
     - name: Prepare Code Coverage
       run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload coverage reports to Codecov

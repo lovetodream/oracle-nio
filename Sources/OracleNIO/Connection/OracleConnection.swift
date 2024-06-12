@@ -456,7 +456,7 @@ extension OracleConnection {
     }
 
     func execute(
-        cursor: consuming Cursor,
+        cursor: Cursor,
         options: QueryOptions = .init(),
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line

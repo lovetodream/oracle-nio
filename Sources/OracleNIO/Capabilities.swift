@@ -76,6 +76,34 @@ struct Capabilities: Sendable, Hashable {
             Constants.TNS_RCAP_TTC_ZERO_COPY | Constants.TNS_RCAP_TTC_32K
     }
 
+    /// Decodes Capabilities from a buffer created with ``encode(into:)``.
+    init(from buffer: inout ByteBuffer) throws {
+        self.protocolVersion = try buffer.throwingReadInteger()
+        self.protocolOptions = try buffer.throwingReadInteger()
+        self.charsetID = try buffer.throwingReadInteger()
+        self.nCharsetID = try buffer.throwingReadInteger()
+        self.compileCapabilities = .init(repeating: 0, count: Constants.TNS_CCAP_MAX)
+        self.runtimeCapabilities = .init(repeating: 0, count: Constants.TNS_RCAP_MAX)
+        self.supportsFastAuth = try buffer.throwingReadInteger(as: UInt8.self) == 1
+        self.supportsOOB = try buffer.throwingReadInteger(as: UInt8.self) == 1
+        self.supportsEndOfRequest = try buffer.throwingReadInteger(as: UInt8.self) == 1
+        self.maxStringSize = try buffer.throwingReadInteger()
+        self.sdu = try buffer.throwingReadInteger()
+    }
+
+    /// Encodes all the properties of capabilities except the runtime and compile time capabilities.
+    func encode(into buffer: inout ByteBuffer) throws {
+        buffer.writeInteger(protocolVersion)
+        buffer.writeInteger(protocolOptions)
+        buffer.writeInteger(charsetID)
+        buffer.writeInteger(nCharsetID)
+        buffer.writeInteger(UInt8(supportsFastAuth ? 1 : 0))
+        buffer.writeInteger(UInt8(supportsOOB ? 1 : 0))
+        buffer.writeInteger(UInt8(supportsEndOfRequest ? 1 : 0))
+        buffer.writeInteger(maxStringSize)
+        buffer.writeInteger(sdu)
+    }
+
     mutating func adjustForProtocol(version: UInt16, options: UInt16, flags: UInt32) {
         self.protocolVersion = version
         self.protocolOptions = options

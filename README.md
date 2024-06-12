@@ -159,9 +159,10 @@ A type must implement the `OracleDecodable` protocol in order to be decoded from
 
 `OracleNIO` does provide some types which are more specific to Oracle too.
 
-- `Cursor` (partially implemented)
+- `Cursor`
 - `IntervalDS`
 - `OracleNumber`
+- `OracleVectorInt8`, `OracleVectorFloat32`, `OracleVectorFloat64`
 - `RowID`
 
 ### Querying with parameters

@@ -454,6 +454,39 @@ extension OracleConnection {
             throw error  // rethrow with more metadata
         }
     }
+
+    func execute(
+        cursor: consuming Cursor,
+        options: QueryOptions = .init(),
+        logger: Logger? = nil,
+        file: String = #fileID, line: Int = #line
+    ) async throws -> OracleRowSequence {
+        var logger = logger ?? Self.noopLogger
+        logger[oracleMetadataKey: .connectionID] = "\(self.id)"
+        logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
+
+        let promise = self.channel.eventLoop.makePromise(
+            of: OracleRowStream.self
+        )
+        let context = ExtendedQueryContext(
+            cursor: cursor,
+            options: options,
+            logger: logger,
+            promise: promise
+        )
+
+        self.channel.write(OracleTask.extendedQuery(context), promise: nil)
+
+        do {
+            return try await promise.futureResult
+                .map({ $0.asyncSequence() })
+                .get()
+        } catch var error as OracleSQLError {
+            error.file = file
+            error.line = line
+            throw error  // rethrow with more metadata
+        }
+    }
 }
 
 extension OracleConnection {

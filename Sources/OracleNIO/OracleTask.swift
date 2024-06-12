@@ -29,6 +29,7 @@ enum OracleTask {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
+                .cursor(_, let promise),
                 .plain(let promise):
                 promise.fail(error)
             }
@@ -48,12 +49,15 @@ final class ExtendedQueryContext {
         case plsql(EventLoopPromise<OracleRowStream>)
         case dml(EventLoopPromise<OracleRowStream>)
         case ddl(EventLoopPromise<OracleRowStream>)
+        case cursor(Cursor, EventLoopPromise<OracleRowStream>)
         case plain(EventLoopPromise<OracleRowStream>)
 
         var isQuery: Bool {
             switch self {
             case .query:
                 return true
+            case .cursor(let cursor, _):
+                return cursor.isQuery
             default:
                 return false
             }
@@ -117,6 +121,21 @@ final class ExtendedQueryContext {
             minifiedSQL: sql, promise: promise
         )
         self.statement = query
+    }
+
+    init(
+        cursor: Cursor,
+        options: QueryOptions,
+        logger: Logger,
+        promise: EventLoopPromise<OracleRowStream>
+    ) {
+        self.logger = logger
+        self.query = ""
+        self.sqlLength = 0
+        self.cursorID = cursor.id
+        self.options = options
+        self.isReturning = false
+        self.statement = .cursor(cursor, promise)
     }
 
     private static func determineStatementType(
@@ -224,4 +243,14 @@ final class CleanupContext {
 
     var tempLOBsTotalSize: Int = 0
     var tempLOBsToClose: [ByteBuffer]? = nil
+
+    init(
+        cursorsToClose: Set<UInt16> = [],
+        tempLOBsTotalSize: Int = 0,
+        tempLOBsToClose: [ByteBuffer]? = nil
+    ) {
+        self.cursorsToClose = cursorsToClose
+        self.tempLOBsTotalSize = tempLOBsTotalSize
+        self.tempLOBsToClose = tempLOBsToClose
+    }
 }

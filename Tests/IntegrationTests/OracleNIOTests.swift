@@ -1174,6 +1174,56 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testCursor() async throws {
+        let conn = try await OracleConnection.test(on: eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+
+        try await conn.query(
+            """
+            CREATE OR REPLACE PROCEDURE TESTREPORT77 (
+            num_samples IN NUMBER,
+            result OUT SYS_REFCURSOR
+            ) IS
+            alphabet VARCHAR2(26) := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; -- Alphabets string
+            BEGIN
+            -- Opening the cursor for the result set
+            OPEN result FOR
+            SELECT eofficeId AS input_value,
+                   TO_CHAR(eofficeId * 2) AS doubled_value_str, -- Representing doubled_value as string
+                   SUBSTR(alphabet, 1, eofficeId) AS alphabets, -- Selecting alphabets based on input value
+                   eofficeId * 2 AS doubled_value,
+                   eofficeId + 10 AS increased_value
+            FROM (
+                SELECT LEVEL AS eofficeId
+                FROM DUAL
+                CONNECT BY LEVEL <= num_samples
+            )
+            ORDER BY DBMS_RANDOM.VALUE;
+            END;
+            """)
+        let cursorRef = OracleRef(dataType: .cursor)
+        try await conn.query("BEGIN testreport77(50, \(cursorRef)); END;")
+        let cursor = try cursorRef.decode(of: Cursor.self)
+        let stream = try await cursor.execute(on: conn)
+        var received = 0
+        for try await _ in stream.decode((Int, String, String, Int, Int).self) {
+            received += 1
+        }
+        XCTAssertEqual(received, 50)
+
+        // Cannot be executed again
+        var secondSucceeded = true
+        do {
+            _ = try await cursor.execute(on: conn)
+        } catch {
+            secondSucceeded = false
+            let error = try XCTUnwrap(error as? OracleSQLError)
+            XCTAssertEqual(error.code, .server)
+            XCTAssertEqual(error.serverInfo?.number, 1001)  // unknown cursor id
+        }
+        XCTAssertFalse(secondSucceeded)
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

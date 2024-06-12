@@ -4,7 +4,7 @@ services:
     oracle-xe:
         image: gvenzl/oracle-xe:latest
         environment:
-            ORACLE_RANDOM_PASSWORD: true
+            ORACLE_PASSWORD: my_very_secure_password
             APP_USER: my_user
             APP_USER_PASSWORD: my_passwor
         ports:
@@ -12,7 +12,7 @@ services:
     oracle-23:
         image: gvenzl/oracle-free:23.4-faststart
         environment:
-            ORACLE_RANDOM_PASSWORD: true
+            ORACLE_PASSWORD: my_very_secure_password
             APP_USER: my_user
             APP_USER_PASSWORD: my_passwor
         ports:

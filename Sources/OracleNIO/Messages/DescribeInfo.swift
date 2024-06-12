@@ -216,6 +216,13 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         context: OracleBackendMessageDecoder.Context
     ) throws -> DescribeInfo {
         buffer.skipRawBytesChunked()
+        return try self._decode(from: &buffer, context: context)
+    }
+
+    static func _decode(
+        from buffer: inout ByteBuffer,
+        context: OracleBackendMessageDecoder.Context
+    ) throws -> DescribeInfo {
         buffer.skipUB4()  // max row size
         let columnCount = try buffer.throwingReadUB4()
         context.columnsCount = Int(columnCount)

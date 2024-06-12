@@ -35,6 +35,7 @@ extension ExtendedQueryContext {
             .plsql(let promise),
             .dml(let promise),
             .ddl(let promise),
+            .cursor(_, let promise),
             .plain(let promise):
             promise.fail(TestComplete())
         }

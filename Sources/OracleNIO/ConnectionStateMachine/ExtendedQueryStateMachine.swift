@@ -89,6 +89,10 @@ struct ExtendedQueryStateMachine {
             )
         }
 
+        if case .cursor(let cursor, _) = queryContext.statement {
+            self.state = .describeInfoReceived(queryContext, cursor.describeInfo)
+        }
+
         return .sendExecute(queryContext, nil)
     }
 
@@ -110,6 +114,7 @@ struct ExtendedQueryStateMachine {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
+                .cursor(_, let promise),
                 .plain(let promise):
                 return .failQuery(promise, with: .queryCancelled)
             }
@@ -167,6 +172,7 @@ struct ExtendedQueryStateMachine {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
+                .cursor(_, let promise),
                 .plain(let promise):
                 return .succeedQuery(
                     promise,
@@ -341,6 +347,7 @@ struct ExtendedQueryStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
+                    .cursor(_, let promise),
                     .plain(let promise):
                     action = .succeedQuery(
                         promise, .init(value: .noRows, logger: context.logger)
@@ -376,6 +383,7 @@ struct ExtendedQueryStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
+                    .cursor(_, let promise),
                     .plain(let promise):
                     action = .failQuery(promise, with: .server(error))
                 }
@@ -401,6 +409,7 @@ struct ExtendedQueryStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
+                    .cursor(_, let promise),
                     .plain(let promise):
                     action = .failQuery(promise, with: .server(error))
                 }
@@ -435,6 +444,7 @@ struct ExtendedQueryStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
+                    .cursor(_, let promise),
                     .plain(let promise):
                     action = .succeedQuery(
                         promise,
@@ -490,6 +500,20 @@ struct ExtendedQueryStateMachine {
                         action = .sendExecute(context, describeInfo)
                     }
 
+                } else if error.number != 0 {
+                    switch context.statement {
+                    case .query(let promise),
+                        .plsql(let promise),
+                        .dml(let promise),
+                        .ddl(let promise),
+                        .cursor(_, let promise),
+                        .plain(let promise):
+                        action = .failQuery(promise, with: .server(error))
+                    }
+
+                    self.avoidingStateMachineCoWVoid { state in
+                        state = .error(.server(error))
+                    }
                 } else {
                     action = .sendFetch(context)
                 }
@@ -919,6 +943,7 @@ struct ExtendedQueryStateMachine {
                     .dml(let promise),
                     .plsql(let promise),
                     .query(let promise),
+                    .cursor(_, let promise),
                     .plain(let promise):
                     self.state = .error(error)
                     return .failQuery(promise, with: error)
@@ -1010,7 +1035,7 @@ struct ExtendedQueryStateMachine {
         bufferSize: UInt32,
         capabilities: Capabilities
     ) throws -> ByteBuffer? {
-        let columnValue: ByteBuffer
+        var columnValue: ByteBuffer
         if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
             columnValue = ByteBuffer(bytes: [0])  // NULL indicator
             return columnValue
@@ -1027,13 +1052,31 @@ struct ExtendedQueryStateMachine {
         switch oracleType {
         case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
             .timestampLTZ, .timestampTZ, .rowID, .binaryDouble, .binaryFloat,
-            .binaryInteger, .boolean, .intervalDS, .cursor:
+            .binaryInteger, .boolean, .intervalDS:
             switch buffer.readOracleSlice() {
             case .some(let slice):
                 columnValue = slice
             case .none:
                 return nil  // need more data
             }
+        case .cursor:
+            buffer.moveReaderIndex(forwardBy: 1)  // length (fixed value)
+
+            let readerIndex = buffer.readerIndex
+            _ = try DescribeInfo._decode(
+                from: &buffer, context: .init(capabilities: capabilities)
+            )
+            buffer.skipUB2()  // cursor id
+            let length = buffer.readerIndex - readerIndex
+            buffer.moveReaderIndex(to: readerIndex)
+            columnValue = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            try columnValue.writeLengthPrefixed(as: UInt32.self) { base in
+                let start = base.writerIndex
+                try capabilities.encode(into: &base)
+                base.writeImmutableBuffer(buffer.readSlice(length: length)!)
+                return base.writerIndex - start
+            }
+            columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
         case .clob, .blob:
 
             // LOB has a UB4 length indicator instead of the usual UInt8
@@ -1042,13 +1085,10 @@ struct ExtendedQueryStateMachine {
                 let size = try buffer.throwingReadUB8()
                 let chunkSize = try buffer.throwingReadUB4()
                 var locator = try buffer.readOracleSpecificLengthPrefixedSlice()
-                var tempBuffer = ByteBuffer()
-                tempBuffer.writeInteger(size)
-                tempBuffer.writeInteger(chunkSize)
-                tempBuffer.writeBuffer(&locator)
-                var columnValue = ByteBuffer()
-                tempBuffer.encode(into: &columnValue, context: .default)
-                return columnValue
+                columnValue = ByteBuffer()
+                columnValue.writeInteger(size)
+                columnValue.writeInteger(chunkSize)
+                columnValue.writeBuffer(&locator)
             } else {
                 columnValue = .init(bytes: [0])  // empty buffer
             }

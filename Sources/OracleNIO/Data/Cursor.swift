@@ -13,13 +13,24 @@
 
 import NIOCore
 
+/// A datatype that maps to Oracle's `SYS_REFCURSOR`.
+///
+/// It holds a reference to a cursor within a Oracle database connection.
+/// The cursor can be executed once to receive it's results.
 public struct Cursor {
     public let id: UInt16
     let isQuery: Bool
-    let requiresFullExecute: Bool
-    let moreRowsToFetch: Bool
+    let describeInfo: DescribeInfo
 
-    // fetchArraySize = QueryOptions.arraySize + QueryOptions.prefetchRows
+    /// Executes the cursor and returns its result.
+    ///
+    /// - Note: The cursor has to be executed on the connection it was created on.
+    ///         It cannot be executed more than once.
+    public func execute(
+        on connection: OracleConnection
+    ) async throws -> OracleRowSequence {
+        try await connection.execute(cursor: self)
+    }
 }
 
 extension Cursor: OracleEncodable {
@@ -45,12 +56,15 @@ extension Cursor: OracleDecodable {
     ) throws {
         switch type {
         case .cursor:
+            let capabilities = try Capabilities(from: &buffer)
+            let describeInfo = try DescribeInfo._decode(
+                from: &buffer, context: .init(capabilities: capabilities)
+            )
             let id = try buffer.throwingReadUB2()
             self = Cursor(
                 id: id,
                 isQuery: true,
-                requiresFullExecute: true,
-                moreRowsToFetch: true
+                describeInfo: describeInfo
             )
         default:
             throw OracleDecodingError.Code.typeMismatch

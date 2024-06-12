@@ -89,19 +89,21 @@ struct Capabilities: Sendable, Hashable {
         self.supportsEndOfRequest = try buffer.throwingReadInteger(as: UInt8.self) == 1
         self.maxStringSize = try buffer.throwingReadInteger()
         self.sdu = try buffer.throwingReadInteger()
+        self.ttcFieldVersion = try buffer.throwingReadInteger()
     }
 
     /// Encodes all the properties of capabilities except the runtime and compile time capabilities.
     func encode(into buffer: inout ByteBuffer) throws {
-        buffer.writeInteger(protocolVersion)
-        buffer.writeInteger(protocolOptions)
-        buffer.writeInteger(charsetID)
-        buffer.writeInteger(nCharsetID)
-        buffer.writeInteger(UInt8(supportsFastAuth ? 1 : 0))
-        buffer.writeInteger(UInt8(supportsOOB ? 1 : 0))
-        buffer.writeInteger(UInt8(supportsEndOfRequest ? 1 : 0))
-        buffer.writeInteger(maxStringSize)
-        buffer.writeInteger(sdu)
+        buffer.writeInteger(self.protocolVersion)
+        buffer.writeInteger(self.protocolOptions)
+        buffer.writeInteger(self.charsetID)
+        buffer.writeInteger(self.nCharsetID)
+        buffer.writeInteger(UInt8(self.supportsFastAuth ? 1 : 0))
+        buffer.writeInteger(UInt8(self.supportsOOB ? 1 : 0))
+        buffer.writeInteger(UInt8(self.supportsEndOfRequest ? 1 : 0))
+        buffer.writeInteger(self.maxStringSize)
+        buffer.writeInteger(self.sdu)
+        buffer.writeInteger(self.ttcFieldVersion)
     }
 
     mutating func adjustForProtocol(version: UInt16, options: UInt16, flags: UInt32) {

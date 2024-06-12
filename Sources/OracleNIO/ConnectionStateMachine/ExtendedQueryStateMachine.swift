@@ -500,7 +500,7 @@ struct ExtendedQueryStateMachine {
                         action = .sendExecute(context, describeInfo)
                     }
 
-                } else {
+                } else if error.number != 0 {
                     switch context.statement {
                     case .query(let promise),
                         .plsql(let promise),
@@ -514,6 +514,8 @@ struct ExtendedQueryStateMachine {
                     self.avoidingStateMachineCoWVoid { state in
                         state = .error(.server(error))
                     }
+                } else {
+                    action = .sendFetch(context)
                 }
 
             case .streaming(let extendedQueryContext, _, _, _),

@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-@preconcurrency import NIOCore
+import NIOCore
 
 struct QueryResult {
     enum Value: Equatable {
@@ -116,12 +116,9 @@ final class OracleRowStream: @unchecked Sendable {
         case .streaming(let bufferedRows, let dataSource):
             let yieldResult = source.yield(contentsOf: bufferedRows)
             self.downstreamState = .asyncSequence(source, dataSource)
-
-            self.eventLoop.execute {
-                self.executeActionBasedOnYieldResult(
-                    yieldResult, source: dataSource
-                )
-            }
+            self.executeActionBasedOnYieldResult(
+                yieldResult, source: dataSource
+            )
         case .finished(let buffer):
             _ = source.yield(contentsOf: buffer)
             source.finish()

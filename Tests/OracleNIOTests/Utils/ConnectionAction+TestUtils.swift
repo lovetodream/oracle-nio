@@ -22,7 +22,7 @@ extension ConnectionStateMachine {
 
 // MARK: Equatable Conformance on ConnectionAction
 
-extension ConnectionStateMachine.ConnectionAction: @retroactive Equatable {
+extension ConnectionStateMachine.ConnectionAction: Equatable {
     public static func == (
         lhs: ConnectionStateMachine.ConnectionAction, rhs: ConnectionStateMachine.ConnectionAction
     ) -> Bool {
@@ -137,7 +137,7 @@ extension ConnectionStateMachine.ConnectionAction: @retroactive Equatable {
     }
 }
 
-extension ConnectionStateMachine.ConnectionAction.CleanUpContext: @retroactive Equatable {
+extension ConnectionStateMachine.ConnectionAction.CleanUpContext: Equatable {
     public static func == (
         lhs: ConnectionStateMachine.ConnectionAction.CleanUpContext,
         rhs: ConnectionStateMachine.ConnectionAction.CleanUpContext
@@ -147,13 +147,13 @@ extension ConnectionStateMachine.ConnectionAction.CleanUpContext: @retroactive E
     }
 }
 
-extension OracleSQLError: @retroactive Equatable {
+extension OracleSQLError: Equatable {
     public static func == (lhs: OracleSQLError, rhs: OracleSQLError) -> Bool {
         true
     }
 }
 
-extension OracleTask: @retroactive Equatable {
+extension OracleTask: Equatable {
     public static func == (lhs: OracleTask, rhs: OracleTask) -> Bool {
         switch (lhs, rhs) {
         case (.extendedQuery(let lhs), .extendedQuery(let rhs)):
@@ -170,20 +170,20 @@ extension OracleTask: @retroactive Equatable {
     }
 }
 
-extension CleanupContext: @retroactive Equatable {
+extension CleanupContext: Equatable {
     public static func == (lhs: CleanupContext, rhs: CleanupContext) -> Bool {
         lhs.cursorsToClose == rhs.cursorsToClose && lhs.tempLOBsTotalSize == rhs.tempLOBsTotalSize
             && lhs.tempLOBsToClose == rhs.tempLOBsToClose
     }
 }
 
-extension ExtendedQueryContext: @retroactive Equatable {
+extension ExtendedQueryContext: Equatable {
     public static func == (lhs: ExtendedQueryContext, rhs: ExtendedQueryContext) -> Bool {
         lhs === rhs
     }
 }
 
-extension OracleRowStream: @retroactive Equatable {
+extension OracleRowStream: Equatable {
     public static func == (lhs: OracleRowStream, rhs: OracleRowStream) -> Bool {
         lhs === rhs
     }

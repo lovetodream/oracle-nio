@@ -89,7 +89,7 @@ struct ExtendedQueryStateMachine {
             )
         }
 
-        if case let .cursor(cursor, _) = queryContext.statement {
+        if case .cursor(let cursor, _) = queryContext.statement {
             self.state = .describeInfoReceived(queryContext, cursor.describeInfo)
         }
 

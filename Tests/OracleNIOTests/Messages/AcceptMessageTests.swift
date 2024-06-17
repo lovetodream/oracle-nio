@@ -54,4 +54,19 @@ final class AcceptMessageTests: XCTestCase {
                 }
             ))
     }
+
+    func testDecodeUnsupportedVersion() throws {
+        let message = try ByteBuffer(
+            bytes: Array(
+                hexString:
+                    "00 20 00 00 02 00 00 00 01 3a 04 01 20 00 20 00 01 00 00 00 00 20 c5 00 00 00 00 00 00 00 00 00"
+                    .replacingOccurrences(of: " ", with: "")
+            ))
+        XCTAssertThrowsError(
+            try ByteToMessageDecoderVerifier.verifyDecoder(inputOutputPairs: [(message, [])]) {
+                OracleBackendMessageDecoder()
+            },
+            expected: OracleSQLError.serverVersionNotSupported
+        )
+    }
 }

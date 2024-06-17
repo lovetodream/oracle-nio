@@ -19,6 +19,8 @@ import NIOCore
 /// The cursor can be executed once to receive it's results.
 public struct Cursor {
     public let id: UInt16
+    public var columns: [OracleColumn] { self.describeInfo.columns }
+
     let isQuery: Bool
     let describeInfo: DescribeInfo
 

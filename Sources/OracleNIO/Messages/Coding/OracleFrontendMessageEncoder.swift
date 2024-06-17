@@ -1256,7 +1256,7 @@ private protocol ColumnMetadata {
 
 extension OracleBindings.Metadata: ColumnMetadata {}
 
-extension DescribeInfo.Column: ColumnMetadata {
+extension OracleColumn: ColumnMetadata {
     var isArray: Bool { false }
     var maxArraySize: Int { 0 }
 }

@@ -26,12 +26,12 @@ public struct OracleRowSequence: AsyncSequence {
 
     let backing: BackingSequence
     let lookupTable: [String: Int]
-    let columns: [DescribeInfo.Column]
+    let columns: [OracleColumn]
 
     init(
         _ backing: BackingSequence,
         lookupTable: [String: Int],
-        columns: [DescribeInfo.Column]
+        columns: [OracleColumn]
     ) {
         self.backing = backing
         self.lookupTable = lookupTable
@@ -54,7 +54,7 @@ extension OracleRowSequence {
         let backing: BackingSequence.AsyncIterator
 
         let lookupTable: [String: Int]
-        let columns: [DescribeInfo.Column]
+        let columns: [OracleColumn]
 
         public mutating func next() async throws -> OracleRow? {
             guard let dataRow = try await self.backing.next() else {

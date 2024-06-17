@@ -35,6 +35,7 @@ Oracle Database 12.1 or later.
 - ``AuthenticationMode``
 - ``OracleAccessToken``
 - ``OracleServiceMethod``
+- ``OracleVersion``
 
 ### Querying
 
@@ -44,6 +45,7 @@ Oracle Database 12.1 or later.
 - ``OracleRowSequence``
 - ``OracleRandomAccessRow``
 - ``OracleCell``
+- ``OracleColumn``
 - ``QueryOptions``
 
 ### Encoding and Decoding

@@ -21,7 +21,7 @@ final class CapabilitiesTests: XCTestCase {
         var capabilities = Capabilities()
         XCTAssertFalse(capabilities.supportsEndOfRequest)
         capabilities.adjustForProtocol(
-            version: UInt16(Constants.TNS_VERSION_MIN_END_OF_RESPONSE),
+            version: Constants.TNS_VERSION_MIN_END_OF_RESPONSE,
             options: 0, flags: Constants.TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST
         )
         XCTAssertTrue(capabilities.supportsEndOfRequest)

@@ -40,7 +40,7 @@ public struct OracleColumn: Hashable, Sendable {
     @usableFromInline
     let scale: Int16
 
-    /// - WARNING: I am unsure what this is for atm! - @lovetodream
+    /// The maximum number of bytes a value is allowed to take on the server side.
     @usableFromInline
     var bufferSize: UInt32
 

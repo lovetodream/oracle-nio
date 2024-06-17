@@ -1204,6 +1204,10 @@ final class OracleNIOTests: XCTestCase {
         let cursorRef = OracleRef(dataType: .cursor)
         try await conn.query("BEGIN testreport77(50, \(cursorRef)); END;")
         let cursor = try cursorRef.decode(of: Cursor.self)
+        XCTAssertEqual(
+            cursor.columns.map(\.name),
+            ["INPUT_VALUE", "DOUBLED_VALUE_STR", "ALPHABETS", "DOUBLED_VALUE", "INCREASED_VALUE"]
+        )
         let stream = try await cursor.execute(on: conn)
         var received = 0
         for try await _ in stream.decode((Int, String, String, Int, Int).self) {

@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Describes the metadata of a column on an Oracle server.
+/// Describes the metadata of a table's column on an Oracle server.
 public struct OracleColumn: Hashable, Sendable {
     /// The field name.
     public let name: String

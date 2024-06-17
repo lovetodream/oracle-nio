@@ -151,6 +151,8 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
                 context: self.context
             )
             return (Container(flags: packetFlags, messages: messages), !lastPacket)
+        } catch let error as OracleSQLError {
+            throw error
         } catch let error as OraclePartialDecodingError {
             buffer.moveReaderIndex(to: startReaderIndex)
             let completeMessage = buffer.readSlice(length: length)!

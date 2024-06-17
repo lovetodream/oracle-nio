@@ -25,6 +25,11 @@ extension OracleBackendMessage {
         ) throws -> OracleBackendMessage.Accept {
             let protocolVersion =
                 try buffer.throwingReadInteger(as: UInt16.self)
+
+            if protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
+                throw OracleSQLError.serverVersionNotSupported
+            }
+
             let protocolOptions =
                 try buffer.throwingReadInteger(as: UInt16.self)
 

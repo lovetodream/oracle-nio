@@ -367,10 +367,6 @@ struct ConnectionStateMachine {
 
         let capabilities = accept.newCapabilities
 
-        if capabilities.protocolVersion < Constants.TNS_VERSION_MIN_ACCEPTED {
-            return self.errorHappened(.serverVersionNotSupported)
-        }
-
         if capabilities.supportsOOB
             && capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK
         {

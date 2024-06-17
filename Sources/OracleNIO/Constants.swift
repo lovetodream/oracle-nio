@@ -227,10 +227,10 @@ enum Constants {
     // MARK: Versions
     static let TNS_VERSION_DESIRED: UInt16 = 319
     static let TNS_VERSION_MINIMUM: UInt16 = 300
-    static let TNS_VERSION_MIN_ACCEPTED = 315  // 12.1
-    static let TNS_VERSION_MIN_LARGE_SDU = 315
-    static let TNS_VERSION_MIN_OOB_CHECK = 318
-    static let TNS_VERSION_MIN_END_OF_RESPONSE = 319
+    static let TNS_VERSION_MIN_ACCEPTED: UInt16 = 315  // 12.1
+    static let TNS_VERSION_MIN_LARGE_SDU: UInt16 = 315
+    static let TNS_VERSION_MIN_OOB_CHECK: UInt16 = 318
+    static let TNS_VERSION_MIN_END_OF_RESPONSE: UInt16 = 319
 
     // MARK: Control packet types
     static let TNS_CONTROL_TYPE_INBAND_NOTIFICATION = 8

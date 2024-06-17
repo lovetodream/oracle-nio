@@ -33,7 +33,7 @@ struct ExtendedQueryStateMachine {
         )
         /// Indicates that the current query was cancelled and we want to drain rows from the
         /// connection ASAP.
-        case drain([DescribeInfo.Column])
+        case drain([OracleColumn])
 
         case commandComplete
         case error(OracleSQLError)

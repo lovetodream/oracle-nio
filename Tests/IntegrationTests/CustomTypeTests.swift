@@ -16,14 +16,7 @@ import XCTest
 
 @testable import OracleNIO
 
-final class CustomTypeTests: XCTestCase {
-    var connection: OracleConnection!
-
-    override func setUp() async throws {
-        try await super.setUp()
-        self.connection = try await OracleConnection.test()
-    }
-
+final class CustomTypeTests: XCTIntegrationTest {
     func testCustomType() async throws {
         // create types and scheme
         _ = try? await self.connection.query(

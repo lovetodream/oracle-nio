@@ -194,7 +194,7 @@ public final class OracleClient: Sendable, Service {
             expected: false, desired: true, ordering: .relaxed)
         precondition(!atomicOp.original, "OracleClient.run() should just be called once!")
 
-        await cancelOnGracefulShutdown {
+        await cancelWhenGracefulShutdown {
             await self.pool.run()
         }
     }

@@ -75,8 +75,7 @@ extension OracleColumn: OracleBackendMessage.PayloadDecodable {
         buffer.skipUB4()  // max number of array elements
         buffer.skipUB8()  // cont flags
 
-        let oidByteCount = try buffer.throwingReadInteger(as: UInt8.self)
-        // OID
+        let oidByteCount = try buffer.throwingReadUB4()  // OID
         if oidByteCount > 0 {
             // oid, only relevant for intNamed
             _ = try buffer.readOracleSpecificLengthPrefixedSlice()
@@ -110,25 +109,19 @@ extension OracleColumn: OracleBackendMessage.PayloadDecodable {
 
         buffer.moveReaderIndex(forwardBy: 1)  // v7 length of name
 
-        guard
-            try buffer.throwingReadUB4() > 0,
-            let name =
-                try buffer
-                .readString(with: Constants.TNS_CS_IMPLICIT)
-        else {
-            throw
-                OraclePartialDecodingError
-                .fieldNotDecodable(type: String.self)
+        guard try buffer.throwingReadUB4() > 0 else {
+            throw OraclePartialDecodingError.fieldNotDecodable(type: String.self)
         }
+        let name = try buffer.readString()
 
-        if try buffer.throwingReadUB4() > 0 {
-            _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
-            // current schema name, for intNamed
-        }
-        if try buffer.throwingReadUB4() > 0 {
-            _ = try buffer.readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
-            // name of intNamed
-        }
+        let typeSchema: String? =
+            if try buffer.throwingReadUB4() > 0 {
+                try buffer.readString()  // current schema name, for intNamed
+            } else { nil }
+        let typeName: String? =
+            if try buffer.throwingReadUB4() > 0 {
+                try buffer.readString()  // name of intNamed
+            } else { nil }
 
         buffer.skipUB2()  // column position
         buffer.skipUB4()  // uds flag
@@ -137,10 +130,10 @@ extension OracleColumn: OracleBackendMessage.PayloadDecodable {
         var domainName: String?
         if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1 {
             if try buffer.throwingReadUB4() > 0 {
-                domainSchema = try buffer.readString(with: Constants.TNS_CS_IMPLICIT)
+                domainSchema = try buffer.readString()
             }
             if try buffer.throwingReadUB4() > 0 {
-                domainName = try buffer.readString(with: Constants.TNS_CS_IMPLICIT)
+                domainName = try buffer.readString()
             }
         }
 
@@ -153,16 +146,9 @@ extension OracleColumn: OracleBackendMessage.PayloadDecodable {
                 buffer.moveReaderIndex(forwardBy: 1)
                 for _ in 0..<actualCount {
                     buffer.skipUB4()  // length of key
-                    let key =
-                        try buffer
-                        .readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
+                    let key = try buffer.readString()
                     let valueLength = try buffer.throwingReadUB4()
-                    let value =
-                        if valueLength > 0 {
-                            try buffer.readString(
-                                with: Constants.TNS_CS_IMPLICIT
-                            ) ?? ""
-                        } else { "" }
+                    let value = if valueLength > 0 { try buffer.readString() } else { "" }
                     annotations[key] = value
                     buffer.skipUB4()  // flags
                 }
@@ -181,16 +167,11 @@ extension OracleColumn: OracleBackendMessage.PayloadDecodable {
             }
         }
 
-        if dataType == _TNSDataType.intNamed.rawValue {
-            throw
-                OraclePartialDecodingError
-                .unsupportedDataType(type: .intNamed)
-        }
-
         return .init(
             name: name, dataType: dbType, dataTypeSize: size,
             precision: Int16(precision), scale: scale,
             bufferSize: bufferSize, nullsAllowed: nullsAllowed,
+            typeScheme: typeSchema, typeName: typeName,
             domainSchema: domainSchema, domainName: domainName,
             annotations: annotations, vectorDimensions: vectorDimensions,
             vectorFormat: vectorFormat

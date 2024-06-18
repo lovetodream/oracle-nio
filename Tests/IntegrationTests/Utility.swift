@@ -60,7 +60,7 @@ extension OracleConnection {
     }
 
     static func test(
-        on eventLoop: EventLoop,
+        on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
         config: OracleConnection.Configuration? = nil,
         logLevel: Logger.Level = Logger.getLogLevel()
     ) async throws -> OracleConnection {

@@ -117,8 +117,9 @@ extension OracleBackendMessage {
                 buffer.moveReaderIndex(forwardBy: 1)  // ignore packet size
                 for i in 0..<numberOfMessages {
                     buffer.skipUB2()  // skip chunk length
-                    let errorMessage = try buffer
-                        .readString(with: Constants.TNS_CS_IMPLICIT)?
+                    let errorMessage =
+                        try buffer
+                        .readString()
                         .trimmingCharacters(in: .whitespaces)
                     batch[Int(i)].message = errorMessage
                     buffer.moveReaderIndex(forwardBy: 2)  // ignore end marker
@@ -136,8 +137,9 @@ extension OracleBackendMessage {
 
             let errorMessage: String?
             if number != 0 {
-                errorMessage = try buffer
-                    .readString(with: Constants.TNS_CS_IMPLICIT)?
+                errorMessage =
+                    try buffer
+                    .readString()
                     .trimmingCharacters(in: .whitespaces)
             } else {
                 errorMessage = nil

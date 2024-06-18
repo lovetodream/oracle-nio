@@ -14,10 +14,12 @@
 import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
-    mutating func readString(with charset: Int) throws -> String? {
+    mutating func readString(
+        with charset: Int = Constants.TNS_CS_IMPLICIT
+    ) throws -> String {
         checkPreconditions(charset: charset)
         var stringSlice = try self.readOracleSpecificLengthPrefixedSlice()
-        return stringSlice.readString(length: stringSlice.readableBytes)
+        return stringSlice.readString(length: stringSlice.readableBytes)!  // must work
     }
 
     private func checkPreconditions(charset: Int) {

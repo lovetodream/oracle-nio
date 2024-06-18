@@ -48,6 +48,11 @@ public struct OracleColumn: Hashable, Sendable {
     @usableFromInline
     let nullsAllowed: Bool
 
+    /// The current scheme of a custom datatype.
+    let typeScheme: String?
+    /// The name of a custom datatype.
+    let typeName: String?
+
     /// The schema of the [SQL domain](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-domain.html#GUID-17D3A9C6-D993-4E94-BF6B-CACA56581F41) associated with the fetched column.
     ///
     /// `nil`, if there is no SQL domain.

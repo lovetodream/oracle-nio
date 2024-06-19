@@ -982,11 +982,12 @@ final class OracleNIOTests: XCTestCase {
         }
 
         let rows2 = try await conn.query("SELECT 'next_query' FROM dual", logger: .oracleTest)
+        var received2 = 0
         for try await row in rows2 {
             XCTAssertEqual("next_query", try? row.decode(String.self))
-            return
+            received2 += 1
         }
-        XCTFail("Next query must return exactly one row")
+        XCTAssertEqual(received2, 1)
     }
 
     func testPendingTasksAreExecuted() async throws {

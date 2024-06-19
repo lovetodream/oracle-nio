@@ -14,9 +14,6 @@
 import NIOConcurrencyHelpers
 import NIOCore
 
-@available(*, deprecated, renamed: "OracleStatement")
-public typealias OracleQuery = OracleStatement
-
 /// A Oracle SQL statement, that can be executed on a Oracle server.
 /// Contains the raw sql string and bindings.
 public struct OracleStatement: Sendable, Hashable {

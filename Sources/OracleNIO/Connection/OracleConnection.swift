@@ -408,23 +408,6 @@ extension OracleConnection {
         try await self.rollback().get()
     }
 
-    @available(*, deprecated, renamed: "execute(_:options:logger:file:line:)")
-    @discardableResult
-    public func query(
-        _ query: OracleQuery,
-        options: StatementOptions = .init(),
-        logger: Logger? = nil,
-        file: String = #fileID, line: Int = #line
-    ) async throws -> OracleRowSequence {
-        try await self.execute(
-            query,
-            options: options,
-            logger: logger,
-            file: file,
-            line: line
-        )
-    }
-
     /// Run a statement on the Oracle server the connection is connected to.
     ///
     /// - Parameters:

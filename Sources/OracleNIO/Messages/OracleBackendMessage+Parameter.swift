@@ -50,22 +50,10 @@ extension OracleBackendMessage {
             var elements = [Key: Value]()
             for _ in 0..<numberOfParameters {
                 buffer.skipUB4()
-                guard
-                    let key =
-                        try buffer
-                        .readString(with: Constants.TNS_CS_IMPLICIT)
-                else {
-                    preconditionFailure("add an error here")
-                }
+                let key = try buffer.readString()
                 let length = buffer.readUB4() ?? 0
-                let value: String
-                if length > 0 {
-                    value =
-                        try buffer
-                        .readString(with: Constants.TNS_CS_IMPLICIT) ?? ""
-                } else {
-                    value = ""
-                }
+                let value =
+                    if length > 0 { try buffer.readString() } else { "" }
                 let flags = buffer.readUB4()
                 elements[key] = .init(value: value, flags: flags)
             }

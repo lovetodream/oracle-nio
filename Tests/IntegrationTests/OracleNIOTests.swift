@@ -982,11 +982,12 @@ final class OracleNIOTests: XCTestCase {
         }
 
         let rows2 = try await conn.query("SELECT 'next_query' FROM dual", logger: .oracleTest)
+        var received2 = 0
         for try await row in rows2 {
             XCTAssertEqual("next_query", try? row.decode(String.self))
-            return
+            received2 += 1
         }
-        XCTFail("Next query must return exactly one row")
+        XCTAssertEqual(received2, 1)
     }
 
     func testPendingTasksAreExecuted() async throws {
@@ -1204,6 +1205,10 @@ final class OracleNIOTests: XCTestCase {
         let cursorRef = OracleRef(dataType: .cursor)
         try await conn.query("BEGIN testreport77(50, \(cursorRef)); END;")
         let cursor = try cursorRef.decode(of: Cursor.self)
+        XCTAssertEqual(
+            cursor.columns.map(\.name),
+            ["INPUT_VALUE", "DOUBLED_VALUE_STR", "ALPHABETS", "DOUBLED_VALUE", "INCREASED_VALUE"]
+        )
         let stream = try await cursor.execute(on: conn)
         var received = 0
         for try await _ in stream.decode((Int, String, String, Int, Int).self) {

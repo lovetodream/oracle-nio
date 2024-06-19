@@ -33,7 +33,7 @@ struct ExtendedQueryStateMachine {
         )
         /// Indicates that the current query was cancelled and we want to drain rows from the
         /// connection ASAP.
-        case drain([DescribeInfo.Column])
+        case drain([OracleColumn])
 
         case commandComplete
         case error(OracleSQLError)
@@ -1095,7 +1095,7 @@ struct ExtendedQueryStateMachine {
         case .json:
             // TODO: OSON
             // OSON has a UB4 length indicator instead of the usual UInt8
-            fatalError("not implemented")
+            fatalError("OSON is not yet implemented, will be added in the future")
         case .vector:
             let length = try buffer.throwingReadUB4()
             if length > 0 {
@@ -1111,8 +1111,35 @@ struct ExtendedQueryStateMachine {
             } else {
                 columnValue = .init(bytes: [0])  // empty buffer
             }
+        case .intNamed:
+            let startIndex = buffer.readerIndex
+            if try buffer.throwingReadUB4() > 0 {
+                buffer.skipRawBytesChunked()  // type oid
+            }
+            if try buffer.throwingReadUB4() > 0 {
+                buffer.skipRawBytesChunked()  // oid
+            }
+            if try buffer.throwingReadUB4() > 0 {
+                buffer.skipRawBytesChunked()  // snapshot
+            }
+            buffer.skipUB2()  // version
+            let dataLength = try buffer.throwingReadUB4()
+            buffer.skipUB2()  // flags
+            if dataLength > 0 {
+                buffer.skipRawBytesChunked()  // data
+            }
+            let endIndex = buffer.readerIndex
+            buffer.moveReaderIndex(to: startIndex)
+            columnValue = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            let length = (endIndex - startIndex) + (MemoryLayout<UInt32>.size * 2)
+            columnValue.reserveCapacity(minimumWritableBytes: length)
+            try columnValue.writeLengthPrefixed(as: UInt32.self) {
+                $0.writeImmutableBuffer(buffer.readSlice(length: endIndex - startIndex)!)
+            }
+            columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
         default:
-            fatalError("not implemented")
+            fatalError(
+                "\(String(reflecting: oracleType)) is not implemented, please file a bug report")
         }
 
         if [.long, .longRAW].contains(oracleType) {

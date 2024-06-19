@@ -17,7 +17,7 @@ import NIOCore
 struct QueryResult {
     enum Value: Equatable {
         case noRows
-        case describeInfo([DescribeInfo.Column])
+        case describeInfo([OracleColumn])
     }
 
     var value: Value
@@ -31,7 +31,7 @@ final class OracleRowStream: @unchecked Sendable {
     >.Source
 
     enum Source {
-        case stream([DescribeInfo.Column], OracleRowsDataSource)
+        case stream([OracleColumn], OracleRowsDataSource)
         case noRows(Result<Void, Error>)
     }
 
@@ -58,7 +58,7 @@ final class OracleRowStream: @unchecked Sendable {
         case asyncSequence(AsyncSequenceSource, OracleRowsDataSource)
     }
 
-    private let rowDescription: [DescribeInfo.Column]
+    private let rowDescription: [OracleColumn]
     private let lookupTable: [String: Int]
     private var downstreamState: DownstreamState
 

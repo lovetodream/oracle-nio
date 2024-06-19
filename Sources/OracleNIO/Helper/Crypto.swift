@@ -55,7 +55,7 @@ func getDerivedKey(key: Data, salt: [UInt8], length: Int, iterations: Int) throw
 /// encoding.
 func getSignature(key: String, payload: String) throws -> String {
     let payload = Array(payload.utf8)
-    return try _RSA.Signing.PrivateKey(pemRepresentation: key)
+    return try _RSA.Signing.PrivateKey(unsafePEMRepresentation: key)
         .signature(for: payload, padding: .insecurePKCS1v1_5)
         .rawRepresentation
         .base64EncodedString()

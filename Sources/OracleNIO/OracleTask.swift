@@ -16,15 +16,15 @@ import NIOCore
 import RegexBuilder
 
 enum OracleTask {
-    case extendedQuery(ExtendedQueryContext)
+    case statement(StatementContext)
     case ping(EventLoopPromise<Void>)
     case commit(EventLoopPromise<Void>)
     case rollback(EventLoopPromise<Void>)
 
     func failWithError(_ error: OracleSQLError) {
         switch self {
-        case .extendedQuery(let context):
-            switch context.statement {
+        case .statement(let context):
+            switch context.type {
             case .ddl(let promise),
                 .dml(let promise),
                 .plsql(let promise),
@@ -43,8 +43,8 @@ enum OracleTask {
     }
 }
 
-final class ExtendedQueryContext {
-    enum Statement {
+final class StatementContext {
+    enum StatementType {
         case query(EventLoopPromise<OracleRowStream>)
         case plsql(EventLoopPromise<OracleRowStream>)
         case dml(EventLoopPromise<OracleRowStream>)
@@ -82,9 +82,9 @@ final class ExtendedQueryContext {
         }
     }
 
-    let statement: Statement
-    let query: OracleQuery
-    let options: QueryOptions
+    let type: StatementType
+    let statement: OracleStatement
+    let options: StatementOptions
     let logger: Logger
 
     // metadata
@@ -98,50 +98,50 @@ final class ExtendedQueryContext {
     var sequenceNumber: UInt8 = 2
 
     init(
-        query: OracleQuery,
-        options: QueryOptions,
+        statement: OracleStatement,
+        options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
     ) {
         self.logger = logger
-        self.query = query
+        self.statement = statement
         self.options = options
-        self.sqlLength = .init(query.sql.data(using: .utf8)?.count ?? 0)
+        self.sqlLength = .init(statement.sql.data(using: .utf8)?.count ?? 0)
 
         // strip single/multiline comments and and strings from the sql
-        var sql = query.sql
+        var sql = statement.sql
         sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
         sql = sql.replacing(/\--.*(\n|$)/, with: "")
         sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
 
         self.isReturning =
-            query.binds.metadata
+            statement.binds.metadata
             .first(where: \.isReturnBind) != nil
-        let query = Self.determineStatementType(
+        let type = Self.determineStatementType(
             minifiedSQL: sql, promise: promise
         )
-        self.statement = query
+        self.type = type
     }
 
     init(
         cursor: Cursor,
-        options: QueryOptions,
+        options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
     ) {
         self.logger = logger
-        self.query = ""
+        self.statement = ""
         self.sqlLength = 0
         self.cursorID = cursor.id
         self.options = options
         self.isReturning = false
-        self.statement = .cursor(cursor, promise)
+        self.type = .cursor(cursor, promise)
     }
 
     private static func determineStatementType(
         minifiedSQL sql: String,
         promise: EventLoopPromise<OracleRowStream>
-    ) -> Statement {
+    ) -> StatementType {
         var fragment = sql.trimmingCharacters(in: .whitespacesAndNewlines)
         if fragment.first == "(" {
             fragment.removeFirst()
@@ -166,7 +166,7 @@ final class ExtendedQueryContext {
     }
 }
 
-public struct QueryOptions {
+public struct StatementOptions {
     /// Automatically commit every change made to the database.
     ///
     /// This happens on the Oracle server side. So it won't cause additional roundtrips to the database.
@@ -216,9 +216,9 @@ public struct QueryOptions {
     ///            cannot be fetched inline.
     internal var fetchLOBs = false
 
-    /// Options to pass to a ``OracleQuery`` to tweak its execution.
+    /// Options to pass to a ``OracleStatement`` to tweak its execution.
     /// - Parameters:
-    ///   - autoCommit: Automatically commit after execution of the query without needing an
+    ///   - autoCommit: Automatically commit after execution of the statement without needing an
     ///                 additional roundtrip.
     ///   - prefetchRows: Indicates how many rows should be fetched with the initial response from
     ///                   the database. Refer to ``prefetchRows`` for additional explanation.

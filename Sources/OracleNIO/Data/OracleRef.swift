@@ -24,7 +24,7 @@ import NIOCore
 ///
 /// ```swift
 /// let ref = OracleRef(dataType: .number, isReturnBind: true)
-/// try await connection.query(
+/// try await connection.execute(
 ///     "INSERT INTO table(id) VALUES (1) RETURNING id INTO \(ref)",
 ///     logger: logger
 /// )
@@ -35,7 +35,7 @@ import NIOCore
 ///
 /// ```swift
 /// let ref = OracleRef(dataType: .number)
-/// try await conn.query("""
+/// try await conn.execute("""
 ///     begin
 ///         \(ref) := \(OracleNumber(8)) + \(OracleNumber(7));
 ///     end;
@@ -47,7 +47,7 @@ import NIOCore
 ///
 /// ```swift
 /// let ref = OracleRef(OracleNumber(25))
-/// try await conn.query("""
+/// try await conn.execute("""
 ///     begin
 ///     \(ref) := \(ref) + \(OracleNumber(8)) + \(OracleNumber(7));
 ///     end;
@@ -76,7 +76,7 @@ public final class OracleRef: Sendable, Hashable {
     /// Use this initializer to create an OUT bind.
     ///
     /// Please be aware that you still have to decode the database response into the Swift type you want
-    /// after completing the query (using ``decode(of:)``).
+    /// after completing the statement (using ``decode(of:)``).
     ///
     /// - Parameter dataType: The desired datatype within the Oracle database.
     /// - Parameter isReturnBind: Set this to `true` if the bind is used as part of a DML

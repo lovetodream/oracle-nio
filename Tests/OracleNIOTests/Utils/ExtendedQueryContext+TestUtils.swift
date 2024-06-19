@@ -16,21 +16,21 @@ import NIOEmbedded
 
 @testable import OracleNIO
 
-extension ExtendedQueryContext {
+extension StatementContext {
 
     convenience init(
-        query: OracleQuery,
+        statement: OracleStatement,
         promise: EventLoopPromise<OracleRowStream> = EmbeddedEventLoop().makePromise()
     ) {
         self.init(
-            query: query, options: .init(),
+            statement: statement, options: .init(),
             logger: OracleConnection.noopLogger,
             promise: promise
         )
     }
 
     func cleanup() {
-        switch self.statement {
+        switch self.type {
         case .query(let promise),
             .plsql(let promise),
             .dml(let promise),

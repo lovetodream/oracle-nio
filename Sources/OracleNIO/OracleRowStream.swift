@@ -14,7 +14,7 @@
 import Logging
 import NIOCore
 
-struct QueryResult {
+struct StatementResult {
     enum Value: Equatable {
         case noRows
         case describeInfo([OracleColumn])

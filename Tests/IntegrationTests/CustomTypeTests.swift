@@ -19,19 +19,19 @@ import XCTest
 final class CustomTypeTests: XCTIntegrationTest {
     func testCustomType() async throws {
         // create types and scheme
-        _ = try? await self.connection.query(
+        _ = try? await self.connection.execute(
             """
             create type udt_SubObject as object (
             SubNumberValue                      number,
             SubStringValue                      varchar2(60)
             )
             """)
-        _ = try? await self.connection.query(
+        _ = try? await self.connection.execute(
             """
             create type udt_ObjectArray as
             varray(10) of udt_SubObject
             """)
-        _ = try? await self.connection.query(
+        _ = try? await self.connection.execute(
             """
             create type udt_Object as object (
             NumberValue                         number,
@@ -58,9 +58,9 @@ final class CustomTypeTests: XCTIntegrationTest {
             SubObjectArray                      udt_ObjectArray
             )
             """)
-        _ = try? await self.connection.query("create type udt_Array as varray(10) of number")
-        _ = try? await self.connection.query("drop table TestObjects")
-        try await self.connection.query(
+        _ = try? await self.connection.execute("create type udt_Array as varray(10) of number")
+        _ = try? await self.connection.execute("drop table TestObjects")
+        try await self.connection.execute(
             """
             create table TestObjects (
             IntCol                              number(9) not null,
@@ -70,7 +70,7 @@ final class CustomTypeTests: XCTIntegrationTest {
             """)
 
         // insert samples
-        try await self.connection.query(
+        try await self.connection.execute(
             """
             insert into TestObjects values (1,
             udt_Object(1, 'First row', 'First', 'N First Row', 'N First',
@@ -89,12 +89,12 @@ final class CustomTypeTests: XCTIntegrationTest {
                     udt_SubObject(6, 'second element'))),
             udt_Array(5, 10, null, 20))
             """)
-        try await self.connection.query(
+        try await self.connection.execute(
             """
             insert into TestObjects values (2, null,
             udt_Array(3, null, 9, 12, 15))
             """)
-        try await self.connection.query(
+        try await self.connection.execute(
             """
             insert into TestObjects values (3,
             udt_Object(3, 'Third row', 'Third', 'N Third Row', 'N Third',
@@ -116,7 +116,7 @@ final class CustomTypeTests: XCTIntegrationTest {
             """)
 
         // actual test
-        let stream = try await self.connection.query(
+        let stream = try await self.connection.execute(
             """
             select IntCol, ObjectCol, ArrayCol
                 from TestObjects

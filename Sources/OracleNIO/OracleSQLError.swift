@@ -30,7 +30,7 @@ public struct OracleSQLError: Sendable, Error {
             case uncleanShutdown
             case unexpectedBackendMessage
             case server
-            case queryCancelled
+            case statementCancelled
             case serverVersionNotSupported
             case sidNotSupported
             case missingParameter
@@ -55,7 +55,7 @@ public struct OracleSQLError: Sendable, Error {
         public static let unexpectedBackendMessage =
             Self(.unexpectedBackendMessage)
         public static let server = Self(.server)
-        public static let queryCancelled = Self(.queryCancelled)
+        public static let statementCancelled = Self(.statementCancelled)
         public static let serverVersionNotSupported =
             Self(.serverVersionNotSupported)
         public static let sidNotSupported = Self(.sidNotSupported)
@@ -83,8 +83,8 @@ public struct OracleSQLError: Sendable, Error {
                 return "unexpectedBackendMessage"
             case .server:
                 return "server"
-            case .queryCancelled:
-                return "queryCancelled"
+            case .statementCancelled:
+                return "statementCancelled"
             case .serverVersionNotSupported:
                 return "serverVersionNotSupported"
             case .sidNotSupported:
@@ -148,12 +148,12 @@ public struct OracleSQLError: Sendable, Error {
         }
     }
 
-    /// The query that failed.
-    public internal(set) var query: OracleQuery? {
-        get { self.backing.query }
+    /// The statement that failed.
+    public internal(set) var statement: OracleStatement? {
+        get { self.backing.statement }
         set {
             self.copyBackingStorageIfNecessary()
-            self.backing.query = newValue
+            self.backing.statement = newValue
         }
     }
 
@@ -168,11 +168,11 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     init(
-        code: Code, query: OracleQuery,
+        code: Code, statement: OracleStatement,
         file: String? = nil, line: Int? = nil
     ) {
         self.backing = .init(code: code)
-        self.query = query
+        self.statement = statement
         self.file = file
         self.line = line
     }
@@ -187,7 +187,7 @@ public struct OracleSQLError: Sendable, Error {
         fileprivate var underlying: Error?
         fileprivate var file: String?
         fileprivate var line: Int?
-        fileprivate var query: OracleQuery?
+        fileprivate var statement: OracleStatement?
         fileprivate var backendMessage: OracleBackendMessage?
 
         init(code: Code) {
@@ -200,7 +200,7 @@ public struct OracleSQLError: Sendable, Error {
             new.underlying = self.underlying
             new.file = self.file
             new.line = self.line
-            new.query = self.query
+            new.statement = self.statement
             new.backendMessage = self.backendMessage
             return new
         }
@@ -285,7 +285,7 @@ public struct OracleSQLError: Sendable, Error {
     static let nationalCharsetNotSupported =
         OracleSQLError(code: .nationalCharsetNotSupported)
 
-    static let queryCancelled = OracleSQLError(code: .queryCancelled)
+    static let statementCancelled = OracleSQLError(code: .statementCancelled)
 
     static let serverVersionNotSupported =
         OracleSQLError(code: .serverVersionNotSupported)
@@ -336,8 +336,8 @@ extension OracleSQLError: CustomStringConvertible {
             }
         }
 
-        if self.query != nil {
-            result.append(", query: ********")
+        if self.statement != nil {
+            result.append(", statement: ********")
         }
 
         result.append(") ")
@@ -368,23 +368,23 @@ extension OracleSQLError: CustomDebugStringConvertible {
             result.append(")")
         }
 
-        if let backendMessage = self.backendMessage {
+        if let backendMessage {
             result.append(", backendMessage: \(String(reflecting: backendMessage))")
         }
 
-        if let underlying = self.underlying {
+        if let underlying {
             result.append(", underlying: \(String(reflecting: underlying))")
         }
 
-        if let file = self.file {
+        if let file {
             result.append(", triggeredFromRequestInFile: \(file)")
             if let line = self.line {
                 result.append(", line: \(line)")
             }
         }
 
-        if let query = self.query {
-            result.append(", query: \(String(reflecting: query))")
+        if let statement {
+            result.append(", statement: \(String(reflecting: statement))")
         }
 
         result.append(")")

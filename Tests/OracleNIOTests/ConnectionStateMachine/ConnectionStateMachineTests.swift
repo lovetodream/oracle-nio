@@ -19,7 +19,7 @@ import XCTest
 
 final class ConnectionStateMachineTests: XCTestCase {
     func testQueuedTasksAreExecuted() throws {
-        var state = ConnectionStateMachine(.readyForQuery)
+        var state = ConnectionStateMachine(.readyForStatement)
         let promise1 = EmbeddedEventLoop().makePromise(of: Void.self)
         promise1.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
         let promise2 = EmbeddedEventLoop().makePromise(of: Void.self)
@@ -29,11 +29,11 @@ final class ConnectionStateMachineTests: XCTestCase {
         XCTAssertEqual(state.enqueue(task: .ping(promise1)), .sendPing)
         XCTAssertEqual(state.enqueue(task: .ping(promise2)), .wait)
         XCTAssertEqual(state.statusReceived(success), .succeedPing(promise1))
-        XCTAssertEqual(state.readyForQueryReceived(), .sendPing)
+        XCTAssertEqual(state.readyForStatementReceived(), .sendPing)
     }
 
     func testFailedPingDoesNotLeak() {
-        var state = ConnectionStateMachine(.readyForQuery)
+        var state = ConnectionStateMachine(.readyForStatement)
         let atomic = ManagedAtomic(false)
         let pingPromise = EmbeddedEventLoop().makePromise(of: Void.self)
         pingPromise.futureResult.whenFailure { _ in

@@ -13,7 +13,7 @@
 
 import NIOCore
 
-/// `OracleRow` represents a single table row that is received from the server for a query.
+/// `OracleRow` represents a single table row that is received from the server for a statement.
 ///
 /// Its element type is ``OracleCell``.
 ///

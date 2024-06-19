@@ -14,8 +14,8 @@
 @testable import OracleNIO
 
 extension ConnectionStateMachine {
-    static func readyForQuery() -> Self {
-        ConnectionStateMachine(.readyForQuery)
+    static func readyForStatement() -> Self {
+        ConnectionStateMachine(.readyForStatement)
     }
 }
 
@@ -37,7 +37,7 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
             return lhs?.futureResult === rhs?.futureResult
         case (.fireChannelInactive, .fireChannelInactive):
             return true
-        case (.fireEventReadyForQuery, .fireEventReadyForQuery):
+        case (.fireEventReadyForStatement, .fireEventReadyForStatement):
             return true
 
         case (.closeConnectionAndCleanup(let lhs), .closeConnectionAndCleanup(let rhs)):
@@ -100,14 +100,14 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
         case (.sendFlushOutBinds, .sendFlushOutBinds):
             return true
         case (
-            .failQuery(let lhsPromise, let lhsError, let lhsCleanup),
-            .failQuery(let rhsPromise, let rhsError, let rhsCleanup)
+            .failStatement(let lhsPromise, let lhsError, let lhsCleanup),
+            .failStatement(let rhsPromise, let rhsError, let rhsCleanup)
         ):
             return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
                 && lhsCleanup == rhsCleanup
         case (
-            .succeedQuery(let lhsPromise, let lhsResult),
-            .succeedQuery(let rhsPromise, let rhsResult)
+            .succeedStatement(let lhsPromise, let lhsResult),
+            .succeedStatement(let rhsPromise, let rhsResult)
         ):
             return lhsPromise.futureResult === rhsPromise.futureResult
                 && lhsResult.value == rhsResult.value
@@ -156,7 +156,7 @@ extension OracleSQLError: Equatable {
 extension OracleTask: Equatable {
     public static func == (lhs: OracleTask, rhs: OracleTask) -> Bool {
         switch (lhs, rhs) {
-        case (.extendedQuery(let lhs), .extendedQuery(let rhs)):
+        case (.statement(let lhs), .statement(let rhs)):
             return lhs === rhs
         case (.ping, .ping):
             return true
@@ -177,8 +177,8 @@ extension CleanupContext: Equatable {
     }
 }
 
-extension ExtendedQueryContext: Equatable {
-    public static func == (lhs: ExtendedQueryContext, rhs: ExtendedQueryContext) -> Bool {
+extension StatementContext: Equatable {
+    public static func == (lhs: StatementContext, rhs: StatementContext) -> Bool {
         lhs === rhs
     }
 }

@@ -19,7 +19,7 @@ import XCTest
 final class BugReportTests: XCTIntegrationTest {
 
     func testRowsFetchFailsWithDecodingError() async throws {
-        let schema: OracleQuery = """
+        let schema: OracleStatement = """
             CREATE TABLE EXPORT_TABLE (
                 buchung_nr varchar2(36 byte),
                 zeittyp_nr number,
@@ -37,9 +37,9 @@ final class BugReportTests: XCTIntegrationTest {
                 readonly number
             )
             """
-        _ = try? await connection.query("DROP TABLE EXPORT_TABLE")
-        try await connection.query(schema)
-        try await connection.query(
+        _ = try? await connection.execute("DROP TABLE EXPORT_TABLE")
+        try await connection.execute(schema)
+        try await connection.execute(
             """
             begin
 
@@ -144,7 +144,7 @@ final class BugReportTests: XCTIntegrationTest {
             end;
             """)
 
-        let stream = try await connection.query(
+        let stream = try await connection.execute(
             """
             SELECT buchung_nr
             , zeittyp_nr

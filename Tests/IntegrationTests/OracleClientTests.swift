@@ -31,7 +31,7 @@ final class OracleClientTests: XCTestCase {
                 taskGroup.addTask {
                     try await client.withConnection { connection in
                         do {
-                            let rows = try await connection.query(
+                            let rows = try await connection.execute(
                                 "SELECT 1, 'Timo', 23 FROM dual", logger: .oracleTest)
                             for try await (userID, name, age) in rows.decode(
                                 (Int, String, Int).self)
@@ -68,7 +68,7 @@ final class OracleClientTests: XCTestCase {
                 taskGroup.addTask {
                     try await client.withConnection { connection in
                         do {
-                            let rows = try await connection.query(
+                            let rows = try await connection.execute(
                                 "SELECT 1, 'Timo', 23 FROM dual", logger: .oracleTest)
                             for try await (userID, name, age) in rows.decode(
                                 (Int, String, Int).self)
@@ -111,7 +111,7 @@ final class OracleClientTests: XCTestCase {
             for _ in 0..<options.maximumConnections {
                 group.addTask {
                     let hello = try await client.withConnection { db in
-                        try await db.query("SELECT 'hello' FROM dual", logger: .oracleTest)
+                        try await db.execute("SELECT 'hello' FROM dual", logger: .oracleTest)
                     }.collect().first?.decode(String.self)
                     XCTAssertEqual(hello, "hello")
 

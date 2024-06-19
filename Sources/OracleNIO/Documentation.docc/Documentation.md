@@ -39,14 +39,14 @@ Oracle Database 12.1 or later.
 
 ### Querying
 
-- ``OracleQuery``
+- ``OracleStatement``
 - ``OracleBindings``
 - ``OracleRow``
 - ``OracleRowSequence``
 - ``OracleRandomAccessRow``
 - ``OracleCell``
 - ``OracleColumn``
-- ``QueryOptions``
+- ``StatementOptions``
 
 ### Encoding and Decoding
 

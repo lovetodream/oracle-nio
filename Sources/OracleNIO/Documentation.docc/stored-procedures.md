@@ -1,6 +1,6 @@
 # PL/SQL Stored Procedures
 
-You can call PL/SQL stored procedures, functions and anonymous blocks from OracleNIO using ``OracleConnection/query(_:options:logger:file:line:)``.
+You can call PL/SQL stored procedures, functions and anonymous blocks from OracleNIO using ``OracleConnection/execute(_:options:logger:file:line:)``.
 
 ## Overview
 
@@ -20,7 +20,7 @@ You can use the following Swift code to call the procedure.
 
 ```swift
 let outBind = OracleRef(OracleNumber(0))
-try await connection.query("""
+try await connection.execute("""
 begin 
     myproc(\(OracleNumber(123)), \(outBind));
 end;

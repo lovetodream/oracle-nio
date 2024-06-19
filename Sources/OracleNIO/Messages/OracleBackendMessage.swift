@@ -152,7 +152,7 @@ extension OracleBackendMessage {
                     break readLoop
                 }
             case .parameter:
-                switch context.queryOptions {
+                switch context.statementOptions {
                 case .some:
                     messages.append(
                         try .queryParameter(.decode(from: &buffer, context: context))

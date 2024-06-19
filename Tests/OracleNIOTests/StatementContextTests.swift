@@ -16,21 +16,24 @@ import XCTest
 
 @testable import OracleNIO
 
-final class OracleQueryContextTests: XCTestCase {
+final class StatementContextTests: XCTestCase {
 
     func testStatementWithSpaceSeparator() {
-        var context: ExtendedQueryContext?
+        var context: StatementContext?
         defer { context?.cleanup() }
-        XCTAssertNoThrow(context = ExtendedQueryContext(query: "SELECT any FROM any"))
-        XCTAssertEqual(context?.statement.isQuery, true)
+        XCTAssertNoThrow(
+            context = StatementContext(
+                statement: "SELECT any FROM any")
+        )
+        XCTAssertEqual(context?.type.isQuery, true)
     }
 
     func testStatementWithNewlineSeparator() {
-        var context: ExtendedQueryContext?
+        var context: StatementContext?
         defer { context?.cleanup() }
         XCTAssertNoThrow(
-            context = ExtendedQueryContext(
-                query: """
+            context = StatementContext(
+                statement: """
                     SELECT
                     any,
                     any2,
@@ -38,30 +41,30 @@ final class OracleQueryContextTests: XCTestCase {
                     FROM
                     any
                     """))
-        XCTAssertEqual(context?.statement.isQuery, true)
+        XCTAssertEqual(context?.type.isQuery, true)
     }
 
     func testQueryWithSingleLineComments() {
-        var context: ExtendedQueryContext?
+        var context: StatementContext?
         defer { context?.cleanup() }
         XCTAssertNoThrow(
-            context = ExtendedQueryContext(
-                query: """
+            context = StatementContext(
+                statement: """
                     -- hello there
                     SELECT any, any2,
                     -- hello again
                     any3 FROM any
                     -- goodby
                     """))
-        XCTAssertEqual(context?.statement.isQuery, true)
+        XCTAssertEqual(context?.type.isQuery, true)
     }
 
     func testQueryWithMultiLineComments() {
-        var context: ExtendedQueryContext?
+        var context: StatementContext?
         defer { context?.cleanup() }
         XCTAssertNoThrow(
-            context = ExtendedQueryContext(
-                query: """
+            context = StatementContext(
+                statement: """
                     /* Hello there */
                     SELECT any, any2,
                     -- I'm sneaky
@@ -71,7 +74,7 @@ final class OracleQueryContextTests: XCTestCase {
                     */
                     any3 FROM any --bye
                     """))
-        XCTAssertEqual(context?.statement.isQuery, true)
+        XCTAssertEqual(context?.type.isQuery, true)
     }
 
 }

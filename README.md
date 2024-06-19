@@ -119,17 +119,17 @@ let connection = try await OracleConnection.connect(
 try await connection.close()
 ```
 
-### Querying
+### Running SQL statements
 
-Once a connection is established, queries can be sent to the server. This is very straightforward:
+Once a connection is established, statements can be sent to the server. This is very straightforward:
 
 ```swift
-let rows = try await connection.query("SELECT id, username, birthday FROM users", logger: logger)
+let rows = try await connection.execute("SELECT id, username, birthday FROM users", logger: logger)
 ```
 
-> `query(_:logger:)` can run either a `Query`, `DML`, `DDL` or even `PlSQL`.
+> `execute(_:options:logger:file:line:)` can run either a `Query`, `DML`, `DDL` or even `PlSQL`.
 
-The query will return a `OracleRowSequence`, which is an `AsyncSequence` of `OracleRow`s. The rows can be iterated one-by-one:
+The statement will return a `OracleRowSequence`, which is an `AsyncSequence` of `OracleRow`s. The rows can be iterated one-by-one:
 
 ```swift
 for try await row in rows {
@@ -165,7 +165,7 @@ A type must implement the `OracleDecodable` protocol in order to be decoded from
 - `OracleVectorInt8`, `OracleVectorFloat32`, `OracleVectorFloat64`
 - `RowID`
 
-### Querying with parameters
+### Statements with parameters
 
 Sending parameterized queries to the database is also supported (in the coolest way possible):
 
@@ -173,16 +173,16 @@ Sending parameterized queries to the database is also supported (in the coolest 
 let id = 1
 let username = "fancyuser"
 let birthday = Date()
-try await connection.query("""
+try await connection.execute("""
   INSERT INTO users (id, username, birthday) VALUES (\(id), \(username), \(birthday))
   """, 
   logger: logger
 )
 ```
 
-While this looks at first glance like a classic case of [SQL injection](https://en.wikipedia.org/wiki/SQL_injection) 😱, `OracleNIO`'s API ensures that this usage is safe. The first parameter of the `query(_:logger:)` method is not a plain `String`, but a `OracleQuery`, which implements Swift's `ExpressibleByStringInterpolation` protocol. `OracleNIO` uses the literal parts of the provided string as the SQL query and replaces each interpolated value with a parameter binding. Only values which implement the `OracleEncodable` protocol may be interpolated in this way. As with `OracleDecodable`, `OracleNIO` provides default implementations for most common types.
+While this looks at first glance like a classic case of [SQL injection](https://en.wikipedia.org/wiki/SQL_injection) 😱, `OracleNIO`'s API ensures that this usage is safe. The first parameter of the `execute(_:options:logger:file:line:)` method is not a plain `String`, but a `OracleStatement`, which implements Swift's `ExpressibleByStringInterpolation` protocol. `OracleNIO` uses the literal parts of the provided string as the SQL statement and replaces each interpolated value with a parameter binding. Only values which implement the `OracleEncodable` protocol may be interpolated in this way. As with `OracleDecodable`, `OracleNIO` provides default implementations for most common types.
 
-Some queries do not receive any rows from the server (most often `INSERT`, `UPDATE`, and `DELETE` queries, not to mention most `DDL` queries). To support this, the `query(_:logger:)` method is marked `@discardableResult`, so that the compiler does not issue a warning if the return value is not used.
+Some queries do not receive any rows from the server (most often `INSERT`, `UPDATE`, and `DELETE` queries, not to mention most `DDL` queries). To support this, the `execute(_:options:logger:file:line:)` method is marked `@discardableResult`, so that the compiler does not issue a warning if the return value is not used.
 
 ## Changelog
 

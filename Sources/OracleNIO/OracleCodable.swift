@@ -72,8 +72,8 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable, Equatable {
 /// stable between databases.
 ///
 /// This is the non-throwing alternative to ``OracleThrowingDynamicTypeEncodable``. It allows
-/// users to create ``OracleQuery``s via `ExpressibleByStringInterpolation` without having
-/// to spell `try`.
+/// users to create ``OracleStatement``s via `ExpressibleByStringInterpolation` without
+/// having to spell `try`.
 public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
     /// Encode the entity into `buffer`, using the provided `context` as needed, without setting
     /// the byte count.
@@ -115,7 +115,7 @@ extension Array where Element: OracleThrowingDynamicTypeEncodable {
 /// A type that can encode itself to a oracle wire binary representation.
 ///
 /// It enforces that the ``OracleThrowingDynamicTypeEncodable-Implementations``
-/// does not throw. This allows users to create ``OracleQuery``'s using the
+/// does not throw. This allows users to create ``OracleStatement``'s using the
 /// `ExpressibleByStringInterpolation` without having to spell `try`.
 public protocol OracleEncodable:
     OracleThrowingEncodable, OracleDynamicTypeEncodable

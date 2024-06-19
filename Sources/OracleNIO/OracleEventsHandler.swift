@@ -24,7 +24,7 @@ enum OracleSQLEvent {
     )
     /// The event that is used to inform upstream handlers that ``OracleChannelHandler`` is
     /// currently idle.
-    case readyForQuery
+    case readyForStatement
     /// The event that is used to inform state about an ongoing TLS renegotiation.
     case renegotiateTLS
 }
@@ -65,14 +65,14 @@ final class OracleEventsHandler: ChannelInboundHandler {
             }
             self.state = .readyForStartup
             self.startupDonePromise.succeed((version, sessionID, serialNumber))
-        case OracleSQLEvent.readyForQuery:
+        case OracleSQLEvent.readyForStatement:
             switch self.state {
             case .initialized, .connected:
                 preconditionFailure(
-                    "Expected to get a `readyForStartup` before we get a `readyForQuery` event"
+                    "Expected to get a `readyForStartup` before we get a `readyForStatement` event"
                 )
             case .readyForStartup:
-                // for the first time, we are ready to query, this means
+                // for the first time, we are ready for statements, this means
                 // startup/auth was successful
                 self.state = .authenticated
             case .authenticated:

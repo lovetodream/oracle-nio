@@ -16,7 +16,7 @@ import NIOEmbedded
 
 @testable import OracleNIO
 
-extension QueryResult {
+extension StatementResult {
     init(value: Value) {
         self.init(value: value, logger: OracleConnection.noopLogger)
     }

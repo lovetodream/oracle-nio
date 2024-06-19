@@ -40,7 +40,7 @@ import class Foundation.ProcessInfo
 /// ## Usage
 ///
 /// Now you can use the connection to run queries on your database using
-/// ``OracleConnection/query(_:options:logger:file:line:)``.
+/// ``OracleConnection/execute(_:options:logger:file:line:)``.
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "use")
 ///
@@ -408,22 +408,22 @@ extension OracleConnection {
         try await self.rollback().get()
     }
 
-    /// Run a query on the Oracle server the connection is connected to.
+    /// Run a statement on the Oracle server the connection is connected to.
     ///
     /// - Parameters:
-    ///   - query: The ``OracleQuery`` to run.
-    ///   - options: A bunch of parameters to optimize the query in different ways. Normally this can
-    ///              be ignored, but feel free to experiment based on your needs. Every option and
-    ///              its impact is documented.
-    ///   - logger: The `Logger` to log query related background events into. Defaults to logging disabled.
-    ///   - file: The file, the query was started in. Used for better error reporting.
-    ///   - line: The line, the query was started in. Used for better error reporting.
-    /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the query
-    ///            result. The result sequence can be discarded if the query has no result.
+    ///   - statement: The ``OracleStatement`` to run.
+    ///   - options: A bunch of parameters to optimize the statement in different ways.
+    ///              Normally this can be ignored, but feel free to experiment based on your needs.
+    ///              Every option and its impact is documented.
+    ///   - logger: The `Logger` to log statement related background events into. Defaults to logging disabled.
+    ///   - file: The file, the statement was started in. Used for better error reporting.
+    ///   - line: The line, the statement was started in. Used for better error reporting.
+    /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the statement
+    ///            result. The result sequence can be discarded if the statement has no result.
     @discardableResult
-    public func query(
-        _ query: OracleQuery,
-        options: QueryOptions = .init(),
+    public func execute(
+        _ statement: OracleStatement,
+        options: StatementOptions = .init(),
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
@@ -434,14 +434,14 @@ extension OracleConnection {
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
-        let context = ExtendedQueryContext(
-            query: query,
+        let context = StatementContext(
+            statement: statement,
             options: options,
             logger: logger,
             promise: promise
         )
 
-        self.channel.write(OracleTask.extendedQuery(context), promise: nil)
+        self.channel.write(OracleTask.statement(context), promise: nil)
 
         do {
             return try await promise.futureResult
@@ -450,14 +450,14 @@ extension OracleConnection {
         } catch var error as OracleSQLError {
             error.file = file
             error.line = line
-            error.query = query
+            error.statement = statement
             throw error  // rethrow with more metadata
         }
     }
 
     func execute(
         cursor: Cursor,
-        options: QueryOptions = .init(),
+        options: StatementOptions = .init(),
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
@@ -468,14 +468,14 @@ extension OracleConnection {
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
-        let context = ExtendedQueryContext(
+        let context = StatementContext(
             cursor: cursor,
             options: options,
             logger: logger,
             promise: promise
         )
 
-        self.channel.write(OracleTask.extendedQuery(context), promise: nil)
+        self.channel.write(OracleTask.statement(context), promise: nil)
 
         do {
             return try await promise.futureResult

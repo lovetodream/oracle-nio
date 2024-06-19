@@ -434,14 +434,14 @@ struct OracleFrontendMessageEncoder {
     }
 
     mutating func execute(
-        queryContext: ExtendedQueryContext,
+        statementContext: StatementContext,
         cleanupContext: CleanupContext,
         describeInfo: DescribeInfo?
     ) {
         self.clearIfNeeded()
 
-        let query = queryContext.query
-        let queryOptions = queryContext.options
+        let statement = statementContext.statement
+        let statementOptions = statementContext.options
 
         // 1. options
         var options: UInt32 = 0
@@ -449,43 +449,43 @@ struct OracleFrontendMessageEncoder {
         var parametersCount: UInt32 = 0
         var iterationsCount: UInt32 = 1
 
-        if !queryContext.requiresDefine && query.binds.count != 0 {
-            parametersCount = .init(query.binds.count)
+        if !statementContext.requiresDefine && statement.binds.count != 0 {
+            parametersCount = .init(statement.binds.count)
         }
-        if queryContext.requiresDefine {
+        if statementContext.requiresDefine {
             options |= Constants.TNS_EXEC_OPTION_DEFINE
-        } else if !query.sql.isEmpty {
+        } else if !statement.sql.isEmpty {
             dmlOptions = Constants.TNS_EXEC_OPTION_IMPLICIT_RESULTSET
             options |= Constants.TNS_EXEC_OPTION_EXECUTE
         }
-        if queryContext.cursorID == 0 || queryContext.statement.isDDL {
+        if statementContext.cursorID == 0 || statementContext.type.isDDL {
             options |= Constants.TNS_EXEC_OPTION_PARSE
         }
-        if queryContext.statement.isQuery {
-            if queryContext.cursorID == 0 || queryContext.requiresDefine {
-                iterationsCount = UInt32(queryOptions.prefetchRows)
+        if statementContext.type.isQuery {
+            if statementContext.cursorID == 0 || statementContext.requiresDefine {
+                iterationsCount = UInt32(statementOptions.prefetchRows)
             } else {
-                iterationsCount = UInt32(queryOptions.arraySize)
+                iterationsCount = UInt32(statementOptions.arraySize)
             }
-            if iterationsCount > 0 && !queryContext.noPrefetch {
+            if iterationsCount > 0 && !statementContext.noPrefetch {
                 options |= Constants.TNS_EXEC_OPTION_FETCH
             }
         }
-        if !queryContext.statement.isPlSQL {
+        if !statementContext.type.isPlSQL {
             options |= Constants.TNS_EXEC_OPTION_NOT_PLSQL
-        } else if queryContext.statement.isPlSQL && parametersCount > 0 {
+        } else if statementContext.type.isPlSQL && parametersCount > 0 {
             options |= Constants.TNS_EXEC_OPTION_PLSQL_BIND
         }
         if parametersCount > 0 {
             options |= Constants.TNS_EXEC_OPTION_BIND
         }
-        if queryContext.options.batchErrors {
+        if statementContext.options.batchErrors {
             options |= Constants.TNS_EXEC_OPTION_BATCH_ERRORS
         }
-        if queryContext.options.arrayDMLRowCounts {
+        if statementContext.options.arrayDMLRowCounts {
             options |= Constants.TNS_EXEC_OPTION_DML_ROWCOUNTS
         }
-        if queryOptions.autoCommit {
+        if statementOptions.autoCommit {
             options |= Constants.TNS_EXEC_OPTION_COMMIT
         }
 
@@ -498,15 +498,15 @@ struct OracleFrontendMessageEncoder {
         self.writeFunctionCode(
             messageType: .function,
             functionCode: .execute,
-            sequenceNumber: &queryContext.sequenceNumber
+            sequenceNumber: &statementContext.sequenceNumber
         )
 
         // 4. write body of message
         self.buffer.writeUB4(options)  // execute options
-        self.buffer.writeUB4(UInt32(queryContext.cursorID))  // cursor ID
-        if queryContext.cursorID == 0 || queryContext.statement.isDDL {
+        self.buffer.writeUB4(UInt32(statementContext.cursorID))  // cursor ID
+        if statementContext.cursorID == 0 || statementContext.type.isDDL {
             self.buffer.writeInteger(UInt8(1))  // pointer (cursor ID)
-            self.buffer.writeUB4(queryContext.sqlLength)
+            self.buffer.writeUB4(statementContext.sqlLength)
         } else {
             self.buffer.writeInteger(UInt8(0))  // pointer (cursor ID)
             self.buffer.writeUB4(0)
@@ -530,7 +530,7 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeInteger(UInt8(0))  // pointer (al8txl)
         self.buffer.writeInteger(UInt8(0))  // pointer (al8kv)
         self.buffer.writeInteger(UInt8(0))  // pointer (al8kvl)
-        if queryContext.requiresDefine {
+        if statementContext.requiresDefine {
             self.buffer.writeInteger(UInt8(1))  // pointer (al8doac)
             self.buffer.writeUB4(
                 UInt32(describeInfo?.columns.count ?? 0)
@@ -547,7 +547,7 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeInteger(UInt8(0))  // pointer (al8dnam)
         self.buffer.writeUB4(0)  // al8dnaml
         self.buffer.writeUB4(0)  // al8regid_msb
-        if queryOptions.arrayDMLRowCounts {
+        if statementOptions.arrayDMLRowCounts {
             self.buffer.writeInteger(UInt8(1))  // pointer (al8pidmlrc)
             self.buffer.writeUB4(1)  // al8pidmlrcbl / numberOfExecutions
             self.buffer.writeInteger(UInt8(1))  // pointer (al8pidmlrcl)
@@ -571,15 +571,15 @@ struct OracleFrontendMessageEncoder {
                 self.buffer.writeUB4(0)  // number of chunk ids
             }
         }
-        if queryContext.cursorID == 0 || queryContext.statement.isDDL {
-            queryContext.query.sql
+        if statementContext.cursorID == 0 || statementContext.type.isDDL {
+            statementContext.statement.sql
                 ._encodeRaw(into: &self.buffer, context: .default)
             self.buffer.writeUB4(1)  // al8i4[0] parse
         } else {
             self.buffer.writeUB4(0)  // al8i4[0] parse
         }
-        if queryContext.statement.isQuery {
-            if queryContext.cursorID == 0 {
+        if statementContext.type.isQuery {
+            if statementContext.cursorID == 0 {
                 self.buffer.writeUB4(0)  // al8i4[1] execution count
             } else {
                 self.buffer.writeUB4(iterationsCount)
@@ -593,42 +593,42 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeUB4(0)  // al8i4[5] SCN (part 1)
         self.buffer.writeUB4(0)  // al8i4[6] SCN (part 2)
         self.buffer.writeUB4(
-            queryContext.statement.isQuery ? 1 : 0
+            statementContext.type.isQuery ? 1 : 0
         )  // al8i4[7] is query
         self.buffer.writeUB4(0)  // al8i4[8]
         self.buffer.writeUB4(dmlOptions)  // al8i4[9] DML row counts/implicit
         self.buffer.writeUB4(0)  // al8i4[10]
         self.buffer.writeUB4(0)  // al8i4[11]
         self.buffer.writeUB4(0)  // al8i4[12]
-        if queryContext.requiresDefine {
+        if statementContext.requiresDefine {
             guard let columns = describeInfo?.columns else {
                 preconditionFailure()
             }
 
             self.writeColumnMetadata(columns)
         } else if parametersCount > 0 {
-            self.writeBindParameters(queryContext.query.binds)
+            self.writeBindParameters(statementContext.statement.binds)
         }
 
         self.endRequest()
     }
 
     mutating func reexecute(
-        queryContext: ExtendedQueryContext, cleanupContext: CleanupContext
+        statementContext: StatementContext, cleanupContext: CleanupContext
     ) {
         self.clearIfNeeded()
 
         self.startRequest()
 
         let functionCode: Constants.FunctionCode
-        if queryContext.statement.isQuery && !queryContext.requiresDefine
-            && queryContext.options.prefetchRows > 0
+        if statementContext.type.isQuery && !statementContext.requiresDefine
+            && statementContext.options.prefetchRows > 0
         {
             functionCode = .reexecuteAndFetch
         } else {
             functionCode = .reexecute
         }
-        let parameters = queryContext.query.binds
+        let parameters = statementContext.statement.binds
         var executionFlags1: UInt32 = 0
         var executionFlags2: UInt32 = 0
         var numberOfIterations: UInt32 = 0
@@ -636,9 +636,9 @@ struct OracleFrontendMessageEncoder {
 
         if functionCode == .reexecuteAndFetch {
             executionFlags1 |= Constants.TNS_EXEC_OPTION_EXECUTE
-            numberOfIterations = UInt32(queryContext.options.prefetchRows)
+            numberOfIterations = UInt32(statementContext.options.prefetchRows)
         } else {
-            if queryContext.options.autoCommit {
+            if statementContext.options.autoCommit {
                 executionFlags2 |= Constants.TNS_EXEC_OPTION_COMMIT_REEXECUTE
             }
             numberOfIterations = UInt32(numberOfExecutions)
@@ -648,7 +648,7 @@ struct OracleFrontendMessageEncoder {
         self.writeFunctionCode(
             messageType: .function, functionCode: functionCode
         )
-        self.buffer.writeUB4(UInt32(queryContext.cursorID))
+        self.buffer.writeUB4(UInt32(statementContext.cursorID))
         self.buffer.writeUB4(numberOfIterations)
         self.buffer.writeUB4(executionFlags1)
         self.buffer.writeUB4(executionFlags2)
@@ -1072,7 +1072,7 @@ extension OracleFrontendMessageEncoder {
 
 }
 
-// MARK: Data/Query related stuff
+// MARK: Data/Statement related stuff
 
 extension OracleFrontendMessageEncoder {
     private mutating func writePiggybacks(context: CleanupContext) {

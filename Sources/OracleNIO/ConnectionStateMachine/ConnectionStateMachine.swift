@@ -23,8 +23,8 @@ struct ConnectionStateMachine {
         case dataTypesMessageSent
         case waitingToStartAuthentication
         case authenticating(AuthenticationStateMachine)
-        case readyForQuery
-        case extendedQuery(ExtendedQueryStateMachine)
+        case readyForStatement
+        case statement(StatementStateMachine)
         case ping(EventLoopPromise<Void>)
         case commit(EventLoopPromise<Void>)
         case rollback(EventLoopPromise<Void>)
@@ -82,7 +82,7 @@ struct ConnectionStateMachine {
         case logoffConnection(EventLoopPromise<Void>?)
         case closeConnection(EventLoopPromise<Void>?)
         case fireChannelInactive
-        case fireEventReadyForQuery
+        case fireEventReadyForStatement
 
         /// Close connection because of an error state. Fail all tasks with the provided error.
         case closeConnectionAndCleanup(CleanUpContext)
@@ -114,19 +114,22 @@ struct ConnectionStateMachine {
         case failRollback(EventLoopPromise<Void>, with: OracleSQLError)
         case succeedRollback(EventLoopPromise<Void>)
 
-        // Query
-        case sendExecute(ExtendedQueryContext, DescribeInfo?)
-        case sendReexecute(ExtendedQueryContext, CleanupContext)
-        case sendFetch(ExtendedQueryContext)
+        // Statement
+        case sendExecute(StatementContext, DescribeInfo?)
+        case sendReexecute(StatementContext, CleanupContext)
+        case sendFetch(StatementContext)
         case sendFlushOutBinds
-        case failQuery(
+        case failStatement(
             EventLoopPromise<OracleRowStream>,
             with: OracleSQLError, cleanupContext: CleanUpContext?
         )
-        case succeedQuery(EventLoopPromise<OracleRowStream>, QueryResult)
+        case succeedStatement(
+            EventLoopPromise<OracleRowStream>,
+            StatementResult
+        )
         case needMoreData
 
-        // Query streaming
+        // Statement streaming
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow], cursorID: UInt16)
         case forwardStreamError(
@@ -188,8 +191,8 @@ struct ConnectionStateMachine {
             .dataTypesMessageSent,
             .waitingToStartAuthentication,
             .authenticating,
-            .readyForQuery,
-            .extendedQuery,
+            .readyForStatement,
+            .statement,
             .ping,
             .commit,
             .rollback,
@@ -217,7 +220,7 @@ struct ConnectionStateMachine {
             .protocolMessageSent,
             .waitingToStartAuthentication,
             .initialized,
-            .readyForQuery,
+            .readyForStatement,
             .ping,
             .commit,
             .rollback,
@@ -226,11 +229,11 @@ struct ConnectionStateMachine {
         case .authenticating(var authState):
             let action = authState.errorHappened(error)
             return self.modify(with: action)
-        case .extendedQuery(var queryState):
-            if queryState.isComplete {
+        case .statement(var statement):
+            if statement.isComplete {
                 return self.closeConnectionAndCleanup(error)
             } else {
-                let action = queryState.errorHappened(error)
+                let action = statement.errorHappened(error)
                 return self.modify(with: action)
             }
         case .readyToLogOff, .loggingOff, .closing:
@@ -265,7 +268,7 @@ struct ConnectionStateMachine {
                 .dataTypesMessageSent,
                 .waitingToStartAuthentication,
                 .authenticating,
-                .extendedQuery,
+                .statement,
                 .ping,
                 .commit,
                 .rollback,
@@ -273,7 +276,7 @@ struct ConnectionStateMachine {
                 self.taskQueue.append(task)
                 return .wait
 
-            case .readyForQuery:
+            case .readyForStatement:
                 return self.executeTask(task)
 
             case .readyToLogOff, .loggingOff, .closing, .closed:
@@ -285,15 +288,15 @@ struct ConnectionStateMachine {
         }
 
         switch task {
-        case .extendedQuery(let queryContext):
-            switch queryContext.statement {
+        case .statement(let statementContext):
+            switch statementContext.type {
             case .ddl(let promise),
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
                 .cursor(_, let promise),
                 .plain(let promise):
-                return .failQuery(
+                return .failStatement(
                     promise, with: oracleError, cleanupContext: nil
                 )
             }
@@ -314,7 +317,7 @@ struct ConnectionStateMachine {
             .dataTypesMessageSent,
             .waitingToStartAuthentication,
             .authenticating,
-            .readyForQuery,
+            .readyForStatement,
             .ping,
             .commit,
             .rollback,
@@ -325,10 +328,10 @@ struct ConnectionStateMachine {
             .renegotiatingTLS:
             return .wait
 
-        case .extendedQuery(var extendedQuery):
+        case .statement(var statement):
             self.state = .modifying  // avoid CoW
-            let action = extendedQuery.channelReadComplete()
-            self.state = .extendedQuery(extendedQuery)
+            let action = statement.channelReadComplete()
+            self.state = .statement(statement)
             return self.modify(with: action)
 
         case .modifying:
@@ -343,10 +346,10 @@ struct ConnectionStateMachine {
                 "Received a read event on a connection that was never opened"
             )
 
-        case .extendedQuery(var extendedQuery):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = extendedQuery.readEventCaught()
-                machine.state = .extendedQuery(extendedQuery)
+                let action = statement.readEventCaught()
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
 
@@ -414,9 +417,9 @@ struct ConnectionStateMachine {
             return .wait
         case .authenticating:
             fatalError("Does this even happen?")
-        case .readyForQuery:
+        case .readyForStatement:
             return .wait
-        case .extendedQuery:
+        case .statement:
             fatalError("Does this even happen?")
         case .ping:
             return .sendPing
@@ -473,7 +476,7 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
 
-        case .readyForQuery, .extendedQuery, .ping, .commit, .rollback:
+        case .readyForStatement, .statement, .ping, .commit, .rollback:
             fatalError("Is this possible?")
 
         case .readyToLogOff, .loggingOff, .closing, .closed, .modifying:
@@ -485,7 +488,7 @@ struct ConnectionStateMachine {
         switch self.state {
         case .initialized,
             .waitingToStartAuthentication,
-            .readyForQuery,
+            .readyForStatement,
             .readyToLogOff,
             .closed,
             .renegotiatingTLS:
@@ -494,7 +497,7 @@ struct ConnectionStateMachine {
             .protocolMessageSent,
             .dataTypesMessageSent,
             .authenticating,
-            .extendedQuery,
+            .statement,
             .ping,
             .commit,
             .rollback:
@@ -528,8 +531,8 @@ struct ConnectionStateMachine {
             .dataTypesMessageSent,
             .waitingToStartAuthentication,
             .authenticating,
-            .readyForQuery,
-            .extendedQuery,
+            .readyForStatement,
+            .statement,
             .renegotiatingTLS:
             return self.errorHappened(
                 .unexpectedBackendMessage(.status(status))
@@ -565,10 +568,10 @@ struct ConnectionStateMachine {
         _ describeInfo: DescribeInfo
     ) -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.describeInfoReceived(describeInfo)
-                machine.state = .extendedQuery(queryState)
+                let action = statement.describeInfoReceived(describeInfo)
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
         default:
@@ -582,10 +585,10 @@ struct ConnectionStateMachine {
         _ rowHeader: OracleBackendMessage.RowHeader
     ) -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.rowHeaderReceived(rowHeader)
-                machine.state = .extendedQuery(queryState)
+                let action = statement.rowHeaderReceived(rowHeader)
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
         default:
@@ -600,12 +603,12 @@ struct ConnectionStateMachine {
         capabilities: Capabilities
     ) -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.rowDataReceived(
+                let action = statement.rowDataReceived(
                     rowData, capabilities: capabilities
                 )
-                machine.state = .extendedQuery(queryState)
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
         default:
@@ -625,10 +628,10 @@ struct ConnectionStateMachine {
         _ bitVector: OracleBackendMessage.BitVector
     ) -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.bitVectorReceived(bitVector)
-                machine.state = .extendedQuery(queryState)
+                let action = statement.bitVectorReceived(bitVector)
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
         default:
@@ -640,10 +643,10 @@ struct ConnectionStateMachine {
         _ error: OracleBackendMessage.BackendError
     ) -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.errorReceived(error)
-                machine.state = .extendedQuery(queryState)
+                let action = statement.errorReceived(error)
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
         case .authenticating(var authState):
@@ -659,62 +662,62 @@ struct ConnectionStateMachine {
         }
     }
 
-    mutating func cancelQueryStream() -> ConnectionAction {
-        guard case .extendedQuery(var queryState) = state else {
-            preconditionFailure("Tried to cancel stream without active query")
+    mutating func cancelStatementStream() -> ConnectionAction {
+        guard case .statement(var statement) = state else {
+            preconditionFailure("Tried to cancel stream without active statement")
         }
 
         return self.avoidingStateMachineCoW { machine in
-            let action = queryState.cancel()
-            machine.state = .extendedQuery(queryState)
+            let action = statement.cancel()
+            machine.state = .statement(statement)
             return machine.modify(with: action)
         }
 
     }
 
-    mutating func queryStreamCancelled() -> ConnectionAction {
-        guard case .extendedQuery = state else {
-            preconditionFailure("Tried to cancel stream without active query")
+    mutating func statementStreamCancelled() -> ConnectionAction {
+        guard case .statement = state else {
+            preconditionFailure("Tried to cancel stream without active statement")
         }
 
         self.markerState = .markerSent
         return .sendMarker
     }
 
-    mutating func requestQueryRows() -> ConnectionAction {
-        guard case .extendedQuery(var queryState) = state else {
+    mutating func requestStatementRows() -> ConnectionAction {
+        guard case .statement(var statement) = state else {
             preconditionFailure(
-                "Tried to consume next row, without active query"
+                "Tried to consume next row, without active statement"
             )
         }
 
         return self.avoidingStateMachineCoW { machine in
-            let action = queryState.requestQueryRows()
-            machine.state = .extendedQuery(queryState)
+            let action = statement.requestStatementRows()
+            machine.state = .statement(statement)
             return machine.modify(with: action)
         }
     }
 
-    mutating func readyForQueryReceived() -> ConnectionAction {
+    mutating func readyForStatementReceived() -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(let extendedQuery):
-            guard extendedQuery.isComplete else {
+        case .statement(let statement):
+            guard statement.isComplete else {
                 preconditionFailure(
                     """
-                    Ready for query received when query is still being executed
+                    readyForStatement received when statement is still being executed
                     """)
             }
 
-            self.state = .readyForQuery
-            return self.executeNextQueryFromQueue()
+            self.state = .readyForStatement
+            return self.executeNextStatementFromQueue()
         case .ping, .commit, .rollback:
-            self.state = .readyForQuery
-            return self.executeNextQueryFromQueue()
+            self.state = .readyForStatement
+            return self.executeNextStatementFromQueue()
 
         case .loggingOff, .closing:
             // Might happen if the connection is getting closed immediately
             // after a ping. In that case the ping's success or failure response
-            // triggers a readyForQueryReceived, while we are already closing.
+            // triggers a readyForStatementReceived, while we are already closing.
             // (This race might not be exclusive to ping's)
             return .wait
 
@@ -727,12 +730,12 @@ struct ConnectionStateMachine {
         _ buffer: ByteBuffer, capabilities: Capabilities
     ) -> ConnectionAction {
         switch self.state {
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             return self.avoidingStateMachineCoW { machine in
-                let action = queryState.chunkReceived(
+                let action = statement.chunkReceived(
                     buffer, capabilities: capabilities
                 )
-                machine.state = .extendedQuery(queryState)
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
 
@@ -749,25 +752,25 @@ struct ConnectionStateMachine {
     mutating func ioVectorReceived(
         _ vector: OracleBackendMessage.InOutVector
     ) -> ConnectionAction {
-        guard case .extendedQuery(var queryState) = self.state else {
+        guard case .statement(var statement) = self.state else {
             preconditionFailure("Invalid state: \(self.state)")
         }
 
         return self.avoidingStateMachineCoW { machine in
-            let action = queryState.ioVectorReceived(vector)
-            machine.state = .extendedQuery(queryState)
+            let action = statement.ioVectorReceived(vector)
+            machine.state = .statement(statement)
             return machine.modify(with: action)
         }
     }
 
     mutating func flushOutBindsReceived() -> ConnectionAction {
-        guard case .extendedQuery(var queryState) = self.state else {
+        guard case .statement(var statement) = self.state else {
             preconditionFailure("Invalid state: \(self.state)")
         }
 
         return self.avoidingStateMachineCoW { machine in
-            let action = queryState.flushOutBindsReceived()
-            machine.state = .extendedQuery(queryState)
+            let action = statement.flushOutBindsReceived()
+            machine.state = .statement(statement)
             return machine.modify(with: action)
         }
     }
@@ -815,7 +818,7 @@ struct ConnectionStateMachine {
             .protocolMessageSent,
             .dataTypesMessageSent,
             .waitingToStartAuthentication,
-            .readyForQuery,
+            .readyForStatement,
             .renegotiatingTLS:
             let cleanupContext = self.setErrorAndCreateCleanupContext(
                 error, closePromise: closePromise
@@ -848,24 +851,25 @@ struct ConnectionStateMachine {
             }
             return .closeConnectionAndCleanup(cleanupContext)
 
-        case .extendedQuery(var queryState):
+        case .statement(var statement):
             let cleanupContext = self.setErrorAndCreateCleanupContext(
                 error, closePromise: closePromise
             )
 
-            if queryState.isComplete {
-                // in case the query state machine is complete, all necessary
-                // actions have already been forwarded to the consumer. We can
-                // close and cleanup without caring about the substate machine.
+            if statement.isComplete {
+                // in case the statement state machine is complete, all
+                // necessary actions have already been forwarded to the
+                // consumer. We can close and cleanup without caring about
+                // the substate machine.
                 return .closeConnectionAndCleanup(cleanupContext)
             }
 
-            switch queryState.errorHappened(error) {
+            switch statement.errorHappened(error) {
             case .sendExecute,
                 .sendReexecute,
                 .sendFetch,
                 .sendFlushOutBinds,
-                .succeedQuery,
+                .succeedStatement,
                 .needMoreData,
                 .forwardRows,
                 .forwardStreamComplete,
@@ -877,8 +881,8 @@ struct ConnectionStateMachine {
             case .evaluateErrorAtConnectionLevel:
                 return .closeConnectionAndCleanup(cleanupContext)
 
-            case .failQuery(let promise, with: let error):
-                return .failQuery(
+            case .failStatement(let promise, with: let error):
+                return .failStatement(
                     promise, with: error, cleanupContext: cleanupContext
                 )
 
@@ -911,10 +915,10 @@ struct ConnectionStateMachine {
         }
     }
 
-    private mutating func executeNextQueryFromQueue() -> ConnectionAction {
-        guard case .readyForQuery = state else {
+    private mutating func executeNextStatementFromQueue() -> ConnectionAction {
+        guard case .readyForStatement = state else {
             preconditionFailure(
-                "Only expected to be invoked, if we are readyForQuery"
+                "Only expected to be invoked, if we are readyForStatement"
             )
         }
 
@@ -929,24 +933,24 @@ struct ConnectionStateMachine {
             return .closeConnection(closePromise)
         }
 
-        return .fireEventReadyForQuery
+        return .fireEventReadyForStatement
     }
 
     private mutating func executeTask(_ task: OracleTask) -> ConnectionAction {
-        guard case .readyForQuery = state else {
+        guard case .readyForStatement = state else {
             preconditionFailure(
-                "Only expected to be invoked, if we are readyToQuery"
+                "Only expected to be invoked, if we are readyForStatement"
             )
         }
 
         switch task {
-        case .extendedQuery(let queryContext):
+        case .statement(let statementContext):
             return self.avoidingStateMachineCoW { machine in
-                var extendedQuery = ExtendedQueryStateMachine(
-                    queryContext: queryContext
+                var statement = StatementStateMachine(
+                    statementContext: statementContext
                 )
-                let action = extendedQuery.start()
-                machine.state = .extendedQuery(extendedQuery)
+                let action = statement.start()
+                machine.state = .statement(statement)
                 return machine.modify(with: action)
             }
         case .ping(let promise):
@@ -982,7 +986,7 @@ extension ConnectionStateMachine {
             .sidNotSupported,
             .uncleanShutdown:
             return true
-        case .queryCancelled, .nationalCharsetNotSupported:
+        case .statementCancelled, .nationalCharsetNotSupported:
             return false
         case .server:
             switch error.serverInfo?.number {
@@ -1085,7 +1089,7 @@ extension ConnectionStateMachine {
         case .wait:
             return .wait
         case .authenticated(let parameters):
-            self.state = .readyForQuery
+            self.state = .readyForStatement
             return .authenticated(parameters)
         case .reportAuthenticationError(let error):
             let cleanupContext = self.setErrorAndCreateCleanupContext(error)
@@ -1096,21 +1100,21 @@ extension ConnectionStateMachine {
 
 extension ConnectionStateMachine {
     mutating func modify(
-        with action: ExtendedQueryStateMachine.Action
+        with action: StatementStateMachine.Action
     ) -> ConnectionAction {
         switch action {
         case .sendExecute(let context, let describeInfo):
             return .sendExecute(context, describeInfo)
-        case .sendReexecute(let queryContext, let cleanupContext):
-            return .sendReexecute(queryContext, cleanupContext)
+        case .sendReexecute(let statementContxt, let cleanupContext):
+            return .sendReexecute(statementContxt, cleanupContext)
         case .sendFetch(let context):
             return .sendFetch(context)
         case .sendFlushOutBinds:
             return .sendFlushOutBinds
-        case .failQuery(let promise, let error):
-            return .failQuery(promise, with: error, cleanupContext: nil)
-        case .succeedQuery(let promise, let columns):
-            return .succeedQuery(promise, columns)
+        case .failStatement(let promise, let error):
+            return .failStatement(promise, with: error, cleanupContext: nil)
+        case .succeedStatement(let promise, let columns):
+            return .succeedStatement(promise, columns)
         case .needMoreData:
             return .needMoreData
         case .forwardRows(let rows):
@@ -1127,7 +1131,7 @@ extension ConnectionStateMachine {
                 clientCancelled: clientCancelled
             )
         case .forwardCancelComplete:
-            return self.readyForQueryReceived()
+            return self.readyForStatementReceived()
         case .evaluateErrorAtConnectionLevel(let error):
             if let cleanupContext =
                 self.setErrorAndCreateCleanupContextIfNeeded(error)

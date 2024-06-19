@@ -54,8 +54,8 @@ public final class OracleClient: Sendable, Service {
 
             /// Create a new `KeepAliveBehavior`.
             /// - Parameters:
-            ///   - frequency: The amount of time that shall pass before an idle connection runs a keep-alive `query`.
-            ///                Defaults to `30` seconds.
+            ///   - frequency: The amount of time that shall pass before an idle connection runs
+            ///                a keep-alive `statement`. Defaults to `30` seconds.
             public init(frequency: Duration = .seconds(30)) {
                 self.frequency = frequency
             }

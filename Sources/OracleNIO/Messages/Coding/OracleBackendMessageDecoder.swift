@@ -35,18 +35,18 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     final class Context {
         var capabilities: Capabilities
         var performingChunkedRead = false
-        var queryOptions: QueryOptions? = nil
+        var statementOptions: StatementOptions? = nil
         var columnsCount: Int? = nil
 
         init(
             capabilities: Capabilities,
             performingChunkedRead: Bool = false,
-            queryOptions: QueryOptions? = nil,
+            statementOptions: StatementOptions? = nil,
             columnsCount: Int? = nil
         ) {
             self.capabilities = capabilities
             self.performingChunkedRead = performingChunkedRead
-            self.queryOptions = queryOptions
+            self.statementOptions = statementOptions
             self.columnsCount = columnsCount
         }
     }

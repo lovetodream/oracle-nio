@@ -25,7 +25,7 @@ extension OracleBackendMessage {
             let columnsCountSent = try buffer.throwingReadUB2()
             guard let columnsCount = context.columnsCount else {
                 preconditionFailure(
-                    "How can we receive a bit vector without an active query?"
+                    "How can we receive a bit vector without an active statement?"
                 )
             }
             var length = Int((Double(columnsCount) / 8.0).rounded(.down))

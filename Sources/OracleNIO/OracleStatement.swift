@@ -14,11 +14,12 @@
 import NIOConcurrencyHelpers
 import NIOCore
 
-/// A Oracle SQL query, that can be executed on a Oracle server. Contains the raw sql string and bindings.
-public struct OracleQuery: Sendable, Hashable {
-    /// The query string.
+/// A Oracle SQL statement, that can be executed on a Oracle server.
+/// Contains the raw sql string and bindings.
+public struct OracleStatement: Sendable, Hashable {
+    /// The statement's string.
     public var sql: String
-    /// The query binds.
+    /// The statement's binds.
     public var binds: OracleBindings
 
     public init(
@@ -30,7 +31,7 @@ public struct OracleQuery: Sendable, Hashable {
     }
 }
 
-extension OracleQuery: ExpressibleByStringInterpolation {
+extension OracleStatement: ExpressibleByStringInterpolation {
     public init(stringInterpolation: StringInterpolation) {
         self.sql = stringInterpolation.sql
         self.binds = stringInterpolation.binds
@@ -42,7 +43,7 @@ extension OracleQuery: ExpressibleByStringInterpolation {
     }
 }
 
-extension OracleQuery {
+extension OracleStatement {
     public struct StringInterpolation: StringInterpolationProtocol {
         public typealias StringLiteralType = String
 
@@ -138,15 +139,15 @@ extension OracleQuery {
     }
 }
 
-extension OracleQuery: CustomStringConvertible {
+extension OracleStatement: CustomStringConvertible {
     public var description: String {
         "\(self.sql) \(self.binds)"
     }
 }
 
-extension OracleQuery: CustomDebugStringConvertible {
+extension OracleStatement: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "OracleQuery(sql: \(String(describing: self.sql)), binds: \(String(reflecting: self.binds))"
+        "OracleStatement(sql: \(String(describing: self.sql)), binds: \(String(reflecting: self.binds))"
     }
 }
 
@@ -403,7 +404,7 @@ public struct OracleBindings: Sendable, Hashable {
     /// results in the out bind.
     ///
     /// You might wonder why we don't use the metadata on `OracleRef` itself.
-    /// This is because we cannot know if the metadata is from a previous query or not.
+    /// This is because we cannot know if the metadata is from a previous statement or not.
     func contains(ref: OracleRef) -> String? {
         self.metadata.first(where: { $0.outContainer === ref })?.bindName
     }

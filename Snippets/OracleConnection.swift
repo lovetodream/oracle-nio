@@ -27,7 +27,7 @@ let connection = try await OracleConnection.connect(configuration: configuration
 // snippet.end
 
 // snippet.use
-try await connection.query("SELECT 'Hello, World!' FROM dual")
+try await connection.execute("SELECT 'Hello, World!' FROM dual")
 // snippet.end
 
 // snippet.close

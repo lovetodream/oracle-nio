@@ -381,35 +381,35 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .authenticated(let parameters):
             self.authenticated(parameters: parameters, context: context)
 
-        case .sendExecute(let queryContext, let describeInfo):
+        case .sendExecute(let statementContext, let describeInfo):
             self.sendExecute(
-                queryContext: queryContext,
+                statementContext: statementContext,
                 describeInfo: describeInfo,
                 context: context
             )
-        case .sendReexecute(let queryContext, let cleanupContext):
+        case .sendReexecute(let statementContext, let cleanupContext):
             self.sendReexecute(
-                queryContext: queryContext,
+                statementContext: statementContext,
                 cleanupContext: cleanupContext,
                 context: context
             )
-        case .sendFetch(let queryContext):
-            self.sendFetch(queryContext: queryContext, context: context)
+        case .sendFetch(let statementContext):
+            self.sendFetch(statementContext: statementContext, context: context)
         case .sendFlushOutBinds:
             self.encoder.flushOutBinds()
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .succeedQuery(let promise, let result):
-            self.succeedQuery(promise, result: result, context: context)
-        case .failQuery(let promise, let error, let cleanupContext):
+        case .succeedStatement(let promise, let result):
+            self.succeedStatement(promise, result: result, context: context)
+        case .failStatement(let promise, let error, let cleanupContext):
             promise.fail(error)
             if let cleanupContext {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
-            self.decoderContext.queryOptions = nil
+            self.decoderContext.statementOptions = nil
             self.decoderContext.columnsCount = nil
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
 
         case .needMoreData:
             self.decoderContext.performingChunkedRead = true
@@ -428,14 +428,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             }
             rowStream.receive(completion: .success(()))
 
-            self.decoderContext.queryOptions = nil
+            self.decoderContext.statementOptions = nil
             self.decoderContext.columnsCount = nil
 
             if cursorID != 0 {
                 self.cleanupContext.cursorsToClose.insert(cursorID)
             }
 
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
 
         case .forwardStreamError(
             let error, let read, let cursorID, let clientCancelled
@@ -448,13 +448,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 context.read()
             }
 
-            self.decoderContext.queryOptions = nil
+            self.decoderContext.statementOptions = nil
             self.decoderContext.columnsCount = nil
 
             if clientCancelled {
-                self.run(self.state.queryStreamCancelled(), with: context)
+                self.run(self.state.statementStreamCancelled(), with: context)
             } else {
-                self.run(self.state.readyForQueryReceived(), with: context)
+                self.run(self.state.readyForStatementReceived(), with: context)
             }
 
         case .sendMarker:
@@ -470,10 +470,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .failPing(let promise, let error):
             promise.fail(error)
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
         case .succeedPing(let promise):
             promise.succeed()
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
 
         case .sendCommit:
             self.encoder.commit()
@@ -482,10 +482,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .failCommit(let promise, let error):
             promise.fail(error)
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
         case .succeedCommit(let promise):
             promise.succeed()
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
 
         case .sendRollback:
             self.encoder.rollback()
@@ -494,13 +494,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             )
         case .failRollback(let promise, let error):
             promise.fail(error)
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
         case .succeedRollback(let promise):
             promise.succeed()
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
 
-        case .fireEventReadyForQuery:
-            context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
+        case .fireEventReadyForStatement:
+            context
+                .fireUserInboundEventTriggered(OracleSQLEvent.readyForStatement)
 
         case .closeConnectionAndCleanup(let cleanup):
             self.closeConnectionAndCleanup(cleanup, context: context)
@@ -627,21 +628,21 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 sessionID: sessionID,
                 serialNumber: serialNumber
             ))
-        context.fireUserInboundEventTriggered(OracleSQLEvent.readyForQuery)
+        context.fireUserInboundEventTriggered(OracleSQLEvent.readyForStatement)
     }
 
     private func sendExecute(
-        queryContext: ExtendedQueryContext,
+        statementContext: StatementContext,
         describeInfo: DescribeInfo?,
         context: ChannelHandlerContext
     ) {
         self.encoder.execute(
-            queryContext: queryContext,
+            statementContext: statementContext,
             cleanupContext: self.cleanupContext,
             describeInfo: describeInfo
         )
 
-        self.decoderContext.queryOptions = queryContext.options
+        self.decoderContext.statementOptions = statementContext.options
 
         context.writeAndFlush(
             self.wrapOutboundOut(self.encoder.flush()), promise: nil
@@ -649,12 +650,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     private func sendReexecute(
-        queryContext: ExtendedQueryContext,
+        statementContext: StatementContext,
         cleanupContext: CleanupContext,
         context: ChannelHandlerContext
     ) {
         self.encoder.reexecute(
-            queryContext: queryContext, cleanupContext: cleanupContext
+            statementContext: statementContext, cleanupContext: cleanupContext
         )
 
         context.writeAndFlush(
@@ -663,12 +664,12 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     }
 
     private func sendFetch(
-        queryContext: ExtendedQueryContext,
+        statementContext: StatementContext,
         context: ChannelHandlerContext
     ) {
         self.encoder.fetch(
-            cursorID: queryContext.cursorID,
-            fetchArraySize: UInt32(queryContext.options.arraySize)
+            cursorID: statementContext.cursorID,
+            fetchArraySize: UInt32(statementContext.options.arraySize)
         )
 
         context.writeAndFlush(
@@ -676,9 +677,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         )
     }
 
-    private func succeedQuery(
+    private func succeedStatement(
         _ promise: EventLoopPromise<OracleRowStream>,
-        result: QueryResult,
+        result: StatementResult,
         context: ChannelHandlerContext
     ) {
         let rows: OracleRowStream
@@ -699,7 +700,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 logger: result.logger
             )
             promise.succeed(rows)
-            self.run(self.state.readyForQueryReceived(), with: context)
+            self.run(self.state.readyForStatementReceived(), with: context)
         }
 
     }
@@ -804,7 +805,7 @@ extension OracleChannelHandler: OracleRowsDataSource {
         guard self.rowStream === stream, let handlerContext else {
             return
         }
-        let action = self.state.requestQueryRows()
+        let action = self.state.requestStatementRows()
         self.run(action, with: handlerContext)
     }
 
@@ -812,7 +813,7 @@ extension OracleChannelHandler: OracleRowsDataSource {
         guard self.rowStream === stream, let handlerContext else {
             return
         }
-        let action = self.state.cancelQueryStream()
+        let action = self.state.cancelStatementStream()
         self.run(action, with: handlerContext)
     }
 }

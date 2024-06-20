@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIOSSL
+import Foundation
 
 extension TLSConfiguration {
     /// Creates a mutual TLS configuration for Oracle database connections.
@@ -27,12 +28,20 @@ extension TLSConfiguration {
     public static func makeOracleWalletConfiguration(wallet: String, walletPassword: String) throws
         -> TLSConfiguration
     {
-        let file =
+        let file: String
+        var directory: ObjCBool = false
+        // The wallet points to a PEM file
+        if FileManager.default.fileExists(atPath: wallet, isDirectory: &directory), !directory.boolValue {
+            file = wallet
+        // Folder
+        } else {
             if wallet.last == "/" {
-                wallet + "ewallet.pem"
+                file = wallet + "ewallet.pem"
             } else {
-                wallet + "/ewallet.pem"
+                file = wallet + "/ewallet.pem"
             }
+        }
+
         let key = try NIOSSLPrivateKey(file: file, format: .pem) { completion in
             completion(walletPassword.utf8)
         }

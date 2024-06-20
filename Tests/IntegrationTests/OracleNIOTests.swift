@@ -1243,12 +1243,23 @@ final class OracleNIOTests: XCTestCase {
         try await conn.execute(insertStatement)
         let stream = try await conn.execute("SELECT rowid, id FROM row_id_test ORDER BY id ASC")
         var currentID = 0
-        for try await (_, id) in stream.decode((RowID, Int).self) {
+        var firstRowID: RowID?
+        for try await (rowID, id) in stream.decode((RowID, Int).self) {
             currentID += 1
             XCTAssertEqual(currentID, id)
+            if currentID == 1 {
+                firstRowID = rowID
+            }
         }
         XCTAssertEqual(currentID, 50)
-        try await conn.commit()
+        let rowID = try XCTUnwrap(firstRowID)
+        let singleRowStream = try await conn.execute("SELECT id FROM row_id_test WHERE rowid = \(rowID)")
+        currentID = 0
+        for try await id in singleRowStream.decode(Int.self) {
+            currentID += 1
+            XCTAssertEqual(id, 1)
+        }
+        XCTAssertEqual(currentID, 1)
     }
 
 }

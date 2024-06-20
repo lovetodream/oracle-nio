@@ -11,8 +11,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import OracleNIO
 import XCTest
+
+@testable import OracleNIO
 
 final class RowIDTests: XCTestCase {
     func testDescription() {

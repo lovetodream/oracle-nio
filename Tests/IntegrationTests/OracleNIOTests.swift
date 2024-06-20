@@ -1253,7 +1253,9 @@ final class OracleNIOTests: XCTestCase {
         }
         XCTAssertEqual(currentID, 50)
         let rowID = try XCTUnwrap(firstRowID)
-        let singleRowStream = try await conn.execute("SELECT id FROM row_id_test WHERE rowid = \(rowID)")
+        let singleRowStream =
+            try await conn
+            .execute("SELECT id FROM row_id_test WHERE rowid = \(rowID)")
         currentID = 0
         for try await id in singleRowStream.decode(Int.self) {
             currentID += 1

@@ -1229,6 +1229,28 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertFalse(secondSucceeded)
     }
 
+    func testRowID() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        _ = try? await conn.execute("DROP TABLE row_id_test")
+        try await conn.execute("CREATE TABLE row_id_test (id NUMBER)")
+        var insertStatement: OracleStatement = "INSERT ALL "
+        for i in 1...50 {
+            insertStatement.sql.append("INTO row_id_test (id) VALUES (:\(i))")
+            insertStatement.binds.append(OracleNumber(i), context: .default, bindName: "\(i)")
+        }
+        insertStatement.sql.append(" SELECT 1 FROM DUAL")
+        try await conn.execute(insertStatement)
+        let stream = try await conn.execute("SELECT rowid, id FROM row_id_test ORDER BY id ASC")
+        var currentID = 0
+        for try await (_, id) in stream.decode((RowID, Int).self) {
+            currentID += 1
+            XCTAssertEqual(currentID, id)
+        }
+        XCTAssertEqual(currentID, 50)
+        try await conn.commit()
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

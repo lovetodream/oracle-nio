@@ -412,11 +412,8 @@ enum Constants {
     static let TNS_HAS_REGION_ID: UInt8 = 0x80
 
     // MARK: Base 64 encoding alphabet
-    private static let TNS_ALPHABET_DATA =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        .data(using: .utf8)!
-    static let TNS_BASE64_ALPHABET = TNS_ALPHABET_DATA.base64EncodedString()
-    static let TNS_BASE64_ALPHABET_ARRAY = TNS_ALPHABET_DATA.base64EncodedData()
+    static let TNS_BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    static let TNS_BASE64_ALPHABET_ARRAY = Array(TNS_BASE64_ALPHABET.utf8)
     static let TNS_EXTENT_OID = 0x0000_0000_0000_0000_0000_0000_0001_0001
 
     // MARK: Timezone offsets

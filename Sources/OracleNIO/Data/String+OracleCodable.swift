@@ -71,7 +71,8 @@ extension String: OracleDecodable {
                 )!
             }
         case .rowID:
-            self = RowID(from: &buffer).description
+            self = try RowID(from: &buffer, type: type, context: context)
+                .description
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

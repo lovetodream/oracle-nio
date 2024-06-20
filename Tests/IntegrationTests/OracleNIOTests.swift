@@ -1229,6 +1229,42 @@ final class OracleNIOTests: XCTestCase {
         XCTAssertFalse(secondSucceeded)
     }
 
+    func testRowID() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        _ = try? await conn.execute("DROP TABLE row_id_test")
+        try await conn.execute("CREATE TABLE row_id_test (id NUMBER)")
+        var insertStatement: OracleStatement = "INSERT ALL "
+        for i in 1...50 {
+            insertStatement.sql.append("INTO row_id_test (id) VALUES (:\(i))")
+            insertStatement.binds.append(OracleNumber(i), context: .default, bindName: "\(i)")
+        }
+        insertStatement.sql.append(" SELECT 1 FROM DUAL")
+        try await conn.execute(insertStatement)
+        let stream = try await conn.execute("SELECT rowid, id FROM row_id_test ORDER BY id ASC")
+        var currentID = 0
+        var firstRowID: RowID?
+        for try await (rowID, id) in stream.decode((RowID, Int).self) {
+            currentID += 1
+            XCTAssertEqual(currentID, id)
+            if currentID == 1 {
+                firstRowID = rowID
+            }
+        }
+        XCTAssertEqual(currentID, 50)
+        let rowID = try XCTUnwrap(firstRowID)
+        let singleRowStream =
+            try await conn
+            .execute("SELECT rowid, id FROM row_id_test WHERE rowid = \(rowID)")
+        currentID = 0
+        for try await (fetchedRowID, id) in singleRowStream.decode((String, Int).self) {
+            currentID += 1
+            XCTAssertEqual(id, 1)
+            XCTAssertEqual(fetchedRowID, rowID.description)
+        }
+        XCTAssertEqual(currentID, 1)
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

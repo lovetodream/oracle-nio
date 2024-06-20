@@ -65,7 +65,7 @@ extension OracleBackendMessage {
             buffer.moveReaderIndex(forwardBy: 1)  // user cursor options
             buffer.moveReaderIndex(forwardBy: 1)  // UDI parameter
             buffer.moveReaderIndex(forwardBy: 1)  // warning flag
-            let rowID = RowID(from: &buffer)
+            let rowID = try RowID(from: &buffer, type: .rowID, context: .default)
             buffer.skipUB4()  // OS error
             buffer.moveReaderIndex(forwardBy: 1)  // statement number
             buffer.moveReaderIndex(forwardBy: 1)  // call number

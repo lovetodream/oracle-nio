@@ -1051,13 +1051,28 @@ struct StatementStateMachine {
 
         switch oracleType {
         case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
-            .timestampLTZ, .timestampTZ, .rowID, .binaryDouble, .binaryFloat,
+            .timestampLTZ, .timestampTZ, .binaryDouble, .binaryFloat,
             .binaryInteger, .boolean, .intervalDS:
             switch buffer.readOracleSlice() {
             case .some(let slice):
                 columnValue = slice
             case .none:
                 return nil  // need more data
+            }
+        case .rowID:
+            // length is not the actual length of row ids
+            let length = try buffer.throwingReadInteger(as: UInt8.self)
+            if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
+                columnValue = ByteBuffer(bytes: [0])  // NULL indicator
+            } else {
+                columnValue = ByteBuffer()
+                try columnValue.writeLengthPrefixed(as: UInt8.self) {
+                    let start = buffer.readerIndex
+                    _ = try RowID(from: &buffer, type: .rowID, context: .default)
+                    let end = buffer.readerIndex
+                    buffer.moveReaderIndex(to: start)
+                    return $0.writeImmutableBuffer(buffer.readSlice(length: end - start)!)
+                }
             }
         case .cursor:
             buffer.moveReaderIndex(forwardBy: 1)  // length (fixed value)

@@ -12,7 +12,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIOSSL
-import Foundation
 
 extension TLSConfiguration {
     /// Creates a mutual TLS configuration for Oracle database connections.
@@ -26,26 +25,29 @@ extension TLSConfiguration {
     ///   - walletPassword: The password of your wallet.
     /// - Returns: A `TLSConfiguration`, configured for mutual TLS.
     public static func makeOracleWalletConfiguration(wallet: String, walletPassword: String) throws
-        -> TLSConfiguration
+    -> TLSConfiguration
     {
-        let file: String
-        var directory: ObjCBool = false
-        // The wallet points to a PEM file
-        if FileManager.default.fileExists(atPath: wallet, isDirectory: &directory), !directory.boolValue {
-            file = wallet
-        // Folder
+        let file =
+        if wallet.last == "/" {
+            wallet + "ewallet.pem"
         } else {
-            if wallet.last == "/" {
-                file = wallet + "ewallet.pem"
-            } else {
-                file = wallet + "/ewallet.pem"
-            }
+            wallet + "/ewallet.pem"
         }
 
-        let key = try NIOSSLPrivateKey(file: file, format: .pem) { completion in
-            completion(walletPassword.utf8)
+        return try makeOracleWalletConfiguration(pemFile: file, pemPassword: walletPassword)
+    }
+
+    /// - Parameters:
+    ///   - pemFile: The path to your pem file.
+    ///   - pemPassword: The password of your pem file.
+    /// - Returns: A `TLSConfiguration`, configured for mutual TLS.
+    public static func makeOracleWalletConfiguration(pemFile: String, pemPassword: String) throws
+    -> TLSConfiguration
+    {
+        let key = try NIOSSLPrivateKey(file: pemFile, format: .pem) { completion in
+            completion(pemPassword.utf8)
         }
-        let certificate = try NIOSSLCertificate(file: file, format: .pem)
+        let certificate = try NIOSSLCertificate(file: pemFile, format: .pem)
 
         var tls = TLSConfiguration.makeClientConfiguration()
         tls.privateKey = NIOSSLPrivateKeySource.privateKey(key)

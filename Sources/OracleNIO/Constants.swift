@@ -59,7 +59,7 @@ enum Constants {
     static let TNS_OBJ_IS_VERSION_81 = 0x80
     static let TNS_OBJ_IS_DEGENERATE = 0x10
     static let TNS_OBJ_IS_COLLECTION = 0x08
-    static let TNS_OBJ_NO_PREFIX_SEG = 0x04
+    static let TNS_OBJ_NO_PREFIX_SEG: UInt8 = 0x04
     static let TNS_OBJ_IMAGE_VERSION = 1
 
     // MARK: Database object flags
@@ -94,9 +94,9 @@ enum Constants {
     static let TNS_OBJ_TDS_TYPE_BINARY_DOUBLE = 45
 
     // MARK: XML type constants
-    static let TNS_XML_TYPE_LOB = 0x0001
-    static let TNS_XML_TYPE_STRING = 0x0004
-    static let TNS_XML_TYPE_FLAG_SKIP_NEXT_4 = 0x100000
+    static let TNS_XML_TYPE_LOB: UInt32 = 0x0001
+    static let TNS_XML_TYPE_STRING: UInt32 = 0x0004
+    static let TNS_XML_TYPE_FLAG_SKIP_NEXT_4: UInt32 = 0x100000
 
     // MARK: Execute options
     static let TNS_EXEC_OPTION_PARSE: UInt32 = 0x01

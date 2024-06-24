@@ -180,16 +180,24 @@ extension ByteBuffer {
     /// Skip a number of bytes that may or may not be chunked in the buffer.
     /// The first byte gives the length. If the length is
     /// TNS_LONG_LENGTH_INDICATOR, however, chunks are read and discarded.
-    mutating func skipRawBytesChunked() {
-        guard let length = self.readInteger(as: UInt8.self) else { return }
+    /// - Returns: `true` if all bytes could be skipped,
+    /// `false` if more bytes have to be retrieved from the server in order to continue.
+    @discardableResult
+    mutating func skipRawBytesChunked() -> Bool {
+        guard
+            let length = self.readInteger(as: UInt8.self),
+            readableBytes >= length
+        else { return false }
         if length != Constants.TNS_LONG_LENGTH_INDICATOR {
             moveReaderIndex(forwardBy: Int(length))
         } else {
             while true {
                 guard let tmp = self.readUB4() else { break }
                 if tmp == 0 { break }
+                guard readableBytes > tmp else { return false }
                 moveReaderIndex(forwardBy: Int(tmp))
             }
         }
+        return true
     }
 }

@@ -917,11 +917,10 @@ struct StatementStateMachine {
                     }
                     return .needMoreData
                 }
-            } catch {
-                guard let error = error as? OracleSQLError else {
-                    preconditionFailure("Unexpected error: \(error)")
-                }
+            } catch let error as OracleSQLError {
                 return self.setAndFireError(error)
+            } catch {
+                preconditionFailure("Unexpected error: \(error)")
             }
 
         default:
@@ -1122,26 +1121,36 @@ struct StatementStateMachine {
                 case .none:
                     return nil  // need more data
                 }
-                buffer.skipRawBytesChunked()  // LOB locator (unused)
+                if !buffer.skipRawBytesChunked() {  // LOB locator (unused)
+                    return nil  // need more data
+                }
             } else {
                 columnValue = .init(bytes: [0])  // empty buffer
             }
         case .intNamed:
             let startIndex = buffer.readerIndex
             if try buffer.throwingReadUB4() > 0 {
-                buffer.skipRawBytesChunked()  // type oid
+                if !buffer.skipRawBytesChunked() {  // type oid
+                    return nil  // need more data
+                }
             }
             if try buffer.throwingReadUB4() > 0 {
-                buffer.skipRawBytesChunked()  // oid
+                if !buffer.skipRawBytesChunked() {  // oid
+                    return nil  // need more data
+                }
             }
             if try buffer.throwingReadUB4() > 0 {
-                buffer.skipRawBytesChunked()  // snapshot
+                if !buffer.skipRawBytesChunked() {  // snapshot
+                    return nil  // need more data
+                }
             }
             buffer.skipUB2()  // version
             let dataLength = try buffer.throwingReadUB4()
             buffer.skipUB2()  // flags
             if dataLength > 0 {
-                buffer.skipRawBytesChunked()  // data
+                if !buffer.skipRawBytesChunked() {  // data
+                    return nil  // need more data
+                }
             }
             let endIndex = buffer.readerIndex
             buffer.moveReaderIndex(to: startIndex)

@@ -23,6 +23,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.21.5"),
     ],
     targets: [
+        .executableTarget(name: "Run", dependencies: ["OracleNIO"]),
         .target(name: "_PBKDF2", dependencies: [.product(name: "Crypto", package: "swift-crypto")]),
         .testTarget(name: "_PBKDF2Tests", dependencies: ["_PBKDF2"]),
         .target(

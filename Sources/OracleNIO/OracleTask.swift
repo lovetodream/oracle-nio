@@ -20,6 +20,7 @@ enum OracleTask {
     case ping(EventLoopPromise<Void>)
     case commit(EventLoopPromise<Void>)
     case rollback(EventLoopPromise<Void>)
+    case lobOperation(LOBOperationContext)
 
     func failWithError(_ error: OracleSQLError) {
         switch self {
@@ -33,13 +34,45 @@ enum OracleTask {
                 .plain(let promise):
                 promise.fail(error)
             }
-        case .ping(let promise):
+        case .ping(let promise), .commit(let promise), .rollback(let promise):
             promise.fail(error)
-        case .commit(let promise):
-            promise.fail(error)
-        case .rollback(let promise):
-            promise.fail(error)
+        case .lobOperation(let context):
+            context.promise.fail(error)
         }
+    }
+}
+
+final class LOBOperationContext {
+    let sourceLOB: LOB?
+    let sourceOffset: UInt64
+    let destinationLOB: LOB?
+    let destinationOffset: UInt64
+    let operation: Constants.LOBOperation
+    let sendAmount: Bool
+    let amount: UInt64
+    let promise: EventLoopPromise<ByteBuffer?>
+
+    var data: ByteBuffer?
+
+    init(sourceLOB: LOB?,
+         sourceOffset: UInt64,
+         destinationLOB: LOB?,
+         destinationOffset: UInt64,
+         operation: Constants.LOBOperation,
+         sendAmount: Bool,
+         amount: UInt64,
+         promise: EventLoopPromise<ByteBuffer?>,
+         data: ByteBuffer? = nil
+    ) {
+        self.sourceLOB = sourceLOB
+        self.sourceOffset = sourceOffset
+        self.destinationLOB = destinationLOB
+        self.destinationOffset = destinationOffset
+        self.operation = operation
+        self.sendAmount = sendAmount
+        self.amount = amount
+        self.promise = promise
+        self.data = data
     }
 }
 
@@ -214,7 +247,7 @@ public struct StatementOptions {
     ///
     /// - Warning: If you have LOBs > 1GB, you need to set this to `true`. Because LOBs of that size
     ///            cannot be fetched inline.
-    internal var fetchLOBs = false
+    public var fetchLOBs = false
 
     /// Options to pass to a ``OracleStatement`` to tweak its execution.
     /// - Parameters:
@@ -242,12 +275,12 @@ final class CleanupContext {
     var cursorsToClose: Set<UInt16> = []
 
     var tempLOBsTotalSize: Int = 0
-    var tempLOBsToClose: [ByteBuffer]? = nil
+    var tempLOBsToClose: [[UInt8]]? = nil
 
     init(
         cursorsToClose: Set<UInt16> = [],
         tempLOBsTotalSize: Int = 0,
-        tempLOBsToClose: [ByteBuffer]? = nil
+        tempLOBsToClose: [[UInt8]]? = nil
     ) {
         self.cursorsToClose = cursorsToClose
         self.tempLOBsTotalSize = tempLOBsTotalSize

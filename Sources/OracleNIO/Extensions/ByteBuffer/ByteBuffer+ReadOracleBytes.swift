@@ -14,9 +14,10 @@
 import NIOCore
 
 extension ByteBuffer {
+    /// - Returns: `nil` if more data is required to decode
     mutating func readOracleSpecificLengthPrefixedSlice(
         file: String = #fileID, line: Int = #line
-    ) throws -> ByteBuffer {
+    ) throws -> ByteBuffer? {
         guard let length = self.readInteger(as: UInt8.self).map(Int.init) else {
             throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
                 MemoryLayout<UInt8>.size, actual: self.readableBytes,
@@ -31,12 +32,7 @@ extension ByteBuffer {
                     return out
                 }
                 guard var temp = self.readSlice(length: Int(chunkLength)) else {
-                    throw
-                        OraclePartialDecodingError
-                        .expectedAtLeastNRemainingBytes(
-                            Int(chunkLength), actual: self.readableBytes,
-                            file: file, line: line
-                        )
+                    return nil
                 }
                 out.writeBuffer(&temp)
             }

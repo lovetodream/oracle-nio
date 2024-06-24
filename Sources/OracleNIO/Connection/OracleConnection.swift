@@ -515,6 +515,9 @@ extension OracleConnection {
 
         private var logger: Logger
         private var shouldLog: Bool
+        private let connectionID: OracleConnection.ID
+
+        private var packetCount = 0
 
         init(connectionID: OracleConnection.ID, logger: Logger, shouldLog: Bool? = nil) {
             if let shouldLog {
@@ -526,17 +529,19 @@ extension OracleConnection {
                     .flatMap(Int.init) ?? 0
                 self.shouldLog = envValue != 0
             }
-            var logger = logger
-            logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
             self.logger = logger
+            self.connectionID = connectionID
         }
 
         func channelRead(context: ChannelHandlerContext, data: NIOAny) {
             if self.shouldLog {
                 let buffer = self.unwrapInboundIn(data)
+                self.packetCount += 1
                 self.logger.info(
-                    "\n\(buffer.hexDump(format: .detailed))",
-                    metadata: ["direction": "incoming"]
+                    """
+                    Receiving packet [op \(self.packetCount)] on socket \(self.connectionID)
+                    \(buffer.oracleHexDump())
+                    """
                 )
             }
             context.fireChannelRead(data)
@@ -549,9 +554,12 @@ extension OracleConnection {
         ) {
             if self.shouldLog {
                 let buffer = self.unwrapOutboundIn(data)
+                self.packetCount += 1
                 self.logger.info(
-                    "\n\(buffer.hexDump(format: .detailed))",
-                    metadata: ["direction": "outgoing"]
+                    """
+                    Sending packet [op \(self.packetCount)] on socket \(self.connectionID)
+                    \(buffer.oracleHexDump())
+                    """
                 )
             }
             context.write(data, promise: promise)

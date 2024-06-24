@@ -37,6 +37,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         var performingChunkedRead = false
         var statementOptions: StatementOptions? = nil
         var columnsCount: Int? = nil
+        var lobContext: LOBOperationContext?
 
         init(
             capabilities: Capabilities,
@@ -94,8 +95,10 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     ) throws -> (InboundOut, needMoreData: Bool)? {
         var msgs: InboundOut?
         var needMoreData = true
-        while let (messages, stillNeedMoreData) = try self.decodeMessage0(from: &buffer) {
+        var partial: ByteBuffer?
+        while let (messages, stillNeedMoreData, newPartial) = try self.decodeMessage0(from: &buffer, partial: partial) {
             needMoreData = stillNeedMoreData
+            partial = newPartial
             buffer = buffer.slice()
             if msgs != nil {
                 msgs!.append(messages)
@@ -110,8 +113,9 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
     }
 
     private func decodeMessage0(
-        from buffer: inout ByteBuffer
-    ) throws -> (Container, needMoreData: Bool)? {
+        from buffer: inout ByteBuffer,
+        partial: ByteBuffer?
+    ) throws -> (Container, needMoreData: Bool, partial: ByteBuffer?)? {
         let startReaderIndex = buffer.readerIndex
 
         let length: Int?
@@ -145,14 +149,25 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             packet.moveReaderIndex(to: Self.headerSize)
         }
 
+        if let partial {
+            if type == .data {  // insert after flags
+                packet.setBuffer(partial, at: Self.headerSize + MemoryLayout<UInt16>.size)
+            } else {
+                packet.setBuffer(partial, at: Self.headerSize)
+            }
+        }
+
         do {
             let (messages, lastPacket) = try OracleBackendMessage.decode(
                 from: &packet, of: type,
                 context: self.context
             )
-            return (Container(flags: packetFlags, messages: messages), !lastPacket)
+            return (Container(flags: packetFlags, messages: messages), !lastPacket, nil)
         } catch let error as OracleSQLError {
             throw error
+        } catch let error as MissingDataDecodingError {
+            packet.moveReaderIndex(to: error.resetToReaderIndex)
+            return (Container(flags: packetFlags, messages: error.decodedMessages), true, packet.slice())
         } catch let error as OraclePartialDecodingError {
             buffer.moveReaderIndex(to: startReaderIndex)
             let completeMessage = buffer.readSlice(length: length)!

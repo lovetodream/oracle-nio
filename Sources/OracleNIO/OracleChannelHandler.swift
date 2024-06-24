@@ -214,15 +214,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 reproduction of the crash.
                 """)
         case .lobData(let lobData):
-            // This should only happen if one is using `LOB`s.
-            // These are not implemented as of now, so this _should_ never happen.
-            fatalError(
-                """
-                Received LOB data (\(lobData)), this is not implemented and should \
-                never happen. Please open an issue here: \
-                https://github.com/lovetodream/oracle-nio/issues with a \
-                reproduction of the crash.
-                """)
+            action = self.state.lobDataReceived(lobData: lobData)
+        case .lobParameter(let parameter):
+            action = self.state.lobParameterReceived(parameter: parameter)
 
         case .chunk(let buffer):
             action = self.state.chunkReceived(
@@ -497,6 +491,31 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             self.run(self.state.readyForStatementReceived(), with: context)
         case .succeedRollback(let promise):
             promise.succeed()
+            self.run(self.state.readyForStatementReceived(), with: context)
+
+        case .sendLOBOperation(let lobContext):
+            do {
+                self.decoderContext.lobContext = lobContext
+                try self.encoder.lobOperation(context: lobContext)
+                context.writeAndFlush(
+                    self.wrapOutboundOut(self.encoder.flush()), promise: nil
+                )
+            } catch let error as OracleSQLError {
+                self.decoderContext.lobContext = nil
+                self.run(.failLOBOperation(lobContext.promise, with: error), with: context)
+            } catch {
+                preconditionFailure("Unexpected error: \(error)")
+            }
+        case .succeedLOBOperation(let lobContext):
+            switch lobContext.operation {
+            case .read:
+                lobContext.promise.succeed(lobContext.data)
+            case .getLength, .trim, .write, .getChunkSize, .createTemp, .freeTemp, .open, .close, .isOpen, .array:
+                fatalError("not yet supported")
+            }
+            self.run(self.state.readyForStatementReceived(), with: context)
+        case .failLOBOperation(let promise, let error):
+            promise.fail(error)
             self.run(self.state.readyForStatementReceived(), with: context)
 
         case .fireEventReadyForStatement:

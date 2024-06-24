@@ -1099,11 +1099,19 @@ struct StatementStateMachine {
             if length > 0 {
                 let size = try buffer.throwingReadUB8()
                 let chunkSize = try buffer.throwingReadUB4()
-                var locator = try buffer.readOracleSpecificLengthPrefixedSlice()
+                var locator: ByteBuffer
+                switch buffer.readOracleSlice() {
+                case .some(let slice):
+                    locator = slice
+                case .none:
+                    return nil  // need more data
+                }
                 columnValue = ByteBuffer()
-                columnValue.writeInteger(size)
-                columnValue.writeInteger(chunkSize)
-                columnValue.writeBuffer(&locator)
+                try columnValue.writeLengthPrefixed(as: UInt8.self) {
+                    $0.writeInteger(size) +
+                    $0.writeInteger(chunkSize) +
+                    $0.writeBuffer(&locator)
+                }
             } else {
                 columnValue = .init(bytes: [0])  // empty buffer
             }

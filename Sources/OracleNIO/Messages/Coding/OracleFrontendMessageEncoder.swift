@@ -669,71 +669,67 @@ struct OracleFrontendMessageEncoder {
         self.endRequest()
     }
 
-    mutating func lobOperation(
-        sourceLOB: LOB?, sourceOffset: UInt64,
-        destinationLOB: LOB?, destinationOffset: UInt64,
-        operation: Constants.LOBOperation, sendAmount: Bool, amount: Int64,
-        data: ByteBuffer?
-    ) throws {
+    mutating func lobOperation(context: LOBOperationContext) throws {
         self.clearIfNeeded()
 
         self.startRequest()
         self.writeFunctionCode(messageType: .function, functionCode: .lobOp)
-        if let sourceLOB {
-            sourceLOB.locator.moveReaderIndex(to: 0)
+        if let sourceLOB = context.sourceLOB {
+            let locator = sourceLOB.locator.withLockedValue { $0 }
             self.buffer.writeInteger(UInt8(1))  // source pointer
-            self.buffer.writeUB4(UInt32(sourceLOB.locator.readableBytes))
+            self.buffer.writeUB4(UInt32(locator.count))
         } else {
             self.buffer.writeInteger(UInt8(0))  // source pointer
             self.buffer.writeInteger(UInt8(0))  // source length
         }
-        if let destinationLOB {
-            destinationLOB.locator.moveReaderIndex(to: 0)
+        if let destinationLOB = context.destinationLOB {
+            let locator = destinationLOB.locator.withLockedValue { $0 }
             self.buffer.writeInteger(UInt8(1))  // destination pointer
-            self.buffer.writeUB4(UInt32(destinationLOB.locator.readableBytes))
+            self.buffer.writeUB4(UInt32(locator.count))
         } else {
             self.buffer.writeInteger(UInt8(0))  // destination pointer
             self.buffer.writeInteger(UInt8(0))  // destination length
         }
         self.buffer.writeUB4(0)  // short source offset
         self.buffer.writeUB4(0)  // short destination offset
-        self.buffer.writeInteger(UInt8(operation == .createTemp ? 1 : 0))
+        self.buffer.writeInteger(UInt8(context.operation == .createTemp ? 1 : 0))
         // pointer (character set)
         self.buffer.writeInteger(UInt8(0))  // pointer (short amount)
-        if operation == .createTemp || operation == .isOpen {
+        if context.operation == .createTemp || context.operation == .isOpen {
             self.buffer.writeInteger(UInt8(1))  // pointer (NULL LOB)
         } else {
             self.buffer.writeInteger(UInt8(0))  // pointer (NULL LOB)
         }
-        self.buffer.writeUB4(operation.rawValue)
+        self.buffer.writeUB4(context.operation.rawValue)
         self.buffer.writeInteger(UInt8(0))  // pointer (SCN array)
         self.buffer.writeInteger(UInt8(0))  // SCN array length
-        self.buffer.writeUB8(sourceOffset)
-        self.buffer.writeUB8(destinationOffset)
-        self.buffer.writeInteger(UInt8(sendAmount ? 1 : 0))  // pointer (amount)
+        self.buffer.writeUB8(context.sourceOffset)
+        self.buffer.writeUB8(context.destinationOffset)
+        self.buffer.writeInteger(UInt8(context.sendAmount ? 1 : 0))
+        // pointer (amount)
         for _ in 0..<3 {
             self.buffer.writeInteger(UInt16(0))  // array LOB (not used)
         }
-        if let sourceLOB {
-            self.buffer.writeBuffer(&sourceLOB.locator)
+        if let sourceLOB = context.sourceLOB {
+            self.buffer.writeBytes(sourceLOB.locator.withLockedValue({ $0 }))
         }
-        if let destinationLOB {
-            self.buffer.writeBuffer(&destinationLOB.locator)
+        if let destinationLOB = context.destinationLOB {
+            self.buffer.writeBytes(destinationLOB.locator.withLockedValue({ $0 }))
         }
-        if operation == .createTemp {
-            if let sourceLOB, sourceLOB.dbType.csfrm == Constants.TNS_CS_NCHAR {
+        if context.operation == .createTemp {
+            if let sourceLOB = context.sourceLOB, sourceLOB.dbType.csfrm == Constants.TNS_CS_NCHAR {
                 try self.capabilities.checkNCharsetID()
                 self.buffer.writeUB4(UInt32(Constants.TNS_CHARSET_UTF16))
             } else {
                 self.buffer.writeUB4(UInt32(Constants.TNS_CHARSET_UTF8))
             }
         }
-        if let data {
+        if let data = context.data {
             self.buffer.writeOracleMessageID(.lobData)
             data._encodeRaw(into: &self.buffer, context: .default)
         }
-        if sendAmount {
-            self.buffer.writeUB8(UInt64(amount))  // LOB amount
+        if context.sendAmount {
+            self.buffer.writeUB8(4294967295) // (context.amount)  // LOB amount
         }
         self.endRequest()
     }
@@ -1110,7 +1106,7 @@ extension OracleFrontendMessageEncoder {
     }
 
     private mutating func writeCloseTempLOBsPiggyback(
-        _ tempLOBsToClose: [ByteBuffer],
+        _ tempLOBsToClose: [[UInt8]],
         totalSize tempLOBsTotalSize: Int
     ) {
         self.writePiggybackCode(code: .lobOp)
@@ -1144,7 +1140,7 @@ extension OracleFrontendMessageEncoder {
         self.buffer.writeUB4(0)
 
         for lob in tempLOBsToClose {
-            buffer.writeImmutableBuffer(lob)
+            buffer.writeBytes(lob)
         }
     }
 

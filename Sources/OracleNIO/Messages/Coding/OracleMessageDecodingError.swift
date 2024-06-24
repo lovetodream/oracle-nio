@@ -40,7 +40,7 @@ struct OracleMessageDecodingError: Error {
         packetID: UInt8,
         messageBytes: ByteBuffer
     ) -> Self {
-        let data = messageBytes.hexDump(format: .plain)
+        let data = messageBytes.oracleHexDump()
 
         return OracleMessageDecodingError(
             packetID: packetID,
@@ -58,12 +58,11 @@ struct OracleMessageDecodingError: Error {
         file: String = #fileID,
         line: Int = #line
     ) -> Self {
-        var buffer = messageBytes
-        let data = buffer.readData(length: buffer.readableBytes)!
+        let data = messageBytes.oracleHexDump()
 
         return OracleMessageDecodingError(
             packetID: packetID,
-            payload: data.base64EncodedString(),
+            payload: data,
             description: """
                 Received a message with packetID '\(packetID)'. There is no \
                 packet type associated with this packet identifier.

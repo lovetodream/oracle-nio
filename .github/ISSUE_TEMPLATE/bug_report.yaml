@@ -16,29 +16,29 @@ body:
     label: OracleNIO version
     description: The version of OracleNIO you are using. This can be found in Xcode or your Package.resolved file.
     placeholder: 1.x.x
-    validations:
-      required: true
+  validations:
+    required: true
 - type: input
   attributes:
     label: Database version
     description: The version of the Oracle database you are connecting to. This can be found by running `SELECT * FROM V$VERSION` or on `OracleConnection.serverVersion`.
     placeholder: '23.4.0.24.5'
-    validations:
-      required: true
+  validations:
+    required: true
 - type: input
   attributes:
     label: Operating system and version
     description: The name and version of the operating system you are running OracleNIO on, such as "macOS 14.5" or "Ubuntu Linux 22.04"
     placeholder: macOS 14.5
-    validations:
-      required: true
+  validations:
+    required: true
 - type: input
   attributes:
     label: Swift Version
     description: The version of Swift you are using to build OracleNIO. Try `swift package --version`.
     placeholder: Swift Package Manager - Swift 5.10.0-dev
-    validations:
-      required: true
+  validations:
+    required: true
 - type: textarea
   attributes:
     label: Describe the bug

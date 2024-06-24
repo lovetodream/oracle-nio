@@ -6,6 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
+// See CONTRIBUTORS.md for the list of OracleNIO project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -1263,6 +1264,15 @@ final class OracleNIOTests: XCTestCase {
             XCTAssertEqual(fetchedRowID, rowID.description)
         }
         XCTAssertEqual(currentID, 1)
+    }
+
+    func testUnicode() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        let stream = try await conn.execute("SELECT 'ьми' AS col FROM dual")
+        for try await (value) in stream.decode(String.self) {
+            XCTAssertEqual(value, "ьми")
+        }
     }
 
 }

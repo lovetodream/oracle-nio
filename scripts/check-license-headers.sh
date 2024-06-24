@@ -68,7 +68,7 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude)**/Makefile" \
   ":(exclude)**/*.pb.swift" \
   ":(exclude)**/*.proto" \
-  ":(exclude)Tests/IntegrationTests/Data/Isaac_Newton-Opticks.txt" \
+  ":(exclude)Tests/IntegrationTests/Data/*" \
   | xargs -0 \
 )"
 

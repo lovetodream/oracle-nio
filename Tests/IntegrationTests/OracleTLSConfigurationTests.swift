@@ -24,10 +24,11 @@ final class OracleTLSConfigurationTests: XCTestCase {
         let pemConfig = try TLSConfiguration.makeOracleWalletConfiguration(
             pemFile: filePath, pemPassword: "password"
         )
-        let pemHasPrivateKey = switch pemConfig.privateKey {
-        case .privateKey: true
-        default: false
-        }
+        let pemHasPrivateKey =
+            switch pemConfig.privateKey {
+            case .privateKey: true
+            default: false
+            }
         XCTAssert(pemHasPrivateKey)
         XCTAssert(!pemConfig.certificateChain.isEmpty)
 
@@ -36,10 +37,11 @@ final class OracleTLSConfigurationTests: XCTestCase {
             let walletConfig = try TLSConfiguration.makeOracleWalletConfiguration(
                 wallet: .init(path), walletPassword: "password"
             )
-            let walletHasPrivateKey = switch walletConfig.privateKey {
-            case .privateKey: true
-            default: false
-            }
+            let walletHasPrivateKey =
+                switch walletConfig.privateKey {
+                case .privateKey: true
+                default: false
+                }
             XCTAssert(walletHasPrivateKey)
             XCTAssert(!walletConfig.certificateChain.isEmpty)
         }

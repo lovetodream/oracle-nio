@@ -43,11 +43,11 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude).gitignore" \
   ":(exclude).spi.yml" \
   ":(exclude).swift-format" \
+  ":(exclude).mailmap" \
   ":(exclude).github/*" \
   ":(exclude)CODE_OF_CONDUCT.md" \
   ":(exclude)CONTRIBUTING.md" \
-  ":(exclude)CONTRIBUTORS.txt" \
-  ":(exclude)LICENSE.txt" \
+  ":(exclude)CONTRIBUTORS.md" \
   ":(exclude)LICENSE" \
   ":(exclude)NOTICE.txt" \
   ":(exclude)Package.swift" \

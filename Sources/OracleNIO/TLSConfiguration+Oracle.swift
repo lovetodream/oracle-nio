@@ -33,10 +33,28 @@ extension TLSConfiguration {
             } else {
                 wallet + "/ewallet.pem"
             }
-        let key = try NIOSSLPrivateKey(file: file, format: .pem) { completion in
-            completion(walletPassword.utf8)
+
+        return try makeOracleWalletConfiguration(pemFile: file, pemPassword: walletPassword)
+    }
+
+    /// Creates a mutual TLS configuration for Oracle database connections using a PEM file.
+    ///
+    /// For customising fields, modify the returned TLSConfiguration object.
+    ///
+    /// - Note: Prefer using ``makeOracleWalletConfiguration(wallet:walletPassword:)``.
+    /// Only use this method if you do not have access to a wallet folder.
+    ///
+    /// - Parameters:
+    ///   - pemFile: The path to your pem file.
+    ///   - pemPassword: The password of your pem file.
+    /// - Returns: A `TLSConfiguration`, configured for mutual TLS.
+    public static func makeOracleWalletConfiguration(pemFile: String, pemPassword: String) throws
+        -> TLSConfiguration
+    {
+        let key = try NIOSSLPrivateKey(file: pemFile, format: .pem) { completion in
+            completion(pemPassword.utf8)
         }
-        let certificate = try NIOSSLCertificate(file: file, format: .pem)
+        let certificate = try NIOSSLCertificate(file: pemFile, format: .pem)
 
         var tls = TLSConfiguration.makeClientConfiguration()
         tls.privateKey = NIOSSLPrivateKeySource.privateKey(key)

@@ -80,7 +80,7 @@ final class OracleEventsHandler: ChannelInboundHandler {
                 break
             }
         default:
-            context.fireUserInboundEventTriggered(event)
+            preconditionFailure()
         }
     }
 

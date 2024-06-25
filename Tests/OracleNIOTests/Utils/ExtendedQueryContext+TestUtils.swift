@@ -21,8 +21,15 @@ extension StatementContext {
 
     convenience init(
         statement: OracleStatement,
-        promise: EventLoopPromise<OracleRowStream> = EmbeddedEventLoop().makePromise()
+        promise given: EventLoopPromise<OracleRowStream>? = nil
     ) {
+        let promise: EventLoopPromise<OracleRowStream>
+        if let given {
+            promise = given
+        } else {
+            promise = EmbeddedEventLoop().makePromise()
+            promise.fail(TestComplete())  // we don't care
+        }
         self.init(
             statement: statement, options: .init(),
             logger: OracleConnection.noopLogger,

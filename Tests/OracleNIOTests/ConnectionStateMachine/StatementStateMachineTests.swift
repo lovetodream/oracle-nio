@@ -130,4 +130,103 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.markerReceived(), .sendMarker)
         XCTAssertEqual(state.backendErrorReceived(backendError), .fireEventReadyForStatement)
     }
+
+    func testProcessVectorColumnDataRequestsMissingData() {
+        let state = StatementStateMachine(
+            statementContext: .init(statement: "")
+        )
+        let type = OracleDataType.vector
+
+        var buffer = ByteBuffer(bytes: [
+            1, 1,  // length
+            0,  // size
+            0,  // chunk size
+            1,  // value (partial)
+        ])
+        try XCTAssertNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1,  // length
+            0,  // size
+            0,  // chunk size
+            1, 1,  // value
+            1,  // locator (partial)
+        ])
+        try XCTAssertNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            ))
+    }
+
+    func testProcessObjectColumnDataRequestsMissingData() throws {
+        let state = StatementStateMachine(
+            statementContext: .init(statement: "")
+        )
+        let type = OracleDataType.object
+
+        var buffer = ByteBuffer(bytes: [1, 1])  // type oid
+        try XCTAssertNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1, 0,  // type oid
+            1, 1,  // oid
+        ])
+        try XCTAssertNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1, 0,  // type oid
+            1, 1, 0,  // oid
+            1, 1,  // snapshot
+        ])
+        try XCTAssertNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1, 0,  // type oid
+            1, 1, 0,  // oid
+            1, 1, 0,  // snapshot
+            0,  // version
+            0,  // data length
+            0,  // flags
+        ])
+        try XCTAssertNotNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            ))
+    }
 }

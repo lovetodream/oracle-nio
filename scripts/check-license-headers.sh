@@ -7,6 +7,7 @@
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE for license information
+## See CONTRIBUTORS.md for the list of OracleNIO project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -29,6 +30,7 @@ EXPECTED_FILE_HEADER_TEMPLATE="@@===--------------------------------------------
 @@ Licensed under Apache License v2.0
 @@
 @@ See LICENSE for license information
+@@ See CONTRIBUTORS.md for the list of OracleNIO project authors
 @@
 @@ SPDX-License-Identifier: Apache-2.0
 @@
@@ -41,11 +43,11 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude).gitignore" \
   ":(exclude).spi.yml" \
   ":(exclude).swift-format" \
+  ":(exclude).mailmap" \
   ":(exclude).github/*" \
   ":(exclude)CODE_OF_CONDUCT.md" \
   ":(exclude)CONTRIBUTING.md" \
-  ":(exclude)CONTRIBUTORS.txt" \
-  ":(exclude)LICENSE.txt" \
+  ":(exclude)CONTRIBUTORS.md" \
   ":(exclude)LICENSE" \
   ":(exclude)NOTICE.txt" \
   ":(exclude)Package.swift" \
@@ -68,7 +70,7 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude)**/Makefile" \
   ":(exclude)**/*.pb.swift" \
   ":(exclude)**/*.proto" \
-  ":(exclude)Tests/IntegrationTests/Data/Isaac_Newton-Opticks.txt" \
+  ":(exclude)Tests/IntegrationTests/Data/*" \
   | xargs -0 \
 )"
 

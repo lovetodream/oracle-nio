@@ -28,7 +28,7 @@ extension StatementContext {
             promise = given
         } else {
             promise = EmbeddedEventLoop().makePromise()
-            promise.fail(TestComplete()) // we don't care
+            promise.fail(TestComplete())  // we don't care
         }
         self.init(
             statement: statement, options: .init(),

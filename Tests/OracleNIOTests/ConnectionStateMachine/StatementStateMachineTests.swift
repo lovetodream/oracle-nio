@@ -132,7 +132,7 @@ final class StatementStateMachineTests: XCTestCase {
     }
 
     func testProcessColumnDataRequestsMissingData() throws {
-        var state = StatementStateMachine(
+        let state = StatementStateMachine(
             statementContext: .init(statement: "")
         )
         let type = OracleDataType.object
@@ -175,8 +175,11 @@ final class StatementStateMachineTests: XCTestCase {
             1, 1, 0,  // type oid
             1, 1, 0,  // oid
             1, 1, 0,  // snapshot
+            0,        // version
+            0,        // data length
+            0,        // flags
         ])
-        try XCTAssertNil(state.processColumnData(
+        try XCTAssertNotNil(state.processColumnData(
             from: &buffer,
             oracleType: type._oracleType,
             csfrm: type.csfrm,

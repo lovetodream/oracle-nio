@@ -193,7 +193,9 @@ extension ByteBuffer {
             moveReaderIndex(forwardBy: Int(length))
         } else {
             while true {
-                guard let tmp = self.readUB4() else { break }
+                guard let tmp = self.readUB4() else {
+                    return false
+                }
                 if tmp == 0 { break }
                 guard readableBytes > tmp else { return false }
                 moveReaderIndex(forwardBy: Int(tmp))

@@ -1028,7 +1028,7 @@ struct StatementStateMachine {
         }
     }
 
-    private func processColumnData(
+    /* private */ func processColumnData(
         from buffer: inout ByteBuffer,
         oracleType: _TNSDataType?,
         csfrm: UInt8,

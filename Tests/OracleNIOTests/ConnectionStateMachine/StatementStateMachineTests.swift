@@ -130,4 +130,58 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.markerReceived(), .sendMarker)
         XCTAssertEqual(state.backendErrorReceived(backendError), .fireEventReadyForStatement)
     }
+
+    func testProcessColumnDataRequestsMissingData() throws {
+        var state = StatementStateMachine(
+            statementContext: .init(statement: "")
+        )
+        let type = OracleDataType.object
+
+        var buffer = ByteBuffer(bytes: [1, 1])  // type oid
+        try XCTAssertNil(state.processColumnData(
+            from: &buffer,
+            oracleType: type._oracleType,
+            csfrm: type.csfrm,
+            bufferSize: 1,
+            capabilities: .init()
+        ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1, 0,  // type oid
+            1, 1,     // oid
+        ])
+        try XCTAssertNil(state.processColumnData(
+            from: &buffer,
+            oracleType: type._oracleType,
+            csfrm: type.csfrm,
+            bufferSize: 1,
+            capabilities: .init()
+        ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1, 0,  // type oid
+            1, 1, 0,  // oid
+            1, 1,     // snapshot
+        ])
+        try XCTAssertNil(state.processColumnData(
+            from: &buffer,
+            oracleType: type._oracleType,
+            csfrm: type.csfrm,
+            bufferSize: 1,
+            capabilities: .init()
+        ))
+
+        buffer = ByteBuffer(bytes: [
+            1, 1, 0,  // type oid
+            1, 1, 0,  // oid
+            1, 1, 0,  // snapshot
+        ])
+        try XCTAssertNil(state.processColumnData(
+            from: &buffer,
+            oracleType: type._oracleType,
+            csfrm: type.csfrm,
+            bufferSize: 1,
+            capabilities: .init()
+        ))
+    }
 }

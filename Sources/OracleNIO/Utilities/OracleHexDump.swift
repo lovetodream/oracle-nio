@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+// See CONTRIBUTORS.md for the list of OracleNIO project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import NIOCore
 
 extension ByteBuffer {
@@ -8,7 +22,9 @@ extension ByteBuffer {
     ///     - lineOffset: an offset from the beginning of the outer buffer that is being dumped. It's used to print the line offset in hexdump -C format.
     ///     - paddingBefore: the amount of space to pad before the first byte dumped on this line, used in center and right columns.
     ///     - paddingAfter: the amount of sapce to pad after the last byte on this line, used in center and right columns.
-    private func _hexDumpLine(lineOffset: Int, paddingBefore: Int = 0, paddingAfter: Int = 0) -> String {
+    private func _hexDumpLine(lineOffset: Int, paddingBefore: Int = 0, paddingAfter: Int = 0)
+        -> String
+    {
         // Each line takes 41 visible characters + \n
         var result = ""
         result.reserveCapacity(42)
@@ -38,7 +54,7 @@ extension ByteBuffer {
         result += String(repeating: " ", count: 31 - result.count)
 
         // Right column renders the 16 bytes line as ASCII characters, or "." if the character is not printable.
-        let printableRange = UInt8(ascii: "!") ... UInt8(ascii: "~")
+        let printableRange = UInt8(ascii: "!")...UInt8(ascii: "~")
         let printableBytes = self.readableBytesView.map {
             printableRange.contains($0) ? $0 : UInt8(ascii: ".")
         }
@@ -82,15 +98,6 @@ extension ByteBuffer {
 }
 
 extension String {
-
-    /// Creates a `String` from a given `ByteBuffer`. The entire readable portion of the buffer will be read.
-    /// - parameter buffer: The buffer to read.
-    @inlinable
-    public init(buffer: ByteBuffer) {
-        var buffer = buffer
-        self = buffer.readString(length: buffer.readableBytes)!
-    }
-
     /// Creates a `String` from a given `Int` with a given base (`radix`), padded with zeroes to the provided `padding` size.
     ///
     /// - parameters:

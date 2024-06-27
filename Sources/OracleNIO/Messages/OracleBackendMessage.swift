@@ -225,11 +225,12 @@ extension OracleBackendMessage {
                     break readLoop
                 case nil:
                     throw
-                    OraclePartialDecodingError
+                        OraclePartialDecodingError
                         .unknownMessageIDReceived(messageID: messageIDByte)
                 }
             } catch is MissingDataDecodingError.Trigger {
-                throw MissingDataDecodingError(decodedMessages: messages, resetToReaderIndex: savePoint)
+                throw MissingDataDecodingError(
+                    decodedMessages: messages, resetToReaderIndex: savePoint)
             }
         }
     }

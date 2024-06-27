@@ -135,16 +135,18 @@ extension OracleBackendMessage {
         ) throws -> OracleBackendMessage.LOBParameter {
             if let sourceLOB = context.lobContext?.sourceLOB {
                 try sourceLOB.locator.withLockedValue {
-                    guard let _ = buffer.readBytes(length: $0.count) else {
+                    guard let newLocator = buffer.readBytes(length: $0.count) else {
                         throw MissingDataDecodingError.Trigger()
                     }
+                    $0 = newLocator
                 }
             }
             if let destinationLOB = context.lobContext?.destinationLOB {
                 try destinationLOB.locator.withLockedValue {
-                    guard let _ = buffer.readBytes(length: $0.count) else {
+                    guard let newLocator = buffer.readBytes(length: $0.count) else {
                         throw MissingDataDecodingError.Trigger()
                     }
+                    $0 = newLocator
                 }
             }
             if context.lobContext?.operation == .createTemp {
@@ -157,7 +159,9 @@ extension OracleBackendMessage {
                 amount = nil
             }
             let boolFlag: Bool?
-            if context.lobContext?.operation == .createTemp || context.lobContext?.operation == .isOpen {
+            if context.lobContext?.operation == .createTemp
+                || context.lobContext?.operation == .isOpen
+            {
                 let temp16 = try buffer.throwingReadUB2()  // flag
                 boolFlag = temp16 > 0
             } else {

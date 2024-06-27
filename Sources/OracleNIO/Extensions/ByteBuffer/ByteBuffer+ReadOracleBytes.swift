@@ -29,7 +29,8 @@ extension ByteBuffer {
         if length == Constants.TNS_LONG_LENGTH_INDICATOR {
             var out = ByteBuffer()
             while true {
-                guard let chunkLength = self.readUB4(), chunkLength > 0 else {
+                guard let chunkLength = self.readUB4() else { return nil }
+                guard chunkLength > 0 else {
                     return out
                 }
                 guard var temp = self.readSlice(length: Int(chunkLength)) else {
@@ -44,7 +45,7 @@ extension ByteBuffer {
             return .init()  // empty buffer
         }
 
-        return self.readSlice(length: length)!
+        return self.readSlice(length: length)
     }
 
     /// Read a slice of data prefixed with a length byte.

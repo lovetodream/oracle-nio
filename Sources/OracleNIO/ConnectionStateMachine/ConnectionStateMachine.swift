@@ -676,6 +676,12 @@ struct ConnectionStateMachine {
                 machine.state = .authenticating(authState)
                 return machine.modify(with: action)
             }
+        case .lobOperation(let context):
+            if error.number == 0 {  // done
+                return .succeedLOBOperation(context)
+            } else {
+                return .failLOBOperation(context.promise, with: .server(error))
+            }
         default:
             return self.closeConnectionAndCleanup(
                 .unexpectedBackendMessage(.error(error))
@@ -813,14 +819,16 @@ struct ConnectionStateMachine {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
         context.data = lobData.buffer
-        return .wait // waiting for parameter
+        return .wait  // waiting for parameter
     }
 
-    mutating func lobParameterReceived(parameter: OracleBackendMessage.LOBParameter) -> ConnectionAction {
-        guard case .lobOperation(let context) = self.state else {
+    mutating func lobParameterReceived(parameter: OracleBackendMessage.LOBParameter)
+        -> ConnectionAction
+    {
+        guard case .lobOperation = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
-        return .succeedLOBOperation(context)
+        return .wait  // waiting for error
     }
 
     // MARK: - Private Methods -

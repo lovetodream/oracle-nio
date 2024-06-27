@@ -6,13 +6,14 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
+// See CONTRIBUTORS.md for the list of OracleNIO project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 
 /// A LOB holds a reference to CLOB/BLOB data on an Oracle connection.
 public final class LOB: Sendable {
@@ -23,7 +24,7 @@ public final class LOB: Sendable {
     public let size: UInt64
     /// Reading and writing to the LOB in chunks of multiples of this size will improve performance.
     public let chunkSize: UInt32
-    
+
     let locator: NIOLockedValueBox<[UInt8]>
     private let hasMetadata: Bool
 
@@ -70,10 +71,8 @@ public final class LOB: Sendable {
         let locator = self.locator.withLockedValue { $0 }
         if dbType.csfrm == Constants.TNS_CS_NCHAR
             || (locator.count >= Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3
-                && (
-                    locator[Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3] &
-                    Constants.TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET) != 0
-                )
+                && (locator[Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3]
+                    & Constants.TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET) != 0)
         {
             return Constants.TNS_ENCODING_UTF16
         }
@@ -92,16 +91,18 @@ public final class LOB: Sendable {
         on connection: OracleConnection
     ) async throws -> ByteBuffer? {
         let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
-        connection.channel.write(OracleTask.lobOperation(.init(
-            sourceLOB: self,
-            sourceOffset: offset,
-            destinationLOB: nil,
-            destinationOffset: 0,
-            operation: .read,
-            sendAmount: true,
-            amount: amount ?? .init(self.chunkSize),
-            promise: promise
-        )), promise: nil)
+        connection.channel.write(
+            OracleTask.lobOperation(
+                .init(
+                    sourceLOB: self,
+                    sourceOffset: offset,
+                    destinationLOB: nil,
+                    destinationOffset: 0,
+                    operation: .read,
+                    sendAmount: true,
+                    amount: amount ?? .init(self.chunkSize),
+                    promise: promise
+                )), promise: nil)
         return try await promise.futureResult.get()
     }
 
@@ -161,13 +162,21 @@ extension LOB {
         public struct AsyncIterator: AsyncIteratorProtocol {
             let base: LOB
             let connection: OracleConnection
-            var offset = 1
+            var offset: UInt64 = 1
             var chunkSize: UInt64
 
             public mutating func next() async throws -> ByteBuffer? {
-                guard let chunk = try await self.base._read(on: self.connection) else {
+                if self.offset >= self.base.size { return nil }
+                guard
+                    let chunk = try await self.base._read(
+                        offset: self.offset,
+                        amount: self.chunkSize,
+                        on: self.connection
+                    )
+                else {
                     return nil
                 }
+                self.offset += UInt64(chunk.readableBytes)
                 return chunk
             }
         }

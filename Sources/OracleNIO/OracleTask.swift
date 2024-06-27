@@ -55,15 +55,16 @@ final class LOBOperationContext {
 
     var data: ByteBuffer?
 
-    init(sourceLOB: LOB?,
-         sourceOffset: UInt64,
-         destinationLOB: LOB?,
-         destinationOffset: UInt64,
-         operation: Constants.LOBOperation,
-         sendAmount: Bool,
-         amount: UInt64,
-         promise: EventLoopPromise<ByteBuffer?>,
-         data: ByteBuffer? = nil
+    init(
+        sourceLOB: LOB?,
+        sourceOffset: UInt64,
+        destinationLOB: LOB?,
+        destinationOffset: UInt64,
+        operation: Constants.LOBOperation,
+        sendAmount: Bool,
+        amount: UInt64,
+        promise: EventLoopPromise<ByteBuffer?>,
+        data: ByteBuffer? = nil
     ) {
         self.sourceLOB = sourceLOB
         self.sourceOffset = sourceOffset

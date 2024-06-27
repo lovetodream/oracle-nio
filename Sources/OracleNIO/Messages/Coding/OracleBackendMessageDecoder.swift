@@ -91,15 +91,18 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         return .needMoreData
     }
 
-    private func decodeMessage(
+    /// A remainder of the last package that's been read, needs to be consumed
+    /// as part of the next incoming buffer.
+    /// [incoming header] + [_partial_] + [incoming packet content]
+    var partial: ByteBuffer?
+
+    private mutating func decodeMessage(
         from buffer: inout ByteBuffer
     ) throws -> (InboundOut, needMoreData: Bool)? {
         var msgs: InboundOut?
         var needMoreData = true
-        var partial: ByteBuffer?
-        while let (messages, stillNeedMoreData, newPartial) = try self.decodeMessage0(from: &buffer, partial: partial) {
+        while let (messages, stillNeedMoreData) = try self.decodeMessage0(from: &buffer) {
             needMoreData = stillNeedMoreData
-            partial = newPartial
             buffer = buffer.slice()
             if msgs != nil {
                 msgs!.append(messages)
@@ -113,10 +116,9 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         return nil
     }
 
-    private func decodeMessage0(
-        from buffer: inout ByteBuffer,
-        partial: ByteBuffer?
-    ) throws -> (Container, needMoreData: Bool, partial: ByteBuffer?)? {
+    private mutating func decodeMessage0(
+        from buffer: inout ByteBuffer
+    ) throws -> (Container, needMoreData: Bool)? {
         let startReaderIndex = buffer.readerIndex
 
         let length: Int?
@@ -140,22 +142,31 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
                 as: UInt8.self
             ),
             let type = OracleBackendMessage.ID(rawValue: typeByte),
-            var packet = buffer.readSlice(length: length)
+            var packet = buffer.readSlice(length: length),
+            packet.readableBytes >= Self.headerSize
         else {
             return nil
         }
 
         // skip header
-        if packet.readerIndex < Self.headerSize && packet.capacity >= Self.headerSize {
-            packet.moveReaderIndex(to: Self.headerSize)
-        }
+        packet.moveReaderIndex(to: Self.headerSize)
 
-        if let partial {
-            if type == .data {  // insert after flags
-                packet.setBuffer(partial, at: Self.headerSize + MemoryLayout<UInt16>.size)
-            } else {
-                packet.setBuffer(partial, at: Self.headerSize)
-            }
+        if let partial, partial.readableBytes > 0 {
+            let skipSize =
+                if type == .data {
+                    MemoryLayout<UInt16>.size  // insert after flags
+                } else {
+                    0
+                }
+            let movable = packet.getSlice(
+                at: Self.headerSize + skipSize,
+                length: packet.readableBytes - skipSize
+            )!  // must work
+            packet.reserveCapacity(minimumWritableBytes: partial.readableBytes)
+            packet.writeRepeatingByte(0, count: partial.readableBytes)
+            let written = packet.setBuffer(partial, at: Self.headerSize + skipSize)
+            packet.setBuffer(movable, at: Self.headerSize + skipSize + written)
+            self.partial = nil
         }
 
         do {
@@ -163,12 +174,13 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
                 from: &packet, of: type,
                 context: self.context
             )
-            return (Container(flags: packetFlags, messages: messages), !lastPacket, nil)
+            return (Container(flags: packetFlags, messages: messages), !lastPacket)
         } catch let error as OracleSQLError {
             throw error
         } catch let error as MissingDataDecodingError {
             packet.moveReaderIndex(to: error.resetToReaderIndex)
-            return (Container(flags: packetFlags, messages: error.decodedMessages), true, packet.slice())
+            self.partial = packet.slice()
+            return (Container(flags: packetFlags, messages: error.decodedMessages), true)
         } catch let error as OraclePartialDecodingError {
             buffer.moveReaderIndex(to: startReaderIndex)
             let completeMessage = buffer.readSlice(length: length)!

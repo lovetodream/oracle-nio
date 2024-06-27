@@ -1,7 +1,9 @@
-import OracleNIO
 import NIOCore
+import OracleNIO
 
-var config: OracleConnection.Configuration = .init(host: "192.168.1.24", service: .serviceName("FREEPDB1"), username: "my_user", password: "my_passwor")
+var config: OracleConnection.Configuration = .init(
+    host: "192.168.1.24", service: .serviceName("FREEPDB1"), username: "my_user",
+    password: "my_passwor")
 config.programName = "/Users/timozacherl/.pyenv/versions/3.11.1/bin/python"
 config.connectionID = "jdN1SlI0RTnCdzTldXFE/Q=="
 let connection = try await OracleConnection.connect(

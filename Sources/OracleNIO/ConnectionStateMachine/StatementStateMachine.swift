@@ -1108,9 +1108,7 @@ struct StatementStateMachine {
                 }
                 columnValue = ByteBuffer()
                 try columnValue.writeLengthPrefixed(as: UInt8.self) {
-                    $0.writeInteger(size) +
-                    $0.writeInteger(chunkSize) +
-                    $0.writeBuffer(&locator)
+                    $0.writeInteger(size) + $0.writeInteger(chunkSize) + $0.writeBuffer(&locator)
                 }
             } else {
                 columnValue = .init(bytes: [0])  // empty buffer

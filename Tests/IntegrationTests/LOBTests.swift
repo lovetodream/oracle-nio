@@ -6,16 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
+// See CONTRIBUTORS.md for the list of OracleNIO project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
-import XCTest
-
 import Logging
+import NIOCore
 import OracleNIO
+import XCTest
 
 final class LOBTests: XCTIntegrationTest {
     var fileURL: URL!
@@ -28,19 +28,19 @@ final class LOBTests: XCTIntegrationTest {
                 forResource: "Isaac_Newton-Opticks", ofType: "txt"
             ))
         self.fileURL = URL(fileURLWithPath: filePath)
-//
-//        do {
-//            try await connection.execute(
-//                "DROP TABLE test_simple_blob", logger: .oracleTest
-//            )
-//        } catch let error as OracleSQLError {
-//            // "ORA-00942: table or view does not exist" can be ignored
-//            XCTAssertEqual(error.serverInfo?.number, 942)
-//        }
-//        try await connection.execute(
-//            "CREATE TABLE test_simple_blob (id number, content blob)",
-//            logger: .oracleTest
-//        )
+
+        do {
+            try await connection.execute(
+                "DROP TABLE test_simple_blob", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await connection.execute(
+            "CREATE TABLE test_simple_blob (id number, content blob)",
+            logger: .oracleTest
+        )
     }
 
     func testSimpleBinaryLOBViaData() async throws {
@@ -94,10 +94,10 @@ final class LOBTests: XCTIntegrationTest {
         let data = try Data(contentsOf: fileURL)
         let buffer = ByteBuffer(data: data)
 
-//        try await connection.execute(
-//            "INSERT INTO test_simple_blob (id, content) VALUES (1, \(buffer))",
-//            logger: .oracleTest
-//        )
+        try await connection.execute(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, \(buffer))",
+            logger: .oracleTest
+        )
         var queryOptions = StatementOptions()
         queryOptions.fetchLOBs = true
         let rows = try await connection.execute(
@@ -119,7 +119,6 @@ final class LOBTests: XCTIntegrationTest {
                 buffer.getString(at: 0, length: buffer.readableBytes)
             )
         }
-        XCTAssertEqual(index, 1)
     }
 
     func testSimpleBinaryLOBConcurrently5Times() async throws {

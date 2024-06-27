@@ -730,7 +730,7 @@ struct OracleFrontendMessageEncoder {
             data._encodeRaw(into: &self.buffer, context: .default)
         }
         if context.sendAmount {
-            self.buffer.writeUB8(4294967295) // (context.amount)  // LOB amount
+            self.buffer.writeUB8(context.amount)  // LOB amount
         }
         self.endRequest()
     }

@@ -1,0 +1,63 @@
+name: Bug report
+description: Create a report to help us improve
+title: '[BUG] <title>'
+labels: bug
+assignees: lovetodream
+body:
+- type: checkboxes
+  attributes:
+    label: Is there an existing issue for this?
+    description: Please search to see if an issue already exists for the bug you encountered.
+    options:
+    - label: I have searched the existing issues
+      required: true
+- type: input
+  attributes:
+    label: OracleNIO version
+    description: The version of OracleNIO you are using. This can be found in Xcode or your Package.resolved file.
+    placeholder: 1.x.x
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Database version
+    description: The version of the Oracle database you are connecting to. This can be found by running `SELECT * FROM V$VERSION` or on `OracleConnection.serverVersion`.
+    placeholder: '23.4.0.24.5'
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Operating system and version
+    description: The name and version of the operating system you are running OracleNIO on, such as "macOS 14.5" or "Ubuntu Linux 22.04"
+    placeholder: macOS 14.5
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Swift Version
+    description: The version of Swift you are using to build OracleNIO. Try `swift package --version`.
+    placeholder: Swift Package Manager - Swift 5.10.0-dev
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Describe the bug
+    description: A clear and concise description of what the bug is.
+- type: textarea
+  attributes:
+    label: Steps To Reproduce
+    description: Steps to reproduce the behavior, ideally with a "test-like" code example example.
+    placeholder: |
+      1. Connect to database '...'
+      2. Run this query '....'
+      3. Decode the rows '....'
+      4. See error
+- type: textarea
+  attributes:
+    label: Outcome
+    description: Describe the incorrect behaviour and the difference between it and the expected behaviour in as much detail as possible.
+- type: textarea
+  attributes:
+    label: Additional context
+    description: Add any other context about the problem here.
+    placeholder: I am using an ARM machine, but OracleNIO is running in an x86_64 Docker container.

@@ -6,6 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
+// See CONTRIBUTORS.md for the list of OracleNIO project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -20,8 +21,15 @@ extension StatementContext {
 
     convenience init(
         statement: OracleStatement,
-        promise: EventLoopPromise<OracleRowStream> = EmbeddedEventLoop().makePromise()
+        promise given: EventLoopPromise<OracleRowStream>? = nil
     ) {
+        let promise: EventLoopPromise<OracleRowStream>
+        if let given {
+            promise = given
+        } else {
+            promise = EmbeddedEventLoop().makePromise()
+            promise.fail(TestComplete())  // we don't care
+        }
         self.init(
             statement: statement, options: .init(),
             logger: OracleConnection.noopLogger,

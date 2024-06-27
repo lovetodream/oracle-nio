@@ -539,7 +539,7 @@ extension Constants {
     static let TPC_END_SUSPEND = 0x0010_0000
 
     // MARK: Basic configuration constants
-    static let DRIVER_NAME = "python-oracledb"
+    static let DRIVER_NAME = "oracle-nio"
     static let VERSION_TUPLE = (major: 1, minor: 0, patch: 0)
     static let VERSION_CODE =
         VERSION_TUPLE.major << 24 | VERSION_TUPLE.minor << 20 | VERSION_TUPLE.patch << 12

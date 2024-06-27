@@ -187,7 +187,7 @@ extension OracleConnection {
         public var retryDelay: Int = 0
 
         /// Connection ID on the oracle server.
-        public var connectionID: String = ""
+        public private(set) var connectionID: String = ""
 
         /// The name of the process, sent to the oracle server upon connection.
         ///

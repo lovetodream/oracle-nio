@@ -516,7 +516,7 @@ extension OracleConnection {
 
         private var logger: Logger
         private var shouldLog: Bool
-        private(set)var connectionID: OracleConnection.ID
+        private let connectionID: OracleConnection.ID
 
         private var packetCount = 0
 

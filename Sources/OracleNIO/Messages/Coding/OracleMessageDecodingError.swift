@@ -24,7 +24,7 @@ struct OracleMessageDecodingError: Error {
     /// The backend message packet ID byte.
     let packetID: UInt8
 
-    /// The backend message's payload encoded in base64.
+    /// The backend message's payload as a hex dump.
     let payload: String
 
     /// A textual description of the error.
@@ -41,7 +41,7 @@ struct OracleMessageDecodingError: Error {
         packetID: UInt8,
         messageBytes: ByteBuffer
     ) -> Self {
-        let data = messageBytes.oracleHexDump()
+        let data = messageBytes.hexDump(format: .plain)
 
         return OracleMessageDecodingError(
             packetID: packetID,
@@ -59,7 +59,7 @@ struct OracleMessageDecodingError: Error {
         file: String = #fileID,
         line: Int = #line
     ) -> Self {
-        let data = messageBytes.oracleHexDump()
+        let data = messageBytes.hexDump(format: .plain)
 
         return OracleMessageDecodingError(
             packetID: packetID,

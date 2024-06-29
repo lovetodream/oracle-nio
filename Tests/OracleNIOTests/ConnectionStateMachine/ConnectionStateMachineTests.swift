@@ -99,7 +99,8 @@ final class ConnectionStateMachineTests: XCTestCase {
             destinationLOB: nil, destinationOffset: 0,
             operation: .read, sendAmount: false, amount: 0, promise: promise
         )
-        let error = OracleBackendMessage
+        let error =
+            OracleBackendMessage
             .BackendError(number: 1, isWarning: false, batchErrors: [])
 
         XCTAssertEqual(
@@ -121,7 +122,8 @@ final class ConnectionStateMachineTests: XCTestCase {
             destinationLOB: nil, destinationOffset: 0,
             operation: .read, sendAmount: false, amount: 0, promise: promise
         )
-        let error = OracleBackendMessage
+        let error =
+            OracleBackendMessage
             .BackendError(number: 1, isWarning: false, batchErrors: [])
 
         XCTAssertEqual(

@@ -93,7 +93,10 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
             return lhs === rhs
         case (.succeedLOBOperation(let lhs), .succeedLOBOperation(let rhs)):
             return lhs === rhs
-        case (.failLOBOperation(let lhsPromise, let lhsError), .failLOBOperation(let rhsPromise, let rhsError)):
+        case (
+            .failLOBOperation(let lhsPromise, let lhsError),
+            .failLOBOperation(let rhsPromise, let rhsError)
+        ):
             return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
 
         case (.sendExecute(let lhsContext, let lhsInfo), .sendExecute(let rhsContext, let rhsInfo)):

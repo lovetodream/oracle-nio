@@ -96,7 +96,7 @@ final class OracleClientTests: XCTestCase {
 
     @available(macOS 14.0, *)
     func testPingPong() async throws {
-        let idleTimeout = Duration.seconds(60)
+        let idleTimeout = Duration.seconds(20)
         let config = try OracleConnection.testConfig()
         var options = OracleClient.Options()
         options.keepAliveBehavior?.frequency = .seconds(10)

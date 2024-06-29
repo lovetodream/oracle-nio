@@ -17,4 +17,5 @@ enum OracleFrontendMessage {
     case fastAuth
     case authPhaseTwo
     case logoff
+    case close
 }

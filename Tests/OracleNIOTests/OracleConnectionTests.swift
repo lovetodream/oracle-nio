@@ -92,6 +92,8 @@ final class OracleConnectionTests: XCTestCase {
                         value: "5D7C6DF1436ADB3A97ED9E44F4C830F7", flags: 0),
                 ])
             ]))
+        let authPhase2 = try await channel.waitForOutboundWrite(as: OracleFrontendMessage.self)
+        XCTAssertEqual(authPhase2, .authPhaseTwo)
         try await channel.writeInbound(
             C(messages: [
                 .parameter([
@@ -105,10 +107,14 @@ final class OracleConnectionTests: XCTestCase {
 
         self.addTeardownBlock {
             async let closePromise: Void = connection.close()
+            let logoff = try await channel.waitForOutboundWrite(as: OracleFrontendMessage.self)
+            XCTAssertEqual(logoff, .logoff)
             try await channel.writeInbound(
                 C(messages: [
                     .status(.init(callStatus: 0, endToEndSequenceNumber: 0))
                 ]))
+            let close = try await channel.waitForOutboundWrite(as: OracleFrontendMessage.self)
+            XCTAssertEqual(close, .close)
             try await closePromise
         }
 

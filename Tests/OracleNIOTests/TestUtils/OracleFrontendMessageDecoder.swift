@@ -61,6 +61,9 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
             return .connect
         case .data:
             let dataFlags = try buffer.throwingReadInteger(as: UInt16.self)
+            if (dataFlags & Constants.TNS_DATA_FLAGS_EOF) != 0 {
+                return .close
+            }
             let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
             let messageID = OracleFrontendMessageID(rawValue: messageIDByte)
             switch messageID {

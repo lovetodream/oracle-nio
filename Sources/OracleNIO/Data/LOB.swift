@@ -148,7 +148,7 @@ public final class LOB: Sendable {
 
 extension LOB {
     /// Read chunks of data from the connection asynchronously.
-    /// 
+    ///
     /// - Parameters:
     ///   - chunkSize: The size of a single chunk of data read from the database.
     ///                If empty, ``chunkSize`` will be used.

@@ -145,9 +145,11 @@ public final class OracleConnection: Sendable {
             #if DEBUG
                 // This is very useful for sending hex dumps to Oracle to analyze
                 // problems in the driver.
-                let tracer = Logger(label: "oracle-nio.network-tracing")
-                try channel.pipeline.syncOperations
-                    .addHandler(DebugLogHandler(connectionID: connectionID, logger: tracer))
+                let tracer = OracleTraceHandler(
+                    connectionID: connectionID,
+                    logger: Logger(label: "oracle-nio.network-tracing")
+                )
+                try channel.pipeline.syncOperations.addHandler(tracer)
             #endif
             try channel.pipeline.syncOperations.addHandler(eventHandler)
             try channel.pipeline.syncOperations
@@ -507,55 +509,3 @@ extension OracleConnection {
         #endif
     }
 }
-
-
-#if DEBUG
-    private final class DebugLogHandler: ChannelDuplexHandler {
-        typealias InboundIn = ByteBuffer
-        typealias OutboundIn = ByteBuffer
-
-        private var logger: Logger
-        private var shouldLog: Bool
-
-        init(connectionID: OracleConnection.ID, logger: Logger, shouldLog: Bool? = nil) {
-            if let shouldLog {
-                self.shouldLog = shouldLog
-            } else {
-                let envValue =
-                    getenv("ORANIO_TRACE_PACKETS")
-                    .flatMap { String(cString: $0) }
-                    .flatMap(Int.init) ?? 0
-                self.shouldLog = envValue != 0
-            }
-            var logger = logger
-            logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
-            self.logger = logger
-        }
-
-        func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-            if self.shouldLog {
-                let buffer = self.unwrapInboundIn(data)
-                self.logger.info(
-                    "\n\(buffer.hexDump(format: .detailed))",
-                    metadata: ["direction": "incoming"]
-                )
-            }
-            context.fireChannelRead(data)
-        }
-
-        func write(
-            context: ChannelHandlerContext,
-            data: NIOAny,
-            promise: EventLoopPromise<Void>?
-        ) {
-            if self.shouldLog {
-                let buffer = self.unwrapOutboundIn(data)
-                self.logger.info(
-                    "\n\(buffer.hexDump(format: .detailed))",
-                    metadata: ["direction": "outgoing"]
-                )
-            }
-            context.write(data, promise: promise)
-        }
-    }
-#endif

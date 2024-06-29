@@ -70,6 +70,7 @@ Oracle Database 12.1 or later.
 - ``OracleVectorInt8``
 - ``OracleVectorFloat32``
 - ``OracleVectorFloat64``
+- ``LOB``
 
 ### Errors
 

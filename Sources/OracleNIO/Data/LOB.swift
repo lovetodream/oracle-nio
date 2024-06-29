@@ -30,7 +30,11 @@ import NIOCore
 /// let queryOptions = StatementOptions(fetchLOBs: true)
 /// let rows = try await connection
 ///     .execute("SELECT my_blob FROM my_table", options: queryOptions)
+/// var lobs: [LOB] = []
 /// for try await (lob) in rows.decode(LOB.self) {
+///     lobs.append(lob)
+/// }
+/// for await lob in lobs {
 ///     for try await chunk in lob.readChunks(on: connection) {
 ///         // do something with the buffer
 ///     }

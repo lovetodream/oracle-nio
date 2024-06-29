@@ -22,8 +22,6 @@ import XCTest
 final class OracleConnectionTests: XCTestCase {
 
     func testWeDoNotCrashOnUnexpectedChannelEvents() async throws {
-        XCTAssertTrue(isLoggingConfigured)
-
         let (connection, channel) = try await self.makeTestConnectionWithAsyncTestingChannel()
 
         enum MyEvent {
@@ -125,30 +123,4 @@ extension Capabilities {
         caps.supportsFastAuth = true
         return caps
     }
-}
-
-let isLoggingConfigured: Bool = {
-    LoggingSystem.bootstrap { label in
-        var handler = StreamLogHandler.standardOutput(label: label)
-        handler.logLevel = Logger.getLogLevel()
-        return handler
-    }
-    return true
-}()
-
-extension Logger {
-    static func getLogLevel() -> Logger.Level {
-        let ghActionsDebug = env("ACTIONS_STEP_DEBUG")
-        if ghActionsDebug == "true" || ghActionsDebug == "TRUE" {
-            return .trace
-        }
-
-        return env("LOG_LEVEL").flatMap {
-            Logger.Level(rawValue: $0)
-        } ?? .debug
-    }
-}
-
-func env(_ name: String) -> String? {
-    getenv(name).flatMap { String(cString: $0) }
 }

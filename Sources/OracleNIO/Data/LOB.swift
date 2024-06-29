@@ -16,6 +16,26 @@ import NIOConcurrencyHelpers
 import NIOCore
 
 /// A LOB holds a reference to CLOB/BLOB data on an Oracle connection.
+///
+/// ## Reading data
+///
+/// Reading LOBs needs to be explicitly enabled by setting ``StatementOptions/fetchLOBs`` to
+/// `true`. It is useful to retrieve huge amounts of data from a database.
+///
+/// - Note: Prefer using `Data` or `ByteBuffer` for reading and writing LOBs
+///         less than 1 GB as they are more efficient. This is the behaviour if
+///         ``StatementOptions/fetchLOBs`` is set to `false`.
+///
+/// ```swift
+/// let queryOptions = StatementOptions(fetchLOBs: true)
+/// let rows = try await connection
+///     .execute("SELECT my_blob FROM my_table", options: queryOptions)
+/// for try await (lob) in rows.decode(LOB.self) {
+///     for try await chunk in lob.readChunks(on: connection) {
+///         // do something with the buffer
+///     }
+/// }
+/// ```
 public final class LOB: Sendable {
     /// The total size of the data in the LOB.
     ///
@@ -127,8 +147,17 @@ public final class LOB: Sendable {
 // MARK: Public interfaces
 
 extension LOB {
-    public func read(
-        chunkSize: UInt64? = nil,
+    /// Read chunks of data from the connection asynchronously.
+    /// 
+    /// - Parameters:
+    ///   - chunkSize: The size of a single chunk of data read from the database.
+    ///                If empty, ``chunkSize`` will be used.
+    ///   - connection: The connection used the stream the buffer from.
+    ///                 This has to be the same one the buffer was created on.
+    /// - Returns: An async sequence used to iterate over
+    ///            the chunks of data read from the connection.
+    public func readChunks(
+        ofSize chunkSize: UInt64? = nil,
         on connection: OracleConnection
     ) -> ReadSequence {
         ReadSequence(
@@ -138,6 +167,9 @@ extension LOB {
         )
     }
 
+    /// An async sequence of `ByteBuffer`s used to stream LOB data from a connection.
+    ///
+    /// Created using ``LOB/readChunks(ofSize:on:)``.
     public struct ReadSequence: AsyncSequence {
         public typealias Element = ByteBuffer
 

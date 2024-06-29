@@ -111,7 +111,7 @@ final class LOBTests: XCTIntegrationTest {
                 index += 1
                 XCTAssertEqual(index, id)
                 var out = ByteBuffer()
-                for try await var chunk in lob.read(chunkSize: chunkSize, on: connection) {
+                for try await var chunk in lob.readChunks(ofSize: chunkSize, on: connection) {
                     out.writeBuffer(&chunk)
                 }
                 XCTAssertEqual(out, buffer)

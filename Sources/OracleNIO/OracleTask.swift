@@ -259,17 +259,20 @@ public struct StatementOptions {
     ///                   the database. Refer to ``prefetchRows`` for additional explanation.
     ///   - arraySize: Indicates how many rows will be returned by any subsequent fetch calls to the
     ///                database. Refer to ``arraySize`` for additional explanation.
+    ///   - fetchLOBs: Defines if LOBs (BLOB, CLOB, NCLOB) should be fetched as LOBs, which
+    ///                requires another round-trip to the server.
     public init(
         autoCommit: Bool = false,
         prefetchRows: Int = 2,
-        arraySize: Int = 50
+        arraySize: Int = 50,
+        fetchLOBs: Bool = false
     ) {
         self.autoCommit = autoCommit
         self.arrayDMLRowCounts = false
         self.batchErrors = false
         self.prefetchRows = prefetchRows
         self.arraySize = arraySize
-        self.fetchLOBs = false
+        self.fetchLOBs = fetchLOBs
     }
 }
 

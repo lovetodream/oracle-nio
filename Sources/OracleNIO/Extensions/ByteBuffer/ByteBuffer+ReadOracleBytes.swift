@@ -15,43 +15,73 @@
 import NIOCore
 
 extension ByteBuffer {
-    mutating func readOracleSpecificLengthPrefixedSlice(
+    private enum LengthOrBuffer {
+        case length(Int)
+        case buffer(ByteBuffer)
+    }
+
+    private mutating func _readOracleSpecificLengthPrefixedSlice(
         file: String = #fileID, line: Int = #line
-    ) throws -> ByteBuffer {
+    ) -> LengthOrBuffer {
         guard let length = self.readInteger(as: UInt8.self).map(Int.init) else {
-            throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<UInt8>.size, actual: self.readableBytes,
-                file: file, line: line
-            )
+            return .length(MemoryLayout<UInt8>.size)
         }
 
         if length == Constants.TNS_LONG_LENGTH_INDICATOR {
             var out = ByteBuffer()
             while true {
-                guard let chunkLength = self.readUB4(), chunkLength > 0 else {
-                    return out
+                guard let chunkLength = self.readUB4() else {
+                    return .length(MemoryLayout<UInt8>.size)
                 }
+                guard chunkLength > 0 else { break }
                 guard var temp = self.readSlice(length: Int(chunkLength)) else {
-                    throw
-                        OraclePartialDecodingError
-                        .expectedAtLeastNRemainingBytes(
-                            Int(chunkLength), actual: self.readableBytes,
-                            file: file, line: line
-                        )
+                    return .length(Int(chunkLength))
                 }
                 out.writeBuffer(&temp)
             }
-            return out
+            return .buffer(out)
         }
 
         if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
-            return .init()  // empty buffer
+            return .buffer(.init())  // empty buffer
         }
 
-        return self.readSlice(length: length)!
+        guard let slice = self.readSlice(length: length) else {
+            return .length(length)
+        }
+        return .buffer(slice)
+    }
+
+    /// - Returns: `nil` if more data is required to decode
+    mutating func readOracleSpecificLengthPrefixedSlice(
+        file: String = #fileID, line: Int = #line
+    ) -> ByteBuffer? {
+        switch self._readOracleSpecificLengthPrefixedSlice(file: file, line: line) {
+        case .buffer(let buffer):
+            return buffer
+        case .length:
+            return nil
+        }
+    }
+
+    mutating func throwingReadOracleSpecificLengthPrefixedSlice(
+        file: String = #fileID, line: Int = #line
+    ) throws -> ByteBuffer {
+        switch self._readOracleSpecificLengthPrefixedSlice(file: file, line: line) {
+        case .buffer(let buffer):
+            return buffer
+        case .length(let length):
+            throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                length, actual: self.readableBytes, file: file, line: line
+            )
+        }
     }
 
     /// Read a slice of data prefixed with a length byte.
+    ///
+    /// This returns a buffer including the length prefix, use
+    /// ``ByteBuffer.readOracleSpecificLengthPrefixedSlice(file:line:)``
+    /// if you want to omit length prefixes.
     ///
     /// If not enough data could be read, `nil` will be returned, indicating that another packet must be
     /// read from the channel to complete the operation.

@@ -229,4 +229,54 @@ final class StatementStateMachineTests: XCTestCase {
                 capabilities: .init()
             ))
     }
+
+    func testProcessLOBColumnDataRequestsMissingData() throws {
+        let state = StatementStateMachine(
+            statementContext: .init(statement: "")
+        )
+        let type = OracleDataType.blob
+
+        var buffer = ByteBuffer(bytes: [
+            1, 1,  // length
+            1, 1,  // size
+            1, 1,  // chunk size
+            2, 0,  // locator (partial)
+        ])
+        try XCTAssertNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            )
+        )
+
+        buffer = ByteBuffer(bytes: [
+            1, 1,  // length
+            1, 1,  // size
+            1, 1,  // chunk size
+            1, 0,  // locator
+        ])
+        try XCTAssertNotNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            )
+        )
+
+        buffer = ByteBuffer(bytes: [0])
+        try XCTAssertNotNil(
+            state.processColumnData(
+                from: &buffer,
+                oracleType: type._oracleType,
+                csfrm: type.csfrm,
+                bufferSize: 1,
+                capabilities: .init()
+            )
+        )
+    }
 }

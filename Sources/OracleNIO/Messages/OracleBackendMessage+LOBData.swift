@@ -22,7 +22,9 @@ extension OracleBackendMessage {
             from buffer: inout ByteBuffer,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.LOBData {
-            let buffer = try buffer.readOracleSpecificLengthPrefixedSlice()
+            guard let buffer = buffer.readOracleSpecificLengthPrefixedSlice() else {
+                throw MissingDataDecodingError.Trigger()
+            }
             return .init(buffer: buffer)
         }
     }

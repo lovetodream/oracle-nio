@@ -19,7 +19,7 @@ extension ByteBuffer {
         with charset: Int = Constants.TNS_CS_IMPLICIT
     ) throws -> String {
         checkPreconditions(charset: charset)
-        var stringSlice = try self.readOracleSpecificLengthPrefixedSlice()
+        var stringSlice = try self.throwingReadOracleSpecificLengthPrefixedSlice()
         return stringSlice.readString(length: stringSlice.readableBytes)!  // must work
     }
 

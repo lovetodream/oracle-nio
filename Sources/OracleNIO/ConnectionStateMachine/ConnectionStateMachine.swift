@@ -29,6 +29,7 @@ struct ConnectionStateMachine {
         case ping(EventLoopPromise<Void>)
         case commit(EventLoopPromise<Void>)
         case rollback(EventLoopPromise<Void>)
+        case lobOperation(LOBOperationContext)
         /// Set by ``ConnectionAction.closeConnectionAndCleanup(_:)`` to prepare us for
         /// the upcoming ``loggingOff`` state.
         case readyToLogOff
@@ -115,6 +116,11 @@ struct ConnectionStateMachine {
         case failRollback(EventLoopPromise<Void>, with: OracleSQLError)
         case succeedRollback(EventLoopPromise<Void>)
 
+        // LOBs
+        case sendLOBOperation(LOBOperationContext)
+        case succeedLOBOperation(LOBOperationContext)
+        case failLOBOperation(EventLoopPromise<ByteBuffer?>, with: OracleSQLError)
+
         // Statement
         case sendExecute(StatementContext, DescribeInfo?)
         case sendReexecute(StatementContext, CleanupContext)
@@ -197,6 +203,7 @@ struct ConnectionStateMachine {
             .ping,
             .commit,
             .rollback,
+            .lobOperation,
             .readyToLogOff,
             .renegotiatingTLS:
             return self.errorHappened(.uncleanShutdown)
@@ -225,6 +232,7 @@ struct ConnectionStateMachine {
             .ping,
             .commit,
             .rollback,
+            .lobOperation,
             .renegotiatingTLS:
             return self.closeConnectionAndCleanup(error)
         case .authenticating(var authState):
@@ -273,6 +281,7 @@ struct ConnectionStateMachine {
                 .ping,
                 .commit,
                 .rollback,
+                .lobOperation,
                 .renegotiatingTLS:
                 self.taskQueue.append(task)
                 return .wait
@@ -307,6 +316,8 @@ struct ConnectionStateMachine {
             return .failCommit(promise, with: oracleError)
         case .rollback(let promise):
             return .failRollback(promise, with: oracleError)
+        case .lobOperation(let context):
+            return .failLOBOperation(context.promise, with: oracleError)
         }
     }
 
@@ -322,6 +333,7 @@ struct ConnectionStateMachine {
             .ping,
             .commit,
             .rollback,
+            .lobOperation,
             .readyToLogOff,
             .loggingOff,
             .closing,
@@ -428,6 +440,8 @@ struct ConnectionStateMachine {
             return .sendCommit
         case .rollback:
             return .sendRollback
+        case .lobOperation(let context):
+            return .sendLOBOperation(context)
         case .readyToLogOff:
             return .wait
         case .loggingOff(let promise):
@@ -477,7 +491,12 @@ struct ConnectionStateMachine {
                 return machine.modify(with: action)
             }
 
-        case .readyForStatement, .statement, .ping, .commit, .rollback:
+        case .readyForStatement,
+            .statement,
+            .ping,
+            .commit,
+            .rollback,
+            .lobOperation:
             fatalError("Is this possible?")
 
         case .readyToLogOff, .loggingOff, .closing, .closed, .modifying:
@@ -501,7 +520,8 @@ struct ConnectionStateMachine {
             .statement,
             .ping,
             .commit,
-            .rollback:
+            .rollback,
+            .lobOperation:
             switch self.markerState {
             case .noMarkerSent:
                 self.markerState = .markerSent
@@ -548,7 +568,7 @@ struct ConnectionStateMachine {
         case .rollback(let promise):
             return .succeedRollback(promise)
 
-        case .readyToLogOff:
+        case .readyToLogOff, .lobOperation:
             preconditionFailure("Invalid state: \(self.state)")
 
         case .loggingOff(let promise):
@@ -656,6 +676,12 @@ struct ConnectionStateMachine {
                 machine.state = .authenticating(authState)
                 return machine.modify(with: action)
             }
+        case .lobOperation(let context):
+            if error.number == 0 {  // done
+                return .succeedLOBOperation(context)
+            } else {
+                return .failLOBOperation(context.promise, with: .server(error))
+            }
         default:
             return self.closeConnectionAndCleanup(
                 .unexpectedBackendMessage(.error(error))
@@ -711,7 +737,7 @@ struct ConnectionStateMachine {
 
             self.state = .readyForStatement
             return self.executeNextStatementFromQueue()
-        case .ping, .commit, .rollback:
+        case .ping, .commit, .rollback, .lobOperation:
             self.state = .readyForStatement
             return self.executeNextStatementFromQueue()
 
@@ -788,6 +814,23 @@ struct ConnectionStateMachine {
         return .sendConnect
     }
 
+    mutating func lobDataReceived(lobData: OracleBackendMessage.LOBData) -> ConnectionAction {
+        guard case .lobOperation(let context) = self.state else {
+            preconditionFailure("How can we receive LOB data in \(self.state)")
+        }
+        context.data = lobData.buffer
+        return .wait  // waiting for parameter
+    }
+
+    mutating func lobParameterReceived(parameter: OracleBackendMessage.LOBParameter)
+        -> ConnectionAction
+    {
+        guard case .lobOperation = self.state else {
+            preconditionFailure("How can we receive LOB data in \(self.state)")
+        }
+        return .wait  // waiting for error
+    }
+
     // MARK: - Private Methods -
 
     private mutating func startAuthentication(
@@ -830,6 +873,11 @@ struct ConnectionStateMachine {
             .commit(let workPromise),
             .rollback(let workPromise):
             workPromise.fail(error)
+            let cleanupContext = self.setErrorAndCreateCleanupContext(
+                error, closePromise: closePromise)
+            return .closeConnectionAndCleanup(cleanupContext)
+        case .lobOperation(let context):
+            context.promise.fail(error)
             let cleanupContext = self.setErrorAndCreateCleanupContext(
                 error, closePromise: closePromise)
             return .closeConnectionAndCleanup(cleanupContext)
@@ -968,6 +1016,11 @@ struct ConnectionStateMachine {
             return self.avoidingStateMachineCoW { machine in
                 machine.state = .rollback(promise)
                 return .sendRollback
+            }
+        case .lobOperation(let context):
+            return self.avoidingStateMachineCoW { machine in
+                machine.state = .lobOperation(context)
+                return .sendLOBOperation(context)
             }
         }
     }

@@ -22,7 +22,7 @@ import class Foundation.JSONEncoder
 /// Dynamic types are types that don't have a well-known Oracle type OID at compile time.
 /// For example, custom types created at runtime, such as enums, or extension types whose OID is not
 /// stable between databases.
-public protocol OracleThrowingDynamicTypeEncodable: Sendable, Equatable {
+public protocol OracleThrowingDynamicTypeEncodable: Sendable {
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
     var oracleType: OracleDataType { get }
 

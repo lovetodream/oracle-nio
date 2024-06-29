@@ -25,6 +25,8 @@ protocol OracleMessagePayloadDecodable {
     ///
     /// - Parameter buffer: The ``ByteBuffer`` to read the message from. When done the
     ///                     `ByteBuffer` must be fully consumed.
+    ///  - Throws: ``OraclePartialDecodingError`` if decoding failed or
+    ///          ``MissingDataDecodingError`` if more data is required to continue decoding.
     static func decode(
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context
@@ -45,6 +47,7 @@ enum OracleBackendMessage: Sendable, Hashable {
     case parameter(Parameter)
     case `protocol`(`Protocol`)
     case queryParameter(QueryParameter)
+    case lobParameter(LOBParameter)
     case resend
     case rowHeader(RowHeader)
     case rowData(RowData)
@@ -126,96 +129,108 @@ extension OracleBackendMessage {
         context: OracleBackendMessageDecoder.Context
     ) throws {
         readLoop: while buffer.readableBytes > 0 {
+            let savePoint = buffer.readerIndex
             let messageIDByte = try buffer.throwingReadInteger(as: UInt8.self)
             let messageID = MessageID(rawValue: messageIDByte)
-            switch messageID {
-            case .dataTypes:
-                messages.append(
-                    try .dataTypes(.decode(from: &buffer, context: context))
-                )
-                if !context.capabilities.supportsEndOfRequest {
-                    break readLoop
-                }
-            case .protocol:
-                messages.append(
-                    try .protocol(.decode(from: &buffer, context: context))
-                )
-                if !context.capabilities.supportsEndOfRequest {
-                    break readLoop
-                }
-            case .error:
-                messages.append(
-                    try .error(.decode(from: &buffer, context: context))
-                )
-                // error marks the end of response if no explicit end of
-                // response is available
-                if !context.capabilities.supportsEndOfRequest {
-                    break readLoop
-                }
-            case .parameter:
-                switch context.statementOptions {
-                case .some:
+            do {
+                switch messageID {
+                case .dataTypes:
                     messages.append(
-                        try .queryParameter(.decode(from: &buffer, context: context))
+                        try .dataTypes(.decode(from: &buffer, context: context))
                     )
-                case .none:
+                    if !context.capabilities.supportsEndOfRequest {
+                        break readLoop
+                    }
+                case .protocol:
                     messages.append(
-                        try .parameter(.decode(from: &buffer, context: context))
+                        try .protocol(.decode(from: &buffer, context: context))
                     )
+                    if !context.capabilities.supportsEndOfRequest {
+                        break readLoop
+                    }
+                case .error:
+                    messages.append(
+                        try .error(.decode(from: &buffer, context: context))
+                    )
+                    // error marks the end of response if no explicit end of
+                    // response is available
+                    if !context.capabilities.supportsEndOfRequest {
+                        break readLoop
+                    }
+                case .parameter:
+                    switch context.statementOptions {
+                    case .some:
+                        messages.append(
+                            try .queryParameter(.decode(from: &buffer, context: context))
+                        )
+                    case .none:
+                        if context.lobContext != nil {
+                            messages.append(
+                                try .lobParameter(.decode(from: &buffer, context: context))
+                            )
+                        } else {
+                            messages.append(
+                                try .parameter(.decode(from: &buffer, context: context))
+                            )
+                            break readLoop
+                        }
+                    }
+                case .status:
+                    messages.append(
+                        try .status(.decode(from: &buffer, context: context))
+                    )
+                    if !context.capabilities.supportsEndOfRequest {
+                        break readLoop
+                    }
+                case .ioVector:
+                    messages.append(
+                        try .ioVector(.decode(from: &buffer, context: context))
+                    )
+                case .describeInfo:
+                    messages.append(
+                        try .describeInfo(.decode(from: &buffer, context: context))
+                    )
+                case .rowHeader:
+                    messages.append(
+                        try .rowHeader(.decode(from: &buffer, context: context))
+                    )
+                case .rowData:
+                    messages.append(
+                        try .rowData(.decode(from: &buffer, context: context))
+                    )
+                    // Until we handled the current rowData on
+                    // OracleChannelHandler, we are performing a chunked
+                    // read on all upcoming data packets, because we are
+                    // "blind" and don't know what we might get until then.
+                    context.performingChunkedRead = true
+                case .bitVector:
+                    messages.append(
+                        try .bitVector(.decode(from: &buffer, context: context))
+                    )
+                case .warning:
+                    messages.append(
+                        try .warning(.decodeWarning(from: &buffer, context: context))
+                    )
+                case .serverSidePiggyback:
+                    messages.append(
+                        try .serverSidePiggyback(.decode(from: &buffer, context: context))
+                    )
+                case .lobData:
+                    messages.append(
+                        try .lobData(.decode(from: &buffer, context: context))
+                    )
+                case .flushOutBinds:
+                    messages.append(.flushOutBinds)
+                case .endOfRequest:
                     break readLoop
+                case nil:
+                    throw
+                        OraclePartialDecodingError
+                        .unknownMessageIDReceived(messageID: messageIDByte)
                 }
-            case .status:
-                messages.append(
-                    try .status(.decode(from: &buffer, context: context))
-                )
-                if !context.capabilities.supportsEndOfRequest {
-                    break readLoop
-                }
-            case .ioVector:
-                messages.append(
-                    try .ioVector(.decode(from: &buffer, context: context))
-                )
-            case .describeInfo:
-                messages.append(
-                    try .describeInfo(.decode(from: &buffer, context: context))
-                )
-            case .rowHeader:
-                messages.append(
-                    try .rowHeader(.decode(from: &buffer, context: context))
-                )
-            case .rowData:
-                messages.append(
-                    try .rowData(.decode(from: &buffer, context: context))
-                )
-                // Until we handled the current rowData on
-                // OracleChannelHandler, we are performing a chunked
-                // read on all upcoming data packets, because we are
-                // "blind" and don't know what we might get until then.
-                context.performingChunkedRead = true
-            case .bitVector:
-                messages.append(
-                    try .bitVector(.decode(from: &buffer, context: context))
-                )
-            case .warning:
-                messages.append(
-                    try .warning(.decodeWarning(from: &buffer, context: context))
-                )
-            case .serverSidePiggyback:
-                messages.append(
-                    try .serverSidePiggyback(.decode(from: &buffer, context: context))
-                )
-            case .lobData:
-                messages.append(
-                    try .lobData(.decode(from: &buffer, context: context))
-                )
-            case .flushOutBinds:
-                messages.append(.flushOutBinds)
-            case .endOfRequest:
-                break readLoop
-            case nil:
-                throw
-                    OraclePartialDecodingError
-                    .unknownMessageIDReceived(messageID: messageIDByte)
+            } catch is MissingDataDecodingError.Trigger {
+                throw MissingDataDecodingError(
+                    decodedMessages: messages, resetToReaderIndex: savePoint)
             }
         }
     }
@@ -250,6 +265,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".rowData(\(String(reflecting: data)))"
         case .queryParameter(let parameter):
             return ".queryParameter(\(String(reflecting: parameter)))"
+        case .lobParameter(let parameter):
+            return ".lobParameter(\(String(reflecting: parameter)))"
         case .warning(let warning):
             return ".warning(\(String(reflecting: warning))"
         case .chunk(let buffer):

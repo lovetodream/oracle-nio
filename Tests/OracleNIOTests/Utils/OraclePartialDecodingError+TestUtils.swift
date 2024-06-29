@@ -12,17 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+@testable import OracleNIO
 
-extension ByteBuffer {
-    mutating func readOSON() throws -> Any? {
-        guard let length = readUB4(), length > 0 else { return nil }
-        skipUB8()  // size (unused)
-        skipUB4()  // chunk size (unused)
-        let data = try self.throwingReadOracleSpecificLengthPrefixedSlice()
-        // lob locator (unused)
-        _ = try throwingReadOracleSpecificLengthPrefixedSlice()
-        var decoder = OSONDecoder()
-        return try decoder.decode(data)
+extension OraclePartialDecodingError: Equatable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.description == rhs.description
     }
 }

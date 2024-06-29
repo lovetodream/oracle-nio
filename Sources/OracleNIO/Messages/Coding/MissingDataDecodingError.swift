@@ -12,17 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+/// A fast path to request more data from the wire while decoding.
+///
+/// Throw ``MissingDataDecodingError/Trigger`` if you require more data,
+/// do not throw an instance of ``MissingDataDecodingError`` directly.
+struct MissingDataDecodingError: Error {
+    let decodedMessages: TinySequence<OracleBackendMessage>
+    let resetToReaderIndex: Int
 
-extension ByteBuffer {
-    mutating func readOSON() throws -> Any? {
-        guard let length = readUB4(), length > 0 else { return nil }
-        skipUB8()  // size (unused)
-        skipUB4()  // chunk size (unused)
-        let data = try self.throwingReadOracleSpecificLengthPrefixedSlice()
-        // lob locator (unused)
-        _ = try throwingReadOracleSpecificLengthPrefixedSlice()
-        var decoder = OSONDecoder()
-        return try decoder.decode(data)
-    }
+    struct Trigger: Error {}
 }

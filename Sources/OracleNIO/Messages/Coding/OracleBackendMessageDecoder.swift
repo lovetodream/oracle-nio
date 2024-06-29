@@ -152,12 +152,8 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
         packet.moveReaderIndex(to: Self.headerSize)
 
         if let partial, partial.readableBytes > 0 {
-            let skipSize =
-                if type == .data {
-                    MemoryLayout<UInt16>.size  // insert after flags
-                } else {
-                    0
-                }
+            // insert after flags if packet is data
+            let skipSize = type == .data ? MemoryLayout<UInt16>.size : 0
             let movable = packet.getSlice(
                 at: Self.headerSize + skipSize,
                 length: packet.readableBytes - skipSize

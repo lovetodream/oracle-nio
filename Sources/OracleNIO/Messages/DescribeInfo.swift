@@ -79,7 +79,7 @@ extension OracleColumn: OracleBackendMessage.PayloadDecodable {
         let oidByteCount = try buffer.throwingReadUB4()  // OID
         if oidByteCount > 0 {
             // oid, only relevant for intNamed
-            _ = try buffer.readOracleSpecificLengthPrefixedSlice()
+            _ = try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
         }
 
         buffer.skipUB2()  // version

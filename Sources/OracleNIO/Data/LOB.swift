@@ -214,7 +214,7 @@ extension LOB: OracleDecodable {
         case .clob, .blob:
             let size = try buffer.throwingReadInteger(as: UInt64.self)
             let chunkSize = try buffer.throwingReadInteger(as: UInt32.self)
-            let locator = try buffer.readOracleSpecificLengthPrefixedSlice()!
+            let locator = try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
             self.init(
                 size: size,
                 chunkSize: chunkSize,

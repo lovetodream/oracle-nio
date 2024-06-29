@@ -88,7 +88,7 @@ extension OracleBackendMessage {
                 var keyValue: ByteBuffer? = nil
                 if let bytesCount = buffer.readUB2(), bytesCount > 0 {  // key
                     keyValue =
-                        try buffer.readOracleSpecificLengthPrefixedSlice()
+                        try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
                 }
                 if let bytesCount = buffer.readUB2(), bytesCount > 0 {  // value
                     buffer.skipRawBytesChunked()

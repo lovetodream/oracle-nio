@@ -98,27 +98,31 @@ final class LOBTests: XCTIntegrationTest {
             "INSERT INTO test_simple_blob (id, content) VALUES (1, \(buffer))",
             logger: .oracleTest
         )
-        var queryOptions = StatementOptions()
-        queryOptions.fetchLOBs = true
-        let rows = try await connection.execute(
-            "SELECT id, content FROM test_simple_blob ORDER BY id",
-            options: queryOptions,
-            logger: .oracleTest
-        )
-        var index = 0
-        for try await (id, lob) in rows.decode((Int, LOB).self) {
-            index += 1
-            XCTAssertEqual(index, id)
-            var out = ByteBuffer()
-            for try await var chunk in lob.read(on: connection) {
-                out.writeBuffer(&chunk)
-            }
-            XCTAssertEqual(out, buffer)
-            XCTAssertEqual(
-                out.getString(at: 0, length: out.readableBytes),
-                buffer.getString(at: 0, length: buffer.readableBytes)
+        func fetchLOB(chunkSize: UInt64?) async throws {
+            var queryOptions = StatementOptions()
+            queryOptions.fetchLOBs = true
+            let rows = try await connection.execute(
+                "SELECT id, content FROM test_simple_blob ORDER BY id",
+                options: queryOptions,
+                logger: .oracleTest
             )
+            var index = 0
+            for try await (id, lob) in rows.decode((Int, LOB).self) {
+                index += 1
+                XCTAssertEqual(index, id)
+                var out = ByteBuffer()
+                for try await var chunk in lob.read(chunkSize: chunkSize, on: connection) {
+                    out.writeBuffer(&chunk)
+                }
+                XCTAssertEqual(out, buffer)
+                XCTAssertEqual(
+                    out.getString(at: 0, length: out.readableBytes),
+                    buffer.getString(at: 0, length: buffer.readableBytes)
+                )
+            }
         }
+        try await fetchLOB(chunkSize: nil)  // test with default chunk size
+        try await fetchLOB(chunkSize: 4294967295)  // test with huge chunk size
     }
 
     func testSimpleBinaryLOBConcurrently5Times() async throws {

@@ -506,7 +506,7 @@ private struct BindingsReader: Sequence {
         }
 
         mutating func next() -> ByteBuffer?? {
-            return try? self.buffer.readOracleSpecificLengthPrefixedSlice()
+            return self.buffer.readOracleSpecificLengthPrefixedSlice()
         }
     }
 

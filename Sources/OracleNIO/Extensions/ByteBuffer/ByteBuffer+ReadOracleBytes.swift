@@ -33,9 +33,7 @@ extension ByteBuffer {
                 guard let chunkLength = self.readUB4() else {
                     return .length(MemoryLayout<UInt8>.size)
                 }
-                guard chunkLength > 0 else {
-                    return .buffer(out)
-                }
+                guard chunkLength > 0 else { break }
                 guard var temp = self.readSlice(length: Int(chunkLength)) else {
                     return .length(Int(chunkLength))
                 }

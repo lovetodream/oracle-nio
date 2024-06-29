@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch
 import Logging
 import NIOCore
+import NIOPosix
 
 final class OracleTraceHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer

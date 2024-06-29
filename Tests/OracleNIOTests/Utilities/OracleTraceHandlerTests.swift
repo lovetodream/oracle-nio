@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 import NIOEmbedded
 import XCTest
 
@@ -32,31 +32,35 @@ final class OracleTraceHandlerTests: XCTestCase {
         let buffer = ByteBuffer(bytes: [
             0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
             0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
-            UInt8(ascii: "a")
+            UInt8(ascii: "a"),
         ])
         try await channel.writeInbound(buffer)
         do {
             let lines = lines.withLockedValue { $0 }
             XCTAssertEqual(lines.count, 1)
-            XCTAssertEqual(lines.first, """
-            Receiving packet [op 1] on socket 1
-            0000 : 00 01 02 03 04 05 06 07 |........|
-            0008 : 08 09 0A 0B 0C 0D 0E 0F |........|
-            0016 : 61                      |a       |
+            XCTAssertEqual(
+                lines.first,
+                """
+                Receiving packet [op 1] on socket 1
+                0000 : 00 01 02 03 04 05 06 07 |........|
+                0008 : 08 09 0A 0B 0C 0D 0E 0F |........|
+                0016 : 61                      |a       |
 
-            """)
+                """)
         }
         try await channel.writeOutbound(buffer)
         do {
             let lines = lines.withLockedValue { $0 }
             XCTAssertEqual(lines.count, 2)
-            XCTAssertEqual(lines.last, """
-            Sending packet [op 2] on socket 1
-            0000 : 00 01 02 03 04 05 06 07 |........|
-            0008 : 08 09 0A 0B 0C 0D 0E 0F |........|
-            0016 : 61                      |a       |
+            XCTAssertEqual(
+                lines.last,
+                """
+                Sending packet [op 2] on socket 1
+                0000 : 00 01 02 03 04 05 06 07 |........|
+                0008 : 08 09 0A 0B 0C 0D 0E 0F |........|
+                0016 : 61                      |a       |
 
-            """)
+                """)
         }
     }
 

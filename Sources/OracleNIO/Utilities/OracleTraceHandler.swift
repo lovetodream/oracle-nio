@@ -31,7 +31,7 @@ final class OracleTraceHandler: ChannelDuplexHandler {
             self.shouldLog = shouldLog
         } else {
             let envValue =
-            getenv("ORANIO_TRACE_PACKETS")
+                getenv("ORANIO_TRACE_PACKETS")
                 .flatMap { String(cString: $0) }
                 .flatMap(Int.init) ?? 0
             self.shouldLog = envValue != 0
@@ -45,10 +45,10 @@ final class OracleTraceHandler: ChannelDuplexHandler {
             let buffer = self.unwrapInboundIn(data)
             self.packetCount += 1
             self.logger.info(
-                    """
-                    Receiving packet [op \(self.packetCount)] on socket \(self.connectionID)
-                    \(buffer.oracleHexDump())
-                    """
+                """
+                Receiving packet [op \(self.packetCount)] on socket \(self.connectionID)
+                \(buffer.oracleHexDump())
+                """
             )
         }
         context.fireChannelRead(data)
@@ -63,12 +63,12 @@ final class OracleTraceHandler: ChannelDuplexHandler {
             let buffer = self.unwrapOutboundIn(data)
             self.packetCount += 1
             self.logger.info(
-                    """
-                    Sending packet [op \(self.packetCount)] on socket \(self.connectionID)
-                    \(buffer.oracleHexDump())
-                    """
+                """
+                Sending packet [op \(self.packetCount)] on socket \(self.connectionID)
+                \(buffer.oracleHexDump())
+                """
             )
         }
         context.write(data, promise: promise)
     }
-    }
+}

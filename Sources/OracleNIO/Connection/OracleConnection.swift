@@ -198,20 +198,32 @@ public final class OracleConnection: Sendable {
         id connectionID: ID,
         logger: Logger
     ) -> EventLoopFuture<OracleConnection> {
-        var logger = logger
-        logger[oracleMetadataKey: .connectionID] = "\(connectionID)"
+        var mutableLogger = logger
+        mutableLogger[oracleMetadataKey: .connectionID] = "\(connectionID)"
+        let logger = mutableLogger
 
-        return eventLoop.flatSubmit { [logger] in
-            makeBootstrap(on: eventLoop, configuration: configuration)
-                .connect(host: configuration.host, port: configuration.port)
-                .flatMap { channel -> EventLoopFuture<OracleConnection> in
-                    return OracleConnection.start(
-                        configuration: configuration,
-                        connectionID: connectionID,
-                        channel: channel,
-                        logger: logger
-                    )
+        return eventLoop.flatSubmit {
+            let connectFuture: EventLoopFuture<Channel>
+
+            switch configuration.endpointInfo {
+            case .configureChannel(let channel):
+                guard channel.isActive else {
+                    return eventLoop.makeFailedFuture(OracleSQLError.connectionError(underlying: ChannelError.alreadyClosed))
                 }
+                connectFuture = eventLoop.makeSucceededFuture(channel)
+            case .connectTCP(let host, let port):
+                connectFuture = makeBootstrap(on: eventLoop, configuration: configuration)
+                    .connect(host: host, port: port)
+            }
+
+            return connectFuture.flatMap { channel -> EventLoopFuture<OracleConnection> in
+                return OracleConnection.start(
+                    configuration: configuration,
+                    connectionID: connectionID,
+                    channel: channel,
+                    logger: logger
+                )
+            }
         }
     }
 
@@ -293,7 +305,7 @@ public final class OracleConnection: Sendable {
     }
 
     /// Closes the connection to the database server.
-    private func close() -> EventLoopFuture<Void> {
+    private func _close() -> EventLoopFuture<Void> {
         guard !self.isClosed else {
             return self.eventLoop.makeSucceededVoidFuture()
         }
@@ -303,21 +315,21 @@ public final class OracleConnection: Sendable {
     }
 
     /// Sends a ping to the database server.
-    private func ping() -> EventLoopFuture<Void> {
+    private func _ping() -> EventLoopFuture<Void> {
         let promise = self.eventLoop.makePromise(of: Void.self)
         self.channel.write(OracleTask.ping(promise), promise: nil)
         return promise.futureResult
     }
 
     /// Sends a commit to the database server.
-    private func commit() -> EventLoopFuture<Void> {
+    private func _commit() -> EventLoopFuture<Void> {
         let promise = self.eventLoop.makePromise(of: Void.self)
         self.channel.write(OracleTask.commit(promise), promise: nil)
         return promise.futureResult
     }
 
     /// Sends a rollback to the database server.
-    private func rollback() -> EventLoopFuture<Void> {
+    private func _rollback() -> EventLoopFuture<Void> {
         let promise = self.eventLoop.makePromise(of: Void.self)
         self.channel.write(OracleTask.rollback(promise), promise: nil)
         return promise.futureResult
@@ -393,22 +405,22 @@ extension OracleConnection {
 
     /// Closes the connection to the database server.
     public func close() async throws {
-        try await self.close().get()
+        try await self._close().get()
     }
 
     /// Sends a ping to the database server.
     public func ping() async throws {
-        try await self.ping().get()
+        try await self._ping().get()
     }
 
     /// Sends a commit to the database server.
     public func commit() async throws {
-        try await self.commit().get()
+        try await self._commit().get()
     }
 
     /// Sends a rollback to the database server.
     public func rollback() async throws {
-        try await self.rollback().get()
+        try await self._rollback().get()
     }
 
     /// Run a statement on the Oracle server the connection is connected to.

@@ -19,7 +19,16 @@ import NIOCore
 struct OracleBackendMessageEncoder: MessageToByteEncoder {
     typealias OutboundIn = OracleBackendMessageDecoder.Container
 
-    var protocolVersion: Int
+    final class ProtocolVersion: ExpressibleByIntegerLiteral {
+        var value: Int
+
+        init(_ value: Int) { self.value = value }
+
+        init(integerLiteral value: Int) {
+            self.value = value
+        }
+    }
+    var protocolVersion: ProtocolVersion
 
     func encode(data container: OutboundIn, out: inout ByteBuffer) {
         for message in container.messages {
@@ -29,6 +38,20 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
                     id: .accept,
                     flags: container.flags,
                     payload: accept,
+                    out: &out
+                )
+            case .parameter(let parameter):
+                self.encode(
+                    id: .data,
+                    flags: container.flags,
+                    payload: parameter,
+                    out: &out
+                )
+            case .status(let status):
+                self.encode(
+                    id: .data,
+                    flags: container.flags,
+                    payload: status,
                     out: &out
                 )
             default:
@@ -45,7 +68,7 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
     ) {
         let startIndex = out.writerIndex
         // length placeholder
-        if self.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+        if self.protocolVersion.value >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             out.writeInteger(0, as: UInt32.self)
         } else {
             out.writeInteger(0, as: UInt16.self)
@@ -55,9 +78,16 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
         out.writeInteger(id.rawValue, as: UInt8.self)
         out.writeInteger(flags, as: UInt8.self)
         out.writeInteger(0, as: UInt16.self)  // remaining header part
-        payload.encode(into: &out)
+        switch id {
+        case .data:
+            // data flags
+            out.writeInteger(Constants.TNS_DATA_FLAGS_END_OF_REQUEST)
+            payload.encode(into: &out)
+        default:
+            payload.encode(into: &out)
+        }
 
-        if self.protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+        if self.protocolVersion.value >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             out.setInteger(UInt32(out.readableBytes - startIndex), at: startIndex, as: UInt32.self)
         } else {
             out.setInteger(UInt16(out.readableBytes - startIndex), at: startIndex, as: UInt16.self)
@@ -79,6 +109,30 @@ extension OracleBackendMessage.Accept: OracleMessagePayloadEncodable {
                 buffer.writeInteger(0, as: UInt32.self)
             }
         }
+    }
+}
+
+extension OracleBackendMessage.Parameter: OracleMessagePayloadEncodable {
+    func encode(into buffer: inout ByteBuffer) {
+        buffer.writeInteger(OracleBackendMessage.MessageID.parameter.rawValue)
+        buffer.writeUB2(UInt16(self.elements.count))
+        for element in self.elements {
+            buffer.writeUB4(0)
+            element.key._encodeRaw(into: &buffer, context: .default)
+            buffer.writeUB4(UInt32(element.value.value.count))
+            if !element.value.value.isEmpty {
+                element.value.value._encodeRaw(into: &buffer, context: .default)
+            }
+            buffer.writeUB4(element.value.flags ?? 0)
+        }
+    }
+}
+
+extension OracleBackendMessage.Status: OracleMessagePayloadEncodable {
+    func encode(into buffer: inout ByteBuffer) {
+        buffer.writeInteger(OracleBackendMessage.MessageID.status.rawValue)
+        buffer.writeUB4(self.callStatus)
+        buffer.writeUB2(self.endToEndSequenceNumber ?? 0)
     }
 }
 

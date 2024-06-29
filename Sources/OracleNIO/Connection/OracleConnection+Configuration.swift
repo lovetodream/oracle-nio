@@ -104,9 +104,43 @@ extension OracleConnection {
         public var options: Options = .init()
 
         /// The name or IP address of the machine hosting the database or the database listener.
-        public var host: String
+        public var host: String {
+            get {
+                switch self.endpointInfo {
+                case .configureChannel(let channel):
+                    channel.localAddress?.ipAddress ?? ""
+                case .connectTCP(let host, _):
+                    host
+                }
+            }
+            set {
+                switch self.endpointInfo {
+                case .configureChannel:
+                    break  // not part of public api
+                case .connectTCP(_, let port):
+                    self.endpointInfo = .connectTCP(host: newValue, port: port)
+                }
+            }
+        }
         /// The port number on which the database listener is listening.
-        public var port: Int
+        public var port: Int {
+            get {
+                switch self.endpointInfo {
+                case .configureChannel(let channel):
+                    channel.localAddress?.port ?? 1521
+                case .connectTCP(_, let port):
+                    port
+                }
+            }
+            set {
+                switch self.endpointInfo {
+                case .configureChannel:
+                    break  // not part of public api
+                case .connectTCP(let host, _):
+                    self.endpointInfo = .connectTCP(host: host, port: newValue)
+                }
+            }
+        }
 
         public var tls: TLS
         public var serverNameForTLS: String? {
@@ -253,8 +287,10 @@ extension OracleConnection {
             password: String,
             tls: TLS = .disable
         ) {
-            self.host = host
-            self.port = port
+            self.endpointInfo = .connectTCP(
+                host: host,
+                port: port
+            )
             self.service = service
             self.authenticationMethod = {
                 .init(username: username, password: password)
@@ -270,19 +306,38 @@ extension OracleConnection {
                 @Sendable @autoclosure @escaping () -> OracleAuthenticationMethod,
             tls: TLS = .disable
         ) {
-            self.host = host
-            self.port = port
+            self.endpointInfo = .connectTCP(
+                host: host,
+                port: port
+            )
             self.service = service
             self.authenticationMethod = authenticationMethod
             self.tls = tls
+        }
+
+        init(
+            establishedChannel channel: Channel,
+            service: OracleServiceMethod,
+            username: String,
+            password: String
+        ) {
+            self.endpointInfo = .configureChannel(channel)
+            self.service = service
+            self.authenticationMethod = {
+                .init(username: username, password: password)
+            }
+            self.tls = .disable
         }
 
 
         // MARK: - Implementation details
 
         enum EndpointInfo {
+            case configureChannel(Channel)
             case connectTCP(host: String, port: Int)
         }
+
+        var endpointInfo: EndpointInfo
 
         internal func getDescription() -> Description {
             let address = Address(

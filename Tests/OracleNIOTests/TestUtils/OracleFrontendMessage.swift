@@ -12,15 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import OracleNIO
-
-#if compiler(>=6.0)
-    extension OraclePartialDecodingError: @retroactive Equatable {}
-#else
-    extension OraclePartialDecodingError: Equatable {}
-#endif
-extension OraclePartialDecodingError {
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.description == rhs.description
-    }
+enum OracleFrontendMessage {
+    case connect
+    case fastAuth
+    case authPhaseTwo
+    case logoff
+    case close
 }

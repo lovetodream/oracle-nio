@@ -89,6 +89,13 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
         case (.succeedRollback(let lhs), .succeedRollback(let rhs)):
             return lhs.futureResult === rhs.futureResult
 
+        case (.sendLOBOperation(let lhs), .sendLOBOperation(let rhs)):
+            return lhs === rhs
+        case (.succeedLOBOperation(let lhs), .succeedLOBOperation(let rhs)):
+            return lhs === rhs
+        case (.failLOBOperation(let lhsPromise, let lhsError), .failLOBOperation(let rhsPromise, let rhsError)):
+            return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
+
         case (.sendExecute(let lhsContext, let lhsInfo), .sendExecute(let rhsContext, let rhsInfo)):
             return lhsContext == rhsContext && lhsInfo == rhsInfo
         case (

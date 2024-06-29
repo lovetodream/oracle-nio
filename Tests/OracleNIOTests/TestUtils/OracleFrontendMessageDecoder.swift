@@ -36,11 +36,11 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
             return nil
         }
 
-        let packetFlags =
+        let _ =
             buffer.getInteger(
                 at: startReaderIndex + MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
                 as: UInt8.self
-            ) ?? 0
+            ) ?? 0  // packet flags
 
         guard
             let typeByte = buffer.getInteger(

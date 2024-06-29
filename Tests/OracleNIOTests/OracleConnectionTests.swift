@@ -22,12 +22,82 @@ import XCTest
 final class OracleConnectionTests: XCTestCase {
 
     func testWeDoNotCrashOnUnexpectedChannelEvents() async throws {
-        let (connection, channel) = try await self.makeTestConnectionWithAsyncTestingChannel()
+        let (_, channel) = try await self.makeTestConnectionWithAsyncTestingChannel()
 
         enum MyEvent {
             case pleaseDoNotCrash
         }
         channel.pipeline.fireUserInboundEventTriggered(MyEvent.pleaseDoNotCrash)
+    }
+
+    func testConnectionOnClosedChannelFails() async throws {
+        let eventLoop = NIOAsyncTestingEventLoop()
+        let channel = NIOAsyncTestingChannel(loop: eventLoop)
+        try await channel.connect(to: .makeAddressResolvingHost("localhost", port: 1521))
+        try await channel.close()
+
+        let configuration = OracleConnection.Configuration(
+            establishedChannel: channel,
+            service: .serviceName("oracle"),
+            username: "username",
+            password: "password"
+        )
+
+        var thrown: OracleSQLError?
+        do {
+            _ = try await OracleConnection.connect(
+                on: eventLoop,
+                configuration: configuration,
+                id: 1,
+                logger: Logger(label: "OracleConnectionTests")
+            )
+        } catch let error as OracleSQLError {
+            thrown = error
+        }
+        XCTAssertEqual(
+            thrown, OracleSQLError.connectionError(underlying: ChannelError.alreadyClosed))
+    }
+
+    func testConfigurationChangesAreReflected() {
+        var configuration = OracleConnection.Configuration(
+            host: "localhost",
+            port: 1521,
+            service: .serviceName("oracle"),
+            username: "username",
+            password: "password"
+        )
+        XCTAssertEqual(configuration.host, "localhost")
+        XCTAssertEqual(configuration.port, 1521)
+        XCTAssertEqual(
+            configuration.endpointInfo,
+            .connectTCP(host: "localhost", port: 1521)
+        )
+        configuration.host = "127.0.0.1"
+        configuration.port = 1522
+        XCTAssertEqual(configuration.host, "127.0.0.1")
+        XCTAssertEqual(configuration.port, 1522)
+        XCTAssertEqual(
+            configuration.endpointInfo,
+            .connectTCP(host: "127.0.0.1", port: 1522)
+        )
+
+        do {  // established channel host and port are not mutable
+            let channel = NIOAsyncTestingChannel()
+            var configuration = OracleConnection.Configuration(
+                establishedChannel: channel,
+                service: .serviceName("oracle"),
+                username: "username",
+                password: "password"
+            )
+            XCTAssertEqual(configuration.host, "")
+            XCTAssertEqual(configuration.port, 1521)
+            XCTAssertEqual(configuration.endpointInfo, .configureChannel(channel))
+            configuration.host = "127.0.0.1"
+            configuration.port = 1522
+            XCTAssertEqual(configuration.host, "")
+            XCTAssertEqual(configuration.port, 1521)
+            XCTAssertEqual(configuration.endpointInfo, .configureChannel(channel))
+        }
     }
 
 
@@ -129,4 +199,23 @@ extension Capabilities {
         caps.supportsFastAuth = true
         return caps
     }
+}
+
+#if compiler(>=6.0)
+    extension OracleConnection.Configuration.EndpointInfo: @retroactive Equatable {}
+#else
+    extension OracleConnection.Configuration.EndpointInfo: Equatable {}
+#endif
+extension OracleConnection.Configuration.EndpointInfo {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+        case (.configureChannel(let lhs), .configureChannel(let rhs)):
+            return lhs === rhs
+        case (.connectTCP(let lhsHost, let lhsPort), .connectTCP(let rhsHost, let rhsPort)):
+            return lhsHost == rhsHost && lhsPort == rhsPort
+        default:
+            return false
+        }
+    }
+
 }

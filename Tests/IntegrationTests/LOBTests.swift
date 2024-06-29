@@ -122,7 +122,7 @@ final class LOBTests: XCTIntegrationTest {
             }
         }
         try await fetchLOB(chunkSize: nil)  // test with default chunk size
-        try await fetchLOB(chunkSize: 4294967295)  // test with huge chunk size
+        try await fetchLOB(chunkSize: 4_294_967_295)  // test with huge chunk size
     }
 
     func testSimpleBinaryLOBConcurrently5Times() async throws {

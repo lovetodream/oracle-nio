@@ -28,19 +28,21 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
         }
 
         let startReaderIndex = buffer.readerIndex
-        let length = buffer
+        let length =
+            buffer
             .getInteger(at: startReaderIndex, as: UInt16.self) ?? 0
 
         guard buffer.readableBytes >= length else {
             return nil
         }
 
-        let packetFlags = buffer.getInteger(
-            at: startReaderIndex + MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
-            as: UInt8.self
-        ) ?? 0
+        let packetFlags =
+            buffer.getInteger(
+                at: startReaderIndex + MemoryLayout<UInt32>.size + MemoryLayout<UInt8>.size,
+                as: UInt8.self
+            ) ?? 0
 
-        guard 
+        guard
             let typeByte = buffer.getInteger(
                 at: startReaderIndex + MemoryLayout<UInt32>.size,
                 as: UInt8.self
@@ -86,14 +88,18 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
         }
     }
 
-    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> OracleFrontendMessage? {
+    mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws
+        -> OracleFrontendMessage?
+    {
         try self.decode(buffer: &buffer)
     }
 }
 
 extension OracleFrontendMessage {
 
-    static func decode(from buffer: inout ByteBuffer, for messageID: OracleFrontendMessageID) throws -> OracleFrontendMessage {
+    static func decode(from buffer: inout ByteBuffer, for messageID: OracleFrontendMessageID) throws
+        -> OracleFrontendMessage
+    {
         switch messageID {
         default:
             preconditionFailure("TODO: Unimplemented")

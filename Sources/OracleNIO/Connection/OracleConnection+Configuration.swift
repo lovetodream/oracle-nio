@@ -307,7 +307,7 @@ extension OracleConnection {
             tls: TLS = .disable
         ) {
             self.endpointInfo = .connectTCP(
-                host: host, 
+                host: host,
                 port: port
             )
             self.service = service

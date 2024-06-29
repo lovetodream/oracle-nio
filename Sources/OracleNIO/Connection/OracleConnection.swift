@@ -208,7 +208,11 @@ public final class OracleConnection: Sendable {
             switch configuration.endpointInfo {
             case .configureChannel(let channel):
                 guard channel.isActive else {
-                    return eventLoop.makeFailedFuture(OracleSQLError.connectionError(underlying: ChannelError.alreadyClosed))
+                    return eventLoop.makeFailedFuture(
+                        OracleSQLError.connectionError(
+                            underlying: ChannelError.alreadyClosed
+                        )
+                    )
                 }
                 connectFuture = eventLoop.makeSucceededFuture(channel)
             case .connectTCP(let host, let port):

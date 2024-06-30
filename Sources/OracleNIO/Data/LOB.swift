@@ -252,6 +252,71 @@ extension LOB {
         }
     }
 
+    /// Open the LOB for multiple ``write(_:at:on:)`` for improved performance.
+    ///
+    /// If this is not called before writing, every write operation opens and closes the LOB internally.
+    ///
+    /// Call ``close(on:)`` after you are done writing to the LOB.
+    ///
+    /// - Parameter connection: The connection used to open the LOB.
+    ///                         This has to be the same one the LOB reference was created on.
+    public func open(on connection: OracleConnection) async throws {
+        let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
+        connection.channel.write(
+            OracleTask.lobOperation(
+                .init(
+                    sourceLOB: self,
+                    sourceOffset: 0,
+                    destinationLOB: nil,
+                    destinationOffset: 0,
+                    operation: .open,
+                    sendAmount: true,
+                    amount: Constants.TNS_LOB_OPEN_READ_WRITE,
+                    promise: promise
+                )), promise: nil)
+        _ = try await promise.futureResult.get()
+    }
+    /// Checks if the LOB is currently open for ``write(_:at:on:)`` operations.
+    ///
+    /// - Parameter connection: The connection used to check the status of the LOB on.
+    ///                         This has to be the same one the LOB reference was created on.
+    public func isOpen(on connection: OracleConnection) async throws -> Bool {
+        let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
+        let context = LOBOperationContext(
+            sourceLOB: self,
+            sourceOffset: 0,
+            destinationLOB: nil,
+            destinationOffset: 0,
+            operation: .isOpen,
+            sendAmount: false,
+            amount: 0,
+            promise: promise
+        )
+        connection.channel.write(OracleTask.lobOperation(context), promise: nil)
+        _ = try await promise.futureResult.get()
+        return context.boolFlag ?? false
+    }
+    /// Closes the LOB if it is currently open for ``write(_:at:on:)`` operations.
+    ///
+    /// - Parameter connection: The connection used to close the LOB.
+    ///                         This has to be the same one the LOB reference was created on.
+    public func close(on connection: OracleConnection) async throws {
+        let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
+        connection.channel.write(
+            OracleTask.lobOperation(
+                .init(
+                    sourceLOB: self,
+                    sourceOffset: 0,
+                    destinationLOB: nil,
+                    destinationOffset: 0,
+                    operation: .close,
+                    sendAmount: false,
+                    amount: 0,
+                    promise: promise
+                )), promise: nil)
+        _ = try await promise.futureResult.get()
+    }
+
     /// Write data to the LOB starting on the specified offset.
     /// - Parameters:
     ///   - buffer: The chunk of data which should be written to the LOB.

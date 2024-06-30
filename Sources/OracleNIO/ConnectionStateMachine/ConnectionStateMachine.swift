@@ -825,9 +825,10 @@ struct ConnectionStateMachine {
     mutating func lobParameterReceived(parameter: OracleBackendMessage.LOBParameter)
         -> ConnectionAction
     {
-        guard case .lobOperation = self.state else {
+        guard case .lobOperation(let context) = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
+        context.boolFlag = parameter.boolFlag
         return .wait  // waiting for error
     }
 

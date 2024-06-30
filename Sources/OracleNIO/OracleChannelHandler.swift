@@ -514,10 +514,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             switch lobContext.operation {
             case .read:
                 lobContext.promise.succeed(lobContext.data)
-            case .write, .trim:
+            case .open, .isOpen, .close, .write, .trim:
                 lobContext.promise.succeed(nil)
-            case .getLength, .getChunkSize, .createTemp, .freeTemp, .open, .close,
-                .isOpen, .array:
+            case .getLength, .getChunkSize, .createTemp, .freeTemp, .array:
                 fatalError("not yet supported")
             }
             self.run(self.state.readyForStatementReceived(), with: context)

@@ -159,7 +159,7 @@ enum Constants {
     static let TNS_LOB_LOCATOR_FLAGS_VAR_LENGTH_CHARSET = 0x80
 
     // MARK: Other LOB constants
-    static let TNS_LOB_OPEN_READ_WRITE = 2
+    static let TNS_LOB_OPEN_READ_WRITE: UInt64 = 2
     static let TNS_LOB_PREFETCH_FLAG: UInt32 = 0x2000000
 
     // MARK: Base JSON constants

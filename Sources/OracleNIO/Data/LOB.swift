@@ -103,18 +103,6 @@ public final class LOB: Sendable {
         self.oracleType = oracleType
     }
 
-    func encoding() -> String {
-        let locator = self.locator.withLockedValue { $0 }
-        if oracleType.csfrm == Constants.TNS_CS_NCHAR
-            || (locator.count >= Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3
-                && (locator[Constants.TNS_LOB_LOCATOR_OFFSET_FLAG_3]
-                    & Constants.TNS_LOB_LOCATOR_VAR_LENGTH_CHARSET) != 0)
-        {
-            return Constants.TNS_ENCODING_UTF16
-        }
-        return Constants.TNS_ENCODING_UTF8
-    }
-
     func _read(
         offset: UInt64,
         amount: UInt64,
@@ -453,17 +441,17 @@ extension LOB: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        preconditionFailure("This should not be called")
+        let locator = self.locator.withLockedValue { $0 }
+        let length = locator.count
+        buffer.writeUB4(UInt32(length))
+        ByteBuffer(bytes: locator)._encodeRaw(into: &buffer, context: context)
     }
 
     public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>
     ) {
-        let locator = self.locator.withLockedValue { $0 }
-        let length = locator.count
-        buffer.writeUB4(UInt32(length))
-        ByteBuffer(bytes: locator)._encodeRaw(into: &buffer, context: context)
+        self.encode(into: &buffer, context: context)
     }
 }
 

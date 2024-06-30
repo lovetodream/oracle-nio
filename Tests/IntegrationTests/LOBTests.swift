@@ -96,6 +96,7 @@ final class LOBTests: XCTIntegrationTest {
             var index = 0
             for try await (id, lob) in rows.decode((Int, LOB).self) {
                 XCTAssertEqual(lob.estimatedSize, buffer.readableBytes)
+                XCTAssertGreaterThan(lob.estimatedChunkSize, 0)
                 index += 1
                 XCTAssertEqual(index, id)
                 var out = ByteBuffer()
@@ -173,10 +174,27 @@ final class LOBTests: XCTIntegrationTest {
         let lob = try await LOB.create(.blob, on: connection)
         XCTAssertEqual(lob.estimatedChunkSize, 8060)  // the default
         let chunkSize = try await lob.chunkSize(on: connection)
+        let buffer = ByteBuffer(bytes: [0x1, 0x2, 0x3, 0x4])
+        try await lob.write(buffer, on: connection)
+        try await connection.execute(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, \(lob))"
+        )
         XCTAssertGreaterThan(chunkSize, 0)
         try await lob.free(on: connection)
-        // trigger another round trip to actually free the lob
-        try await connection.execute("SELECT 1 FROM dual")
+        let optionalBuffer = try await connection.execute(
+            "SELECT content FROM test_simple_blob WHERE id = 1"
+        ).collect().first?.decode(ByteBuffer.self)
+        XCTAssertEqual(buffer, optionalBuffer)
+    }
+
+    func testCreateLOBFromUnsupportedDataType() async throws {
+        var thrown: OracleSQLError?
+        do {
+            _ = try await LOB.create(.varchar, on: connection)
+        } catch let error as OracleSQLError {
+            thrown = error
+        }
+        XCTAssertEqual(thrown?.code, OracleSQLError.Code.unsupportedDataType)
     }
 
     func testTrimLOB() async throws {

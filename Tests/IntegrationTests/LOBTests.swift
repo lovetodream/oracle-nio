@@ -135,6 +135,29 @@ final class LOBTests: XCTIntegrationTest {
         try await validateLOB(expected: buffer, on: connection)
     }
 
+    func testTrimLOB() async throws {
+        let data = try Data(contentsOf: fileURL)
+        let buffer = ByteBuffer(data: data)
+
+        try await connection.execute(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, \(buffer))",
+            logger: .oracleTest
+        )
+        try await validateLOB(expected: buffer, on: connection)
+
+        let optionalLOB = try await connection.execute(
+            "SELECT content FROM test_simple_blob WHERE id = 1",
+            options: .init(fetchLOBs: true)
+        ).collect().first?.decode(LOB.self)
+        let lob = try XCTUnwrap(optionalLOB)
+
+        // shrink to half size
+        try await lob.trim(to: UInt64(buffer.readableBytes / 2), on: connection)
+
+        let trimmed = buffer.getSlice(at: 0, length: buffer.readableBytes / 2)!
+        try await validateLOB(expected: trimmed, on: connection)
+    }
+
     func testSimpleBinaryLOBConcurrently5Times() async throws {
         let data = try Data(contentsOf: fileURL)
         let buffer = ByteBuffer(data: data)

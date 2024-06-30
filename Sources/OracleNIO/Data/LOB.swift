@@ -280,6 +280,30 @@ extension LOB {
         _ = try await promise.futureResult.get()
     }
 
+    /// Trims the LOB to the provided size.
+    /// - Parameters:
+    ///   - newSize: Trims the LOB to this size.
+    ///   - connection: The connection used to trim the LOB.
+    ///                 This has to be the same one the LOB reference was created on.
+    public func trim(
+        to newSize: UInt64,
+        on connection: OracleConnection
+    ) async throws {
+        let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
+        connection.channel.write(
+            OracleTask.lobOperation(
+                .init(
+                    sourceLOB: self,
+                    sourceOffset: 0,
+                    destinationLOB: nil,
+                    destinationOffset: 0,
+                    operation: .trim,
+                    sendAmount: true,
+                    amount: newSize,
+                    promise: promise
+                )), promise: nil)
+        _ = try await promise.futureResult.get()
+    }
 }
 
 extension LOB: OracleEncodable {

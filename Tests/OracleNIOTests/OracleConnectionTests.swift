@@ -174,6 +174,7 @@ final class OracleConnectionTests: XCTestCase {
             ]))
 
         let connection = try await connectionPromise
+        XCTAssertEqual("\(connection.serverVersion)", "23.4.0.24.5")
 
         self.addTeardownBlock {
             async let closePromise: Void = connection.close()

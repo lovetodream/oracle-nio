@@ -53,6 +53,7 @@ final class LOBOperationContext {
     let amount: UInt64
     let promise: EventLoopPromise<ByteBuffer?>
 
+    var fetchedAmount: Int64?
     var boolFlag: Bool?
     var data: ByteBuffer?
 

@@ -149,19 +149,19 @@ extension OracleBackendMessage {
                     $0 = newLocator
                 }
             }
+            let amount: Int64?
             if context.lobContext?.operation == .createTemp {
                 buffer.skipUB2()  // skip character set
-            }
-            let amount: Int64?
-            if context.lobContext?.sendAmount == true {
+                // skip trailing flags, amount
+                buffer.moveReaderIndex(forwardBy: 3)
+                amount = nil
+            } else if context.lobContext?.sendAmount == true {
                 amount = try buffer.throwingReadSB8()
             } else {
                 amount = nil
             }
             let boolFlag: Bool?
-            if context.lobContext?.operation == .createTemp
-                || context.lobContext?.operation == .isOpen
-            {
+            if context.lobContext?.operation == .isOpen {
                 // flag
                 boolFlag = try buffer.throwingReadInteger(as: UInt8.self) > 0
             } else {

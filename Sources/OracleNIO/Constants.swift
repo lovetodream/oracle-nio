@@ -398,7 +398,7 @@ enum Constants {
     static let TNS_MAX_ROWID_LENGTH = 18
     static let TNS_DURATION_MID: UInt32 = 0x8000_0000
     static let TNS_DURATION_OFFSET: UInt8 = 60
-    static let TNS_DURATION_SESSION: Int64 = 10
+    static let TNS_DURATION_SESSION: UInt64 = 10
     @usableFromInline
     static let TNS_MIN_LONG_LENGTH = 0x8000
     static let TNS_MAX_LONG_LENGTH: UInt32 = 0x7fff_ffff

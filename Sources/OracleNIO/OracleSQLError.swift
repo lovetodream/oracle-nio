@@ -35,6 +35,7 @@ public struct OracleSQLError: Sendable, Error {
             case serverVersionNotSupported
             case sidNotSupported
             case missingParameter
+            case unsupportedDataType
         }
 
         internal var base: Base
@@ -61,6 +62,7 @@ public struct OracleSQLError: Sendable, Error {
             Self(.serverVersionNotSupported)
         public static let sidNotSupported = Self(.sidNotSupported)
         public static let missingParameter = Self(.missingParameter)
+        public static let unsupportedDataType = Self(.unsupportedDataType)
 
         public var description: String {
             switch self.base {
@@ -92,6 +94,8 @@ public struct OracleSQLError: Sendable, Error {
                 return "sidNotSupported"
             case .missingParameter:
                 return "missingParameter"
+            case .unsupportedDataType:
+                return "unsupportedDataType"
             }
         }
     }
@@ -303,6 +307,8 @@ public struct OracleSQLError: Sendable, Error {
         )
         return error
     }
+
+    static let unsupportedDataType = OracleSQLError(code: .unsupportedDataType)
 
 }
 

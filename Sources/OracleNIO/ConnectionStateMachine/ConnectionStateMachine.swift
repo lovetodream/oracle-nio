@@ -828,6 +828,7 @@ struct ConnectionStateMachine {
         guard case .lobOperation(let context) = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
+        context.fetchedAmount = parameter.amount
         context.boolFlag = parameter.boolFlag
         return .wait  // waiting for error
     }
@@ -1039,7 +1040,8 @@ extension ConnectionStateMachine {
             .unexpectedBackendMessage,
             .serverVersionNotSupported,
             .sidNotSupported,
-            .uncleanShutdown:
+            .uncleanShutdown,
+            .unsupportedDataType:
             return true
         case .statementCancelled, .nationalCharsetNotSupported:
             return false

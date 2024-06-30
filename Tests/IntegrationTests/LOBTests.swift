@@ -85,7 +85,7 @@ final class LOBTests: XCTIntegrationTest {
             "INSERT INTO test_simple_blob (id, content) VALUES (1, \(buffer))",
             logger: .oracleTest
         )
-        func fetchLOB(chunkSize: UInt64?) async throws {
+        func fetchLOB(chunkSize: Int?) async throws {
             var queryOptions = StatementOptions()
             queryOptions.fetchLOBs = true
             let rows = try await connection.execute(
@@ -95,6 +95,8 @@ final class LOBTests: XCTIntegrationTest {
             )
             var index = 0
             for try await (id, lob) in rows.decode((Int, LOB).self) {
+                XCTAssertEqual(lob.estimatedSize, buffer.readableBytes)
+                XCTAssertGreaterThan(lob.estimatedChunkSize, 0)
                 index += 1
                 XCTAssertEqual(index, id)
                 var out = ByteBuffer()
@@ -121,7 +123,7 @@ final class LOBTests: XCTIntegrationTest {
             options: .init(fetchLOBs: true)
         )
         let lob = try lobRef.decode(of: LOB.self)
-        var offset: UInt64 = 1
+        var offset = 1
         let chunkSize = 65536
         while buffer.readableBytes > 0,
             let slice =
@@ -129,8 +131,12 @@ final class LOBTests: XCTIntegrationTest {
                 .readSlice(length: min(chunkSize, buffer.readableBytes))
         {
             try await lob.write(slice, at: offset, on: connection)
-            offset += UInt64(slice.readableBytes)
+            let newSize = try await lob.size(on: connection)
+            offset += slice.readableBytes
+            XCTAssertEqual(newSize, offset - 1)
         }
+        // fast size does not update
+        XCTAssertEqual(lob.estimatedSize, 0)
         buffer.moveReaderIndex(to: 0)
         try await validateLOB(expected: buffer, on: connection)
     }
@@ -144,7 +150,7 @@ final class LOBTests: XCTIntegrationTest {
             options: .init(fetchLOBs: true)
         )
         let lob = try lobRef.decode(of: LOB.self)
-        var offset: UInt64 = 1
+        var offset = 1
         let chunkSize = 65536
         try await lob.open(on: connection)
         while buffer.readableBytes > 0,
@@ -153,7 +159,7 @@ final class LOBTests: XCTIntegrationTest {
                 .readSlice(length: min(chunkSize, buffer.readableBytes))
         {
             try await lob.write(slice, at: offset, on: connection)
-            offset += UInt64(slice.readableBytes)
+            offset += slice.readableBytes
         }
         let isOpen = try await lob.isOpen(on: connection)
         XCTAssertTrue(isOpen)
@@ -162,6 +168,33 @@ final class LOBTests: XCTIntegrationTest {
         }
         buffer.moveReaderIndex(to: 0)
         try await validateLOB(expected: buffer, on: connection)
+    }
+
+    func testTemporaryLOB() async throws {
+        let lob = try await LOB.create(.blob, on: connection)
+        XCTAssertEqual(lob.estimatedChunkSize, 8060)  // the default
+        let chunkSize = try await lob.chunkSize(on: connection)
+        let buffer = ByteBuffer(bytes: [0x1, 0x2, 0x3, 0x4])
+        try await lob.write(buffer, on: connection)
+        try await connection.execute(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, \(lob))"
+        )
+        XCTAssertGreaterThan(chunkSize, 0)
+        try await lob.free(on: connection)
+        let optionalBuffer = try await connection.execute(
+            "SELECT content FROM test_simple_blob WHERE id = 1"
+        ).collect().first?.decode(ByteBuffer.self)
+        XCTAssertEqual(buffer, optionalBuffer)
+    }
+
+    func testCreateLOBFromUnsupportedDataType() async throws {
+        var thrown: OracleSQLError?
+        do {
+            _ = try await LOB.create(.varchar, on: connection)
+        } catch let error as OracleSQLError {
+            thrown = error
+        }
+        XCTAssertEqual(thrown?.code, OracleSQLError.Code.unsupportedDataType)
     }
 
     func testTrimLOB() async throws {
@@ -181,7 +214,7 @@ final class LOBTests: XCTIntegrationTest {
         let lob = try XCTUnwrap(optionalLOB)
 
         // shrink to half size
-        try await lob.trim(to: UInt64(buffer.readableBytes / 2), on: connection)
+        try await lob.trim(to: buffer.readableBytes / 2, on: connection)
 
         let trimmed = buffer.getSlice(at: 0, length: buffer.readableBytes / 2)!
         try await validateLOB(expected: trimmed, on: connection)

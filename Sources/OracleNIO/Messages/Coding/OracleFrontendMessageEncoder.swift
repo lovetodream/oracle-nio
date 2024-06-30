@@ -718,7 +718,9 @@ struct OracleFrontendMessageEncoder {
             self.buffer.writeBytes(destinationLOB.locator.withLockedValue({ $0 }))
         }
         if context.operation == .createTemp {
-            if let sourceLOB = context.sourceLOB, sourceLOB.dbType.csfrm == Constants.TNS_CS_NCHAR {
+            if let sourceLOB = context.sourceLOB,
+                sourceLOB.oracleType.csfrm == Constants.TNS_CS_NCHAR
+            {
                 try self.capabilities.checkNCharsetID()
                 self.buffer.writeUB4(UInt32(Constants.TNS_CHARSET_UTF16))
             } else {

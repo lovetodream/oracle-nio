@@ -161,10 +161,6 @@ final class StatementStateMachineTests: XCTestCase {
             hexString:
                 "05 c4 02 03 31 23 07 05 c4 02 03 31 23 08 01 06 04 bd 33 f6 cf 01 0f 01 03 00 00 00 00 01 01 00 01 0b 0b 80 00 00 00 3d 3c 3c 80 00 00 00 01 a3 00 04 01 01 01 04 01 02 00 00 00 01 03 00 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 01 01 00 00 00 00 00 01 02"
                 .replacingOccurrences(of: " ", with: ""))
-        let backendError = OracleBackendMessage.BackendError(
-            number: 1013, cursorID: 3, position: 0, rowCount: 2, isWarning: false,
-            message: "ORA-01013: user requested cancel of current operation\n", rowID: nil,
-            batchErrors: [])
 
         var state = ConnectionStateMachine.readyForStatement()
         XCTAssertEqual(

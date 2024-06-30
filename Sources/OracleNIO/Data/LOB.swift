@@ -251,7 +251,7 @@ extension LOB {
             }
         }
     }
-    
+
     /// Open the LOB for multiple ``write(_:at:on:)`` for improved performance.
     ///
     /// If this is not called before writing, every write operation opens and closes the LOB internally.

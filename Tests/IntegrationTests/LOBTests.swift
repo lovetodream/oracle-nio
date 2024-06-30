@@ -170,8 +170,6 @@ final class LOBTests: XCTIntegrationTest {
     }
 
     func testTemporaryLOB() async throws {
-        let data = try Data(contentsOf: fileURL)
-        let buffer = ByteBuffer(data: data)
         let lob = try await LOB.create(.blob, on: connection)
         XCTAssertEqual(lob.estimatedChunkSize, 8060)  // the default
         let chunkSize = try await lob.chunkSize(on: connection)
@@ -198,7 +196,7 @@ final class LOBTests: XCTIntegrationTest {
         let lob = try XCTUnwrap(optionalLOB)
 
         // shrink to half size
-        try await lob.trim(to: UInt64(buffer.readableBytes / 2), on: connection)
+        try await lob.trim(to: buffer.readableBytes / 2, on: connection)
 
         let trimmed = buffer.getSlice(at: 0, length: buffer.readableBytes / 2)!
         try await validateLOB(expected: trimmed, on: connection)

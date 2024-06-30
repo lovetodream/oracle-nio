@@ -703,7 +703,6 @@ struct ConnectionStateMachine {
     }
 
     mutating func statementStreamCancelled() -> ConnectionAction {
-        print("statementStreamCancelled")
         guard case .statement = state else {
             preconditionFailure("Tried to cancel stream without active statement")
         }

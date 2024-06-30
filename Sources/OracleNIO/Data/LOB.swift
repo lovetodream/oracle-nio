@@ -26,6 +26,9 @@ import NIOCore
 ///         less than 1 GB as they are more efficient. This is the behaviour if
 ///         ``StatementOptions/fetchLOBs`` is set to `false`.
 ///
+/// LOBs can be read by using ``readChunks(ofSize:on:)`` and iterating
+/// over the returned sequence.
+///
 /// ```swift
 /// let queryOptions = StatementOptions(fetchLOBs: true)
 /// let rows = try await connection
@@ -38,6 +41,43 @@ import NIOCore
 ///     for try await chunk in lob.readChunks(on: connection) {
 ///         // do something with the buffer
 ///     }
+/// }
+/// ```
+///
+///
+/// ## Writing data
+///
+/// To fetch the LOB you want to write to, you'll need to enable ``StatementOptions/fetchLOBs``
+/// for the statement you are fetching the LOB from. This is useful for writing huge amounts of data in a
+/// streaming fashion.
+///
+/// - Note: Prefer using `Data` or `ByteBuffer` for reading and writing LOBs
+///         less than 1 GB as they are more efficient. This is the behaviour if
+///         ``StatementOptions/fetchLOBs`` is set to `false`.
+///
+/// Data is written in chunks using ``write(_:at:on:)``.
+///
+/// ```swift
+/// var buffer = ByteBuffer(bytes: [0x1, 0x2, 0x3])
+/// let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
+/// try await connection.execute(
+///     """
+///     INSERT INTO my_table (id, my_blob)
+///     VALUES (1, empty_blob())
+///     RETURNING my_blob INTO \(lobRef)
+///     """,
+///     options: .init(fetchLOBs: true)
+/// )
+/// let lob = try lobRef.decode(of: LOB.self)
+/// var offset: UInt64 = 1
+/// let chunkSize = 65536
+/// while
+///     buffer.readableBytes > 0,
+///     let slice = buffer
+///         .readSlice(length: min(chunkSize, buffer.readableBytes))
+/// {
+///     try await lob.write(slice, at: offset, on: connection)
+///     offset += UInt64(slice.readableBytes)
 /// }
 /// ```
 public final class LOB: Sendable {
@@ -103,12 +143,6 @@ public final class LOB: Sendable {
         return Constants.TNS_ENCODING_UTF8
     }
 
-    func write(
-        from buffer: ByteBuffer, offset: UInt64, on connection: OracleConnection
-    ) {
-        fatalError("TODO: write lob")
-    }
-
     func _read(
         offset: UInt64 = 1,
         amount: UInt64? = nil,
@@ -157,7 +191,7 @@ extension LOB {
     ///   - chunkSize: The size of a single chunk of data read from the database.
     ///                If empty, ``chunkSize`` will be used.
     ///   - connection: The connection used the stream the buffer from.
-    ///                 This has to be the same one the buffer was created on.
+    ///                 This has to be the same one the LOB reference was created on.
     /// - Returns: An async sequence used to iterate over
     ///            the chunks of data read from the connection.
     public func readChunks(
@@ -217,6 +251,35 @@ extension LOB {
             }
         }
     }
+
+    /// Write data to the LOB starting on the specified offset.
+    /// - Parameters:
+    ///   - buffer: The chunk of data which should be written to the LOB.
+    ///   - offset: The starting offset data will be written to. It is 1-base indexed.
+    ///   - connection: The connection used to write to the LOB.
+    ///                 This has to be the same one the LOB reference was created on.
+    public func write(
+        _ buffer: ByteBuffer,
+        at offset: UInt64 = 1,
+        on connection: OracleConnection
+    ) async throws {
+        let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
+        connection.channel.write(
+            OracleTask.lobOperation(
+                .init(
+                    sourceLOB: self,
+                    sourceOffset: offset,
+                    destinationLOB: nil,
+                    destinationOffset: 0,
+                    operation: .write,
+                    sendAmount: false,
+                    amount: 0,
+                    promise: promise,
+                    data: buffer
+                )), promise: nil)
+        _ = try await promise.futureResult.get()
+    }
+
 }
 
 extension LOB: OracleEncodable {

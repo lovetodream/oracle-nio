@@ -135,6 +135,35 @@ final class LOBTests: XCTIntegrationTest {
         try await validateLOB(expected: buffer, on: connection)
     }
 
+    func testWriteLOBStreamWithExplicitOpenAndClose() async throws {
+        let data = try Data(contentsOf: fileURL)
+        var buffer = ByteBuffer(data: data)
+        let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
+        try await connection.execute(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, empty_blob()) RETURNING content INTO \(lobRef)",
+            options: .init(fetchLOBs: true)
+        )
+        let lob = try lobRef.decode(of: LOB.self)
+        var offset: UInt64 = 1
+        let chunkSize = 65536
+        try await lob.open(on: connection)
+        while buffer.readableBytes > 0,
+              let slice =
+                buffer
+            .readSlice(length: min(chunkSize, buffer.readableBytes))
+        {
+            try await lob.write(slice, at: offset, on: connection)
+            offset += UInt64(slice.readableBytes)
+        }
+        let isOpen = try await lob.isOpen(on: connection)
+        XCTAssertTrue(isOpen)
+        if isOpen {
+            try await lob.close(on: connection)
+        }
+        buffer.moveReaderIndex(to: 0)
+        try await validateLOB(expected: buffer, on: connection)
+    }
+
     func testTrimLOB() async throws {
         let data = try Data(contentsOf: fileURL)
         let buffer = ByteBuffer(data: data)

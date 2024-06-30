@@ -162,8 +162,8 @@ extension OracleBackendMessage {
             if context.lobContext?.operation == .createTemp
                 || context.lobContext?.operation == .isOpen
             {
-                let temp16 = try buffer.throwingReadUB2()  // flag
-                boolFlag = temp16 > 0
+                // flag
+                boolFlag = try buffer.throwingReadInteger(as: UInt8.self) > 0
             } else {
                 boolFlag = nil
             }

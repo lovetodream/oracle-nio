@@ -103,12 +103,6 @@ public final class LOB: Sendable {
         return Constants.TNS_ENCODING_UTF8
     }
 
-    func write(
-        from buffer: ByteBuffer, offset: UInt64, on connection: OracleConnection
-    ) {
-        fatalError("TODO: write lob")
-    }
-
     func _read(
         offset: UInt64 = 1,
         amount: UInt64? = nil,
@@ -217,6 +211,29 @@ extension LOB {
             }
         }
     }
+
+    public func write(
+        _ buffer: ByteBuffer,
+        at offset: UInt64 = 1,
+        on connection: OracleConnection
+    ) async throws {
+        let promise = connection.eventLoop.makePromise(of: ByteBuffer?.self)
+        connection.channel.write(
+            OracleTask.lobOperation(
+                .init(
+                    sourceLOB: self,
+                    sourceOffset: offset,
+                    destinationLOB: nil,
+                    destinationOffset: 0,
+                    operation: .write,
+                    sendAmount: false,
+                    amount: 0,
+                    promise: promise,
+                    data: buffer
+                )), promise: nil)
+        _ = try await promise.futureResult.get()
+    }
+
 }
 
 extension LOB: OracleEncodable {

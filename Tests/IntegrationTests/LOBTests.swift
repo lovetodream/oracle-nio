@@ -74,20 +74,7 @@ final class LOBTests: XCTIntegrationTest {
             "INSERT INTO test_simple_blob (id, content) VALUES (1, \(buffer))",
             logger: .oracleTest
         )
-        let rows = try await connection.execute(
-            "SELECT id, content FROM test_simple_blob ORDER BY id",
-            logger: .oracleTest
-        )
-        var index = 0
-        for try await row in rows.decode((Int, ByteBuffer).self) {
-            XCTAssertEqual(index + 1, row.0)
-            index = row.0
-            XCTAssertEqual(row.1, buffer)
-            XCTAssertEqual(
-                row.1.getString(at: 0, length: row.1.readableBytes),
-                buffer.getString(at: 0, length: buffer.readableBytes)
-            )
-        }
+        try await validateLOB(expected: buffer, on: connection)
     }
 
     func testSimpleBinaryLOBViaLOB() async throws {
@@ -123,6 +110,29 @@ final class LOBTests: XCTIntegrationTest {
         }
         try await fetchLOB(chunkSize: nil)  // test with default chunk size
         try await fetchLOB(chunkSize: 4_294_967_295)  // test with huge chunk size
+    }
+
+    func testWriteLOBStream() async throws {
+        let data = try Data(contentsOf: fileURL)
+        var buffer = ByteBuffer(data: data)
+        let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
+        try await connection.execute(
+            "INSERT INTO test_simple_blob (id, content) VALUES (1, empty_blob()) RETURNING content INTO \(lobRef)",
+            options: .init(fetchLOBs: true)
+        )
+        let lob = try lobRef.decode(of: LOB.self)
+        var offset: UInt64 = 1
+        let chunkSize = 65536
+        while 
+            buffer.readableBytes > 0,
+            let slice = buffer
+                .readSlice(length: min(chunkSize, buffer.readableBytes))
+        {
+            try await lob.write(slice, at: offset, on: connection)
+            offset += UInt64(slice.readableBytes)
+        }
+        buffer.moveReaderIndex(to: 0)
+        try await validateLOB(expected: buffer, on: connection)
     }
 
     func testSimpleBinaryLOBConcurrently5Times() async throws {
@@ -183,4 +193,27 @@ final class LOBTests: XCTIntegrationTest {
         }
     }
 
+
+    private func validateLOB(
+        expected: ByteBuffer,
+        on connection: OracleConnection,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        let rows = try await connection.execute(
+            "SELECT id, content FROM test_simple_blob ORDER BY id",
+            logger: .oracleTest
+        )
+        var index = 0
+        for try await row in rows.decode((Int, ByteBuffer).self) {
+            XCTAssertEqual(index + 1, row.0, file: file, line: line)
+            index = row.0
+            XCTAssertEqual(row.1, expected, file: file, line: line)
+            XCTAssertEqual(
+                row.1.getString(at: 0, length: row.1.readableBytes),
+                expected.getString(at: 0, length: expected.readableBytes),
+                file: file, line: line
+            )
+        }
+    }
 }

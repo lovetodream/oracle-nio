@@ -452,11 +452,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.run(self.state.readyForStatementReceived(), with: context)
             }
 
-        case .sendMarker:
+        case .sendMarker(let read):
             self.encoder.marker()
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
+            if read {
+                context.read()
+            }
 
         case .sendPing:
             self.encoder.ping()

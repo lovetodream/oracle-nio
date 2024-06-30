@@ -143,7 +143,7 @@ struct ConnectionStateMachine {
             OracleSQLError, read: Bool, cursorID: UInt16?, clientCancelled: Bool
         )
 
-        case sendMarker
+        case sendMarker(read: Bool)
     }
 
     private var state: State
@@ -525,7 +525,7 @@ struct ConnectionStateMachine {
             switch self.markerState {
             case .noMarkerSent:
                 self.markerState = .markerSent
-                return .sendMarker
+                return .sendMarker(read: false)
             case .markerSent:
                 // A marker has already been sent, don't send another one,
                 // because this would cancel the current operation.
@@ -703,12 +703,13 @@ struct ConnectionStateMachine {
     }
 
     mutating func statementStreamCancelled() -> ConnectionAction {
+        print("statementStreamCancelled")
         guard case .statement = state else {
             preconditionFailure("Tried to cancel stream without active statement")
         }
 
         self.markerState = .markerSent
-        return .sendMarker
+        return .sendMarker(read: true)
     }
 
     mutating func requestStatementRows() -> ConnectionAction {

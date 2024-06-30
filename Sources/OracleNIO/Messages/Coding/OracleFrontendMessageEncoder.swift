@@ -1149,8 +1149,8 @@ extension OracleFrontendMessageEncoder {
         self.writeColumnMetadata(binds.metadata)
 
         // write parameter values unless statement contains only return binds
-        if !binds.metadata.isEmpty && binds.bytes.readableBytes > 0
-            && binds.longBytes.readableBytes > 0
+        if !binds.metadata.isEmpty && (binds.bytes.readableBytes > 0
+            || binds.longBytes.readableBytes > 0)
         {
             self.buffer.writeOracleMessageID(.rowData)
             self.writeBindParameterRow(bindings: binds)

@@ -62,7 +62,7 @@ import NIOCore
 /// let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
 /// try await connection.execute(
 ///     """
-///     INSERT INTO my_table (id, my_blob) 
+///     INSERT INTO my_table (id, my_blob)
 ///     VALUES (1, empty_blob())
 ///     RETURNING my_blob INTO \(lobRef)
 ///     """,
@@ -251,7 +251,7 @@ extension LOB {
             }
         }
     }
-    
+
     /// Write data to the LOB starting on the specified offset.
     /// - Parameters:
     ///   - buffer: The chunk of data which should be written to the LOB.

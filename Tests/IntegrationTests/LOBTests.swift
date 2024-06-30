@@ -123,9 +123,9 @@ final class LOBTests: XCTIntegrationTest {
         let lob = try lobRef.decode(of: LOB.self)
         var offset: UInt64 = 1
         let chunkSize = 65536
-        while 
-            buffer.readableBytes > 0,
-            let slice = buffer
+        while buffer.readableBytes > 0,
+            let slice =
+                buffer
                 .readSlice(length: min(chunkSize, buffer.readableBytes))
         {
             try await lob.write(slice, at: offset, on: connection)

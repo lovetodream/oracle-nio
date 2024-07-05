@@ -33,12 +33,13 @@ extension OracleBackendMessage {
                 )
             }
 
-            let describeInfo = switch context.statementContext?.type {
-            case .cursor(let cursor, _):
-                cursor.describeInfo
-            default:
-                context.describeInfo
-            }
+            let describeInfo =
+                switch context.statementContext?.type {
+                case .cursor(let cursor, _):
+                    cursor.describeInfo
+                default:
+                    context.describeInfo
+                }
 
             let columns: [ColumnStorage]
             if let describeInfo {
@@ -120,8 +121,8 @@ extension OracleBackendMessage {
 
             switch oracleType {
             case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
-                    .timestampLTZ, .timestampTZ, .binaryDouble, .binaryFloat,
-                    .binaryInteger, .boolean, .intervalDS:
+                .timestampLTZ, .timestampTZ, .binaryDouble, .binaryFloat,
+                .binaryInteger, .boolean, .intervalDS:
                 switch buffer.readOracleSlice() {
                 case .some(let slice):
                     columnValue = slice
@@ -177,7 +178,8 @@ extension OracleBackendMessage {
                     }
                     columnValue = ByteBuffer()
                     try columnValue.writeLengthPrefixed(as: UInt8.self) {
-                        $0.writeInteger(size) + $0.writeInteger(chunkSize) + $0.writeBuffer(&locator)
+                        $0.writeInteger(size) + $0.writeInteger(chunkSize)
+                            + $0.writeBuffer(&locator)
                     }
                 } else {
                     columnValue = .init(bytes: [0])  // empty buffer
@@ -239,7 +241,8 @@ extension OracleBackendMessage {
                 columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
             default:
                 fatalError(
-                    "\(String(reflecting: oracleType)) is not implemented, please file a bug report")
+                    "\(String(reflecting: oracleType)) is not implemented, please file a bug report"
+                )
             }
 
             if [.long, .longRAW].contains(oracleType) {
@@ -263,11 +266,13 @@ extension OracleBackendMessage {
                     let rowCount = buffer.readUB4() ?? 0
                     if rowCount > 0 {
                         for _ in 0..<rowCount {
-                            columns.append(.data(try self.processBindData(
-                                from: &buffer,
-                                metadata: outBind.metadata.withLockedValue({ $0 }),
-                                capabilities: capabilities
-                            )))
+                            columns.append(
+                                .data(
+                                    try self.processBindData(
+                                        from: &buffer,
+                                        metadata: outBind.metadata.withLockedValue({ $0 }),
+                                        capabilities: capabilities
+                                    )))
                         }
                     } else {
                         // empty buffer
@@ -276,11 +281,13 @@ extension OracleBackendMessage {
                 }
             } else {
                 for outBind in outBinds {
-                    columns.append(.data(try self.processBindData(
-                        from: &buffer,
-                        metadata: outBind.metadata.withLockedValue({ $0 }),
-                        capabilities: capabilities
-                    )))
+                    columns.append(
+                        .data(
+                            try self.processBindData(
+                                from: &buffer,
+                                metadata: outBind.metadata.withLockedValue({ $0 }),
+                                capabilities: capabilities
+                            )))
                 }
             }
             return columns

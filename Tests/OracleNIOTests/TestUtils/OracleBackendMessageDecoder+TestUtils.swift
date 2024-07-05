@@ -24,22 +24,23 @@ extension OracleBackendMessageDecoder.Context {
         self.statementContext = statementContext
         var describeInfo = DescribeInfo(columns: [])
         for column in columns {
-            describeInfo.columns.append(.init(
-                name: "",
-                dataType: column,
-                dataTypeSize: UInt32(column.defaultSize),
-                precision: 0,
-                scale: 0,
-                bufferSize: 1,
-                nullsAllowed: true,
-                typeScheme: nil,
-                typeName: nil,
-                domainSchema: nil,
-                domainName: nil,
-                annotations: [:],
-                vectorDimensions: nil,
-                vectorFormat: nil
-            ))
+            describeInfo.columns.append(
+                .init(
+                    name: "",
+                    dataType: column,
+                    dataTypeSize: UInt32(column.defaultSize),
+                    precision: 0,
+                    scale: 0,
+                    bufferSize: 1,
+                    nullsAllowed: true,
+                    typeScheme: nil,
+                    typeName: nil,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
+                ))
         }
         self.describeInfo = describeInfo
     }

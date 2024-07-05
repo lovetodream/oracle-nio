@@ -73,7 +73,8 @@ final class StatementStateMachineTests: XCTestCase {
         let row1: DataRow = .makeTestDataRow(1)
         XCTAssertEqual(state.rowDataReceived(.init(1), capabilities: .init()), .wait)
         XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
-        XCTAssertEqual(state.backendErrorReceived(.noData), .forwardStreamComplete([row1], cursorID: 1))
+        XCTAssertEqual(
+            state.backendErrorReceived(.noData), .forwardStreamComplete([row1], cursorID: 1))
     }
 
     func testCancellationCompletesQueryOnlyOnce() throws {
@@ -113,10 +114,10 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
-            state.rowDataReceived(.init(1024834), capabilities: .init()),
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
             .wait)
         XCTAssertEqual(
-            state.rowDataReceived(.init(1024834), capabilities: .init()),
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
             .wait)
         XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
         XCTAssertEqual(state.backendErrorReceived(.sendFetch), .sendFetch(queryContext))
@@ -161,10 +162,10 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
-            state.rowDataReceived(.init(1024834), capabilities: .init()),
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
             .wait)
         XCTAssertEqual(
-            state.rowDataReceived(.init(1024834), capabilities: .init()),
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
             .wait)
         XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
         XCTAssertEqual(state.backendErrorReceived(.sendFetch), .sendFetch(queryContext))

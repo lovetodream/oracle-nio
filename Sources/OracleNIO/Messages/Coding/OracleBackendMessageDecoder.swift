@@ -35,7 +35,7 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
 
     final class Context {
         var capabilities: Capabilities
-        
+
         private var _statementContext: StatementContext?
         var statementContext: StatementContext? {
             get {

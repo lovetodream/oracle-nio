@@ -371,7 +371,7 @@ struct StatementStateMachine {
         } else {
             switch self.state {
             case .drain:
-                // This state might occur, if the client cancelled the 
+                // This state might occur, if the client cancelled the
                 // statement, but the server did not yet receive/process the
                 // cancellation marker. Due to that it might send more data
                 // without knowing yet.

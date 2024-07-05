@@ -158,7 +158,7 @@ extension OracleBackendMessage {
                         break readLoop
                     }
                 case .parameter:
-                    switch context.statementOptions {
+                    switch context.statementContext {
                     case .some:
                         messages.append(
                             try .queryParameter(.decode(from: &buffer, context: context))
@@ -187,13 +187,15 @@ extension OracleBackendMessage {
                         try .ioVector(.decode(from: &buffer, context: context))
                     )
                 case .describeInfo:
-                    messages.append(
-                        try .describeInfo(.decode(from: &buffer, context: context))
-                    )
+                    let describeInfo = try DescribeInfo.decode(from: &buffer, context: context)
+                    context.describeInfo = describeInfo
+                    messages.append(.describeInfo(describeInfo))
+
                 case .rowHeader:
-                    messages.append(
-                        try .rowHeader(.decode(from: &buffer, context: context))
-                    )
+                    let rowHeader = try RowHeader.decode(from: &buffer, context: context)
+                    context.bitVector = rowHeader.bitVector
+                    messages.append(.rowHeader(rowHeader))
+
                 case .rowData:
                     messages.append(
                         try .rowData(.decode(from: &buffer, context: context))
@@ -202,11 +204,12 @@ extension OracleBackendMessage {
                     // OracleChannelHandler, we are performing a chunked
                     // read on all upcoming data packets, because we are
                     // "blind" and don't know what we might get until then.
-                    context.performingChunkedRead = true
+                    context.performingChunkedRead = true // TODO: remove this
                 case .bitVector:
-                    messages.append(
-                        try .bitVector(.decode(from: &buffer, context: context))
-                    )
+                    let bitVector = try BitVector.decode(from: &buffer, context: context)
+                    context.bitVector = bitVector.bitVector
+                    messages.append(.bitVector(bitVector))
+
                 case .warning:
                     messages.append(
                         try .warning(.decodeWarning(from: &buffer, context: context))

@@ -402,8 +402,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             if let cleanupContext {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
-            self.decoderContext.statementOptions = nil
-            self.decoderContext.columnsCount = nil
+            self.decoderContext.clearStatementContext()
             self.run(self.state.readyForStatementReceived(), with: context)
 
         case .needMoreData:
@@ -423,8 +422,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             }
             rowStream.receive(completion: .success(()))
 
-            self.decoderContext.statementOptions = nil
-            self.decoderContext.columnsCount = nil
+            self.decoderContext.clearStatementContext()
 
             if cursorID != 0 {
                 self.cleanupContext.cursorsToClose.insert(cursorID)
@@ -443,8 +441,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 context.read()
             }
 
-            self.decoderContext.statementOptions = nil
-            self.decoderContext.columnsCount = nil
+            self.decoderContext.clearStatementContext()
 
             if clientCancelled {
                 self.run(self.state.statementStreamCancelled(), with: context)
@@ -670,7 +667,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             describeInfo: describeInfo
         )
 
-        self.decoderContext.statementOptions = statementContext.options
+        self.decoderContext.statementContext = statementContext
 
         context.writeAndFlush(
             self.wrapOutboundOut(self.encoder.flush()), promise: nil
@@ -728,8 +725,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 logger: result.logger
             )
             promise.succeed(rows)
-            self.decoderContext.statementOptions = nil
-            self.decoderContext.columnsCount = nil
+            self.decoderContext.clearStatementContext()
             self.run(self.state.readyForStatementReceived(), with: context)
         }
 

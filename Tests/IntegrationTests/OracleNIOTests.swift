@@ -233,6 +233,7 @@ final class OracleNIOTests: XCTestCase {
         )
         var index = 0
         for try await row in rows.decode((Int, String).self) {
+            print(row)
             XCTAssertEqual(index + 1, row.0)
             index = row.0
             switch index {

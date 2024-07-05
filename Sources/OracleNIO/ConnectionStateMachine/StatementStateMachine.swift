@@ -200,6 +200,7 @@ struct StatementStateMachine {
             // This state might occur, if the client cancelled the statement,
             // but the server did not yet receive/process the cancellation
             // marker. Due to that it might send more data without knowing yet.
+            // TODO: check if we need to forward row header here too
             return .wait
 
         case .initialized, .streamingAndWaiting, .error, .commandComplete:
@@ -216,82 +217,104 @@ struct StatementStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            let outBinds = context.statement.binds.metadata.compactMap(\.outContainer)
-            guard !outBinds.isEmpty else { preconditionFailure() }
-            var buffer = rowData.slice
-            if context.isReturning {
-                for outBind in outBinds {
-                    outBind.storage.withLockedValue { $0 = nil }
-                    let rowCount = buffer.readUB4() ?? 0
-                    guard rowCount > 0 else {
-                        continue
-                    }
+//            let outBinds = context.statement.binds.metadata.compactMap(\.outContainer)
+//            guard !outBinds.isEmpty else { preconditionFailure() }
+//            var buffer = rowData.slice
+//            if context.isReturning {
+//                for outBind in outBinds {
+//                    outBind.storage.withLockedValue { $0 = nil }
+//                    let rowCount = buffer.readUB4() ?? 0
+//                    guard rowCount > 0 else {
+//                        continue
+//                    }
+//
+//                    do {
+//                        for _ in 0..<rowCount {
+//                            try self.processBindData(
+//                                from: &buffer,
+//                                outBind: outBind,
+//                                capabilities: capabilities
+//                            )
+//                        }
+//                    } catch {
+//                        guard let error = error as? OracleSQLError else {
+//                            preconditionFailure("Unexpected error: \(error)")
+//                        }
+//                        return self.setAndFireError(error)
+//                    }
+//                }
+//
+//                return self.moreDataReceived(
+//                    &buffer,
+//                    capabilities: capabilities,
+//                    context: context,
+//                    describeInfo: nil
+//                )
+//            } else {
+//                for outBind in outBinds {
+//                    outBind.storage.withLockedValue { $0 = nil }
+//                    do {
+//                        try self.processBindData(
+//                            from: &buffer,
+//                            outBind: outBind,
+//                            capabilities: capabilities
+//                        )
+//                    } catch {
+//                        guard let error = error as? OracleSQLError else {
+//                            preconditionFailure("Unexpected error: \(error)")
+//                        }
+//                        return self.setAndFireError(error)
+//                    }
+//                }
+//
+//                return self.moreDataReceived(
+//                    &buffer,
+//                    capabilities: capabilities,
+//                    context: context,
+//                    describeInfo: nil
+//                )
+//            }
+            // TODO: needs stuff here
+            fatalError("TODO: assign bindings")
+            return .wait
 
-                    do {
-                        for _ in 0..<rowCount {
-                            try self.processBindData(
-                                from: &buffer,
-                                outBind: outBind,
-                                capabilities: capabilities
-                            )
-                        }
-                    } catch {
-                        guard let error = error as? OracleSQLError else {
-                            preconditionFailure("Unexpected error: \(error)")
-                        }
-                        return self.setAndFireError(error)
-                    }
+        case .streaming(let context, let describeInfo, let rowHeader, var demandStateMachine):
+            var out = ByteBuffer()
+            for column in rowData.columns {
+                switch column {
+                case .data(var buffer):
+                    out.writeBuffer(&buffer)
+                case .duplicate(let index):
+                    var data = demandStateMachine.receivedDuplicate(at: index)
+                    try! out.writeLengthPrefixed(as: UInt8.self) { buffer in
+                        buffer.writeBuffer(&data)
+                    }  // must work
                 }
-
-                return self.moreDataReceived(
-                    &buffer,
-                    capabilities: capabilities,
-                    context: context,
-                    describeInfo: nil
-                )
-            } else {
-                for outBind in outBinds {
-                    outBind.storage.withLockedValue { $0 = nil }
-                    do {
-                        try self.processBindData(
-                            from: &buffer,
-                            outBind: outBind,
-                            capabilities: capabilities
-                        )
-                    } catch {
-                        guard let error = error as? OracleSQLError else {
-                            preconditionFailure("Unexpected error: \(error)")
-                        }
-                        return self.setAndFireError(error)
-                    }
-                }
-
-                return self.moreDataReceived(
-                    &buffer,
-                    capabilities: capabilities,
-                    context: context,
-                    describeInfo: nil
+            }
+            let row = DataRow(columnCount: describeInfo.columns.count, bytes: out)
+            demandStateMachine.receivedRow(row)
+            self.avoidingStateMachineCoWVoid { state in
+                state = .streaming(
+                    context, describeInfo, rowHeader, demandStateMachine
                 )
             }
-
-        case .streaming(let context, let describeInfo, _, _):
-            var buffer = rowData.slice
-            let action = self.rowDataReceived0(
-                buffer: &buffer, capabilities: capabilities
-            )
-
-            switch action {
-            case .wait:
-                return self.moreDataReceived(
-                    &buffer,
-                    capabilities: capabilities,
-                    context: context,
-                    describeInfo: describeInfo
-                )
-
-            default:
-                return action
-            }
+            return .wait
+//            let action = self.rowDataReceived0(
+//                buffer: &buffer, capabilities: capabilities
+//            )
+//
+//            switch action {
+//            case .wait:
+//                return self.moreDataReceived(
+//                    &buffer,
+//                    capabilities: capabilities,
+//                    context: context,
+//                    describeInfo: describeInfo
+//                )
+//
+//            default:
+//                return action
+//            }
 
         case .drain:
             // This state might occur, if the client cancelled the statement,
@@ -811,8 +834,8 @@ struct StatementStateMachine {
             do {
                 let decodingContext = OracleBackendMessageDecoder.Context(
                     capabilities: capabilities)
-                decodingContext.statementOptions = context.options
-                decodingContext.columnsCount = describeInfo?.columns.count
+                // TODO: move this out of here
+                decodingContext.statementContext = context
                 var messages: TinySequence<OracleBackendMessage> = []
                 try OracleBackendMessage.decodeData(
                     from: &slice,
@@ -830,7 +853,8 @@ struct StatementStateMachine {
                     case .rowHeader(let rowHeader):
                         action = self.rowHeaderReceived(rowHeader)
                     case .rowData(let rowData):
-                        buffer = rowData.slice
+                        fatalError("TODO")
+                        buffer = ByteBuffer()
                         action = self.rowDataReceived0(
                             buffer: &buffer, capabilities: capabilities
                         )

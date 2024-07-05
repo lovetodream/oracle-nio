@@ -76,7 +76,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         let row1: DataRow = .makeTestDataRow(1)
         XCTAssertEqual(
-            state.rowDataReceived(.init(slice: .init(bytes: rowData)), capabilities: .init()),
+            state.rowDataReceived(.init(columns: []), capabilities: .init()),
             .forwardStreamComplete([row1], cursorID: 1))
     }
 
@@ -121,7 +121,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
-            state.rowDataReceived(.init(slice: .init(bytes: rowData)), capabilities: .init()),
+            state.rowDataReceived(.init(columns: []), capabilities: .init()),
             .sendFetch(queryContext))
         XCTAssertEqual(
             state.cancelStatementStream(),
@@ -168,7 +168,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
-            state.rowDataReceived(.init(slice: .init(bytes: rowData)), capabilities: .init()),
+            state.rowDataReceived(.init(columns: []), capabilities: .init()),
             .sendFetch(queryContext))
         XCTAssertEqual(
             state.cancelStatementStream(),

@@ -33,8 +33,15 @@ extension OracleBackendMessage {
                 )
             }
 
+            let describeInfo = switch context.statementContext?.type {
+            case .cursor(let cursor, _):
+                cursor.describeInfo
+            default:
+                context.describeInfo
+            }
+
             let columns: [ColumnStorage]
-            if let describeInfo = context.describeInfo {
+            if let describeInfo {
                 columns = try self.processRowData(
                     from: &buffer,
                     describeInfo: describeInfo,
@@ -73,23 +80,15 @@ extension OracleBackendMessage {
                     bitVector: context.bitVector
                 ) {
                     columns.append(.duplicate(index))
-                } else if let data = try self.processColumnData(
-                    from: &buffer,
-                    oracleType: column.dataType._oracleType,
-                    csfrm: column.dataType.csfrm,
-                    bufferSize: column.bufferSize,
-                    capabilities: context.capabilities
-                ) {
-                    if index == 0 {
-                        var data = data.getSlice(at: 1, length: data.readableBytes - 1)!
-                        print(try Int(from: &data, type: column.dataType, context: .default))
-                    } else {
-                        var data = data.getSlice(at: 1, length: data.readableBytes - 1)!
-                        print(try String(from: &data, type: column.dataType, context: .default))
-                    }
-                    columns.append(.data(data))
                 } else {
-                    throw MissingDataDecodingError.Trigger()
+                    let data = try self.processColumnData(
+                        from: &buffer,
+                        oracleType: column.dataType._oracleType,
+                        csfrm: column.dataType.csfrm,
+                        bufferSize: column.bufferSize,
+                        capabilities: context.capabilities
+                    )
+                    columns.append(.data(data))
                 }
             }
 
@@ -104,7 +103,7 @@ extension OracleBackendMessage {
             csfrm: UInt8,
             bufferSize: UInt32,
             capabilities: Capabilities
-        ) throws -> ByteBuffer? {
+        ) throws -> ByteBuffer {
             var columnValue: ByteBuffer
             if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
                 columnValue = ByteBuffer(bytes: [0])  // NULL indicator
@@ -127,7 +126,7 @@ extension OracleBackendMessage {
                 case .some(let slice):
                     columnValue = slice
                 case .none:
-                    return nil  // need more data
+                    throw MissingDataDecodingError.Trigger()
                 }
             case .rowID:
                 // length is not the actual length of row ids
@@ -174,7 +173,7 @@ extension OracleBackendMessage {
                     case .some(let slice):
                         locator = slice
                     case .none:
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                     columnValue = ByteBuffer()
                     try columnValue.writeLengthPrefixed(as: UInt8.self) {
@@ -196,10 +195,10 @@ extension OracleBackendMessage {
                     case .some(let slice):
                         columnValue = slice
                     case .none:
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                     if !buffer.skipRawBytesChunked() {  // LOB locator (unused)
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                 } else {
                     columnValue = .init(bytes: [0])  // empty buffer
@@ -208,17 +207,17 @@ extension OracleBackendMessage {
                 let startIndex = buffer.readerIndex
                 if try buffer.throwingReadUB4() > 0 {
                     if !buffer.skipRawBytesChunked() {  // type oid
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                 }
                 if try buffer.throwingReadUB4() > 0 {
                     if !buffer.skipRawBytesChunked() {  // oid
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                 }
                 if try buffer.throwingReadUB4() > 0 {
                     if !buffer.skipRawBytesChunked() {  // snapshot
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                 }
                 buffer.skipUB2()  // version
@@ -226,7 +225,7 @@ extension OracleBackendMessage {
                 buffer.skipUB2()  // flags
                 if dataLength > 0 {
                     if !buffer.skipRawBytesChunked() {  // data
-                        return nil  // need more data
+                        throw MissingDataDecodingError.Trigger()
                     }
                 }
                 let endIndex = buffer.readerIndex
@@ -262,16 +261,17 @@ extension OracleBackendMessage {
             if statementContext.isReturning {
                 for outBind in outBinds {
                     let rowCount = buffer.readUB4() ?? 0
-                    guard rowCount > 0 else {
-                        continue
-                    }
-
-                    for _ in 0..<rowCount {
-                        columns.append(.data(try self.processBindData(
-                            from: &buffer,
-                            metadata: outBind.metadata.withLockedValue({ $0 }),
-                            capabilities: capabilities
-                        )))
+                    if rowCount > 0 {
+                        for _ in 0..<rowCount {
+                            columns.append(.data(try self.processBindData(
+                                from: &buffer,
+                                metadata: outBind.metadata.withLockedValue({ $0 }),
+                                capabilities: capabilities
+                            )))
+                        }
+                    } else {
+                        // empty buffer
+                        columns.append(.data(ByteBuffer(bytes: [0])))
                     }
                 }
             } else {
@@ -291,15 +291,13 @@ extension OracleBackendMessage {
             metadata: OracleBindings.Metadata,
             capabilities: Capabilities
         ) throws -> ByteBuffer {
-            guard let columnData = try self.processColumnData(
+            let columnData = try self.processColumnData(
                 from: &buffer,
                 oracleType: metadata.dataType._oracleType,
                 csfrm: metadata.dataType.csfrm,
                 bufferSize: metadata.bufferSize,
                 capabilities: capabilities
-            ) else {
-                throw MissingDataDecodingError.Trigger()
-            }
+            )
 
             let actualBytesCount = buffer.readSB4() ?? 0
             if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {

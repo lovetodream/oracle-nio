@@ -156,7 +156,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             metadata: [
                 .message: "\(message)"
             ])
-        self.decoderContext.performingChunkedRead = false
         let action: ConnectionStateMachine.ConnectionAction
 
         switch message {
@@ -218,11 +217,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.lobDataReceived(lobData: lobData)
         case .lobParameter(let parameter):
             action = self.state.lobParameterReceived(parameter: parameter)
-
-        case .chunk(let buffer):
-            action = self.state.chunkReceived(
-                buffer, capabilities: self.capabilities
-            )
         }
 
         self.run(action, flags: flags, with: context)
@@ -402,12 +396,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             if let cleanupContext {
                 self.closeConnectionAndCleanup(cleanupContext, context: context)
             }
-            self.decoderContext.clearStatementContext()
             self.run(self.state.readyForStatementReceived(), with: context)
-
-        case .needMoreData:
-            self.decoderContext.performingChunkedRead = true
-            context.read()
 
         case .forwardRows(let rows):
             self.rowStream!.receive(rows)
@@ -421,8 +410,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 rowStream.receive(buffer)
             }
             rowStream.receive(completion: .success(()))
-
-            self.decoderContext.clearStatementContext()
 
             if cursorID != 0 {
                 self.cleanupContext.cursorsToClose.insert(cursorID)
@@ -440,8 +427,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             } else if read {
                 context.read()
             }
-
-            self.decoderContext.clearStatementContext()
 
             if clientCancelled {
                 self.run(self.state.statementStreamCancelled(), with: context)
@@ -668,6 +653,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         )
 
         self.decoderContext.statementContext = statementContext
+        if let describeInfo, self.decoderContext.describeInfo != describeInfo {
+            self.decoderContext.describeInfo = describeInfo
+        }
 
         context.writeAndFlush(
             self.wrapOutboundOut(self.encoder.flush()), promise: nil
@@ -725,7 +713,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 logger: result.logger
             )
             promise.succeed(rows)
-            self.decoderContext.clearStatementContext()
             self.run(self.state.readyForStatementReceived(), with: context)
         }
 

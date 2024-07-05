@@ -35,9 +35,23 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
 
     final class Context {
         var capabilities: Capabilities
-        var performingChunkedRead = false // TODO: remove
         
-        var statementContext: StatementContext?
+        private var _statementContext: StatementContext?
+        var statementContext: StatementContext? {
+            get {
+                self._statementContext
+            }
+            set {
+                self._statementContext = newValue
+                switch newValue?.type {
+                case .cursor(let cursor, _):
+                    if cursor.describeInfo != self.describeInfo {
+                        self.describeInfo = cursor.describeInfo
+                    }
+                default: break
+                }
+            }
+        }
         var bitVector: [UInt8]?
         var describeInfo: DescribeInfo?
 

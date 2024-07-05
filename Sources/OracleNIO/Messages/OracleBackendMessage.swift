@@ -56,8 +56,6 @@ enum OracleBackendMessage: Sendable, Hashable {
     case warning(BackendError)
     case ioVector(InOutVector)
     case flushOutBinds
-
-    case chunk(ByteBuffer)
 }
 
 extension OracleBackendMessage {
@@ -95,10 +93,6 @@ extension OracleBackendMessage {
         of packetID: ID,
         context: OracleBackendMessageDecoder.Context
     ) throws -> (TinySequence<OracleBackendMessage>, lastPacket: Bool) {
-        // previous chunked read is definitely over!
-        if packetID != .data && context.performingChunkedRead {
-            context.performingChunkedRead = false
-        }
         switch packetID {
         case .resend:
             return (.init(element: .resend), true)
@@ -114,11 +108,7 @@ extension OracleBackendMessage {
             var messages: TinySequence<OracleBackendMessage> = []
             let flags = try buffer.throwingReadInteger(as: UInt16.self)
             let lastPacket = (flags & Constants.TNS_DATA_FLAGS_END_OF_REQUEST) != 0
-            if context.performingChunkedRead {
-                messages.append(.chunk(buffer.slice()))
-            } else {
-                try self.decodeData(from: &buffer, into: &messages, context: context)
-            }
+            try self.decodeData(from: &buffer, into: &messages, context: context)
             return (messages, lastPacket)
         }
     }
@@ -149,32 +139,34 @@ extension OracleBackendMessage {
                         break readLoop
                     }
                 case .error:
-                    messages.append(
-                        try .error(.decode(from: &buffer, context: context))
-                    )
+                    let error = try BackendError.decode(from: &buffer, context: context)
+                    // not ideal but the most reliable way I could come up with
+                    if error.number != 0 { context.clearStatementContext() }
+                    messages.append(.error(error))
                     // error marks the end of response if no explicit end of
                     // response is available
                     if !context.capabilities.supportsEndOfRequest {
                         break readLoop
                     }
                 case .parameter:
-                    switch context.statementContext {
-                    case .some:
+                    if context.lobContext != nil {
                         messages.append(
-                            try .queryParameter(.decode(from: &buffer, context: context))
+                            try .lobParameter(.decode(from: &buffer, context: context))
                         )
-                    case .none:
-                        if context.lobContext != nil {
+                    } else {
+                        switch context.statementContext {
+                        case .some:
                             messages.append(
-                                try .lobParameter(.decode(from: &buffer, context: context))
+                                try .queryParameter(.decode(from: &buffer, context: context))
                             )
-                        } else {
+                        case .none:
                             messages.append(
                                 try .parameter(.decode(from: &buffer, context: context))
                             )
                             break readLoop
                         }
                     }
+
                 case .status:
                     messages.append(
                         try .status(.decode(from: &buffer, context: context))
@@ -200,11 +192,7 @@ extension OracleBackendMessage {
                     messages.append(
                         try .rowData(.decode(from: &buffer, context: context))
                     )
-                    // Until we handled the current rowData on
-                    // OracleChannelHandler, we are performing a chunked
-                    // read on all upcoming data packets, because we are
-                    // "blind" and don't know what we might get until then.
-                    context.performingChunkedRead = true // TODO: remove this
+
                 case .bitVector:
                     let bitVector = try BitVector.decode(from: &buffer, context: context)
                     context.bitVector = bitVector.bitVector
@@ -272,8 +260,6 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".lobParameter(\(String(reflecting: parameter)))"
         case .warning(let warning):
             return ".warning(\(String(reflecting: warning))"
-        case .chunk(let buffer):
-            return ".chunk(\(String(reflecting: buffer)))"
         case .serverSidePiggyback(let piggyback):
             return ".serverSidePiggyback(\(String(reflecting: piggyback)))"
         case .lobData(let data):

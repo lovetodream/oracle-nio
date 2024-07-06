@@ -8,10 +8,7 @@ let package = Package(
     name: "oracle-nio",
     platforms: [.macOS(.v13), .iOS(.v16), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
     products: [
-        .library(
-            name: "OracleNIO",
-            targets: ["OracleNIO"]
-        )
+        .library(name: "OracleNIO", targets: ["OracleNIO"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),

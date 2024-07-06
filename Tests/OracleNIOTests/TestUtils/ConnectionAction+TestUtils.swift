@@ -127,8 +127,6 @@ extension ConnectionStateMachine.ConnectionAction {
         ):
             return lhsPromise.futureResult === rhsPromise.futureResult
                 && lhsResult.value == rhsResult.value
-        case (.needMoreData, .needMoreData):
-            return true
 
         case (.forwardRows(let lhs), .forwardRows(let rhs)):
             return lhs == rhs

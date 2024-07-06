@@ -34,7 +34,6 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
     ) throws -> DescribeInfo {
         buffer.skipUB4()  // max row size
         let columnCount = try buffer.throwingReadUB4()
-        context.columnsCount = Int(columnCount)
 
         if columnCount > 0 {
             buffer.moveReaderIndex(forwardBy: 1)

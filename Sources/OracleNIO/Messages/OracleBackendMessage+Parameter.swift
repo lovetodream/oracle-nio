@@ -113,7 +113,7 @@ extension OracleBackendMessage {
             {
                 buffer.moveReaderIndex(forwardBy: bytesCount)
             }
-            if context.statementOptions!.arrayDMLRowCounts == true {
+            if context.statementContext!.options.arrayDMLRowCounts == true {
                 let numberOfRows = buffer.readUB4() ?? 0
                 rowCounts = []
                 for _ in 0..<numberOfRows {

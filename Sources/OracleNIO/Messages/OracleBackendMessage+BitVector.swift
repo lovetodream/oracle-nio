@@ -24,7 +24,7 @@ extension OracleBackendMessage {
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.BitVector {
             let columnsCountSent = try buffer.throwingReadUB2()
-            guard let columnsCount = context.columnsCount else {
+            guard let columnsCount = context.describeInfo?.columns.count else {
                 preconditionFailure(
                     "How can we receive a bit vector without an active statement?"
                 )

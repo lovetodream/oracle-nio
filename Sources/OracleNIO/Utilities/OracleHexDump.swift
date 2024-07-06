@@ -102,10 +102,15 @@ extension String {
     ///
     /// - parameters:
     ///     - radix: radix base to use for conversion.
-    ///     - padding: the desired lenght of the resulting string.
+    ///     - padding: the desired length of the resulting string.
     @inlinable
     internal init<Value>(_ value: Value, radix: Int, padding: Int) where Value: BinaryInteger {
         let formatted = String(value, radix: radix, uppercase: true)
-        self = String(repeating: "0", count: padding - formatted.count) + formatted
+        let padding = padding - formatted.count
+        if padding < 0 {
+            self = String(formatted.dropFirst(abs(padding)))
+        } else {
+            self = String(repeating: "0", count: padding) + formatted
+        }
     }
 }

@@ -35,21 +35,36 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
 
     final class Context {
         var capabilities: Capabilities
-        var performingChunkedRead = false
-        var statementOptions: StatementOptions? = nil
-        var columnsCount: Int? = nil
+
+        private var _statementContext: StatementContext?
+        var statementContext: StatementContext? {
+            get {
+                self._statementContext
+            }
+            set {
+                self._statementContext = newValue
+                switch newValue?.type {
+                case .cursor(let cursor, _):
+                    if cursor.describeInfo != self.describeInfo {
+                        self.describeInfo = cursor.describeInfo
+                    }
+                default: break
+                }
+            }
+        }
+        var bitVector: [UInt8]?
+        var describeInfo: DescribeInfo?
+
         var lobContext: LOBOperationContext?
 
-        init(
-            capabilities: Capabilities,
-            performingChunkedRead: Bool = false,
-            statementOptions: StatementOptions? = nil,
-            columnsCount: Int? = nil
-        ) {
+        init(capabilities: Capabilities) {
             self.capabilities = capabilities
-            self.performingChunkedRead = performingChunkedRead
-            self.statementOptions = statementOptions
-            self.columnsCount = columnsCount
+        }
+
+        func clearStatementContext() {
+            self.statementContext = nil
+            self.bitVector = nil
+            self.describeInfo = nil
         }
     }
 

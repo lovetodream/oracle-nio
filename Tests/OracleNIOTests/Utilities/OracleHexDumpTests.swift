@@ -38,4 +38,8 @@ final class OracleHexDumpTests: XCTestCase {
         let buffer = ByteBuffer()
         XCTAssertEqual(buffer.oracleHexDump(), "")
     }
+
+    func testStringInitializationIsTruncatedIfNeeded() {
+        XCTAssertEqual(String(10_000, radix: 10, padding: 4), "0000")
+    }
 }

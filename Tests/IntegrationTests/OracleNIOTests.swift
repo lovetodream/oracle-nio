@@ -1108,6 +1108,32 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testLong() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        do {
+            try await conn.execute(
+                "DROP TABLE tbl_long", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await conn.execute(
+            "CREATE TABLE tbl_long (id number, title long)",
+            logger: .oracleTest
+        )
+        try await conn.execute(
+            "INSERT INTO tbl_long (id, title) VALUES (1, 'hello!')",
+            logger: .oracleTest
+        )
+        let stream = try await conn.execute("SELECT id, title FROM tbl_long")
+        for try await (id, value) in stream.decode((Int, String).self) {
+            XCTAssertEqual(id, 1)
+            XCTAssertEqual(value, "hello!")
+        }
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

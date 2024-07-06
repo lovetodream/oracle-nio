@@ -64,10 +64,6 @@ final class StatementStateMachineTests: XCTestCase {
         ])
         let rowHeader = OracleBackendMessage.RowHeader()
         let result = StatementResult(value: .describeInfo(describeInfo.columns))
-        let rowData = try Array(
-            hexString:
-                "02 c1 02 08 01 06 03 24 13 32 00 01 01 00 00 00 00 01 01 00 01 0b 0b 80 00 00 00 3d 3c 3c 80 00 00 00 01 a3 00 04 01 01 01 37 01 01 02 05 7b 00 00 01 01 01 14 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 01 01 00 00 00 00 02 05 7b 01 01 00 00 19 4f 52 41 2d 30 31 34 30 33 3a 20 6e 6f 20 64 61 74 61 20 66 6f 75 6e 64 0a"
-                .replacingOccurrences(of: " ", with: ""))
 
         var state = ConnectionStateMachine.readyForStatement()
         XCTAssertEqual(
@@ -75,9 +71,10 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         let row1: DataRow = .makeTestDataRow(1)
+        XCTAssertEqual(state.rowDataReceived(.init(1), capabilities: .init()), .wait)
+        XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
         XCTAssertEqual(
-            state.rowDataReceived(.init(slice: .init(bytes: rowData)), capabilities: .init()),
-            .forwardStreamComplete([row1], cursorID: 1))
+            state.backendErrorReceived(.noData), .forwardStreamComplete([row1], cursorID: 1))
     }
 
     func testCancellationCompletesQueryOnlyOnce() throws {
@@ -106,10 +103,6 @@ final class StatementStateMachineTests: XCTestCase {
         ])
         let rowHeader = OracleBackendMessage.RowHeader()
         let result = StatementResult(value: .describeInfo(describeInfo.columns))
-        let rowData = try Array(
-            hexString:
-                "05 c4 02 03 31 23 07 05 c4 02 03 31 23 08 01 06 04 bd 33 f6 cf 01 0f 01 03 00 00 00 00 01 01 00 01 0b 0b 80 00 00 00 3d 3c 3c 80 00 00 00 01 a3 00 04 01 01 01 04 01 02 00 00 00 01 03 00 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 01 01 00 00 00 00 00 01 02"
-                .replacingOccurrences(of: " ", with: ""))
         let backendError = OracleBackendMessage.BackendError(
             number: 1013, cursorID: 3, position: 0, rowCount: 2, isWarning: false,
             message: "ORA-01013: user requested cancel of current operation\n", rowID: nil,
@@ -121,8 +114,13 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
-            state.rowDataReceived(.init(slice: .init(bytes: rowData)), capabilities: .init()),
-            .sendFetch(queryContext))
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
+            .wait)
+        XCTAssertEqual(
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
+            .wait)
+        XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
+        XCTAssertEqual(state.backendErrorReceived(.sendFetch), .sendFetch(queryContext))
         XCTAssertEqual(
             state.cancelStatementStream(),
             .forwardStreamError(
@@ -157,10 +155,6 @@ final class StatementStateMachineTests: XCTestCase {
         ])
         let rowHeader = OracleBackendMessage.RowHeader()
         let result = StatementResult(value: .describeInfo(describeInfo.columns))
-        let rowData = try Array(
-            hexString:
-                "05 c4 02 03 31 23 07 05 c4 02 03 31 23 08 01 06 04 bd 33 f6 cf 01 0f 01 03 00 00 00 00 01 01 00 01 0b 0b 80 00 00 00 3d 3c 3c 80 00 00 00 01 a3 00 04 01 01 01 04 01 02 00 00 00 01 03 00 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 01 01 00 00 00 00 00 01 02"
-                .replacingOccurrences(of: " ", with: ""))
 
         var state = ConnectionStateMachine.readyForStatement()
         XCTAssertEqual(
@@ -168,161 +162,53 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
-            state.rowDataReceived(.init(slice: .init(bytes: rowData)), capabilities: .init()),
-            .sendFetch(queryContext))
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
+            .wait)
+        XCTAssertEqual(
+            state.rowDataReceived(.init(1_024_834), capabilities: .init()),
+            .wait)
+        XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
+        XCTAssertEqual(state.backendErrorReceived(.sendFetch), .sendFetch(queryContext))
         XCTAssertEqual(
             state.cancelStatementStream(),
             .forwardStreamError(
                 .statementCancelled, read: false, cursorID: nil, clientCancelled: true))
         XCTAssertEqual(state.statementStreamCancelled(), .sendMarker(read: true))
     }
+}
 
-    func testProcessVectorColumnDataRequestsMissingData() {
-        let state = StatementStateMachine(
-            statementContext: .init(statement: "")
-        )
-        let type = OracleDataType.vector
-
-        var buffer = ByteBuffer(bytes: [
-            1, 1,  // length
-            0,  // size
-            0,  // chunk size
-            1,  // value (partial)
-        ])
-        try XCTAssertNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            ))
-
-        buffer = ByteBuffer(bytes: [
-            1, 1,  // length
-            0,  // size
-            0,  // chunk size
-            1, 1,  // value
-            1,  // locator (partial)
-        ])
-        try XCTAssertNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            ))
+extension OracleBackendMessage.RowData {
+    init<T: OracleEncodable>(_ elements: T...) {
+        var columns: [OracleBackendMessage.RowData.ColumnStorage] = []
+        for element in elements {
+            var buffer = ByteBuffer()
+            element._encodeRaw(into: &buffer, context: .default)
+            columns.append(.data(buffer))
+        }
+        self.init(columns: columns)
     }
+}
 
-    func testProcessObjectColumnDataRequestsMissingData() throws {
-        let state = StatementStateMachine(
-            statementContext: .init(statement: "")
-        )
-        let type = OracleDataType.object
+extension OracleBackendMessage.BackendError {
+    static let noData = OracleBackendMessage.BackendError(
+        number: 1403,
+        cursorID: 1,
+        position: 20,
+        rowCount: 1,
+        isWarning: false,
+        message: "ORA-01403: no data found\n",
+        rowID: nil,
+        batchErrors: []
+    )
 
-        var buffer = ByteBuffer(bytes: [1, 1])  // type oid
-        try XCTAssertNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            ))
-
-        buffer = ByteBuffer(bytes: [
-            1, 1, 0,  // type oid
-            1, 1,  // oid
-        ])
-        try XCTAssertNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            ))
-
-        buffer = ByteBuffer(bytes: [
-            1, 1, 0,  // type oid
-            1, 1, 0,  // oid
-            1, 1,  // snapshot
-        ])
-        try XCTAssertNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            ))
-
-        buffer = ByteBuffer(bytes: [
-            1, 1, 0,  // type oid
-            1, 1, 0,  // oid
-            1, 1, 0,  // snapshot
-            0,  // version
-            0,  // data length
-            0,  // flags
-        ])
-        try XCTAssertNotNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            ))
-    }
-
-    func testProcessLOBColumnDataRequestsMissingData() throws {
-        let state = StatementStateMachine(
-            statementContext: .init(statement: "")
-        )
-        let type = OracleDataType.blob
-
-        var buffer = ByteBuffer(bytes: [
-            1, 1,  // length
-            1, 1,  // size
-            1, 1,  // chunk size
-            2, 0,  // locator (partial)
-        ])
-        try XCTAssertNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            )
-        )
-
-        buffer = ByteBuffer(bytes: [
-            1, 1,  // length
-            1, 1,  // size
-            1, 1,  // chunk size
-            1, 0,  // locator
-        ])
-        try XCTAssertNotNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            )
-        )
-
-        buffer = ByteBuffer(bytes: [0])
-        try XCTAssertNotNil(
-            state.processColumnData(
-                from: &buffer,
-                oracleType: type._oracleType,
-                csfrm: type.csfrm,
-                bufferSize: 1,
-                capabilities: .init()
-            )
-        )
-    }
+    static let sendFetch = OracleBackendMessage.BackendError(
+        number: 0,
+        cursorID: 3,
+        position: 0,
+        rowCount: 2,
+        isWarning: false,
+        message: nil,
+        rowID: nil,
+        batchErrors: []
+    )
 }

@@ -25,13 +25,6 @@ struct StatementStateMachine {
             OracleBackendMessage.RowHeader,
             RowStreamStateMachine
         )
-        case streamingAndWaiting(
-            StatementContext,
-            DescribeInfo,
-            OracleBackendMessage.RowHeader,
-            RowStreamStateMachine,
-            partial: ByteBuffer
-        )
         /// Indicates that the current statement was cancelled and we want to drain
         /// rows from the connection ASAP.
         case drain([OracleColumn])
@@ -53,8 +46,6 @@ struct StatementStateMachine {
 
         case evaluateErrorAtConnectionLevel(OracleSQLError)
 
-        case needMoreData
-
         case forwardRows([DataRow])
         case forwardStreamComplete([DataRow], cursorID: UInt16)
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
@@ -68,11 +59,6 @@ struct StatementStateMachine {
 
         case read
         case wait
-    }
-
-    private enum DataRowResult {
-        case row(DataRow)
-        case notEnoughData
     }
 
     private var state: State
@@ -120,10 +106,7 @@ struct StatementStateMachine {
                 return .failStatement(promise, with: .statementCancelled)
             }
 
-        case .streaming(_, let describeInfo, _, var streamStateMachine),
-            .streamingAndWaiting(
-                _, let describeInfo, _, var streamStateMachine, _
-            ):
+        case .streaming(_, let describeInfo, _, var streamStateMachine):
             precondition(!self.isCancelled)
             self.isCancelled = true
             self.state = .drain(describeInfo.columns)
@@ -202,7 +185,7 @@ struct StatementStateMachine {
             // marker. Due to that it might send more data without knowing yet.
             return .wait
 
-        case .initialized, .streamingAndWaiting, .error, .commandComplete:
+        case .initialized, .error, .commandComplete:
             preconditionFailure("Invalid state: \(self.state)")
 
         case .modifying:
@@ -217,81 +200,38 @@ struct StatementStateMachine {
         switch self.state {
         case .initialized(let context):
             let outBinds = context.statement.binds.metadata.compactMap(\.outContainer)
-            guard !outBinds.isEmpty else { preconditionFailure() }
-            var buffer = rowData.slice
-            if context.isReturning {
-                for outBind in outBinds {
-                    outBind.storage.withLockedValue { $0 = nil }
-                    let rowCount = buffer.readUB4() ?? 0
-                    guard rowCount > 0 else {
-                        continue
-                    }
-
-                    do {
-                        for _ in 0..<rowCount {
-                            try self.processBindData(
-                                from: &buffer,
-                                outBind: outBind,
-                                capabilities: capabilities
-                            )
-                        }
-                    } catch {
-                        guard let error = error as? OracleSQLError else {
-                            preconditionFailure("Unexpected error: \(error)")
-                        }
-                        return self.setAndFireError(error)
-                    }
+            precondition(rowData.columns.count == outBinds.count)
+            for (index, column) in rowData.columns.enumerated() {
+                switch column {
+                case .data(let buffer):
+                    outBinds[index].storage.withLockedValue { $0 = buffer }
+                case .duplicate:
+                    preconditionFailure("duplicate columns cannot happen in out binds")
                 }
+            }
+            return .wait
 
-                return self.moreDataReceived(
-                    &buffer,
-                    capabilities: capabilities,
-                    context: context,
-                    describeInfo: nil
-                )
-            } else {
-                for outBind in outBinds {
-                    outBind.storage.withLockedValue { $0 = nil }
-                    do {
-                        try self.processBindData(
-                            from: &buffer,
-                            outBind: outBind,
-                            capabilities: capabilities
-                        )
-                    } catch {
-                        guard let error = error as? OracleSQLError else {
-                            preconditionFailure("Unexpected error: \(error)")
-                        }
-                        return self.setAndFireError(error)
-                    }
+        case .streaming(let context, let describeInfo, let rowHeader, var demandStateMachine):
+            var out = ByteBuffer()
+            for column in rowData.columns {
+                switch column {
+                case .data(var buffer):
+                    out.writeBuffer(&buffer)
+                case .duplicate(let index):
+                    var data = demandStateMachine.receivedDuplicate(at: index)
+                    try! out.writeLengthPrefixed(as: UInt8.self) { buffer in
+                        buffer.writeBuffer(&data)
+                    }  // must work
                 }
-
-                return self.moreDataReceived(
-                    &buffer,
-                    capabilities: capabilities,
-                    context: context,
-                    describeInfo: nil
+            }
+            let row = DataRow(columnCount: describeInfo.columns.count, bytes: out)
+            demandStateMachine.receivedRow(row)
+            self.avoidingStateMachineCoWVoid { state in
+                state = .streaming(
+                    context, describeInfo, rowHeader, demandStateMachine
                 )
             }
-
-        case .streaming(let context, let describeInfo, _, _):
-            var buffer = rowData.slice
-            let action = self.rowDataReceived0(
-                buffer: &buffer, capabilities: capabilities
-            )
-
-            switch action {
-            case .wait:
-                return self.moreDataReceived(
-                    &buffer,
-                    capabilities: capabilities,
-                    context: context,
-                    describeInfo: describeInfo
-                )
-
-            default:
-                return action
-            }
+            return .wait
 
         case .drain:
             // This state might occur, if the client cancelled the statement,
@@ -355,8 +295,7 @@ struct StatementStateMachine {
                     )  // empty response
                 }
 
-            case .streaming(let context, _, _, var demandStateMachine),
-                .streamingAndWaiting(let context, _, _, var demandStateMachine, _):
+            case .streaming(let context, _, _, var demandStateMachine):
                 context.cursorID = error.cursorID ?? context.cursorID
 
                 self.avoidingStateMachineCoWVoid { state in
@@ -431,9 +370,13 @@ struct StatementStateMachine {
             }
         } else {
             switch self.state {
-            case .drain,
-                .commandComplete,
-                .error:
+            case .drain:
+                // This state might occur, if the client cancelled the
+                // statement, but the server did not yet receive/process the
+                // cancellation marker. Due to that it might send more data
+                // without knowing yet.
+                return .wait
+            case .commandComplete, .error:
                 preconditionFailure("This is impossible...")
 
             case .initialized(let context):
@@ -519,8 +462,7 @@ struct StatementStateMachine {
                     action = .sendFetch(context)
                 }
 
-            case .streaming(let statementContext, _, _, _),
-                .streamingAndWaiting(let statementContext, _, _, _, _):
+            case .streaming(let statementContext, _, _, _):
                 // no error actually happened, we need more rows
                 if let cursorID = error.cursorID {
                     statementContext.cursorID = cursorID
@@ -537,40 +479,6 @@ struct StatementStateMachine {
 
     mutating func errorHappened(_ error: OracleSQLError) -> Action {
         return self.setAndFireError(error)
-    }
-
-    mutating func chunkReceived(
-        _ buffer: ByteBuffer, capabilities: Capabilities
-    ) -> Action {
-        switch self.state {
-        case .drain:
-            // Could happen if we cancelled the statement while the database is
-            // still sending stuff
-            return .wait
-
-        case .streamingAndWaiting(
-            let statementContext,
-            let describeInfo,
-            let rowHeader,
-            let streamState,
-            var partial
-        ):
-            partial.writeImmutableBuffer(buffer)
-            self.avoidingStateMachineCoWVoid { state in
-                state = .streaming(
-                    statementContext, describeInfo, rowHeader, streamState
-                )
-            }
-            return self.moreDataReceived(
-                &partial,
-                capabilities: capabilities,
-                context: statementContext,
-                describeInfo: describeInfo
-            )
-
-        default:
-            preconditionFailure("Invalid state: \(self.state)")
-        }
     }
 
     mutating func ioVectorReceived(
@@ -591,7 +499,6 @@ struct StatementStateMachine {
 
         case .describeInfoReceived,
             .streaming,
-            .streamingAndWaiting,
             .drain,
             .commandComplete,
             .error:
@@ -615,7 +522,6 @@ struct StatementStateMachine {
 
         case .describeInfoReceived,
             .streaming,
-            .streamingAndWaiting,
             .drain,
             .commandComplete,
             .error:
@@ -634,8 +540,7 @@ struct StatementStateMachine {
         switch self.state {
         case .initialized(let context),
             .describeInfoReceived(let context, _),
-            .streaming(let context, _, _, _),
-            .streamingAndWaiting(let context, _, _, _, _):
+            .streaming(let context, _, _, _):
             return .sendFetch(context)
         case .drain,
             .commandComplete,
@@ -669,7 +574,7 @@ struct StatementStateMachine {
                 }
             }
 
-        case .streamingAndWaiting, .drain, .describeInfoReceived:
+        case .drain, .describeInfoReceived:
             return .wait
 
         case .initialized:
@@ -715,23 +620,6 @@ struct StatementStateMachine {
                     return .wait
                 }
             }
-        case .streamingAndWaiting(
-            let context, let describeInfo, let header, var demandStateMachine,
-            let partial
-        ):
-            return self.avoidingStateMachineCoW { state in
-                let rows = demandStateMachine.channelReadComplete()
-                state = .streamingAndWaiting(
-                    context, describeInfo, header, demandStateMachine,
-                    partial: partial
-                )
-                switch rows {
-                case .some(let rows):
-                    return .forwardRows(rows)
-                case .none:
-                    return .wait
-                }
-            }
 
         case .modifying:
             preconditionFailure("Invalid state: \(self.state)")
@@ -756,24 +644,6 @@ struct StatementStateMachine {
                     return .read
                 }
             }
-        case .streamingAndWaiting(
-            let context, let describeInfo, let header, var demandStateMachine,
-            let partial
-        ):
-            precondition(!self.isCancelled)
-            return self.avoidingStateMachineCoW { state in
-                let action = demandStateMachine.read()
-                state = .streamingAndWaiting(
-                    context, describeInfo, header, demandStateMachine,
-                    partial: partial
-                )
-                switch action {
-                case .wait:
-                    return .wait
-                case .read:
-                    return .read
-                }
-            }
         case .initialized,
             .commandComplete,
             .drain,
@@ -789,147 +659,6 @@ struct StatementStateMachine {
     }
 
     // MARK: Private Methods
-
-    private mutating func moreDataReceived(
-        _ buffer: inout ByteBuffer,
-        capabilities: Capabilities,
-        context: StatementContext,
-        describeInfo: DescribeInfo?
-    ) -> Action {
-        while buffer.readableBytes > 0 {
-            // This is not ideal, but still not as bad as passing potentially
-            // huge buffers around as associated values in enums and causing
-            // potential stack overflows when having big array sizes configured.
-            // Reason for this even existing is that the `row data` response
-            // from the Oracle database doesn't contain a length field you can
-            // read without parsing all the values of said row. And to parse the
-            // values you have to have contextual information from
-            // `DescribeInfo`. So, because Oracle is sending messages in bulk,
-            // we don't really have another choice.
-            var slice = buffer.slice()
-            let startReaderIndex = slice.readerIndex
-            do {
-                let decodingContext = OracleBackendMessageDecoder.Context(
-                    capabilities: capabilities)
-                decodingContext.statementOptions = context.options
-                decodingContext.columnsCount = describeInfo?.columns.count
-                var messages: TinySequence<OracleBackendMessage> = []
-                try OracleBackendMessage.decodeData(
-                    from: &slice,
-                    into: &messages,
-                    context: decodingContext
-                )
-
-                for message in messages {
-                    let action: Action
-                    switch message {
-                    case .bitVector(let bitVector):
-                        action = self.bitVectorReceived(bitVector)
-                    case .describeInfo(let describeInfo):
-                        action = self.describeInfoReceived(describeInfo)
-                    case .rowHeader(let rowHeader):
-                        action = self.rowHeaderReceived(rowHeader)
-                    case .rowData(let rowData):
-                        buffer = rowData.slice
-                        action = self.rowDataReceived0(
-                            buffer: &buffer, capabilities: capabilities
-                        )
-                    case .queryParameter:
-                        // query parameters can be safely ignored
-                        action = .wait
-                    case .error(let error):
-                        action = self.errorReceived(error)
-                    case .flushOutBinds:
-                        action = self.flushOutBindsReceived()
-                    default:
-                        preconditionFailure("Invalid state: \(self.state)")
-                    }
-                    // If action is anything other than wait, we will have to
-                    // return it. This should be fine, because messages with
-                    // an action should only occur at the end of a packet.
-                    // At least thats what I (@lovetodream) know from testing.
-                    if case .wait = action {
-                        continue
-                    }
-                    return action
-                }
-
-                continue
-            } catch let error as OraclePartialDecodingError {
-                slice.moveReaderIndex(to: startReaderIndex)
-                let completeMessage = slice.slice()
-                let error = OracleSQLError.messageDecodingFailure(
-                    .withPartialError(
-                        error,
-                        packetID: OracleBackendMessage.ID.data.rawValue,
-                        messageBytes: completeMessage
-                    )
-                )
-                return self.errorHappened(error)
-            } catch {
-                preconditionFailure(
-                    "Expected to only see `OraclePartialDecodingError`s here."
-                )
-            }
-        }
-
-        return .wait
-    }
-
-    private mutating func rowDataReceived0(
-        buffer: inout ByteBuffer, capabilities: Capabilities
-    ) -> Action {
-        switch self.state {
-        case .streaming(
-            let context, let describeInfo, var rowHeader, var demandStateMachine
-        ):
-            let readerIndex = buffer.readerIndex
-            do {
-                switch try self.rowDataReceived(
-                    buffer: &buffer,
-                    describeInfo: describeInfo,
-                    rowHeader: &rowHeader,
-                    capabilities: capabilities,
-                    demandStateMachine: &demandStateMachine
-                ) {
-                case .row(let row):
-                    demandStateMachine.receivedRow(row)
-                    self.avoidingStateMachineCoWVoid { state in
-                        state = .streaming(
-                            context, describeInfo, rowHeader, demandStateMachine
-                        )
-                    }
-                case .notEnoughData:
-                    buffer.moveReaderIndex(to: readerIndex)
-                    // prepend message id prefix again
-                    var partial = ByteBuffer(
-                        bytes: [OracleBackendMessage.MessageID.rowData.rawValue]
-                    )
-                    partial.writeImmutableBuffer(buffer.slice())
-
-                    self.avoidingStateMachineCoWVoid { state in
-                        state = .streamingAndWaiting(
-                            context,
-                            describeInfo,
-                            rowHeader,
-                            demandStateMachine,
-                            partial: partial
-                        )
-                    }
-                    return .needMoreData
-                }
-            } catch let error as OracleSQLError {
-                return self.setAndFireError(error)
-            } catch {
-                preconditionFailure("Unexpected error: \(error)")
-            }
-
-        default:
-            preconditionFailure("Invalid state: \(self.state)")
-        }
-
-        return .wait
-    }
 
     private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
         switch self.state {
@@ -954,8 +683,7 @@ struct StatementStateMachine {
             self.state = .error(error)
             return .evaluateErrorAtConnectionLevel(error)
 
-        case .streaming(_, _, _, var streamState),
-            .streamingAndWaiting(_, _, _, var streamState, _):
+        case .streaming(_, _, _, var streamState):
             self.state = .error(error)
             switch streamState.fail() {
             case .read:
@@ -977,255 +705,11 @@ struct StatementStateMachine {
         }
     }
 
-    // MARK: - Private helper methods -
-
-    private func isDuplicateData(
-        columnNumber: UInt32, bitVector: [UInt8]?
-    ) -> Bool {
-        guard let bitVector else { return false }
-        let byteNumber = columnNumber / 8
-        let bitNumber = columnNumber % 8
-        return bitVector[Int(byteNumber)] & (1 << bitNumber) == 0
-    }
-
-    private func processBindData(
-        from buffer: inout ByteBuffer,
-        outBind: OracleRef,
-        capabilities: Capabilities
-    ) throws {
-        let metadata = outBind.metadata.withLockedValue { $0 }
-        guard
-            var columnData = try self.processColumnData(
-                from: &buffer,
-                oracleType: metadata.dataType._oracleType,
-                csfrm: metadata.dataType.csfrm,
-                bufferSize: metadata.bufferSize,
-                capabilities: capabilities
-            )
-        else {
-            preconditionFailure(
-                """
-                unhandled need more data in bind processing: please file a issue \
-                on https://github.com/lovetodream/oracle-nio/issues with steps to \
-                reproduce the crash
-                """)
-        }
-
-        let actualBytesCount = buffer.readSB4() ?? 0
-        if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {
-            return
-        } else if actualBytesCount != 0 && !columnData.oracleColumnIsEmpty {
-            // TODO: throw this as error?
-            preconditionFailure("column truncated, length: \(actualBytesCount)")
-        }
-
-        outBind.storage.withLockedValue { storage in
-            if storage == nil {
-                storage = columnData
-            } else {
-                storage!.writeBuffer(&columnData)
-            }
-        }
-    }
-
-    /* private */ func processColumnData(
-        from buffer: inout ByteBuffer,
-        oracleType: _TNSDataType?,
-        csfrm: UInt8,
-        bufferSize: UInt32,
-        capabilities: Capabilities
-    ) throws -> ByteBuffer? {
-        var columnValue: ByteBuffer
-        if bufferSize == 0 && ![.long, .longRAW, .uRowID].contains(oracleType) {
-            columnValue = ByteBuffer(bytes: [0])  // NULL indicator
-            return columnValue
-        }
-
-        if [.varchar, .char, .long].contains(oracleType) {
-            if csfrm == Constants.TNS_CS_NCHAR {
-                try capabilities.checkNCharsetID()
-            }
-            // if we need capabilities during decoding in the future, we should
-            // move this to decoding too
-        }
-
-        switch oracleType {
-        case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
-            .timestampLTZ, .timestampTZ, .binaryDouble, .binaryFloat,
-            .binaryInteger, .boolean, .intervalDS:
-            switch buffer.readOracleSlice() {
-            case .some(let slice):
-                columnValue = slice
-            case .none:
-                return nil  // need more data
-            }
-        case .rowID:
-            // length is not the actual length of row ids
-            let length = try buffer.throwingReadInteger(as: UInt8.self)
-            if length == 0 || length == Constants.TNS_NULL_LENGTH_INDICATOR {
-                columnValue = ByteBuffer(bytes: [0])  // NULL indicator
-            } else {
-                columnValue = ByteBuffer()
-                try columnValue.writeLengthPrefixed(as: UInt8.self) {
-                    let start = buffer.readerIndex
-                    _ = try RowID(from: &buffer, type: .rowID, context: .default)
-                    let end = buffer.readerIndex
-                    buffer.moveReaderIndex(to: start)
-                    return $0.writeImmutableBuffer(buffer.readSlice(length: end - start)!)
-                }
-            }
-        case .cursor:
-            buffer.moveReaderIndex(forwardBy: 1)  // length (fixed value)
-
-            let readerIndex = buffer.readerIndex
-            _ = try DescribeInfo._decode(
-                from: &buffer, context: .init(capabilities: capabilities)
-            )
-            buffer.skipUB2()  // cursor id
-            let length = buffer.readerIndex - readerIndex
-            buffer.moveReaderIndex(to: readerIndex)
-            columnValue = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-            try columnValue.writeLengthPrefixed(as: UInt32.self) { base in
-                let start = base.writerIndex
-                try capabilities.encode(into: &base)
-                base.writeImmutableBuffer(buffer.readSlice(length: length)!)
-                return base.writerIndex - start
-            }
-            columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
-        case .clob, .blob:
-
-            // LOB has a UB4 length indicator instead of the usual UInt8
-            let length = try buffer.throwingReadUB4()
-            if length > 0 {
-                let size = try buffer.throwingReadUB8()
-                let chunkSize = try buffer.throwingReadUB4()
-                var locator: ByteBuffer
-                switch buffer.readOracleSlice() {
-                case .some(let slice):
-                    locator = slice
-                case .none:
-                    return nil  // need more data
-                }
-                columnValue = ByteBuffer()
-                try columnValue.writeLengthPrefixed(as: UInt8.self) {
-                    $0.writeInteger(size) + $0.writeInteger(chunkSize) + $0.writeBuffer(&locator)
-                }
-            } else {
-                columnValue = .init(bytes: [0])  // empty buffer
-            }
-        case .json:
-            // TODO: OSON
-            // OSON has a UB4 length indicator instead of the usual UInt8
-            fatalError("OSON is not yet implemented, will be added in the future")
-        case .vector:
-            let length = try buffer.throwingReadUB4()
-            if length > 0 {
-                buffer.skipUB8()  // size (unused)
-                buffer.skipUB4()  // chunk size (unused)
-                switch buffer.readOracleSlice() {
-                case .some(let slice):
-                    columnValue = slice
-                case .none:
-                    return nil  // need more data
-                }
-                if !buffer.skipRawBytesChunked() {  // LOB locator (unused)
-                    return nil  // need more data
-                }
-            } else {
-                columnValue = .init(bytes: [0])  // empty buffer
-            }
-        case .intNamed:
-            let startIndex = buffer.readerIndex
-            if try buffer.throwingReadUB4() > 0 {
-                if !buffer.skipRawBytesChunked() {  // type oid
-                    return nil  // need more data
-                }
-            }
-            if try buffer.throwingReadUB4() > 0 {
-                if !buffer.skipRawBytesChunked() {  // oid
-                    return nil  // need more data
-                }
-            }
-            if try buffer.throwingReadUB4() > 0 {
-                if !buffer.skipRawBytesChunked() {  // snapshot
-                    return nil  // need more data
-                }
-            }
-            buffer.skipUB2()  // version
-            let dataLength = try buffer.throwingReadUB4()
-            buffer.skipUB2()  // flags
-            if dataLength > 0 {
-                if !buffer.skipRawBytesChunked() {  // data
-                    return nil  // need more data
-                }
-            }
-            let endIndex = buffer.readerIndex
-            buffer.moveReaderIndex(to: startIndex)
-            columnValue = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-            let length = (endIndex - startIndex) + (MemoryLayout<UInt32>.size * 2)
-            columnValue.reserveCapacity(minimumWritableBytes: length)
-            try columnValue.writeLengthPrefixed(as: UInt32.self) {
-                $0.writeImmutableBuffer(buffer.readSlice(length: endIndex - startIndex)!)
-            }
-            columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
-        default:
-            fatalError(
-                "\(String(reflecting: oracleType)) is not implemented, please file a bug report")
-        }
-
-        if [.long, .longRAW].contains(oracleType) {
-            buffer.skipSB4()  // null indicator
-            buffer.skipUB4()  // return code
-        }
-
-        return columnValue
-    }
-
-    private mutating func rowDataReceived(
-        buffer: inout ByteBuffer,
-        describeInfo: DescribeInfo,
-        rowHeader: inout OracleBackendMessage.RowHeader,
-        capabilities: Capabilities,
-        demandStateMachine: inout RowStreamStateMachine
-    ) throws -> DataRowResult {
-        var out = ByteBuffer()
-        for (index, column) in describeInfo.columns.enumerated() {
-            if self.isDuplicateData(
-                columnNumber: UInt32(index), bitVector: rowHeader.bitVector
-            ) {
-                var data = demandStateMachine.receivedDuplicate(at: index)
-                // write data with length, because demandStateMachine doesn't
-                // return the length field
-                try out.writeLengthPrefixed(as: UInt8.self) { buffer in
-                    buffer.writeBuffer(&data)
-                }
-            } else if var data = try self.processColumnData(
-                from: &buffer,
-                oracleType: column.dataType._oracleType,
-                csfrm: column.dataType.csfrm,
-                bufferSize: column.bufferSize,
-                capabilities: capabilities
-            ) {
-                out.writeBuffer(&data)
-            } else {
-                return .notEnoughData
-            }
-        }
-
-        let data = DataRow(
-            columnCount: describeInfo.columns.count, bytes: out
-        )
-        rowHeader.bitVector = nil  // reset bit vector after usage
-
-        return .row(data)
-    }
-
     var isComplete: Bool {
         switch self.state {
         case .initialized,
             .describeInfoReceived,
             .streaming,
-            .streamingAndWaiting,
             .drain:
             return false
         case .commandComplete, .error:

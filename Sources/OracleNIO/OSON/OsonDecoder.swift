@@ -24,7 +24,7 @@ struct OSONDecoder {
     var fieldNames = [String]()
     var treeSegPosition = 0
 
-    mutating func decode(_ data: ByteBuffer) throws -> Any? {
+    mutating func decode(_ data: ByteBuffer) throws -> OracleJSON.Storage! {  // TODO: handle errors
         self.buffer = data
 
         // Parse root header
@@ -78,17 +78,15 @@ struct OSONDecoder {
             fieldNamesSegSize = UInt32(temp16)
         }
 
-        // determine the size of the tree segment
-        let treeSegSize: UInt32
+        // determine the size of the tree segment - unused
         if flags & Constants.TNS_JSON_FLAG_TREE_SEG_UINT32 != 0 {
-            treeSegSize = buffer.readInteger(as: UInt32.self) ?? 0
+            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt32>.size)
         } else {
-            let temp16 = buffer.readInteger(as: UInt16.self) ?? 0
-            treeSegSize = UInt32(temp16)
+            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt16>.size)
         }
 
-        // determine the number of "tiny" nodes
-        let numberOfTinyNodes = buffer.readInteger(as: UInt16.self)
+        // determine the number of "tiny" nodes - unused
+        buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt16>.size)
 
         // skip the hash id array
         let hashIDSize: Int
@@ -120,7 +118,7 @@ struct OSONDecoder {
             let temp8 = bytes[Int(offset)]
             let range = (Int(offset) + 1)...(Int(offset) + Int(UInt32(temp8)))
             let name = Array(bytes[range])
-            self.fieldNames[i] = String(cString: name)
+            self.fieldNames[i] = String(decoding: name, as: UTF8.self)
         }
 
         // get tree segment
@@ -130,7 +128,7 @@ struct OSONDecoder {
         return try decodeNode()
     }
 
-    private mutating func decodeNode() throws -> Any? {  // TODO: better return type
+    private mutating func decodeNode() throws -> OracleJSON.Storage {
         let nodeType = try buffer.throwingReadInteger(as: UInt8.self)
         if nodeType & 0x80 != 0 {
             return try decodeContainerNode(nodeType: nodeType)
@@ -139,61 +137,64 @@ struct OSONDecoder {
         var bytes: ByteBuffer
         switch nodeType {
         case Constants.TNS_JSON_TYPE_NULL:
-            return nil
+            return .none
         case Constants.TNS_JSON_TYPE_TRUE:
-            return true
+            return .value(true)
         case Constants.TNS_JSON_TYPE_FALSE:
-            return false
+            return .value(false)
 
         // handle fixed length scalars
         case Constants.TNS_JSON_TYPE_DATE, Constants.TNS_JSON_TYPE_TIMESTAMP7:
             bytes = buffer.readSlice(length: 7) ?? .init()
-            return try Date(from: &bytes, type: .date, context: .default)
+            return try .value(Date(from: &bytes, type: .date, context: .default))
         case Constants.TNS_JSON_TYPE_TIMESTAMP:
             bytes = buffer.readSlice(length: 11) ?? .init()
-            return try Date(from: &bytes, type: .timestamp, context: .default)
+            return try .value(Date(from: &bytes, type: .timestamp, context: .default))
         case Constants.TNS_JSON_TYPE_TIMESTAMP_TZ:
             bytes = buffer.readSlice(length: 13) ?? .init()
-            return try Date(from: &bytes, type: .timestampTZ, context: .default)
+            return try .value(Date(from: &bytes, type: .timestampTZ, context: .default))
         case Constants.TNS_JSON_TYPE_BINARY_FLOAT:
             bytes = buffer.readSlice(length: 4) ?? .init()
-            return try Float(
-                from: &bytes, type: .binaryFloat, context: .default
-            )
+            return try .value(
+                Float(
+                    from: &bytes, type: .binaryFloat, context: .default
+                ))
         case Constants.TNS_JSON_TYPE_BINARY_DOUBLE:
             bytes = buffer.readSlice(length: 8) ?? .init()
-            return try Double(
-                from: &bytes, type: .binaryDouble, context: .default
-            )
+            return try .value(
+                Double(
+                    from: &bytes, type: .binaryDouble, context: .default
+                ))
         case Constants.TNS_JSON_TYPE_INTERVAL_DS:
             bytes = buffer.readSlice(length: 11) ?? .init()
-            return try IntervalDS(
-                from: &bytes, type: .intervalDS, context: .default
-            )
+            return try .value(
+                IntervalDS(
+                    from: &bytes, type: .intervalDS, context: .default
+                ))
         case Constants.TNS_JSON_TYPE_INTERVAL_YM:
             throw OracleError.ErrorType.dbTypeNotSupported
 
         // handle scalars with lengths stored outside the node itself
         case Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT8:
             let temp8 = try buffer.throwingReadInteger(as: UInt8.self)
-            return buffer.readString(length: Int(temp8))
+            return .value(buffer.readString(length: Int(temp8)))
         case Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT16:
             let temp16 = buffer.readInteger(as: UInt16.self) ?? 0
-            return buffer.readString(length: Int(temp16))
+            return .value(buffer.readString(length: Int(temp16)))
         case Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT32:
             let temp32 = buffer.readInteger(as: UInt32.self) ?? 0
-            return buffer.readString(length: Int(temp32))
+            return .value(buffer.readString(length: Int(temp32)))
         case Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8:
             let length = Int(try buffer.throwingReadInteger(as: UInt8.self))
             var slice = buffer.readSlice(length: length) ?? .init()
             let value: Double = try OracleNumeric.parseFloat(from: &slice)
-            return value
+            return .value(value)
         case Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT16:
-            let temp16 = buffer.readInteger(as: UInt16.self) ?? 0
-            return temp16
+            let temp16 = try buffer.throwingReadInteger(as: UInt16.self)
+            return .value(temp16)
         case Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT32:
-            let temp32 = buffer.readInteger(as: UInt32.self) ?? 0
-            return temp32
+            let temp32 = try buffer.throwingReadInteger(as: UInt32.self)
+            return .value(temp32)
 
         default: break
         }
@@ -202,32 +203,34 @@ struct OSONDecoder {
         if [0x20, 0x60].contains(nodeType & 0xf0) {
             let temp8 = nodeType & 0x0f
             bytes = buffer.readSlice(length: Int(temp8) + 1) ?? .init()
-            return try OracleNumber(
-                from: &bytes, type: .number, context: .default
-            )
+            return try .value(
+                OracleNumber(
+                    from: &bytes, type: .number, context: .default
+                ))
         }
 
         // handle integer with length stored inside the node itself
         if [0x40, 0x50].contains(nodeType & 0xf0) {
             let temp8 = nodeType & 0x0f
             bytes = buffer.readSlice(length: Int(temp8)) ?? .init()
-            return try OracleNumber(
-                from: &bytes, type: .number, context: .default
-            )
+            return try .value(
+                OracleNumber(
+                    from: &bytes, type: .number, context: .default
+                ))
         }
 
         // handle string with length stored inside the node itself
         if nodeType & 0xe0 == 0 {
             if nodeType == 0 {
-                return ""
+                return .value("")
             }
-            return buffer.readString(length: Int(nodeType))
+            return .value(buffer.readString(length: Int(nodeType)))
         }
 
         throw OracleError.ErrorType.osonNodeTypeNotSupported
     }
 
-    private mutating func decodeContainerNode(nodeType: UInt8) throws -> Any? {
+    private mutating func decodeContainerNode(nodeType: UInt8) throws -> OracleJSON.Storage {
         let isObject = nodeType & 0x40 == 0
 
         // determine the number of children by examining the 4th and 5th most
@@ -238,9 +241,9 @@ struct OSONDecoder {
         )
         var offsetPosition: Int
         var fieldIDsPosition: Int
-        var value: Any?
+        var value: OracleJSON.Storage
         if isShared {
-            value = [String: Any?]()
+            value = .container([:])
             let offset = getOffset(nodeType: nodeType)
             offsetPosition = buffer.readerIndex
             buffer.moveReaderIndex(to: treeSegPosition + Int(offset))
@@ -250,12 +253,12 @@ struct OSONDecoder {
             )
             fieldIDsPosition = buffer.readerIndex
         } else if isObject {
-            value = [String: Any?]()
+            value = .container([:])
             fieldIDsPosition = buffer.readerIndex
             offsetPosition = buffer.readerIndex + fieldIDLength * Int(numberOfChildren)
         } else {
             fieldIDsPosition = 0
-            value = [Any?](repeating: nil, count: Int(numberOfChildren))
+            value = .array(.init(repeating: .none, count: Int(numberOfChildren)))
             offsetPosition = buffer.readerIndex
         }
 
@@ -282,12 +285,18 @@ struct OSONDecoder {
             let offset = getOffset(nodeType: nodeType)
             offsetPosition = buffer.readerIndex
             buffer.moveReaderIndex(to: treeSegPosition + Int(offset))
-            if isObject, let name, var typed = value as? [String: Any?] {
-                typed[name] = try decodeNode()
-                value = typed
-            } else if var typed = value as? [Any?] {
-                typed[Int(i)] = try decodeNode()
-                value = typed
+            switch value {
+            case .container(var dictionary):
+                guard let name else { continue }
+                dictionary[name] = try decodeNode()
+                value = .none  // no CoW
+                value = .container(dictionary)
+            case .array(var array):
+                array[Int(i)] = try decodeNode()
+                value = .none  // no CoW
+                value = .array(array)
+            case .value, .none:
+                continue
             }
         }
 

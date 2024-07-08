@@ -14,6 +14,12 @@
 
 import NIOCore
 
+enum VectorFormat: UInt8 {
+    case float32 = 2
+    case float64 = 3
+    case int8 = 4
+}
+
 // MARK: Int8
 
 /// A dynamically sized vector of type Int8, used to send
@@ -21,7 +27,7 @@ import NIOCore
 public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Int8
 
-    static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_INT8
+    static let vectorFormat: VectorFormat = .int8
 
     @usableFromInline
     var base: TinySequence<Element>
@@ -81,7 +87,7 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
 public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Float32
 
-    static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT32
+    static let vectorFormat: VectorFormat = .float32
 
     @usableFromInline
     var base: TinySequence<Element>
@@ -142,7 +148,7 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
 public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Float64
 
-    static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT64
+    static let vectorFormat: VectorFormat = .float64
 
     @usableFromInline
     var base: TinySequence<Element>
@@ -206,7 +212,7 @@ private protocol _OracleVectorProtocol: OracleCodable, Equatable, Collection,
 where Index == Int {
     var count: Int { get }
     var base: TinySequence<Element> { get set }
-    static var vectorFormat: UInt8 { get }
+    static var vectorFormat: VectorFormat { get }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self
 }
 
@@ -258,41 +264,49 @@ extension _OracleVectorProtocol {
 
     private static func _encodeOracleVectorHeader(
         elements: UInt32,
-        format: UInt8,
+        format: VectorFormat,
         into buffer: inout ByteBuffer
     ) {
         buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
         buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
         buffer.writeInteger(
             UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
-        buffer.writeInteger(format)
+        buffer.writeInteger(format.rawValue)
         buffer.writeInteger(elements)
         buffer.writeRepeatingByte(0, count: 8)
     }
 
     private static func _decodeOracleVectorHeader(from buffer: inout ByteBuffer) throws -> Int {
-        let magicByte = try buffer.throwingReadInteger(as: UInt8.self)
-        if magicByte != Constants.TNS_VECTOR_MAGIC_BYTE {
+        let (format, elements) = try _decodeOracleVectorMetadata(from: &buffer)
+        guard format == self.vectorFormat else {
             throw OracleDecodingError.Code.typeMismatch
         }
-
-        let version = try buffer.throwingReadInteger(as: UInt8.self)
-        if version != Constants.TNS_VECTOR_VERSION {
-            throw OracleDecodingError.Code.failure
-        }
-
-        let flags = try buffer.throwingReadInteger(as: UInt16.self)
-        let vectorFormat = try buffer.throwingReadInteger(as: UInt8.self)
-        if vectorFormat != self.vectorFormat {
-            throw OracleDecodingError.Code.typeMismatch
-        }
-
-        let elementsCount = Int(try buffer.throwingReadInteger(as: UInt32.self))
-
-        if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {
-            buffer.moveReaderIndex(forwardBy: 8)
-        }
-
-        return elementsCount
+        return elements
     }
+}
+
+func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (VectorFormat, elements: Int) {
+    let magicByte = try buffer.throwingReadInteger(as: UInt8.self)
+    if magicByte != Constants.TNS_VECTOR_MAGIC_BYTE {
+        throw OracleDecodingError.Code.typeMismatch
+    }
+
+    let version = try buffer.throwingReadInteger(as: UInt8.self)
+    if version != Constants.TNS_VECTOR_VERSION {
+        throw OracleDecodingError.Code.failure
+    }
+
+    let flags = try buffer.throwingReadInteger(as: UInt16.self)
+    let vectorFormat = try buffer.throwingReadInteger(as: UInt8.self)
+    guard let vectorFormat = VectorFormat(rawValue: vectorFormat) else {
+        throw OracleDecodingError.Code.typeMismatch
+    }
+
+    let elementsCount = Int(try buffer.throwingReadInteger(as: UInt32.self))
+
+    if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {
+        buffer.moveReaderIndex(forwardBy: 8)
+    }
+
+    return (vectorFormat, elementsCount)
 }

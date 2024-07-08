@@ -167,18 +167,20 @@ enum Constants {
     static let TNS_JSON_MAGIC_BYTE_1 = 0xff
     static let TNS_JSON_MAGIC_BYTE_2 = 0x4a  // 'J'
     static let TNS_JSON_MAGIC_BYTE_3 = 0x5a  // 'Z'
-    static let TNS_JSON_VERSION = 1
+    static let TNS_JSON_VERSION_MAX_FNAME_255 = 1
+    static let TNS_JSON_VERSION_MAX_FNAME_65535 = 3
     static let TNS_JSON_FLAG_HASH_ID_UINT8: UInt16 = 0x0100
     static let TNS_JSON_FLAG_HASH_ID_UINT16: UInt16 = 0x0200
     static let TNS_JSON_FLAG_NUM_FNAMES_UINT16: UInt16 = 0x0400
     static let TNS_JSON_FLAG_FNAMES_SEG_UINT32: UInt16 = 0x0800
     static let TNS_JSON_FLAG_TINY_NODES_STAT = 0x2000
     static let TNS_JSON_FLAG_TREE_SEG_UINT32: UInt16 = 0x1000
-    static let TNS_JSON_FLAG_REL_OFFSET_MODE = 0x01
+    static let TNS_JSON_FLAG_REL_OFFSET_MODE: UInt16 = 0x01
     static let TNS_JSON_FLAG_INLINE_LEAF = 0x02
     static let TNS_JSON_FLAG_LEN_IN_PCODE = 0x04
     static let TNS_JSON_FLAG_NUM_FNAMES_UINT32: UInt16 = 0x08
     static let TNS_JSON_FLAG_IS_SCALAR: UInt16 = 0x10
+    static let TNS_JSON_FLAG_SEC_FNAMES_SEG_UINT16: UInt16 = 0x0100
 
     // MARK: JSON data types
     static let TNS_JSON_TYPE_NULL: UInt8 = 0x30
@@ -200,7 +202,7 @@ enum Constants {
     static let TNS_JSON_TYPE_BINARY_FLOAT: UInt8 = 0x7f
     static let TNS_JSON_TYPE_OBJECT = 0x84
     static let TNS_JSON_TYPE_ARRAY = 0xc0
-    static let TNS_JSON_TYPE_EXTENDED = 0x7b
+    static let TNS_JSON_TYPE_EXTENDED: UInt8 = 0x7b
     static let TNS_JSON_TYPE_VECTOR = 0x01
 
     // MARK: VECTOR constants
@@ -212,11 +214,6 @@ enum Constants {
     static let TNS_VECTOR_FLAG_NORM: UInt16 = 0x0002
     static let TNS_VECTOR_FLAG_NORM_RESERVED: UInt16 = 0x0010
     static let VECTOR_META_FLAG_FLEXIBLE_DIM: UInt8 = 0x01
-
-    // MARK: VECTOR formats
-    static let VECTOR_FORMAT_FLOAT32: UInt8 = 2
-    static let VECTOR_FORMAT_FLOAT64: UInt8 = 3
-    static let VECTOR_FORMAT_INT8: UInt8 = 4
 
     // MARK: End-to-End metrics
     static let TNS_END_TO_END_ACTION = 0x0010

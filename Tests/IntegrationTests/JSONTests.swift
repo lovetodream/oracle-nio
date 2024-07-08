@@ -16,6 +16,8 @@ import OracleNIO
 import XCTest
 
 final class JSONTests: XCTIntegrationTest {
+    let testJSON = env("TEST_JSON")?.isEmpty != false
+
     override func setUp() async throws {
         try await super.setUp()
         _ = try? await connection.execute("DROP TABLE TestJsonCols")
@@ -33,8 +35,9 @@ final class JSONTests: XCTIntegrationTest {
             """)
         try await connection.execute(
             "insert into TestJsonCols values (1, '[1, 2, 3]', '[4, 5, 6]', '[7, 8, 9]')")
-        _ = try? await connection.execute("DROP TABLE TestCompressedJson")
-        try await connection.execute(
+        if testJSON {
+            _ = try? await connection.execute("DROP TABLE TestCompressedJson")
+            try await connection.execute(
             """
             create table TestCompressedJson (
                 IntCol number(9) not null,
@@ -43,10 +46,11 @@ final class JSONTests: XCTIntegrationTest {
             json (JsonCol)
             store as (compress high)
             """)
-        try await connection.execute(
+            try await connection.execute(
             """
-            INSERT INTO TestCompressedJson VALUES (1, '{"key": "value"}')
+            INSERT INTO TestCompressedJson VALUES (1, '{"key": "value", "int": 8, "array": [1, 2, 3]}')
             """)
+        }
     }
 
     func testFetchJSONColumns() async throws {
@@ -62,9 +66,18 @@ final class JSONTests: XCTIntegrationTest {
     }
 
     func testCompressedJSON() async throws {
+        try XCTSkipIf(!testJSON)
         let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson")
         for try await (id, json) in stream.decode((Int, OracleJSON).self) {
-            print(id, json)
+            XCTAssertEqual(id, 1)
+            let value = try json.decode(as: MyJSON.self)
+            XCTAssertEqual(value, MyJSON(key: "value", int: 8, array: [1, 2, 3]))
+        }
+
+        struct MyJSON: Decodable, Equatable {
+            var key: String
+            var int: Int
+            var array: [Int]
         }
     }
 }

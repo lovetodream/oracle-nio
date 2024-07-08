@@ -15,15 +15,14 @@
 import NIOCore
 
 extension ByteBuffer {
-    mutating func throwingReadInteger<T: FixedWidthInteger>(
-        endianness: Endianness = .big,
-        as: T.Type = T.self,
+    mutating func throwingReadBytes(
+        length: Int,
         file: String = #fileID,
         line: Int = #line
-    ) throws -> T {
-        guard let result = self.readInteger(endianness: endianness, as: T.self) else {
+    ) throws -> [UInt8] {
+        guard let result = self.readBytes(length: length) else {
             throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<T>.size,
+                MemoryLayout<UInt8>.size * length,
                 actual: self.readableBytes,
                 file: file, line: line
             )
@@ -31,15 +30,14 @@ extension ByteBuffer {
         return result
     }
 
-    mutating func throwingReadMultipleIntegers<T1: FixedWidthInteger, T2: FixedWidthInteger, T3: FixedWidthInteger>(
-        endianness: Endianness = .big,
-        as: (T1, T2, T3).Type = (T1, T2, T3).self,
+    mutating func throwingReadSlice(
+        length: Int,
         file: String = #fileID,
         line: Int = #line
-    ) throws -> (T1, T2, T3) {
-        guard let result = self.readMultipleIntegers(endianness: endianness, as: (T1, T2, T3).self) else {
+    ) throws -> ByteBuffer {
+        guard let result = self.readSlice(length: length) else {
             throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<T1>.size + MemoryLayout<T2>.size + MemoryLayout<T3>.size,
+                MemoryLayout<UInt8>.size * length,
                 actual: self.readableBytes,
                 file: file, line: line
             )

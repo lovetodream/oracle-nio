@@ -46,6 +46,13 @@ public struct OracleNumber:
         return try? OracleNumeric.parseFloat(from: &value)
     }
 
+    func requireDouble() throws -> Double {
+        var value = self.value.getSlice(
+            at: 1, length: self.value.readableBytes - 1
+        )!  // skip length
+        return try OracleNumeric.parseFloat(from: &value)
+    }
+
     public var description: String {
         if let double = self.double {
             return "\(double)"

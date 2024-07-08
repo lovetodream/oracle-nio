@@ -252,10 +252,10 @@ struct OracleJSONParser {
             return .double(value)
         case Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT16:
             let temp16 = try buffer.throwingReadInteger(as: UInt16.self)
-            return .uint16(temp16)
+            return .int(Int(temp16))
         case Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT32:
             let temp32 = try buffer.throwingReadInteger(as: UInt32.self)
-            return .uint32(temp32)
+            return .int(Int(temp32))
 
         case Constants.TNS_JSON_TYPE_EXTENDED:
             let nodeType = try buffer.throwingReadInteger(as: UInt8.self)

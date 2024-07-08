@@ -33,15 +33,6 @@ public struct OracleJSON: OracleDecodable {
         case double(Double)
         case float(Float)
         case int(Int)
-        case int8(Int8)
-        case int16(Int16)
-        case int32(Int32)
-        case int64(Int64)
-        case uint(UInt)
-        case uint8(UInt8)
-        case uint16(UInt16)
-        case uint32(UInt32)
-        case uint64(UInt64)
         case date(Date)
         case intervalDS(IntervalDS)
         case vectorInt8(OracleVectorInt8)
@@ -208,76 +199,40 @@ struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProto
         return value
     }
 
-    func decode(_ type: Int8.Type, forKey key: Key) throws -> Int8 {
-        let value = try self.getValue(forKey: key)
-        guard case .int8(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: Int8.Type, forKey key: Key) throws -> Int8 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: Int16.Type, forKey key: Key) throws -> Int16 {
-        let value = try self.getValue(forKey: key)
-        guard case .int16(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: Int16.Type, forKey key: Key) throws -> Int16 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: Int32.Type, forKey key: Key) throws -> Int32 {
-        let value = try self.getValue(forKey: key)
-        guard case .int32(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: Int32.Type, forKey key: Key) throws -> Int32 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: Int64.Type, forKey key: Key) throws -> Int64 {
-        let value = try self.getValue(forKey: key)
-        guard case .int64(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: Int64.Type, forKey key: Key) throws -> Int64 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: UInt.Type, forKey key: Key) throws -> UInt {
-        let value = try self.getValue(forKey: key)
-        guard case .uint(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: UInt.Type, forKey key: Key) throws -> UInt {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: UInt8.Type, forKey key: Key) throws -> UInt8 {
-        let value = try self.getValue(forKey: key)
-        guard case .uint8(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: UInt8.Type, forKey key: Key) throws -> UInt8 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: UInt16.Type, forKey key: Key) throws -> UInt16 {
-        let value = try self.getValue(forKey: key)
-        guard case .uint16(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: UInt16.Type, forKey key: Key) throws -> UInt16 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: UInt32.Type, forKey key: Key) throws -> UInt32 {
-        let value = try self.getValue(forKey: key)
-        guard case .uint32(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: UInt32.Type, forKey key: Key) throws -> UInt32 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode(_ type: UInt64.Type, forKey key: Key) throws -> UInt64 {
-        let value = try self.getValue(forKey: key)
-        guard case .uint64(let value) = value else {
-            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
-        }
-        return value
+    func decode(_: UInt64.Type, forKey key: Key) throws -> UInt64 {
+        try self.decodeBinaryInteger(forKey: key)
     }
 
     func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T : Decodable {
@@ -361,6 +316,15 @@ extension OracleKeyedDecodingContainer {
             debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
         ))
     }
+
+    @inline(__always)
+    private func decodeBinaryInteger<T: BinaryInteger>(of type: T.Type = T.self, forKey key: Key) throws -> T {
+        let value = try self.getValue(forKey: key)
+        guard case .int(let value) = value else {
+            throw self.createTypeMismatchError(type: type, forKey: key, value: value)
+        }
+        return T(value)
+    }
 }
 
 
@@ -417,67 +381,40 @@ struct OracleSingleValueDecodingContainer: SingleValueDecodingContainer {
         return value
     }
 
-    func decode(_ type: Int8.Type) throws -> Int8 {
-        guard case .int8(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: Int8.Type) throws -> Int8 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: Int16.Type) throws -> Int16 {
-        guard case .int16(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: Int16.Type) throws -> Int16 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: Int32.Type) throws -> Int32 {
-        guard case .int32(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: Int32.Type) throws -> Int32 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: Int64.Type) throws -> Int64 {
-        guard case .int64(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: Int64.Type) throws -> Int64 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: UInt.Type) throws -> UInt {
-        guard case .uint(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: UInt.Type) throws -> UInt {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: UInt8.Type) throws -> UInt8 {
-        guard case .uint8(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: UInt8.Type) throws -> UInt8 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: UInt16.Type) throws -> UInt16 {
-        guard case .uint16(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: UInt16.Type) throws -> UInt16 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: UInt32.Type) throws -> UInt32 {
-        guard case .uint32(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: UInt32.Type) throws -> UInt32 {
+        try self.decodeBinaryInteger()
     }
 
-    func decode(_ type: UInt64.Type) throws -> UInt64 {
-        guard case .uint64(let value) = self.value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-        return value
+    func decode(_: UInt64.Type) throws -> UInt64 {
+        try self.decodeBinaryInteger()
     }
 
     func decode<T>(_ type: T.Type) throws -> T where T : Decodable {
@@ -512,6 +449,14 @@ extension OracleSingleValueDecodingContainer {
             codingPath: self.codingPath,
             debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
         ))
+    }
+
+    @inline(__always)
+    private func decodeBinaryInteger<T: BinaryInteger>(of type: T.Type = T.self) throws -> T {
+        guard case .int(let value) = self.value else {
+            throw self.createTypeMismatchError(type: type, value: value)
+        }
+        return T(value)
     }
 }
 
@@ -571,7 +516,7 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
     }
 
     mutating func decode(_ type: Float.Type) throws -> Float {
-        let value = try self.getNextValue(ofType: Float.self)
+        let value = try self.getNextValue(ofType: type)
         guard case .float(let value) = value else {
             throw self.createTypeMismatchError(type: type, value: value)
         }
@@ -581,7 +526,7 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
     }
 
     mutating func decode(_ type: Int.Type) throws -> Int {
-        let value = try self.getNextValue(ofType: String.self)
+        let value = try self.getNextValue(ofType: type)
         guard case .int(let value) = value else {
             throw self.createTypeMismatchError(type: type, value: value)
         }
@@ -590,94 +535,40 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         return value
     }
 
-    mutating func decode(_ type: Int8.Type) throws -> Int8 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .int8(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: Int8.Type) throws -> Int8 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: Int16.Type) throws -> Int16 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .int16(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: Int16.Type) throws -> Int16 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: Int32.Type) throws -> Int32 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .int32(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: Int32.Type) throws -> Int32 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: Int64.Type) throws -> Int64 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .int64(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: Int64.Type) throws -> Int64 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: UInt.Type) throws -> UInt {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .uint(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: UInt.Type) throws -> UInt {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: UInt8.Type) throws -> UInt8 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .uint8(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: UInt8.Type) throws -> UInt8 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: UInt16.Type) throws -> UInt16 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .uint16(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: UInt16.Type) throws -> UInt16 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: UInt32.Type) throws -> UInt32 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .uint32(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: UInt32.Type) throws -> UInt32 {
+        try self.decodeBinaryInteger()
     }
 
-    mutating func decode(_ type: UInt64.Type) throws -> UInt64 {
-        let value = try self.getNextValue(ofType: String.self)
-        guard case .uint64(let value) = value else {
-            throw self.createTypeMismatchError(type: type, value: value)
-        }
-
-        self.currentIndex += 1
-        return value
+    mutating func decode(_: UInt64.Type) throws -> UInt64 {
+        try self.decodeBinaryInteger()
     }
 
     mutating func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
@@ -798,6 +689,17 @@ extension OracleUnkeyedDecodingContainer {
             debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
         ))
     }
+
+    @inline(__always)
+    private mutating func decodeBinaryInteger<T: BinaryInteger>(of type: T.Type = T.self) throws -> T {
+        let value = try self.getNextValue(ofType: Int.self)
+        guard case .int(let value) = value else {
+            throw self.createTypeMismatchError(type: type, value: value)
+        }
+
+        self.currentIndex += 1
+        return T(value)
+    }
 }
 
 
@@ -822,24 +724,6 @@ extension OracleJSON.Storage {
             "a float"
         case .int:
             "an int"
-        case .int8:
-            "an int8"
-        case .int16:
-            "an in16"
-        case .int32:
-            "an int32"
-        case .int64:
-            "an int64"
-        case .uint:
-            "an uint"
-        case .uint8:
-            "an uint8"
-        case .uint16:
-            "an uint16"
-        case .uint32:
-            "an uint32"
-        case .uint64:
-            "an uint64"
         case .date:
             "a date"
         case .intervalDS:

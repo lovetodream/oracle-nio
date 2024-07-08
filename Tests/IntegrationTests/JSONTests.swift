@@ -16,7 +16,7 @@ import OracleNIO
 import XCTest
 
 final class JSONTests: XCTIntegrationTest {
-    let testJSON = env("TEST_JSON")?.isEmpty != false
+    let testCompressedJSON: Bool = env("TEST_COMPRESSED_JSON")?.isEmpty == false
 
     override func setUp() async throws {
         try await super.setUp()
@@ -35,7 +35,7 @@ final class JSONTests: XCTIntegrationTest {
             """)
         try await connection.execute(
             "insert into TestJsonCols values (1, '[1, 2, 3]', '[4, 5, 6]', '[7, 8, 9]')")
-        if testJSON {
+        if testCompressedJSON {
             _ = try? await connection.execute("DROP TABLE TestCompressedJson")
             try await connection.execute(
             """
@@ -66,7 +66,7 @@ final class JSONTests: XCTIntegrationTest {
     }
 
     func testCompressedJSON() async throws {
-        try XCTSkipIf(!testJSON)
+        try XCTSkipIf(!testCompressedJSON)
         let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson")
         for try await (id, json) in stream.decode((Int, OracleJSON).self) {
             XCTAssertEqual(id, 1)
@@ -76,8 +76,8 @@ final class JSONTests: XCTIntegrationTest {
 
         struct MyJSON: Decodable, Equatable {
             var key: String
-            var int: Int
-            var array: [Int]
+            var int: Double
+            var array: [Double]
         }
     }
 }

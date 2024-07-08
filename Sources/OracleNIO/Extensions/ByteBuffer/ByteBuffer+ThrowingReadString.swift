@@ -29,4 +29,20 @@ extension ByteBuffer {
         }
         return result
     }
+
+    func throwingGetString(
+        at index: Int,
+        length: Int,
+        file: String = #fileID,
+        line: Int = #line
+    ) throws -> String {
+        guard let result = self.getString(at: index, length: length) else {
+            throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                MemoryLayout<UInt8>.size * length,
+                actual: self.readableBytes,
+                file: file, line: line
+            )
+        }
+        return result
+    }
 }

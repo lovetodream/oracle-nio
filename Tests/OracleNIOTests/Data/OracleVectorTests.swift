@@ -79,6 +79,7 @@ final class OracleVectorTests: XCTestCase {
             UInt8(Constants.TNS_VECTOR_VERSION),
             0, 0,  // flags
             VectorFormat.float64.rawValue,
+            0, 0, 0, 0, // elements
         ])
         XCTAssertThrowsError(
             try OracleVectorInt8(from: &buffer, type: .vector, context: .default),

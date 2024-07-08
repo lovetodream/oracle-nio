@@ -145,16 +145,26 @@ struct OracleJSONParser {
         buffer.moveReaderIndex(forwardBy: fieldsCount)
 
         // skip the field name offsets array for now
+        let offsetsPosition = buffer.readerIndex
         buffer.moveReaderIndex(forwardBy: fieldsCount * offsetsSize)
         var slice = try buffer.throwingReadSlice(length: segmentSize)
+        let finalPosition = buffer.readerIndex
 
         // determine the names of the fields
+        buffer.moveReaderIndex(to: offsetsPosition)
         self.fieldNames.reserveCapacity(fieldsCount)
         for _ in 0..<fieldsCount {
-            let length = try Int(slice.throwingReadInteger(as: UInt8.self))
-            let name = try slice.throwingReadString(length: length)
+            let offset = if offsetsSize == 2 {
+                try Int(buffer.throwingReadInteger(as: UInt16.self))
+            } else {
+                try Int(buffer.throwingReadInteger(as: UInt32.self))
+            }
+
+            let length = try Int(slice.throwingGetInteger(at: offset, as: UInt8.self))
+            let name = try slice.throwingGetString(at: offset + MemoryLayout<UInt8>.size, length: length)
             self.fieldNames.append(name)
         }
+        buffer.moveReaderIndex(to: finalPosition)
     }
 
     mutating func getLongFieldNames(

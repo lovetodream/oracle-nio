@@ -147,7 +147,7 @@ struct OracleJSONParser {
         // skip the field name offsets array for now
         let offsetsPosition = buffer.readerIndex
         buffer.moveReaderIndex(forwardBy: fieldsCount * offsetsSize)
-        var slice = try buffer.throwingReadSlice(length: segmentSize)
+        let slice = try buffer.throwingReadSlice(length: segmentSize)
         let finalPosition = buffer.readerIndex
 
         // determine the names of the fields

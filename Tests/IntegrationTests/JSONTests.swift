@@ -48,7 +48,10 @@ final class JSONTests: XCTIntegrationTest {
             """)
             try await connection.execute(
             """
-            INSERT INTO TestCompressedJson VALUES (1, '{"key": "value", "int": 8, "array": [1, 2, 3]}')
+            INSERT INTO TestCompressedJson VALUES (
+                1,
+                '{"key": "value", "int": 8, "array": [1, 2, 3], "bool1": true, "bool2": false, "nested": {"float": 1.2, "double": 1.23, "null": null}}'
+            )
             """)
         }
     }
@@ -71,13 +74,31 @@ final class JSONTests: XCTIntegrationTest {
         for try await (id, json) in stream.decode((Int, OracleJSON).self) {
             XCTAssertEqual(id, 1)
             let value = try json.decode(as: MyJSON.self)
-            XCTAssertEqual(value, MyJSON(key: "value", int: 8, array: [1, 2, 3]))
+            XCTAssertEqual(
+                value, MyJSON(
+                    key: "value",
+                    int: 8,
+                    array: [1, 2, 3],
+                    bool1: true,
+                    bool2: false,
+                    nested: .init(float: 1.2, double: 1.23, null: nil)
+                )
+            )
         }
 
         struct MyJSON: Decodable, Equatable {
             var key: String
-            var int: Double
-            var array: [Double]
+            var int: Int
+            var array: [Int]
+            var bool1: Bool
+            var bool2: Bool
+            var nested: Nested
+
+            struct Nested: Decodable, Equatable {
+                var float: Float
+                var double: Double
+                var null: String?
+            }
         }
     }
 }

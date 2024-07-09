@@ -185,9 +185,12 @@ extension OracleBackendMessage {
                     columnValue = .init(bytes: [0])  // empty buffer
                 }
             case .json:
-                // TODO: OSON
-                // OSON has a UB4 length indicator instead of the usual UInt8
-                fatalError("OSON is not yet implemented, will be added in the future")
+                switch try buffer.readOSON() {
+                case .some(let slice):
+                    columnValue = slice
+                case .none:
+                    throw MissingDataDecodingError.Trigger()
+                }
             case .vector:
                 let length = try buffer.throwingReadUB4()
                 if length > 0 {

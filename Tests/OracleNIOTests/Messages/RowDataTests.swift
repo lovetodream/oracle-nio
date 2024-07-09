@@ -122,7 +122,7 @@ final class RowDataTests: XCTestCase {
 
     func testProcessBufferSizeZero() {
         var buffer = ByteBuffer()
-        var context = OracleBackendMessageDecoder.Context(capabilities: .init())
+        let context = OracleBackendMessageDecoder.Context(capabilities: .init())
         context.statementContext = .init(statement: "")
         context.describeInfo = .init(columns: [
             .init(

@@ -23,12 +23,7 @@ extension ConnectionStateMachine {
 
 // MARK: Equatable Conformance on ConnectionAction
 
-#if compiler(>=6.0)
-    extension ConnectionStateMachine.ConnectionAction: @retroactive Equatable {}
-#else
-    extension ConnectionStateMachine.ConnectionAction: Equatable {}
-#endif
-extension ConnectionStateMachine.ConnectionAction {
+extension ConnectionStateMachine.ConnectionAction: Equatable {
     public static func == (
         lhs: ConnectionStateMachine.ConnectionAction, rhs: ConnectionStateMachine.ConnectionAction
     ) -> Bool {
@@ -151,12 +146,7 @@ extension ConnectionStateMachine.ConnectionAction {
     }
 }
 
-#if compiler(>=6.0)
-    extension ConnectionStateMachine.ConnectionAction.CleanUpContext: @retroactive Equatable {}
-#else
-    extension ConnectionStateMachine.ConnectionAction.CleanUpContext: Equatable {}
-#endif
-extension ConnectionStateMachine.ConnectionAction.CleanUpContext {
+extension ConnectionStateMachine.ConnectionAction.CleanUpContext: Equatable {
     public static func == (
         lhs: ConnectionStateMachine.ConnectionAction.CleanUpContext,
         rhs: ConnectionStateMachine.ConnectionAction.CleanUpContext
@@ -166,23 +156,13 @@ extension ConnectionStateMachine.ConnectionAction.CleanUpContext {
     }
 }
 
-#if compiler(>=6.0)
-    extension OracleSQLError: @retroactive Equatable {}
-#else
-    extension OracleSQLError: Equatable {}
-#endif
-extension OracleSQLError {
+extension OracleSQLError: Equatable {
     public static func == (lhs: OracleSQLError, rhs: OracleSQLError) -> Bool {
         true
     }
 }
 
-#if compiler(>=6.0)
-    extension OracleTask: @retroactive Equatable {}
-#else
-    extension OracleTask: Equatable {}
-#endif
-extension OracleTask {
+extension OracleTask: Equatable {
     public static func == (lhs: OracleTask, rhs: OracleTask) -> Bool {
         switch (lhs, rhs) {
         case (.statement(let lhs), .statement(let rhs)):
@@ -199,35 +179,20 @@ extension OracleTask {
     }
 }
 
-#if compiler(>=6.0)
-    extension CleanupContext: @retroactive Equatable {}
-#else
-    extension CleanupContext: Equatable {}
-#endif
-extension CleanupContext {
+extension CleanupContext: Equatable {
     public static func == (lhs: CleanupContext, rhs: CleanupContext) -> Bool {
         lhs.cursorsToClose == rhs.cursorsToClose && lhs.tempLOBsTotalSize == rhs.tempLOBsTotalSize
             && lhs.tempLOBsToClose == rhs.tempLOBsToClose
     }
 }
 
-#if compiler(>=6.0)
-    extension StatementContext: @retroactive Equatable {}
-#else
-    extension StatementContext: Equatable {}
-#endif
-extension StatementContext {
+extension StatementContext: Equatable {
     public static func == (lhs: StatementContext, rhs: StatementContext) -> Bool {
         lhs === rhs
     }
 }
 
-#if compiler(>=6.0)
-    extension OracleRowStream: @retroactive Equatable {}
-#else
-    extension OracleRowStream: Equatable {}
-#endif
-extension OracleRowStream {
+extension OracleRowStream: Equatable {
     public static func == (lhs: OracleRowStream, rhs: OracleRowStream) -> Bool {
         lhs === rhs
     }

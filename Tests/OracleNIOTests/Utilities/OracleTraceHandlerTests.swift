@@ -64,7 +64,7 @@ final class OracleTraceHandlerTests: XCTestCase {
         }
     }
 
-    final class Handler: LogHandler {
+    final class Handler: LogHandler, @unchecked Sendable {
         var metadata: Logger.Metadata = [:]
         var logLevel: Logger.Level = .trace
 

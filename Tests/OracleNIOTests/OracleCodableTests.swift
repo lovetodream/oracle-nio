@@ -260,12 +260,7 @@ final class OracleCodableTests: XCTestCase {
 
 }
 
-#if compiler(>=6.0)
-    extension DataRow: @retroactive ExpressibleByArrayLiteral {}
-#else
-    extension DataRow: ExpressibleByArrayLiteral {}
-#endif
-extension DataRow {
+extension DataRow: ExpressibleByArrayLiteral {
     public typealias ArrayLiteralElement = OracleThrowingEncodable
 
     public init(arrayLiteral elements: any OracleThrowingEncodable...) {

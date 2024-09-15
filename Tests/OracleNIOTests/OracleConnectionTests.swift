@@ -202,12 +202,7 @@ extension Capabilities {
     }
 }
 
-#if compiler(>=6.0)
-    extension OracleConnection.Configuration.EndpointInfo: @retroactive Equatable {}
-#else
-    extension OracleConnection.Configuration.EndpointInfo: Equatable {}
-#endif
-extension OracleConnection.Configuration.EndpointInfo {
+extension OracleConnection.Configuration.EndpointInfo: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
         case (.configureChannel(let lhs), .configureChannel(let rhs)):

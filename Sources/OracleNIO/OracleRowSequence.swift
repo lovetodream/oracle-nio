@@ -18,7 +18,7 @@ import NIOCore
 /// An async sequence of ``OracleRow``'s
 ///
 /// - Note: This is a struct to allow us to move to a move only type easily once they become available.
-public struct OracleRowSequence: AsyncSequence {
+public struct OracleRowSequence: AsyncSequence, Sendable {
     public typealias Element = OracleRow
 
     typealias BackingSequence = NIOThrowingAsyncSequenceProducer<

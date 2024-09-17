@@ -14,12 +14,7 @@
 
 @testable import OracleNIO
 
-#if compiler(>=6.0)
-    extension OraclePartialDecodingError: @retroactive Equatable {}
-#else
-    extension OraclePartialDecodingError: Equatable {}
-#endif
-extension OraclePartialDecodingError {
+extension OraclePartialDecodingError: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.description == rhs.description
     }

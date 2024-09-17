@@ -752,12 +752,13 @@ final class OracleNIOTests: XCTestCase {
         config.retryCount = 20
         config.retryDelay = 5
         let configuration = config
+        let eventLoop = eventLoop
         let connect = Task {
             let start = Date().timeIntervalSince1970
             try await withTaskCancellationHandler {
                 do {
                     let connection = try await OracleConnection.connect(
-                        on: self.eventLoop,
+                        on: eventLoop,
                         configuration: configuration,
                         id: 1,
                         logger: .oracleTest

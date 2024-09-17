@@ -26,7 +26,7 @@ extension OracleRow {
     @inlinable
     public func decode<Column: OracleDecodable>(
         _: Column.Type,
-        context: OracleDecodingContext<some OracleJSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID,
         line: Int = #line
     ) throws -> (Column) {
@@ -62,7 +62,7 @@ extension OracleRow {
     @inlinable
     public func decode<each Column: OracleDecodable>(
         _ columnType: (repeat each Column).Type,
-        context: OracleDecodingContext<some OracleJSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID,
         line: Int = #line
     ) throws -> (repeat each Column) {
@@ -91,7 +91,7 @@ extension OracleRow {
         cellIterator: inout IndexingIterator<DataRow>,
         columnIterator: inout IndexingIterator<[OracleColumn]>,
         columnIndex: inout Int,
-        context: OracleDecodingContext<some OracleJSONDecoder>,
+        context: OracleDecodingContext,
         file: String,
         line: Int
     ) throws -> Column {
@@ -132,7 +132,7 @@ extension AsyncSequence where Element == OracleRow {
     @inlinable
     public func decode<Column: OracleDecodable>(
         _: Column.Type,
-        context: OracleDecodingContext<some OracleJSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID,
         line: Int = #line
     ) -> AsyncThrowingMapSequence<Self, (Column)> {
@@ -153,7 +153,7 @@ extension AsyncSequence where Element == OracleRow {
 
     public func decode<each Column: OracleDecodable>(
         _ columnType: (repeat each Column).Type,
-        context: OracleDecodingContext<some OracleJSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID,
         line: Int = #line
     ) -> AsyncThrowingMapSequence<Self, (repeat each Column)> {

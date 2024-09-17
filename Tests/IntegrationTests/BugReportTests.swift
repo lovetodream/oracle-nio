@@ -214,10 +214,10 @@ private struct Timestamp: Sendable, OracleCodable {
         }
     }
 
-    init<JSONDecoder: OracleJSONDecoder>(
+    init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .date, .timestamp, .timestampLTZ, .timestampTZ:

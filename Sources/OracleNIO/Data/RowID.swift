@@ -88,10 +88,10 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
 }
 
 extension RowID: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .rowID:

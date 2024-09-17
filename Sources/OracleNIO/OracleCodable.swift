@@ -139,28 +139,28 @@ public protocol OracleDecodable: Sendable {
     ///   - type: The oracle data type. Depending on this type the `ByteBuffer`'s bytes need to be interpreted in different ways.
     ///   - format: The oracle wire format.
     ///   - context: A `OracleDecodingContext` providing context for decoding. This includes a `JSONDecoder` to use when decoding json and metadata to create better errors.
-    init<JSONDecoder: OracleJSONDecoder>(
+    init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws
 
     /// Decode an entity from the `ByteBuffer` in oracle wire format.
     ///
     /// This method has a default implementation and is only overwritten for `Optional`'s.
-    static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
+    static func _decodeRaw(
         from buffer: inout ByteBuffer?,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws -> Self
 }
 
 extension OracleDecodable {
     @inlinable
-    public static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
+    public static func _decodeRaw(
         from buffer: inout ByteBuffer?,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws -> Self {
         guard var buffer else {
             throw OracleDecodingError.Code.missingData
@@ -244,48 +244,33 @@ extension OracleEncodingContext where JSONEncoder == Foundation.JSONEncoder {
         OracleEncodingContext(jsonEncoder: JSONEncoder())
 }
 
-extension OracleDecodingContext where JSONDecoder == Foundation.JSONDecoder {
-    /// A default ``OracleDecodingContext`` that uses a Foundation `JSONDecoder`.
-    public static let `default` =
-        OracleDecodingContext(jsonDecoder: Foundation.JSONDecoder())
+extension OracleDecodingContext {
+    /// A default ``OracleDecodingContext``.
+    public static let `default` = OracleDecodingContext()
 }
 
 /// A context that is passed to Swift objects that are decoded from the Oracle wire format.
 ///
 /// Used to pass further information to the decoding method.
-public struct OracleDecodingContext<JSONDecoder: OracleJSONDecoder>: Sendable {
-    /// A ``OracleJSONDecoder`` used to decode the object from JSON.
-    public var jsonDecoder: JSONDecoder
-
-    /// Creates a ``OracleDecodingContext`` with the given ``OracleJSONDecoder``.
-    ///
-    /// In cases you want to use a ``OracleDecodingContext`` with an unconfigured Foundation
-    /// `JSONDecoder` you can use the ``default`` context instead.
-    ///
-    /// - Parameter jsonDecoder: A ``OracleJSONDecoder`` to use when decoding objects
-    /// from json.
-    public init(jsonDecoder: JSONDecoder) {
-        self.jsonDecoder = jsonDecoder
-    }
-}
+public struct OracleDecodingContext: Sendable {}
 
 extension Optional: OracleDecodable
 where Wrapped: OracleDecodable, Wrapped._DecodableType == Wrapped {
     public typealias _DecodableType = Wrapped
 
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         preconditionFailure("This should not be called")
     }
 
     @inlinable
-    public static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
+    public static func _decodeRaw(
         from buffer: inout ByteBuffer?,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws -> Self {
         switch buffer {
         case .some(var buffer):

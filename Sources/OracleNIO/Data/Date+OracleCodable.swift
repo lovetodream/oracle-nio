@@ -67,10 +67,10 @@ extension Date: OracleEncodable {
 }
 
 extension Date: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .date, .timestamp, .timestampLTZ, .timestampTZ:

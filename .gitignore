@@ -5,6 +5,7 @@
 xcuserdata/
 DerivedData/
 .swiftpm/config/registries.json
+.swiftpm/configuration/Package.resolved
 .swiftpm/xcode/
 .netrc
 .vscode/settings.json

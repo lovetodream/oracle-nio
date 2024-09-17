@@ -1,79 +1,34 @@
-//===----------------------------------------------------------------------===//
-//
-// This source file is part of the OracleNIO open source project
-//
-// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-// See CONTRIBUTORS.md for the list of OracleNIO project authors
-//
-// SPDX-License-Identifier: Apache-2.0
-//
-//===----------------------------------------------------------------------===//
-
 import NIOCore
 
 import struct Foundation.Date
 
-/// OracleJSON is an intermediate type to decode `JSON` columns from the Oracle Wire Format.
-///
-/// Use ``decode(as:)`` to decode an actual Swift type you can work with.
-public struct OracleJSON: OracleDecodable {
-
-    enum Storage: Sendable {
-        /// Containers
-        case container([String: Storage])
-        case array([Storage])
-        case none
-
-        /// Primitives
-        case bool(Bool)
-        case string(String)
-        case double(Double)
-        case float(Float)
-        case int(Int)
-        case date(Date)
-        case intervalDS(IntervalDS)
-        case vectorInt8(OracleVectorInt8)
-        case vectorFloat32(OracleVectorFloat32)
-        case vectorFloat64(OracleVectorFloat64)
-    }
-
-    let base: Storage
-
-    public init<JSONDecoder: OracleJSONDecoder>(
+extension OracleJSON: OracleDecodable where Value: Decodable {
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
-        self.base = try OracleJSONParser.parse(from: &buffer)
-    }
-
-    public func decode<T: Decodable>(as: T.Type = T.self) throws -> T {
-        try OraJSONDecoder().decode(T.self, from: self.base)
+        let base = try OracleJSONParser.parse(from: &buffer)
+        self.value = try OracleJSONDecoder().decode(Value.self, from: base)
     }
 }
 
-
-// MARK: Decoder
-
-struct OraJSONDecoder {
+struct OracleJSONDecoder {
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
     init() {}
 
-    func decode<T: Decodable>(_: T.Type, from value: OracleJSON.Storage) throws -> T {
-        let decoder = _OraJSONDecoder(codingPath: [], userInfo: self.userInfo, value: value)
+    func decode<T: Decodable>(_: T.Type, from value: OracleJSONStorage) throws -> T {
+        let decoder = _OracleJSONDecoder(codingPath: [], userInfo: self.userInfo, value: value)
         return try decoder.decode(T.self)
     }
 }
 
-struct _OraJSONDecoder: Decoder {
+struct _OracleJSONDecoder: Decoder {
     let codingPath: [any CodingKey]
     let userInfo: [CodingUserInfoKey : Any]
 
-    let value: OracleJSON.Storage
+    let value: OracleJSONStorage
 
     func decode<T: Decodable>(_: T.Type) throws -> T {
         try T(from: self)
@@ -82,10 +37,10 @@ struct _OraJSONDecoder: Decoder {
     func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key : CodingKey {
         guard case .container(let dictionary) = self.value else {
             throw DecodingError.typeMismatch(
-                [String: OracleJSON.Storage].self,
+                [String: OracleJSONStorage].self,
                 .init(
                     codingPath: self.codingPath,
-                    debugDescription: "Expected to decode \([String: OracleJSON.Storage].self) but found \(self.value.debugDataTypeDescription) instead."
+                    debugDescription: "Expected to decode \([String: OracleJSONStorage].self) but found \(self.value.debugDataTypeDescription) instead."
                 )
             )
         }
@@ -97,14 +52,14 @@ struct _OraJSONDecoder: Decoder {
         )
         return KeyedDecodingContainer(container)
     }
-    
+
     func unkeyedContainer() throws -> any UnkeyedDecodingContainer {
         guard case .array(let array) = self.value else {
             throw DecodingError.typeMismatch(
-                [OracleJSON.Storage].self,
+                [OracleJSONStorage].self,
                 .init(
                     codingPath: self.codingPath,
-                    debugDescription: "Expected to decode \([OracleJSON.Storage].self) but found \(self.value.debugDataTypeDescription) instead."
+                    debugDescription: "Expected to decode \([OracleJSONStorage].self) but found \(self.value.debugDataTypeDescription) instead."
                 )
             )
         }
@@ -115,7 +70,7 @@ struct _OraJSONDecoder: Decoder {
             array: array
         )
     }
-    
+
     func singleValueContainer() throws -> any SingleValueDecodingContainer {
         OracleSingleValueDecodingContainer(
             decoder: self,
@@ -123,7 +78,7 @@ struct _OraJSONDecoder: Decoder {
             codingPath: self.codingPath
         )
     }
-    
+
 
 }
 
@@ -131,14 +86,14 @@ struct _OraJSONDecoder: Decoder {
 // MARK: KeyedDecodingContainer
 
 struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProtocol {
-    typealias Value = OracleJSON.Storage
+    typealias Value = OracleJSONStorage
 
     let codingPath: [any CodingKey]
     let dictionary: [String: Value]
-    let decoder: _OraJSONDecoder
+    let decoder: _OracleJSONDecoder
     let allKeys: [Key]
 
-    init(codingPath: [any CodingKey], dictionary: [String: Value], decoder: _OraJSONDecoder) {
+    init(codingPath: [any CodingKey], dictionary: [String: Value], decoder: _OracleJSONDecoder) {
         self.codingPath = codingPath
         self.dictionary = dictionary
         self.decoder = decoder
@@ -248,7 +203,7 @@ struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProto
         default:
             break
         }
-        
+
         let decoder = try decoderForKey(key)
         return try T(from: decoder)
     }
@@ -272,12 +227,12 @@ struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProto
 }
 
 extension OracleKeyedDecodingContainer {
-    private func decoderForKey(_ key: Key) throws -> _OraJSONDecoder {
+    private func decoderForKey(_ key: Key) throws -> _OracleJSONDecoder {
         let value = try getValue(forKey: key)
         var newPath = self.codingPath
         newPath.append(key)
 
-        return _OraJSONDecoder(
+        return _OracleJSONDecoder(
             codingPath: newPath,
             userInfo: self.decoder.userInfo,
             value: value
@@ -363,9 +318,9 @@ extension OracleKeyedDecodingContainer {
 // MARK: SingleValueDecodingContainer
 
 struct OracleSingleValueDecodingContainer: SingleValueDecodingContainer {
-    typealias Value = OracleJSON.Storage
+    typealias Value = OracleJSONStorage
 
-    let decoder: _OraJSONDecoder
+    let decoder: _OracleJSONDecoder
     let value: Value
     let codingPath: [any CodingKey]
 
@@ -527,10 +482,10 @@ extension OracleSingleValueDecodingContainer {
 // MARK: UnkeyedDecodingContainer
 
 struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
-    typealias Value = OracleJSON.Storage
+    typealias Value = OracleJSONStorage
 
     let codingPath: [any CodingKey]
-    let decoder: _OraJSONDecoder
+    let decoder: _OracleJSONDecoder
     let array: [Value]
 
     var count: Int? { self.array.count }
@@ -547,7 +502,7 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         //   If the value is not null, does not increment currentIndex.
         return false
     }
-    
+
     mutating func decode(_ type: Bool.Type) throws -> Bool {
         let value = try self.getNextValue(ofType: type)
         guard case .bool(let value) = value else {
@@ -664,7 +619,7 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         self.currentIndex += 1
         return container
     }
-    
+
     mutating func nestedUnkeyedContainer() throws -> any UnkeyedDecodingContainer {
         let decoder = try self.decoderForNextElement(ofType: UnkeyedDecodingContainer.self, isNested: true)
         let container = try decoder.unkeyedContainer()
@@ -672,18 +627,18 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         self.currentIndex += 1
         return container
     }
-    
+
     mutating func superDecoder() throws -> any Decoder {
         self.decoder
     }
 }
 
 extension OracleUnkeyedDecodingContainer {
-    private mutating func decoderForNextElement<T>(ofType: T.Type, isNested: Bool = false) throws -> _OraJSONDecoder {
+    private mutating func decoderForNextElement<T>(ofType: T.Type, isNested: Bool = false) throws -> _OracleJSONDecoder {
         let value = try self.getNextValue(ofType: T.self, isNested: isNested)
         let newPath = self.codingPath + [ArrayKey(index: self.currentIndex)]
 
-        return _OraJSONDecoder(
+        return _OracleJSONDecoder(
             codingPath: newPath,
             userInfo: self.decoder.userInfo,
             value: value
@@ -726,7 +681,7 @@ extension OracleUnkeyedDecodingContainer {
         return self.array[self.currentIndex]
     }
 
-    @inline(__always) 
+    @inline(__always)
     private func createTypeMismatchError(type: Any.Type, value: Value) -> DecodingError {
         let codingPath = self.codingPath + [ArrayKey(index: self.currentIndex)]
         return DecodingError.typeMismatch(type, .init(
@@ -793,42 +748,6 @@ extension OracleUnkeyedDecodingContainer {
 
         self.currentIndex += 1
         return float
-    }
-}
-
-
-// MARK: Utility
-
-extension OracleJSON.Storage {
-    var debugDataTypeDescription: String {
-        switch self {
-        case .container:
-            "a dictionary"
-        case .array:
-            "an array"
-        case .none:
-            "null"
-        case .bool:
-            "bool"
-        case .string:
-            "a string"
-        case .double:
-            "a double"
-        case .float:
-            "a float"
-        case .int:
-            "an int"
-        case .date:
-            "a date"
-        case .intervalDS:
-            "a day second interval"
-        case .vectorInt8:
-            "an int8 vector"
-        case .vectorFloat32:
-            "a float32 vector"
-        case .vectorFloat64:
-            "a float64 vector"
-        }
     }
 }
 

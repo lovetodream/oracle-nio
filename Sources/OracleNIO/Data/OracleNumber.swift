@@ -105,10 +105,10 @@ public struct OracleNumber:
 }
 
 extension OracleNumber: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         var bufferWithLength = ByteBuffer(bytes: [UInt8(buffer.readableBytes)])
         bufferWithLength.writeBuffer(&buffer)

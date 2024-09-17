@@ -456,10 +456,10 @@ extension LOB: OracleEncodable {
 }
 
 extension LOB: OracleDecodable {
-    public convenience init<JSONDecoder: OracleJSONDecoder>(
+    public convenience init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .clob, .blob:

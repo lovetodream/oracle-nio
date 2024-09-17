@@ -25,12 +25,12 @@ struct OracleJSONParser {
 
     private init() {}
 
-    static func parse(from buffer: inout ByteBuffer) throws -> OracleJSON.Storage {
+    static func parse(from buffer: inout ByteBuffer) throws -> OracleJSONStorage {
         var parser = OracleJSONParser()
         return try parser.decode(from: &buffer)
     }
 
-    private mutating func decode(from buffer: inout ByteBuffer) throws -> OracleJSON.Storage {
+    private mutating func decode(from buffer: inout ByteBuffer) throws -> OracleJSONStorage {
 
         // Parse root header
         let header = try buffer.throwingReadMultipleIntegers(as: (UInt8, UInt8, UInt8).self)
@@ -189,7 +189,7 @@ struct OracleJSONParser {
         }
     }
 
-    private mutating func decodeNode(from buffer: inout ByteBuffer) throws -> OracleJSON.Storage {
+    private mutating func decodeNode(from buffer: inout ByteBuffer) throws -> OracleJSONStorage {
         let nodeType = try buffer.throwingReadInteger(as: UInt8.self)
         if nodeType & 0x80 != 0 {
             return try decodeContainerNode(from: &buffer, ofType: nodeType)
@@ -310,7 +310,7 @@ struct OracleJSONParser {
         throw OracleError.ErrorType.osonNodeTypeNotSupported
     }
 
-    private mutating func decodeContainerNode(from buffer: inout ByteBuffer, ofType nodeType: UInt8) throws -> OracleJSON.Storage {
+    private mutating func decodeContainerNode(from buffer: inout ByteBuffer, ofType nodeType: UInt8) throws -> OracleJSONStorage {
         let isObject = nodeType & 0x40 == 0
 
         // determine the number of children by examining the 4th and 5th most
@@ -323,7 +323,7 @@ struct OracleJSONParser {
         )
         var offsetPosition: Int
         var fieldIDsPosition: Int
-        var value: OracleJSON.Storage
+        var value: OracleJSONStorage
         if isShared {
             value = .container([:])
             let offset = try self.getOffset(from: &buffer, nodeType: nodeType)

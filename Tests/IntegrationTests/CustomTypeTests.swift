@@ -154,10 +154,10 @@ struct CustomOracleObject: OracleDecodable {
         self.data = data
     }
 
-    static func _decodeRaw<JSONDecoder: OracleJSONDecoder>(
+    static func _decodeRaw(
         from buffer: inout ByteBuffer?,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws -> CustomOracleObject {
         guard var buffer else {
             throw OracleDecodingError.Code.missingData
@@ -165,10 +165,10 @@ struct CustomOracleObject: OracleDecodable {
         return try self.init(from: &buffer, type: type, context: context)
     }
 
-    init<JSONDecoder: OracleJSONDecoder>(
+    init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .object:

@@ -71,11 +71,10 @@ final class JSONTests: XCTIntegrationTest {
     func testCompressedJSON() async throws {
         try XCTSkipIf(!testCompressedJSON)
         let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson")
-        for try await (id, json) in stream.decode((Int, OracleJSON).self) {
+        for try await (id, json) in stream.decode((Int, OracleJSON<MyJSON>).self) {
             XCTAssertEqual(id, 1)
-            let value = try json.decode(as: MyJSON.self)
             XCTAssertEqual(
-                value, MyJSON(
+                json.value, MyJSON(
                     key: "value",
                     int: 8,
                     array: [1, 2, 3],

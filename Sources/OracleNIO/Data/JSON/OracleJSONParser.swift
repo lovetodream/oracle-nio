@@ -267,19 +267,20 @@ struct OracleJSONParser {
             if nodeType == Constants.TNS_JSON_TYPE_VECTOR {
                 let length = try buffer.throwingReadInteger(as: UInt32.self)
                 var slice = try buffer.throwingReadSlice(length: Int(length))
-                let start = slice.readerIndex
-                let (format, _) = try _decodeOracleVectorMetadata(from: &slice)
-                slice.moveReaderIndex(to: start)
+                let (format, elements) = try _decodeOracleVectorMetadata(from: &slice)
                 switch format {
                 case .int8:
-                    return .vectorInt8(
-                        try OracleVectorInt8(from: &slice, type: .vector, context: .default))
+                    let vector = try OracleVectorInt8._decodeActual(
+                        from: &slice, elements: elements)
+                    return .vectorInt8(vector)
                 case .float32:
-                    return .vectorFloat32(
-                        try OracleVectorFloat32(from: &slice, type: .vector, context: .default))
+                    let vector = try OracleVectorFloat32._decodeActual(
+                        from: &slice, elements: elements)
+                    return .vectorFloat32(vector)
                 case .float64:
-                    return .vectorFloat64(
-                        try OracleVectorFloat64(from: &slice, type: .vector, context: .default))
+                    let vector = try OracleVectorFloat64._decodeActual(
+                        from: &slice, elements: elements)
+                    return .vectorFloat64(vector)
                 }
             }
 

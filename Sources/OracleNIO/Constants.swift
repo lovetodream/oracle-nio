@@ -203,7 +203,7 @@ enum Constants {
     static let TNS_JSON_TYPE_OBJECT: UInt8 = 0x84
     static let TNS_JSON_TYPE_ARRAY: UInt8 = 0xc0
     static let TNS_JSON_TYPE_EXTENDED: UInt8 = 0x7b
-    static let TNS_JSON_TYPE_VECTOR = 0x01
+    static let TNS_JSON_TYPE_VECTOR: UInt8 = 0x01
 
     // MARK: VECTOR constants
     static let TNS_VECTOR_MAGIC_BYTE = 0xDB

@@ -207,12 +207,32 @@ public protocol OracleVectorProtocol {}
 
 // MARK: - Internal helper protocols
 
-private protocol _OracleVectorProtocol: OracleCodable, Equatable, Collection,
+protocol _OracleVectorJSONEncodable: OracleEncodable {
+    var count: Int { get }
+    static var vectorFormat: VectorFormat { get }
+    func encodeForJSON(into buffer: inout ByteBuffer)
+}
+
+extension _OracleVectorJSONEncodable {
+    func encodeForJSON(into buffer: inout ByteBuffer) {
+        buffer.writeInteger(0, as: UInt32.self)
+        let writerIndex = buffer.writerIndex
+        _encodeOracleVectorHeader(
+            elements: UInt32(self.count),
+            format: Self.vectorFormat,
+            into: &buffer
+        )
+        self.encode(into: &buffer, context: .default)
+        let length = UInt32(buffer.writerIndex - writerIndex)
+        buffer.setInteger(length, at: writerIndex - MemoryLayout<UInt32>.size)
+    }
+}
+
+private protocol _OracleVectorProtocol: _OracleVectorJSONEncodable, OracleCodable, Equatable,
+    Collection,
     ExpressibleByArrayLiteral
 where Index == Int {
-    var count: Int { get }
     var base: TinySequence<Element> { get set }
-    static var vectorFormat: VectorFormat { get }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self
 }
 
@@ -233,7 +253,7 @@ extension _OracleVectorProtocol {
         context: OracleEncodingContext<JSONEncoder>
     ) {
         var temp = ByteBuffer()
-        Self._encodeOracleVectorHeader(
+        _encodeOracleVectorHeader(
             elements: UInt32(self.count),
             format: Self.vectorFormat,
             into: &temp
@@ -260,20 +280,6 @@ extension _OracleVectorProtocol {
         }
         let elements = try Self._decodeOracleVectorHeader(from: &buffer)
         self = try Self._decodeActual(from: &buffer, elements: elements)
-    }
-
-    private static func _encodeOracleVectorHeader(
-        elements: UInt32,
-        format: VectorFormat,
-        into buffer: inout ByteBuffer
-    ) {
-        buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
-        buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
-        buffer.writeInteger(
-            UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
-        buffer.writeInteger(format.rawValue)
-        buffer.writeInteger(elements)
-        buffer.writeRepeatingByte(0, count: 8)
     }
 
     private static func _decodeOracleVectorHeader(from buffer: inout ByteBuffer) throws -> Int {
@@ -311,4 +317,18 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
     }
 
     return (vectorFormat, elementsCount)
+}
+
+func _encodeOracleVectorHeader(
+    elements: UInt32,
+    format: VectorFormat,
+    into buffer: inout ByteBuffer
+) {
+    buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
+    buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
+    buffer.writeInteger(
+        UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
+    buffer.writeInteger(format.rawValue)
+    buffer.writeInteger(elements)
+    buffer.writeRepeatingByte(0, count: 8)
 }

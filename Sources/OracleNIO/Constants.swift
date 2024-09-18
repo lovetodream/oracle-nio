@@ -164,11 +164,11 @@ enum Constants {
 
     // MARK: Base JSON constants
     static let TNS_JSON_MAX_LENGTH: UInt32 = 32 * 1024 * 1024
-    static let TNS_JSON_MAGIC_BYTE_1 = 0xff
-    static let TNS_JSON_MAGIC_BYTE_2 = 0x4a  // 'J'
-    static let TNS_JSON_MAGIC_BYTE_3 = 0x5a  // 'Z'
-    static let TNS_JSON_VERSION_MAX_FNAME_255 = 1
-    static let TNS_JSON_VERSION_MAX_FNAME_65535 = 3
+    static let TNS_JSON_MAGIC_BYTE_1: UInt8 = 0xff
+    static let TNS_JSON_MAGIC_BYTE_2: UInt8 = 0x4a  // 'J'
+    static let TNS_JSON_MAGIC_BYTE_3: UInt8 = 0x5a  // 'Z'
+    static let TNS_JSON_VERSION_MAX_FNAME_255: UInt8 = 1
+    static let TNS_JSON_VERSION_MAX_FNAME_65535: UInt8 = 3
     static let TNS_JSON_FLAG_HASH_ID_UINT8: UInt16 = 0x0100
     static let TNS_JSON_FLAG_HASH_ID_UINT16: UInt16 = 0x0200
     static let TNS_JSON_FLAG_NUM_FNAMES_UINT16: UInt16 = 0x0400
@@ -200,8 +200,8 @@ enum Constants {
     static let TNS_JSON_TYPE_TIMESTAMP_TZ: UInt8 = 0x7c
     static let TNS_JSON_TYPE_TIMESTAMP7: UInt8 = 0x7d
     static let TNS_JSON_TYPE_BINARY_FLOAT: UInt8 = 0x7f
-    static let TNS_JSON_TYPE_OBJECT = 0x84
-    static let TNS_JSON_TYPE_ARRAY = 0xc0
+    static let TNS_JSON_TYPE_OBJECT: UInt8 = 0x84
+    static let TNS_JSON_TYPE_ARRAY: UInt8 = 0xc0
     static let TNS_JSON_TYPE_EXTENDED: UInt8 = 0x7b
     static let TNS_JSON_TYPE_VECTOR = 0x01
 

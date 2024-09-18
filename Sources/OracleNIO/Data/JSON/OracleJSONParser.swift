@@ -26,6 +26,7 @@ struct OracleJSONParser {
     private init() {}
 
     static func parse(from buffer: inout ByteBuffer) throws -> OracleJSONStorage {
+        print(buffer.oracleHexDump())
         var parser = OracleJSONParser()
         return try parser.decode(from: &buffer)
     }

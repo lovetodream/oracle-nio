@@ -100,4 +100,50 @@ final class JSONTests: XCTIntegrationTest {
             }
         }
     }
+
+    func testScalarValue() async throws {
+        try XCTSkipIf(!testCompressedJSON)
+        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '"value"')"#)
+        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        for try await (id, json) in stream.decode((Int, OracleJSON<String>).self) {
+            XCTAssertEqual(id, 2)
+            XCTAssertEqual(json.value, "value")
+        }
+    }
+
+    func testArrayValue() async throws {
+        try XCTSkipIf(!testCompressedJSON)
+        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '["value"]')"#)
+        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        for try await (id, json) in stream.decode((Int, OracleJSON<[String]>).self) {
+            XCTAssertEqual(id, 2)
+            XCTAssertEqual(json.value, ["value"])
+        }
+    }
+
+    func testObjectValue() async throws {
+        try XCTSkipIf(!testCompressedJSON)
+        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '{"foo": "bar"}')"#)
+        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
+            XCTAssertEqual(id, 2)
+            XCTAssertEqual(json.value, Foo(foo: "bar"))
+        }
+        struct Foo: Codable, Equatable {
+            let foo: String
+        }
+    }
+
+    func testArrayOfObjects() async throws {
+        try XCTSkipIf(!testCompressedJSON)
+        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '[{"foo": "bar1"}, {"foo": "bar2"}]')"#)
+        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        for try await (id, json) in stream.decode((Int, OracleJSON<[Foo]>).self) {
+            XCTAssertEqual(id, 2)
+            XCTAssertEqual(json.value, [Foo(foo: "bar1"), Foo(foo: "bar2")])
+        }
+        struct Foo: Codable, Equatable {
+            let foo: String
+        }
+    }
 }

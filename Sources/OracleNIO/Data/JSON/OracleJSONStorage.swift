@@ -1,6 +1,6 @@
 import struct Foundation.Date
 
-enum OracleJSONStorage: Sendable {
+enum OracleJSONStorage: Sendable, Equatable {
     /// Containers
     case container([String: OracleJSONStorage])
     case array([OracleJSONStorage])

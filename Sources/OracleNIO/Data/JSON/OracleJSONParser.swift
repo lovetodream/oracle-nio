@@ -42,7 +42,9 @@ struct OracleJSONParser {
             throw OracleError.ErrorType.unexpectedData
         }
         let version = try buffer.throwingReadInteger(as: UInt8.self)
-        if version != Constants.TNS_JSON_VERSION_MAX_FNAME_255 && version != Constants.TNS_JSON_VERSION_MAX_FNAME_65535 {
+        if version != Constants.TNS_JSON_VERSION_MAX_FNAME_255
+            && version != Constants.TNS_JSON_VERSION_MAX_FNAME_65535
+        {
             throw OracleError.ErrorType.osonVersionNotSupported
         }
 
@@ -155,14 +157,16 @@ struct OracleJSONParser {
         buffer.moveReaderIndex(to: offsetsPosition)
         self.fieldNames.reserveCapacity(fieldsCount)
         for _ in 0..<fieldsCount {
-            let offset = if offsetsSize == 2 {
-                try Int(buffer.throwingReadInteger(as: UInt16.self))
-            } else {
-                try Int(buffer.throwingReadInteger(as: UInt32.self))
-            }
+            let offset =
+                if offsetsSize == 2 {
+                    try Int(buffer.throwingReadInteger(as: UInt16.self))
+                } else {
+                    try Int(buffer.throwingReadInteger(as: UInt32.self))
+                }
 
             let length = try Int(slice.throwingGetInteger(at: offset, as: UInt8.self))
-            let name = try slice.throwingGetString(at: offset + MemoryLayout<UInt8>.size, length: length)
+            let name = try slice.throwingGetString(
+                at: offset + MemoryLayout<UInt8>.size, length: length)
             self.fieldNames.append(name)
         }
         buffer.moveReaderIndex(to: finalPosition)
@@ -268,11 +272,14 @@ struct OracleJSONParser {
                 slice.moveReaderIndex(to: start)
                 switch format {
                 case .int8:
-                    return .vectorInt8(try OracleVectorInt8(from: &slice, type: .vector, context: .default))
+                    return .vectorInt8(
+                        try OracleVectorInt8(from: &slice, type: .vector, context: .default))
                 case .float32:
-                    return .vectorFloat32(try OracleVectorFloat32(from: &slice, type: .vector, context: .default))
+                    return .vectorFloat32(
+                        try OracleVectorFloat32(from: &slice, type: .vector, context: .default))
                 case .float64:
-                    return .vectorFloat64(try OracleVectorFloat64(from: &slice, type: .vector, context: .default))
+                    return .vectorFloat64(
+                        try OracleVectorFloat64(from: &slice, type: .vector, context: .default))
                 }
             }
 
@@ -311,7 +318,9 @@ struct OracleJSONParser {
         throw OracleError.ErrorType.osonNodeTypeNotSupported
     }
 
-    private mutating func decodeContainerNode(from buffer: inout ByteBuffer, ofType nodeType: UInt8) throws -> OracleJSONStorage {
+    private mutating func decodeContainerNode(from buffer: inout ByteBuffer, ofType nodeType: UInt8)
+        throws -> OracleJSONStorage
+    {
         let isObject = nodeType & 0x40 == 0
 
         // determine the number of children by examining the 4th and 5th most
@@ -351,13 +360,14 @@ struct OracleJSONParser {
             let name: String?
             if isObject {
                 buffer.moveReaderIndex(to: fieldIDsPosition)
-                let index = if self.fieldIDLength == 1 {
-                    try Int(buffer.throwingReadInteger(as: UInt8.self))
-                } else if self.fieldIDLength == 2 {
-                    try Int(buffer.throwingReadInteger(as: UInt16.self))
-                } else {
-                    try Int(buffer.throwingReadInteger(as: UInt32.self))
-                }
+                let index =
+                    if self.fieldIDLength == 1 {
+                        try Int(buffer.throwingReadInteger(as: UInt8.self))
+                    } else if self.fieldIDLength == 2 {
+                        try Int(buffer.throwingReadInteger(as: UInt16.self))
+                    } else {
+                        try Int(buffer.throwingReadInteger(as: UInt32.self))
+                    }
                 name = self.fieldNames[index - 1]
                 fieldIDsPosition = buffer.readerIndex
             } else {

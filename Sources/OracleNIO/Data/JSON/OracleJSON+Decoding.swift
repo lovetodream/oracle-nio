@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the OracleNIO open source project
+//
+// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE for license information
+// See CONTRIBUTORS.md for the list of OracleNIO project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import NIOCore
 
 import struct Foundation.Date
@@ -26,7 +40,7 @@ struct OracleJSONDecoder {
 
 struct _OracleJSONDecoder: Decoder {
     let codingPath: [any CodingKey]
-    let userInfo: [CodingUserInfoKey : Any]
+    let userInfo: [CodingUserInfoKey: Any]
 
     let value: OracleJSONStorage
 
@@ -34,13 +48,15 @@ struct _OracleJSONDecoder: Decoder {
         try T(from: self)
     }
 
-    func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key : CodingKey {
+    func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key>
+    where Key: CodingKey {
         guard case .container(let dictionary) = self.value else {
             throw DecodingError.typeMismatch(
                 [String: OracleJSONStorage].self,
                 .init(
                     codingPath: self.codingPath,
-                    debugDescription: "Expected to decode \([String: OracleJSONStorage].self) but found \(self.value.debugDataTypeDescription) instead."
+                    debugDescription:
+                        "Expected to decode \([String: OracleJSONStorage].self) but found \(self.value.debugDataTypeDescription) instead."
                 )
             )
         }
@@ -59,7 +75,8 @@ struct _OracleJSONDecoder: Decoder {
                 [OracleJSONStorage].self,
                 .init(
                     codingPath: self.codingPath,
-                    debugDescription: "Expected to decode \([OracleJSONStorage].self) but found \(self.value.debugDataTypeDescription) instead."
+                    debugDescription:
+                        "Expected to decode \([OracleJSONStorage].self) but found \(self.value.debugDataTypeDescription) instead."
                 )
             )
         }
@@ -178,7 +195,7 @@ struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProto
         try self.decodeBinaryInteger(forKey: key)
     }
 
-    func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T : Decodable {
+    func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T: Decodable {
         switch type {
         case is Date.Type:
             let value = try self.getValue(forKey: key)
@@ -208,7 +225,9 @@ struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProto
         return try T(from: decoder)
     }
 
-    func nestedContainer<NestedKey>(keyedBy type: NestedKey.Type, forKey key: Key) throws -> KeyedDecodingContainer<NestedKey> where NestedKey : CodingKey {
+    func nestedContainer<NestedKey>(keyedBy type: NestedKey.Type, forKey key: Key) throws
+        -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey
+    {
         try decoderForKey(key).container(keyedBy: type)
     }
 
@@ -242,22 +261,30 @@ extension OracleKeyedDecodingContainer {
     @inline(__always)
     private func getValue(forKey key: Key) throws -> Value {
         guard let value = dictionary[key.stringValue] else {
-            throw DecodingError.keyNotFound(key, .init(
-                codingPath: self.codingPath,
-                debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."
-            ))
+            throw DecodingError.keyNotFound(
+                key,
+                .init(
+                    codingPath: self.codingPath,
+                    debugDescription:
+                        "No value associated with key \(key) (\"\(key.stringValue)\")."
+                ))
         }
 
         return value
     }
 
     @inline(__always)
-    private func createTypeMismatchError(type: Any.Type, forKey key: Key, value: Value) -> DecodingError {
+    private func createTypeMismatchError(type: Any.Type, forKey key: Key, value: Value)
+        -> DecodingError
+    {
         let codingPath = self.codingPath + [key]
-        return DecodingError.typeMismatch(type, .init(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
-        ))
+        return DecodingError.typeMismatch(
+            type,
+            .init(
+                codingPath: codingPath,
+                debugDescription:
+                    "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     @inline(__always)
@@ -292,16 +319,17 @@ extension OracleKeyedDecodingContainer {
     @inline(__always)
     private func decodeFloatingPointNumber<T: BinaryFloatingPoint>(forKey key: Key) throws -> T {
         let value = try self.getValue(forKey: key)
-        let (float, original): (T?, any Numeric) = switch value {
-        case .int(let value):
-            (T(exactly: value), value)
-        case .double(let value):
-            (T(value), value)
-        case .float(let value):
-            (T(value), value)
-        default:
-            throw self.createTypeMismatchError(type: T.self, forKey: key, value: value)
-        }
+        let (float, original): (T?, any Numeric) =
+            switch value {
+            case .int(let value):
+                (T(exactly: value), value)
+            case .double(let value):
+                (T(value), value)
+            case .float(let value):
+                (T(value), value)
+            default:
+                throw self.createTypeMismatchError(type: T.self, forKey: key, value: value)
+            }
 
         guard let float else {
             throw DecodingError.dataCorruptedError(
@@ -395,7 +423,7 @@ struct OracleSingleValueDecodingContainer: SingleValueDecodingContainer {
         try self.decodeBinaryInteger()
     }
 
-    func decode<T>(_ type: T.Type) throws -> T where T : Decodable {
+    func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
         switch type {
         case is Date.Type:
             guard case .date(let value) = self.value else { break }
@@ -423,10 +451,13 @@ struct OracleSingleValueDecodingContainer: SingleValueDecodingContainer {
 extension OracleSingleValueDecodingContainer {
     @inline(__always)
     private func createTypeMismatchError(type: Any.Type, value: Value) -> DecodingError {
-        return DecodingError.typeMismatch(type, .init(
-            codingPath: self.codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
-        ))
+        return DecodingError.typeMismatch(
+            type,
+            .init(
+                codingPath: self.codingPath,
+                debugDescription:
+                    "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     @inline(__always)
@@ -457,16 +488,17 @@ extension OracleSingleValueDecodingContainer {
 
     @inline(__always)
     private func decodeFloatingPointNumber<T: BinaryFloatingPoint>() throws -> T {
-        let (float, original): (T?, any Numeric) = switch self.value {
-        case .int(let value):
-            (T(exactly: value), value)
-        case .double(let value):
-            (T(value), value)
-        case .float(let value):
-            (T(value), value)
-        default:
-            throw self.createTypeMismatchError(type: T.self, value: value)
-        }
+        let (float, original): (T?, any Numeric) =
+            switch self.value {
+            case .int(let value):
+                (T(exactly: value), value)
+            case .double(let value):
+                (T(value), value)
+            case .float(let value):
+                (T(value), value)
+            default:
+                throw self.createTypeMismatchError(type: T.self, value: value)
+            }
 
         guard let float else {
             throw DecodingError.dataCorruptedError(
@@ -612,8 +644,11 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         return result
     }
 
-    mutating func nestedContainer<NestedKey>(keyedBy type: NestedKey.Type) throws -> KeyedDecodingContainer<NestedKey> where NestedKey : CodingKey {
-        let decoder = try self.decoderForNextElement(ofType: KeyedDecodingContainer<NestedKey>.self, isNested: true)
+    mutating func nestedContainer<NestedKey>(keyedBy type: NestedKey.Type) throws
+        -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey
+    {
+        let decoder = try self.decoderForNextElement(
+            ofType: KeyedDecodingContainer<NestedKey>.self, isNested: true)
         let container = try decoder.container(keyedBy: type)
 
         self.currentIndex += 1
@@ -621,7 +656,8 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
     }
 
     mutating func nestedUnkeyedContainer() throws -> any UnkeyedDecodingContainer {
-        let decoder = try self.decoderForNextElement(ofType: UnkeyedDecodingContainer.self, isNested: true)
+        let decoder = try self.decoderForNextElement(
+            ofType: UnkeyedDecodingContainer.self, isNested: true)
         let container = try decoder.unkeyedContainer()
 
         self.currentIndex += 1
@@ -634,7 +670,9 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
 }
 
 extension OracleUnkeyedDecodingContainer {
-    private mutating func decoderForNextElement<T>(ofType: T.Type, isNested: Bool = false) throws -> _OracleJSONDecoder {
+    private mutating func decoderForNextElement<T>(ofType: T.Type, isNested: Bool = false) throws
+        -> _OracleJSONDecoder
+    {
         let value = try self.getNextValue(ofType: T.self, isNested: isNested)
         let newPath = self.codingPath + [ArrayKey(index: self.currentIndex)]
 
@@ -663,7 +701,8 @@ extension OracleUnkeyedDecodingContainer {
                     T.self,
                     .init(
                         codingPath: self.codingPath,
-                        debugDescription: "Cannot get nested keyed container -- unkeyed container is at end.",
+                        debugDescription:
+                            "Cannot get nested keyed container -- unkeyed container is at end.",
                         underlyingError: nil
                     )
                 )
@@ -684,10 +723,13 @@ extension OracleUnkeyedDecodingContainer {
     @inline(__always)
     private func createTypeMismatchError(type: Any.Type, value: Value) -> DecodingError {
         let codingPath = self.codingPath + [ArrayKey(index: self.currentIndex)]
-        return DecodingError.typeMismatch(type, .init(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
-        ))
+        return DecodingError.typeMismatch(
+            type,
+            .init(
+                codingPath: codingPath,
+                debugDescription:
+                    "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     @inline(__always)
@@ -728,16 +770,17 @@ extension OracleUnkeyedDecodingContainer {
     @inline(__always)
     private mutating func decodeFloatingPointNumber<T: BinaryFloatingPoint>() throws -> T {
         let value = try self.getNextValue(ofType: T.self)
-        let (float, original): (T?, any Numeric) = switch value {
-        case .int(let value):
-            (T(exactly: value), value)
-        case .double(let value):
-            (T(value), value)
-        case .float(let value):
-            (T(value), value)
-        default:
-            throw self.createTypeMismatchError(type: T.self, value: value)
-        }
+        let (float, original): (T?, any Numeric) =
+            switch value {
+            case .int(let value):
+                (T(exactly: value), value)
+            case .double(let value):
+                (T(value), value)
+            case .float(let value):
+                (T(value), value)
+            default:
+                throw self.createTypeMismatchError(type: T.self, value: value)
+            }
 
         guard let float else {
             throw DecodingError.dataCorruptedError(

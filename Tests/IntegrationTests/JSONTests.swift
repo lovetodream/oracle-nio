@@ -38,21 +38,21 @@ final class JSONTests: XCTIntegrationTest {
         if testCompressedJSON {
             _ = try? await connection.execute("DROP TABLE TestCompressedJson")
             try await connection.execute(
-            """
-            create table TestCompressedJson (
-                IntCol number(9) not null,
-                JsonCol json not null
-            )
-            json (JsonCol)
-            store as (compress high)
-            """)
+                """
+                create table TestCompressedJson (
+                    IntCol number(9) not null,
+                    JsonCol json not null
+                )
+                json (JsonCol)
+                store as (compress high)
+                """)
             try await connection.execute(
-            """
-            INSERT INTO TestCompressedJson VALUES (
-                1,
-                '{"key": "value", "int": 8, "array": [1, 2, 3], "bool1": true, "bool2": false, "nested": {"float": 1.2, "double": 1.23, "null": null}}'
-            )
-            """)
+                """
+                INSERT INTO TestCompressedJson VALUES (
+                    1,
+                    '{"key": "value", "int": 8, "array": [1, 2, 3], "bool1": true, "bool2": false, "nested": {"float": 1.2, "double": 1.23, "null": null}}'
+                )
+                """)
         }
     }
 
@@ -74,7 +74,8 @@ final class JSONTests: XCTIntegrationTest {
         for try await (id, json) in stream.decode((Int, OracleJSON<MyJSON>).self) {
             XCTAssertEqual(id, 1)
             XCTAssertEqual(
-                json.value, MyJSON(
+                json.value,
+                MyJSON(
                     key: "value",
                     int: 8,
                     array: [1, 2, 3],
@@ -103,8 +104,10 @@ final class JSONTests: XCTIntegrationTest {
 
     func testScalarValue() async throws {
         try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '"value"')"#)
-        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        try await connection.execute(
+            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '"value"')"#)
+        let stream = try await connection.execute(
+            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
         for try await (id, json) in stream.decode((Int, OracleJSON<String>).self) {
             XCTAssertEqual(id, 2)
             XCTAssertEqual(json.value, "value")
@@ -113,8 +116,10 @@ final class JSONTests: XCTIntegrationTest {
 
     func testArrayValue() async throws {
         try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '["value"]')"#)
-        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        try await connection.execute(
+            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '["value"]')"#)
+        let stream = try await connection.execute(
+            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
         for try await (id, json) in stream.decode((Int, OracleJSON<[String]>).self) {
             XCTAssertEqual(id, 2)
             XCTAssertEqual(json.value, ["value"])
@@ -123,8 +128,10 @@ final class JSONTests: XCTIntegrationTest {
 
     func testObjectValue() async throws {
         try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '{"foo": "bar"}')"#)
-        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        try await connection.execute(
+            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '{"foo": "bar"}')"#)
+        let stream = try await connection.execute(
+            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
         for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
             XCTAssertEqual(id, 2)
             XCTAssertEqual(json.value, Foo(foo: "bar"))
@@ -136,8 +143,11 @@ final class JSONTests: XCTIntegrationTest {
 
     func testArrayOfObjects() async throws {
         try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(#"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '[{"foo": "bar1"}, {"foo": "bar2"}]')"#)
-        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        try await connection.execute(
+            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '[{"foo": "bar1"}, {"foo": "bar2"}]')"#
+        )
+        let stream = try await connection.execute(
+            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
         for try await (id, json) in stream.decode((Int, OracleJSON<[Foo]>).self) {
             XCTAssertEqual(id, 2)
             XCTAssertEqual(json.value, [Foo(foo: "bar1"), Foo(foo: "bar2")])

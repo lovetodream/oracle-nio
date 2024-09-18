@@ -285,7 +285,9 @@ extension _OracleVectorProtocol {
     }
 }
 
-func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (VectorFormat, elements: Int) {
+func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
+    VectorFormat, elements: Int
+) {
     let magicByte = try buffer.throwingReadInteger(as: UInt8.self)
     if magicByte != Constants.TNS_VECTOR_MAGIC_BYTE {
         throw OracleDecodingError.Code.typeMismatch

@@ -9,7 +9,7 @@ on:
 jobs:
   soundness:
     container:
-      image: ghcr.io/lovetodream/swift-format-ci:v5.10.0
+      image: swift:jammy
   
     runs-on: ubuntu-latest
     

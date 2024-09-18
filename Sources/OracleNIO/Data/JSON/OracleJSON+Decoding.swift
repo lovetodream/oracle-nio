@@ -44,8 +44,28 @@ struct _OracleJSONDecoder: Decoder {
 
     let value: OracleJSONStorage
 
-    func decode<T: Decodable>(_: T.Type) throws -> T {
-        try T(from: self)
+    func decode<T: Decodable>(_ type: T.Type) throws -> T {
+        switch type {
+        case is Date.Type:
+            guard case .date(let value) = self.value else { break }
+            return value as! T
+        case is IntervalDS.Type:
+            guard case .intervalDS(let value) = self.value else { break }
+            return value as! T
+        case is OracleVectorInt8.Type:
+            guard case .vectorInt8(let value) = value else { break }
+            return value as! T
+        case is OracleVectorFloat32.Type:
+            guard case .vectorFloat32(let value) = value else { break }
+            return value as! T
+        case is OracleVectorFloat64.Type:
+            guard case .vectorFloat64(let value) = value else { break }
+            return value as! T
+        default:
+            break
+        }
+
+        return try T(from: self)
     }
 
     func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key>

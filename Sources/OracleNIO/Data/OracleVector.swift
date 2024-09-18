@@ -78,6 +78,11 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
 
         return .init(underlying: values)
     }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
+    }
 }
 
 // MARK: Float32
@@ -137,6 +142,11 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
         }
 
         return .init(underlying: values)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
     }
 }
 
@@ -199,6 +209,11 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
 
         return .init(underlying: values)
     }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
+    }
 }
 
 
@@ -230,7 +245,8 @@ extension _OracleVectorJSONEncodable {
 
 private protocol _OracleVectorProtocol: _OracleVectorJSONEncodable, OracleCodable, Equatable,
     Collection,
-    ExpressibleByArrayLiteral
+    ExpressibleByArrayLiteral,
+    Decodable
 where Index == Int {
     var base: TinySequence<Element> { get set }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self

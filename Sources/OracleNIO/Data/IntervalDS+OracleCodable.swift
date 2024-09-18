@@ -56,6 +56,14 @@ extension IntervalDS: ExpressibleByFloatLiteral {
     }
 }
 
+extension IntervalDS: Decodable {
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(Double.self)
+        self = .init(floatLiteral: value)
+    }
+}
+
 extension IntervalDS: OracleEncodable {
     public var oracleType: OracleDataType { .intervalDS }
 

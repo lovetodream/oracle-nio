@@ -22,14 +22,14 @@ fatal() { error "$@"; exit 1; }
 CURRENT_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$(git -C "${CURRENT_SCRIPT_DIR}" rev-parse --show-toplevel)"
 
-FORMAT_COMMAND=(lint --strict)
+FORMAT_COMMAND=(format lint --strict)
 for arg in "$@"; do
   if [ "$arg" == "--fix" ]; then
     FORMAT_COMMAND=(format --in-place)
   fi
 done
 
-SWIFTFORMAT_BIN=${SWIFTFORMAT_BIN:-$(command -v swift-format)} || fatal "❌ SWIFTFORMAT_BIN unset and no swift-format on PATH"
+SWIFTFORMAT_BIN=${SWIFTFORMAT_BIN:-$(command -v swift)} || fatal "❌ SWIFTFORMAT_BIN unset and no swift-format on PATH"
 
 git -C "${REPO_ROOT}" ls-files -z '*.swift' \
     | grep -z -v -e 'Tests/LoggingLoki/Resources' \

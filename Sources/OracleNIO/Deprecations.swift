@@ -16,22 +16,22 @@
 
 import struct Logging.Logger
 
-@_documentation(visibility:internal)
+@_documentation(visibility: internal)
 @available(*, deprecated, renamed: "OracleStatement")
 public typealias OracleQuery = OracleStatement
 
-@_documentation(visibility:internal)
+@_documentation(visibility: internal)
 @available(*, deprecated, renamed: "StatementOptions")
 public typealias QueryOptions = StatementOptions
 
 extension OracleSQLError.Code {
-    @_documentation(visibility:internal)
+    @_documentation(visibility: internal)
     @available(*, deprecated, renamed: "statementCancelled")
     public static let queryCancelled = OracleSQLError.Code.statementCancelled
 }
 
 extension OracleSQLError {
-    @_documentation(visibility:internal)
+    @_documentation(visibility: internal)
     @available(*, deprecated, renamed: "statement", message: "will be removed before 1.0.0")
     public internal(set) var query: OracleQuery? {
         get { self.statement }
@@ -42,7 +42,7 @@ extension OracleSQLError {
 }
 
 extension OracleConnection {
-    @_documentation(visibility:internal)
+    @_documentation(visibility: internal)
     @available(*, deprecated, renamed: "execute(_:options:logger:file:line:)")
     @discardableResult
     public func query(

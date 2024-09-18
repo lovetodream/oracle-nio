@@ -95,8 +95,6 @@ struct _OracleJSONDecoder: Decoder {
             codingPath: self.codingPath
         )
     }
-
-
 }
 
 

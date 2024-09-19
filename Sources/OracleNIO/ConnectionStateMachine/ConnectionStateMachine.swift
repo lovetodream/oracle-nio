@@ -574,10 +574,8 @@ struct ConnectionStateMachine {
             self.state = .closing
             return .closeConnection(promise)
 
-        case .closing:
+        case .closing, .closed:
             return .wait
-        case .closed:
-            preconditionFailure("Invalid state: \(self.state)")
 
         case .modifying:
             preconditionFailure("Invalid state: \(self.state)")

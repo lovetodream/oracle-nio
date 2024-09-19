@@ -740,7 +740,7 @@ struct ConnectionStateMachine {
             self.state = .readyForStatement
             return self.executeNextStatementFromQueue()
 
-        case .loggingOff, .closing:
+        case .loggingOff, .closing, .closed:
             // Might happen if the connection is getting closed immediately
             // after a ping. In that case the ping's success or failure response
             // triggers a readyForStatementReceived, while we are already closing.

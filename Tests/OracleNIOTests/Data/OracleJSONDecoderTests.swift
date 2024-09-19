@@ -133,6 +133,12 @@
             try decodeScalar(expected: 123, given: .int(123))
         }
 
+        @Test func decodeInt8FromTooLargeIntFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Int8.self, from: .int(Int(Int8.max) + 1))
+            })
+        }
+
         @Test func decodeInt8() throws {
             try decodeScalar(expected: Int8(123), given: .int(123))
         }
@@ -290,7 +296,7 @@
                 #expect(!container.contains(.bye))
             }
 
-            @Test func decodeNullFromNothing() throws {
+            @Test func decodeNullFromNothingFails() throws {
                 let decoder = _OracleJSONDecoder(
                     codingPath: [],
                     userInfo: [:],
@@ -336,7 +342,7 @@
                 #expect(try container.decodeNil(forKey: .hello) == false)
             }
 
-            @Test func decodeBoolFromNumber() throws {
+            @Test func decodeBoolFromNumberFails() throws {
                 let decoder = _OracleJSONDecoder(
                     codingPath: [],
                     userInfo: [:],
@@ -368,7 +374,7 @@
                 #expect(try container.decode(Bool.self, forKey: .hello))
             }
 
-            @Test func decodeStringFromNumber() throws {
+            @Test func decodeStringFromNumberFails() throws {
                 let decoder = _OracleJSONDecoder(
                     codingPath: [],
                     userInfo: [:],
@@ -400,7 +406,7 @@
                 #expect(try container.decode(String.self, forKey: .hello) == "world")
             }
 
-            @Test func decodeDoubleFromString() throws {
+            @Test func decodeDoubleFromStringFails() throws {
                 let decoder = _OracleJSONDecoder(
                     codingPath: [],
                     userInfo: [:],
@@ -588,7 +594,7 @@
                 #expect(try container.decode(Int.self, forKey: .hello) == 1)
             }
 
-            @Test func decodeInt8FromTooLargeInt() throws {
+            @Test func decodeInt8FromTooLargeIntFails() throws {
                 let decoder = _OracleJSONDecoder(
                     codingPath: [],
                     userInfo: [:],
@@ -935,6 +941,567 @@
                         _ = try container.superDecoder()
                         _ = try container.superDecoder(forKey: .nested)
                     })
+            }
+        }
+
+
+        // MARK: Keyed Decoding Container
+
+        @Suite struct UnkeyedDecodingContainerTests {
+            @Test func decodeNull() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.none])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decodeNil())
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeNullWithNonNullValues() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.bool(false)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(container.count == 1)
+                #expect(try container.decodeNil() == false)
+                #expect(container.currentIndex == 0)
+                #expect(!container.isAtEnd)
+            }
+
+            @Test func decodeBoolFromNumberFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Bool.self)
+                    })
+            }
+
+            @Test func decodeBool() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.bool(true)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Bool.self))
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeStringFromNumberFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(String.self)
+                    })
+            }
+
+            @Test func decodeString() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.string("world")])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(String.self) == "world")
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeDoubleFromStringFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.string("1")])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Double.self)
+                    })
+            }
+
+            @Test func decodeDoubleFromInt() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Double.self) == 1.0)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeDoubleFromFloat() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.float(1.0)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Double.self) == 1.0)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeDouble() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.double(1.0)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Double.self) == 1.0)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeDoubleFromTooLargeInt() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(.max)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Double.self)
+                    })
+            }
+
+            @Test func decodeFloat() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.float(1.0)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Float.self) == 1.0)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeIntFromDouble() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.double(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeIntFromPreciseDoubleFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.double(1.05)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Int.self)
+                    })
+            }
+
+            @Test func decodeIntFromFloat() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.float(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeIntFromPreciseFloatFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.float(1.05)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Int.self)
+                    })
+            }
+
+            @Test func decodeIntFromStringFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.string("1")])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Int.self)
+                    })
+            }
+
+            @Test func decodeInt() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeInt8FromTooLargeIntFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(Int(Int8.max) + 1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try container.decode(Int8.self)
+                    })
+            }
+
+            @Test func decodeInt8() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int8.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeInt16() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int16.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeInt32() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int32.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeInt64() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(Int64.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeUInt() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(UInt.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeUInt8() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(UInt8.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeUInt16() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(UInt16.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeUInt32() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(UInt32.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeUInt64() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.int(1)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(UInt64.self) == 1)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeDate() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.date(.init(timeIntervalSince1970: 500))])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    try container.decode(Date.self)
+                    == .init(timeIntervalSince1970: 500)
+                )
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeIntervalDS() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.intervalDS(15.0)])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(try container.decode(IntervalDS.self) == 15.0)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeVectorInt8() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.vectorInt8([1, 2, 3])])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    try container.decode(OracleVectorInt8.self) == [1, 2, 3]
+                )
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeVectorFloat32() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.vectorFloat32([1.1, 2.2, 3.3])])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    try container.decode(OracleVectorFloat32.self) == [1.1, 2.2, 3.3]
+                )
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeVectorFloat64() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.vectorFloat64([1.1, 2.2, 3.3])])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    try container.decode(OracleVectorFloat64.self) == [1.1, 2.2, 3.3]
+                )
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeGeneric() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.string("foo")])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                func decode<T: Decodable>(_: T.Type) throws -> T {
+                    try container.decode(T.self)
+                }
+                #expect(try decode(String.self) == "foo")
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeNotExistingNestedKeyFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .container(["hello": .string("there")])
+                )
+                struct Object: Decodable {
+                    struct Nested: Decodable {
+                        let hello: String
+                    }
+                    let nested: Nested
+                    enum CodingKeys: CodingKey {
+                        case nested
+                    }
+                }
+                #expect(
+                    throws: DecodingError.self,
+                    performing: {
+                        try Object(from: decoder)
+                    })
+            }
+
+            @Test func decodeNestedContainer() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.container(["hello": .string("there")])])
+                )
+                enum CodingKeys: CodingKey {
+                    case hello
+                }
+                var container = try decoder.unkeyedContainer()
+                let nestedContainer = try container.nestedContainer(keyedBy: CodingKeys.self)
+                #expect(try nestedContainer.decode(String.self, forKey: .hello) == "there")
+            }
+
+            @Test func decodeNestedUnkeyedContainer() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.array([.string("there")])])
+                )
+                var container = try decoder.unkeyedContainer()
+                var nested = try container.nestedUnkeyedContainer()
+                #expect(try nested.decode(String.self) == "there")
+            }
+
+            @Test func getSuperDecoder() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.container(["hello": .string("there")])])
+                )
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    throws: Never.self,
+                    performing: {
+                        _ = try container.superDecoder()
+                    })
+            }
+
+            @Test func decodeNextValueAfterEndFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([])
+                )
+                var container = try decoder.unkeyedContainer()
+                #expect(throws: DecodingError.self) {
+                    try container.decode(String.self)
+                }
+            }
+
+            @Test func decodeNextNestedContainerAfterEndFails() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([])
+                )
+                var container = try decoder.unkeyedContainer()
+                #expect(throws: DecodingError.self) {
+                    try container.nestedUnkeyedContainer()
+                }
             }
         }
     }

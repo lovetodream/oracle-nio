@@ -489,7 +489,13 @@ extension OracleSingleValueDecodingContainer {
     private func decodeBinaryInteger<T: BinaryInteger>() throws -> T {
         switch self.value {
         case .int(let value):
-            return T(value)
+            guard let value = T(exactly: value) else {
+                throw DecodingError.dataCorruptedError(
+                    in: self,
+                    debugDescription: "Number \(value) does not fit in \(T.self)."
+                )
+            }
+            return value
         case .float(let value):
             guard let value = T(exactly: value) else {
                 throw DecodingError.dataCorruptedError(
@@ -762,8 +768,15 @@ extension OracleUnkeyedDecodingContainer {
         let value = try self.getNextValue(ofType: Int.self)
         switch value {
         case .int(let value):
+            guard let value = T(exactly: value) else {
+                throw DecodingError.dataCorruptedError(
+                    in: self,
+                    debugDescription: "Number \(value) does not fit in \(T.self)."
+                )
+            }
+
             self.currentIndex += 1
-            return T(value)
+            return value
 
         case .float(let value):
             guard let value = T(exactly: value) else {

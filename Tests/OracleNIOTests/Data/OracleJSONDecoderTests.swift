@@ -55,8 +55,20 @@
             try decodeScalar(expected: String?.none, given: .none)
         }
 
+        @Test func decodeBoolFromStringFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Bool.self, from: .string("hello"))
+            })
+        }
+
         @Test func decodeBool() throws {
             try decodeScalar(expected: true, given: .bool(true))
+        }
+
+        @Test func decodeStringFromIntFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(String.self, from: .int(1))
+            })
         }
 
         @Test func decodeString() throws {
@@ -67,12 +79,54 @@
             try decodeScalar(expected: Optional("foo"), given: .string("foo"))
         }
 
+        @Test func decodeDoubleFromStringFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Double.self, from: .string("1.23"))
+            })
+        }
+
+        @Test func decodeDoubleFromTooLargeIntFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Double.self, from: .int(.max))
+            })
+        }
+
+        @Test func decodeDoubleFromInt() throws {
+            try decodeScalar(expected: 1.0, given: .int(1))
+        }
+
         @Test func decodeDouble() throws {
             try decodeScalar(expected: 1.23, given: .double(1.23))
         }
 
         @Test func decodeFloat() throws {
             try decodeScalar(expected: Float(1.23), given: .float(1.23))
+        }
+
+        @Test func decodeIntFromStringFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Int.self, from: .string("1.23"))
+            })
+        }
+
+        @Test func decodeIntFromPreciseDoubleFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Int.self, from: .double(1.23))
+            })
+        }
+
+        @Test func decodeIntFromDouble() throws {
+            try decodeScalar(expected: 123, given: .double(123))
+        }
+
+        @Test func decodeIntFromPreciseFloatFails() throws {
+            #expect(throws: DecodingError.self, performing: {
+                try OracleJSONDecoder().decode(Int.self, from: .float(1.23))
+            })
+        }
+
+        @Test func decodeIntFromFloat() throws {
+            try decodeScalar(expected: 123, given: .float(123))
         }
 
         @Test func decodeInt() throws {
@@ -148,6 +202,56 @@
                 expected: OracleVectorFloat64([1.0, 2.0, 3.0, 4.0, 5.0]),
                 given: .vectorFloat64([1.0, 2.0, 3.0, 4.0, 5.0])
             )
+        }
+
+        @Test func decodeDateFromSingleValueContainer() throws {
+            let decoder = _OracleJSONDecoder(
+                codingPath: [],
+                userInfo: [:],
+                value: .date(Date(timeIntervalSince1970: 50_000))
+            )
+            let date = try decoder.singleValueContainer().decode(Date.self)
+            #expect(date == Date(timeIntervalSince1970: 50_000))
+        }
+
+        @Test func decodeIntervalDSFromSingleValueContainer() throws {
+            let decoder = _OracleJSONDecoder(
+                codingPath: [],
+                userInfo: [:],
+                value: .intervalDS(15.0)
+            )
+            let interval = try decoder.singleValueContainer().decode(IntervalDS.self)
+            #expect(interval == 15.0)
+        }
+
+        @Test func decodeVectorInt8FromSingleValueContainer() throws {
+            let decoder = _OracleJSONDecoder(
+                codingPath: [],
+                userInfo: [:],
+                value: .vectorInt8([1, 2, 3])
+            )
+            let vector = try decoder.singleValueContainer().decode(OracleVectorInt8.self)
+            #expect(vector == [1, 2, 3])
+        }
+
+        @Test func decodeVectorFloat32FromSingleValueContainer() throws {
+            let decoder = _OracleJSONDecoder(
+                codingPath: [],
+                userInfo: [:],
+                value: .vectorFloat32([1.1, 2.2, 3.3])
+            )
+            let vector = try decoder.singleValueContainer().decode(OracleVectorFloat32.self)
+            #expect(vector == [1.1, 2.2, 3.3])
+        }
+
+        @Test func decodeVectorFloat64FromSingleValueContainer() throws {
+            let decoder = _OracleJSONDecoder(
+                codingPath: [],
+                userInfo: [:],
+                value: .vectorFloat64([1.1, 2.2, 3.3])
+            )
+            let vector = try decoder.singleValueContainer().decode(OracleVectorFloat64.self)
+            #expect(vector == [1.1, 2.2, 3.3])
         }
 
 

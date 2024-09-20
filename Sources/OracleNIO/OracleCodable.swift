@@ -225,6 +225,8 @@ public struct OracleEncodingContext<JSONEncoder: OracleJSONEncoder>: Sendable {
     /// A ``OracleJSONEncoder`` used to encode the object to JSON.
     public var jsonEncoder: JSONEncoder
 
+    var jsonMaximumFieldNameSize: Int = 255
+
 
     /// Creates a ``OracleEncodingContext`` with the given ``OracleJSONEncoder``.
     ///

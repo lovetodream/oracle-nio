@@ -189,7 +189,7 @@
                     ]))
         }
 
-        static let scalarValueArguments: [((inout ByteBuffer) throws -> Void, OracleJSONStorage)] =
+        static let scalarValueArguments: [(@Sendable (inout ByteBuffer) throws -> Void, OracleJSONStorage)] =
             [
                 ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_NULL) }, .none),
                 ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_TRUE) }, .bool(true)),
@@ -300,7 +300,7 @@
 
         @Test(arguments: scalarValueArguments)
         func scalarValue(
-            writer: @escaping (inout ByteBuffer) throws -> Void, expected: OracleJSONStorage
+            writer: @Sendable @escaping (inout ByteBuffer) throws -> Void, expected: OracleJSONStorage
         ) throws {
             var buffer = ByteBuffer(bytes: header)
             buffer.writeInteger(

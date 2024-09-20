@@ -16,6 +16,12 @@ import NIOCore
 
 import struct Foundation.Date
 
+extension OracleJSON: Decodable where Value: Decodable {
+    public init(from decoder: any Decoder) throws {
+        self.value = try .init(from: decoder)
+    }
+}
+
 extension OracleJSON: OracleDecodable where Value: Decodable {
     public init(
         from buffer: inout ByteBuffer,

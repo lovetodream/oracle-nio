@@ -7,7 +7,9 @@ struct OracleJSONWriter {
     var longFieldNamesSegment: FieldNameSegment?
     var fieldIDSize = 0
 
-    mutating func encode(_ value: OracleJSONStorage, into buffer: inout ByteBuffer, maxFieldNameSize: Int) throws {
+    mutating func encode(
+        _ value: OracleJSONStorage, into buffer: inout ByteBuffer, maxFieldNameSize: Int
+    ) throws {
         self.maxFieldNameSize = maxFieldNameSize
         var flags = try self.determineFlags(for: value)
 
@@ -83,7 +85,9 @@ struct OracleJSONWriter {
         }
     }
 
-    private mutating func writeExtendedHeader(into buffer: inout ByteBuffer, shortFieldNamesSegment: FieldNameSegment) {
+    private mutating func writeExtendedHeader(
+        into buffer: inout ByteBuffer, shortFieldNamesSegment: FieldNameSegment
+    ) {
         var secondaryFlags: UInt16 = 0
 
         // write number of short field names
@@ -137,12 +141,14 @@ struct OracleJSONWriter {
             shortFieldNamesSegment!.processNames(fieldIDOffset: 0)
         }
         if longFieldNamesSegment != nil {
-            longFieldNamesSegment!.processNames(fieldIDOffset: shortFieldNamesSegment?.names.count ?? 0)
+            longFieldNamesSegment!.processNames(
+                fieldIDOffset: shortFieldNamesSegment?.names.count ?? 0)
         }
 
 
         // determine remaining flags and field id size
-        let fieldNamesCount = (shortFieldNamesSegment?.names.count ?? 0) + (longFieldNamesSegment?.names.count ?? 0)
+        let fieldNamesCount =
+            (shortFieldNamesSegment?.names.count ?? 0) + (longFieldNamesSegment?.names.count ?? 0)
         flags |= Constants.TNS_JSON_FLAG_HASH_ID_UINT8 | Constants.TNS_JSON_FLAG_TINY_NODES_STAT
         if fieldNamesCount > 65535 {
             flags |= Constants.TNS_JSON_FLAG_NUM_FNAMES_UINT32
@@ -205,9 +211,9 @@ final class FieldName {
     ///
     /// This is based on Bernstein's hash function.
     static func calculateHashID(for name: [UInt8]) -> Int {
-        var hashID = 0x811C9DC5
+        var hashID = 0x811C_9DC5
         for c in name {
-            hashID = (hashID ^ Int(c)) &* 16777619
+            hashID = (hashID ^ Int(c)) &* 16_777_619
         }
         return hashID
     }
@@ -354,11 +360,11 @@ struct TreeSegment {
 
     mutating func encodeContainer(nodeType: UInt8, count: Int) {
         var nodeType = nodeType
-        nodeType |= 0x20 // use UInt32 for offsets
+        nodeType |= 0x20  // use UInt32 for offsets
         if count > 65535 {
-            nodeType |= 0x10 // count is UInt32
+            nodeType |= 0x10  // count is UInt32
         } else if count > 255 {
-            nodeType |= 0x08 // count is UInt16
+            nodeType |= 0x08  // count is UInt16
         }
         buffer.writeInteger(nodeType)
         if count < 256 {
@@ -389,7 +395,10 @@ struct TreeSegment {
         buffer.writeRepeatingByte(0, count: finalOffset - buffer.writerIndex)
         for (key, value) in dictionary {
             guard let fieldName = writer.fieldNames[key] else {
-                throw EncodingError.invalidValue(key, EncodingError.Context(codingPath: [], debugDescription: "Unknown field name: \(key)"))
+                throw EncodingError.invalidValue(
+                    key,
+                    EncodingError.Context(
+                        codingPath: [], debugDescription: "Unknown field name: \(key)"))
             }
             if writer.fieldIDSize == 1 {
                 buffer.setInteger(UInt8(fieldName.fieldID), at: fieldIDOffset, endianness: .big)

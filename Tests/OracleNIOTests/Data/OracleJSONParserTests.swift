@@ -189,118 +189,123 @@
                     ]))
         }
 
-        static let scalarValueArguments: [(@Sendable (inout ByteBuffer) throws -> Void, OracleJSONStorage)] =
-            [
-                ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_NULL) }, .none),
-                ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_TRUE) }, .bool(true)),
-                ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_FALSE) }, .bool(false)),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_DATE)
-                        Date(timeIntervalSince1970: 500_000).encode(
-                            into: &buffer, context: .default)
-                    }, .date(.init(timeIntervalSince1970: 500_000))
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_TIMESTAMP)
-                        Date(timeIntervalSince1970: 500_000).encode(
-                            into: &buffer, context: .default)
-                    }, .date(.init(timeIntervalSince1970: 500_000))
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_TIMESTAMP_TZ)
-                        Date(timeIntervalSince1970: 500_000).encode(
-                            into: &buffer, context: .default)
-                    }, .date(.init(timeIntervalSince1970: 500_000))
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_FLOAT)
-                        Float(1.0).encode(into: &buffer, context: .default)
-                    }, .float(1.0)
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_DOUBLE)
-                        Double(1.0).encode(into: &buffer, context: .default)
-                    }, .double(1.0)
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_INTERVAL_DS)
-                        IntervalDS(15.0).encode(into: &buffer, context: .default)
-                    }, .intervalDS(IntervalDS(15.0))
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT8)
-                        try buffer.writeLengthPrefixed(as: UInt8.self) {
-                            $0.writeString("Hello, there!")
-                        }
-                    }, .string("Hello, there!")
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT16)
-                        try buffer.writeLengthPrefixed(as: UInt16.self) {
-                            $0.writeString("Hello, there!")
-                        }
-                    }, .string("Hello, there!")
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT32)
-                        try buffer.writeLengthPrefixed(as: UInt32.self) {
-                            $0.writeString("Hello, there!")
-                        }
-                    }, .string("Hello, there!")
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8)
-                        OracleNumber(1.0)._encodeRaw(into: &buffer, context: .default)
-                    }, .double(1.0)
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT16)
-                        buffer.writeInteger(1, as: UInt16.self)
-                    }, .int(1)
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT32)
-                        buffer.writeInteger(1, as: UInt32.self)
-                    }, .int(1)
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
-                        OracleVectorInt8([1, 2, 3]).encodeForJSON(into: &buffer)
-                    }, .vectorInt8([1, 2, 3])
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
-                        OracleVectorFloat32([1.1, 2.2, 3.3]).encodeForJSON(into: &buffer)
-                    }, .vectorFloat32([1.1, 2.2, 3.3])
-                ),
-                (
-                    { buffer in
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
-                        buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
-                        OracleVectorFloat64([1.1, 2.2, 3.3]).encodeForJSON(into: &buffer)
-                    }, .vectorFloat64([1.1, 2.2, 3.3])
-                ),
-            ]
+        static let scalarValueArguments:
+            [(@Sendable (inout ByteBuffer) throws -> Void, OracleJSONStorage)] =
+                [
+                    ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_NULL) }, .none),
+                    ({ buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_TRUE) }, .bool(true)),
+                    (
+                        { buffer in buffer.writeInteger(Constants.TNS_JSON_TYPE_FALSE) },
+                        .bool(false)
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_DATE)
+                            Date(timeIntervalSince1970: 500_000).encode(
+                                into: &buffer, context: .default)
+                        }, .date(.init(timeIntervalSince1970: 500_000))
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_TIMESTAMP)
+                            Date(timeIntervalSince1970: 500_000).encode(
+                                into: &buffer, context: .default)
+                        }, .date(.init(timeIntervalSince1970: 500_000))
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_TIMESTAMP_TZ)
+                            Date(timeIntervalSince1970: 500_000).encode(
+                                into: &buffer, context: .default)
+                        }, .date(.init(timeIntervalSince1970: 500_000))
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_FLOAT)
+                            Float(1.0).encode(into: &buffer, context: .default)
+                        }, .float(1.0)
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_DOUBLE)
+                            Double(1.0).encode(into: &buffer, context: .default)
+                        }, .double(1.0)
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_INTERVAL_DS)
+                            IntervalDS(15.0).encode(into: &buffer, context: .default)
+                        }, .intervalDS(IntervalDS(15.0))
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT8)
+                            try buffer.writeLengthPrefixed(as: UInt8.self) {
+                                $0.writeString("Hello, there!")
+                            }
+                        }, .string("Hello, there!")
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT16)
+                            try buffer.writeLengthPrefixed(as: UInt16.self) {
+                                $0.writeString("Hello, there!")
+                            }
+                        }, .string("Hello, there!")
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT32)
+                            try buffer.writeLengthPrefixed(as: UInt32.self) {
+                                $0.writeString("Hello, there!")
+                            }
+                        }, .string("Hello, there!")
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8)
+                            OracleNumber(1.0)._encodeRaw(into: &buffer, context: .default)
+                        }, .double(1.0)
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT16)
+                            buffer.writeInteger(1, as: UInt16.self)
+                        }, .int(1)
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_BINARY_LENGTH_UINT32)
+                            buffer.writeInteger(1, as: UInt32.self)
+                        }, .int(1)
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
+                            OracleVectorInt8([1, 2, 3]).encodeForJSON(into: &buffer)
+                        }, .vectorInt8([1, 2, 3])
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
+                            OracleVectorFloat32([1.1, 2.2, 3.3]).encodeForJSON(into: &buffer)
+                        }, .vectorFloat32([1.1, 2.2, 3.3])
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
+                            OracleVectorFloat64([1.1, 2.2, 3.3]).encodeForJSON(into: &buffer)
+                        }, .vectorFloat64([1.1, 2.2, 3.3])
+                    ),
+                ]
 
         @Test(arguments: scalarValueArguments)
         func scalarValue(
-            writer: @Sendable @escaping (inout ByteBuffer) throws -> Void, expected: OracleJSONStorage
+            writer: @Sendable @escaping (inout ByteBuffer) throws -> Void,
+            expected: OracleJSONStorage
         ) throws {
             var buffer = ByteBuffer(bytes: header)
             buffer.writeInteger(

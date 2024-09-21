@@ -93,20 +93,23 @@ final class _OracleJSONEncoder: Encoder {
 
     func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> {
         if let object {
-            let container = OracleKeyedEncodingContainer<Key>(codingPath: codingPath, encoder: self, object: object)
+            let container = OracleKeyedEncodingContainer<Key>(
+                codingPath: codingPath, encoder: self, object: object)
             return KeyedEncodingContainer(container)
         }
 
         precondition(singleValue == nil && array == nil)
 
         object = .init()
-        let container = OracleKeyedEncodingContainer<Key>(codingPath: codingPath, encoder: self, object: object!)
+        let container = OracleKeyedEncodingContainer<Key>(
+            codingPath: codingPath, encoder: self, object: object!)
         return KeyedEncodingContainer(container)
     }
-    
+
     func unkeyedContainer() -> any UnkeyedEncodingContainer {
         if let array {
-            return OracleUnkeyedEncodingContainer(codingPath: codingPath, encoder: self, array: array)
+            return OracleUnkeyedEncodingContainer(
+                codingPath: codingPath, encoder: self, array: array)
         }
 
         precondition(singleValue == nil && object == nil)
@@ -114,7 +117,7 @@ final class _OracleJSONEncoder: Encoder {
         array = .init()
         return OracleUnkeyedEncodingContainer(codingPath: codingPath, encoder: self, array: array!)
     }
-    
+
     func singleValueContainer() -> any SingleValueEncodingContainer {
         precondition(array == nil && object == nil)
         return OracleSingleValueEncodingContainer(codingPath: codingPath, encoder: self)
@@ -184,7 +187,7 @@ struct OracleKeyedEncodingContainer<Key: CodingKey>: KeyedEncodingContainerProto
         try encodeFixedWidthInteger(value, for: key)
     }
 
-    func encode<T>(_ value: T, forKey key: Key) throws where T : Encodable {
+    func encode<T>(_ value: T, forKey key: Key) throws where T: Encodable {
         switch value {
         case let value as Date:
             self.object.set(.date(value), for: key.stringValue)
@@ -209,7 +212,9 @@ struct OracleKeyedEncodingContainer<Key: CodingKey>: KeyedEncodingContainerProto
         }
     }
 
-    func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
+    func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key)
+        -> KeyedEncodingContainer<NestedKey>
+    {
         let newPath = codingPath + [key]
         let object = object.setObject(for: key.stringValue)
         let nestedContainer = OracleKeyedEncodingContainer<NestedKey>(
@@ -234,7 +239,7 @@ struct OracleKeyedEncodingContainer<Key: CodingKey>: KeyedEncodingContainerProto
     func superEncoder() -> any Encoder {
         encoder
     }
-    
+
     func superEncoder(forKey key: Key) -> any Encoder {
         encoder
     }
@@ -346,7 +351,9 @@ struct OracleUnkeyedEncodingContainer: UnkeyedEncodingContainer {
         }
     }
 
-    func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> {
+    func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type)
+        -> KeyedEncodingContainer<NestedKey>
+    {
         let object = self.array.appendObject()
         let newPath = self.encoder.codingPath + [ArrayKey(index: self.count)]
         let nestedContainer = OracleKeyedEncodingContainer<NestedKey>(
@@ -563,11 +570,11 @@ private final class JSONObject {
         if case .object(let object) = self.object[key] {
             return object
         }
-        
+
         if case .array = self.object[key] {
             preconditionFailure(#"A unkeyed container has already been created for "\#(key)"."#)
         }
-        
+
         let object = JSONObject()
         self.object[key] = .object(object)
         return object

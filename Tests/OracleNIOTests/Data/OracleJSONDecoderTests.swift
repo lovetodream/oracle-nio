@@ -56,9 +56,11 @@
         }
 
         @Test func decodeBoolFromStringFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Bool.self, from: .string("hello"))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Bool.self, from: .string("hello"))
+                })
         }
 
         @Test func decodeBool() throws {
@@ -66,9 +68,11 @@
         }
 
         @Test func decodeStringFromIntFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(String.self, from: .int(1))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(String.self, from: .int(1))
+                })
         }
 
         @Test func decodeString() throws {
@@ -80,15 +84,19 @@
         }
 
         @Test func decodeDoubleFromStringFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Double.self, from: .string("1.23"))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Double.self, from: .string("1.23"))
+                })
         }
 
         @Test func decodeDoubleFromTooLargeIntFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Double.self, from: .int(.max))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Double.self, from: .int(.max))
+                })
         }
 
         @Test func decodeDoubleFromInt() throws {
@@ -104,15 +112,19 @@
         }
 
         @Test func decodeIntFromStringFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Int.self, from: .string("1.23"))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Int.self, from: .string("1.23"))
+                })
         }
 
         @Test func decodeIntFromPreciseDoubleFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Int.self, from: .double(1.23))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Int.self, from: .double(1.23))
+                })
         }
 
         @Test func decodeIntFromDouble() throws {
@@ -120,9 +132,11 @@
         }
 
         @Test func decodeIntFromPreciseFloatFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Int.self, from: .float(1.23))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Int.self, from: .float(1.23))
+                })
         }
 
         @Test func decodeIntFromFloat() throws {
@@ -134,9 +148,11 @@
         }
 
         @Test func decodeInt8FromTooLargeIntFails() throws {
-            #expect(throws: DecodingError.self, performing: {
-                try OracleJSONDecoder().decode(Int8.self, from: .int(Int(Int8.max) + 1))
-            })
+            #expect(
+                throws: DecodingError.self,
+                performing: {
+                    try OracleJSONDecoder().decode(Int8.self, from: .int(Int(Int8.max) + 1))
+                })
         }
 
         @Test func decodeInt8() throws {
@@ -1339,7 +1355,7 @@
                 var container = try decoder.unkeyedContainer()
                 #expect(
                     try container.decode(Date.self)
-                    == .init(timeIntervalSince1970: 500)
+                        == .init(timeIntervalSince1970: 500)
                 )
                 #expect(container.currentIndex == 1)
                 #expect(container.isAtEnd)

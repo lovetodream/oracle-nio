@@ -3,8 +3,8 @@ import NIOCore
 struct OracleJSONWriter {
     var maxFieldNameSize: Int = 255
     var fieldNames: [String: FieldName] = [:]
-    var shortFieldNamesSegment = FieldNameSegment()
-    var longFieldNamesSegment = FieldNameSegment()
+    var shortFieldNamesSegment: FieldNameSegment?
+    var longFieldNamesSegment: FieldNameSegment?
     var fieldIDSize = 0
 
     mutating func encode(_ value: OracleJSONStorage, into buffer: inout ByteBuffer, maxFieldNameSize: Int) throws {
@@ -21,7 +21,7 @@ struct OracleJSONWriter {
         buffer.writeInteger(Constants.TNS_JSON_MAGIC_BYTE_1)
         buffer.writeInteger(Constants.TNS_JSON_MAGIC_BYTE_2)
         buffer.writeInteger(Constants.TNS_JSON_MAGIC_BYTE_3)
-        if !longFieldNamesSegment.names.isEmpty {
+        if longFieldNamesSegment != nil {
             buffer.writeInteger(Constants.TNS_JSON_VERSION_MAX_FNAME_65535)
         } else {
             buffer.writeInteger(Constants.TNS_JSON_VERSION_MAX_FNAME_255)
@@ -29,8 +29,8 @@ struct OracleJSONWriter {
         buffer.writeInteger(flags)
 
         // write extended header (when value is not scalar)
-        if !shortFieldNamesSegment.names.isEmpty {
-            writeExtendedHeader(into: &buffer)
+        if let shortFieldNamesSegment {
+            writeExtendedHeader(into: &buffer, shortFieldNamesSegment: shortFieldNamesSegment)
         }
 
         // write size of tree segment
@@ -41,14 +41,14 @@ struct OracleJSONWriter {
         }
 
         // write remainder of header and any data (when value is not scalar)
-        if !shortFieldNamesSegment.names.isEmpty {
+        if let shortFieldNamesSegment {
 
             // write number of "tiny" nodes (always zero)
             buffer.writeInteger(0, as: UInt16.self)
 
             // write field name segment
             writeFieldNameSegment(shortFieldNamesSegment, into: &buffer)
-            if !longFieldNamesSegment.names.isEmpty {
+            if let longFieldNamesSegment {
                 writeFieldNameSegment(longFieldNamesSegment, into: &buffer)
             }
 
@@ -83,7 +83,7 @@ struct OracleJSONWriter {
         }
     }
 
-    private mutating func writeExtendedHeader(into buffer: inout ByteBuffer) {
+    private mutating func writeExtendedHeader(into buffer: inout ByteBuffer, shortFieldNamesSegment: FieldNameSegment) {
         var secondaryFlags: UInt16 = 0
 
         // write number of short field names
@@ -103,7 +103,7 @@ struct OracleJSONWriter {
         }
 
         // write fields for long field names segment, if applicable
-        if !longFieldNamesSegment.names.isEmpty {
+        if let longFieldNamesSegment {
             if longFieldNamesSegment.buffer.writerIndex < 65535 {
                 secondaryFlags = Constants.TNS_JSON_FLAG_SEC_FNAMES_SEG_UINT16
             }
@@ -133,16 +133,16 @@ struct OracleJSONWriter {
 
         // perform processing of field names segments and determine the total
         // number of unique field names in the value
-        if !shortFieldNamesSegment.names.isEmpty {
-            shortFieldNamesSegment.processNames(fieldIDOffset: 0)
+        if shortFieldNamesSegment != nil {
+            shortFieldNamesSegment!.processNames(fieldIDOffset: 0)
         }
-        if !longFieldNamesSegment.names.isEmpty {
-            longFieldNamesSegment.processNames(fieldIDOffset: shortFieldNamesSegment.names.count)
+        if longFieldNamesSegment != nil {
+            longFieldNamesSegment!.processNames(fieldIDOffset: shortFieldNamesSegment?.names.count ?? 0)
         }
 
 
         // determine remaining flags and field id size
-        let fieldNamesCount = shortFieldNamesSegment.names.count + longFieldNamesSegment.names.count
+        let fieldNamesCount = (shortFieldNamesSegment?.names.count ?? 0) + (longFieldNamesSegment?.names.count ?? 0)
         flags |= Constants.TNS_JSON_FLAG_HASH_ID_UINT8 | Constants.TNS_JSON_FLAG_TINY_NODES_STAT
         if fieldNamesCount > 65535 {
             flags |= Constants.TNS_JSON_FLAG_NUM_FNAMES_UINT32
@@ -153,7 +153,7 @@ struct OracleJSONWriter {
         } else {
             self.fieldIDSize = 1
         }
-        if self.shortFieldNamesSegment.buffer.writerIndex > 65535 {
+        if let shortFieldNamesSegment, shortFieldNamesSegment.buffer.writerIndex > 65535 {
             flags |= Constants.TNS_JSON_FLAG_FNAMES_SEG_UINT32
         }
         return flags
@@ -180,16 +180,21 @@ struct OracleJSONWriter {
     private mutating func addFieldName(_ name: String) throws {
         var fieldName = try FieldName(name: name, maxFieldNameSize: maxFieldNameSize)
         if fieldName.nameBytes.count <= 255 {
-            shortFieldNamesSegment.addName(&fieldName)
+            shortFieldNamesSegment!.addName(&fieldName)
             fieldNames[name] = fieldName
         } else {
-            longFieldNamesSegment.addName(&fieldName)
+            if longFieldNamesSegment == nil {
+                longFieldNamesSegment = .init()
+            }
+            longFieldNamesSegment!.addName(&fieldName)
             fieldNames[name] = fieldName
         }
     }
 }
 
-struct FieldName {
+// has to be reference type for now
+// because it is passed around various places
+final class FieldName {
     let hashID: Int
     let nameBytes: [UInt8]
     let name: String
@@ -202,7 +207,7 @@ struct FieldName {
     static func calculateHashID(for name: [UInt8]) -> Int {
         var hashID = 0x811C9DC5
         for c in name {
-            hashID = (hashID ^ Int(c)) * 16777619
+            hashID = (hashID ^ Int(c)) &* 16777619
         }
         return hashID
     }
@@ -290,13 +295,19 @@ struct TreeSegment {
         // TODO: revisit numeric conversions
         case .int(let value):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8)
-            OracleNumeric.encodeNumeric(value, into: &buffer)
+            try buffer.writeLengthPrefixed(as: UInt8.self) { buffer in
+                OracleNumeric.encodeNumeric(value, into: &buffer)
+            }
         case .float(let value):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8)
-            OracleNumeric.encodeNumeric(value, into: &buffer)
+            try buffer.writeLengthPrefixed(as: UInt8.self) { buffer in
+                OracleNumeric.encodeNumeric(value, into: &buffer)
+            }
         case .double(let value):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_NUMBER_LENGTH_UINT8)
-            OracleNumeric.encodeNumeric(value, into: &buffer)
+            try buffer.writeLengthPrefixed(as: UInt8.self) { buffer in
+                OracleNumeric.encodeNumeric(value, into: &buffer)
+            }
 
         case .date(let value):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_TIMESTAMP_TZ)
@@ -323,38 +334,15 @@ struct TreeSegment {
         case .vectorInt8(let vector):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
             buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
-            try buffer.writeLengthPrefixed(as: UInt32.self) { partial in
-                let start = partial.writerIndex
-                _encodeOracleVectorHeader(elements: UInt32(vector.count), format: OracleVectorInt8.vectorFormat, into: &partial)
-                return partial.writerIndex - start
-            }
-            vector._encodeRaw(into: &buffer, context: .default)
+            vector.encodeForJSON(into: &buffer)
         case .vectorFloat32(let vector):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
             buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
-            try buffer.writeLengthPrefixed(as: UInt32.self) { partial in
-                let start = partial.writerIndex
-                _encodeOracleVectorHeader(
-                    elements: UInt32(vector.count),
-                    format: OracleVectorFloat32.vectorFormat,
-                    into: &partial
-                )
-                return partial.writerIndex - start
-            }
-            vector._encodeRaw(into: &buffer, context: .default)
+            vector.encodeForJSON(into: &buffer)
         case .vectorFloat64(let vector):
             buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
             buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
-            try buffer.writeLengthPrefixed(as: UInt32.self) { partial in
-                let start = partial.writerIndex
-                _encodeOracleVectorHeader(
-                    elements: UInt32(vector.count),
-                    format: OracleVectorFloat64.vectorFormat,
-                    into: &partial
-                )
-                return partial.writerIndex - start
-            }
-            vector._encodeRaw(into: &buffer, context: .default)
+            vector.encodeForJSON(into: &buffer)
 
         case .array(let array):
             try encodeArray(array)
@@ -385,9 +373,9 @@ struct TreeSegment {
     mutating func encodeArray(_ array: [OracleJSONStorage]) throws {
         encodeContainer(nodeType: Constants.TNS_JSON_TYPE_ARRAY, count: array.count)
         var offset = buffer.writerIndex
-        buffer.reserveCapacity(minimumWritableBytes: array.count * MemoryLayout<UInt32>.size)
+        buffer.writeRepeatingByte(0, count: array.count * MemoryLayout<UInt32>.size)
         for element in array {
-            buffer.writeInteger(UInt32(buffer.writerIndex), endianness: .big)
+            buffer.setInteger(UInt32(buffer.writerIndex), at: offset, endianness: .big)
             offset += MemoryLayout<UInt32>.size
             try encodeNode(element)
         }
@@ -398,7 +386,7 @@ struct TreeSegment {
         var fieldIDOffset = buffer.writerIndex
         var valueOffset = buffer.writerIndex + dictionary.count * writer.fieldIDSize
         let finalOffset = valueOffset + dictionary.count * MemoryLayout<UInt32>.size
-        buffer.reserveCapacity(minimumWritableBytes: finalOffset - buffer.writerIndex)
+        buffer.writeRepeatingByte(0, count: finalOffset - buffer.writerIndex)
         for (key, value) in dictionary {
             guard let fieldName = writer.fieldNames[key] else {
                 throw EncodingError.invalidValue(key, EncodingError.Context(codingPath: [], debugDescription: "Unknown field name: \(key)"))

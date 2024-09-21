@@ -51,15 +51,23 @@ internal enum OracleNumeric {
 
     // MARK: Encode
 
+    /// Encodes a numeric value to the Oracle `NUMBER` wire representation.
+    /// - Returns: Bytes written to the buffer.
+    @discardableResult
     static func encodeNumeric<T>(
         _ value: T, into buffer: inout ByteBuffer
-    ) where T: Numeric, T: LosslessStringConvertible {
+    ) -> Int where T: Numeric, T: LosslessStringConvertible {
         self.encodeNumeric(value.ascii, into: &buffer)
     }
 
+    /// Encodes a numeric value to the Oracle `NUMBER` wire representation.
+    /// - Returns: Bytes written to the buffer.
+    @discardableResult
     static func encodeNumeric(
         _ value: [UInt8], into buffer: inout ByteBuffer
-    ) {
+    ) -> Int {
+        var writtenBytes = 0
+
         var numberOfDigits = 0
         var digits = [UInt8](repeating: 0, count: numberAsSingleChars)
         var isNegative = false
@@ -193,8 +201,8 @@ internal enum OracleNumeric {
         // leading and trailing zeros are removed from the digits string; this
         // is a special case
         if numberOfDigits == 0 {
-            buffer.writeInteger(UInt8(128))
-            return
+            writtenBytes += buffer.writeInteger(UInt8(128))
+            return writtenBytes
         }
 
         // write the exponent
@@ -202,7 +210,7 @@ internal enum OracleNumeric {
         if isNegative {
             exponentOnWire = ~exponentOnWire
         }
-        buffer.writeInteger(exponentOnWire)
+        writtenBytes += buffer.writeInteger(exponentOnWire)
 
         // write the mantissa bytes
         var digitsPosition = 0
@@ -220,14 +228,16 @@ internal enum OracleNumeric {
             } else {
                 digit += 1
             }
-            buffer.writeInteger(digit)
+            writtenBytes += buffer.writeInteger(digit)
         }
 
         // append 102 bytes for negative numbers if the number of digits is less
         // than the maximum allowable
         if appendSentinel {
-            buffer.writeInteger(UInt8(102))
+            writtenBytes += buffer.writeInteger(UInt8(102))
         }
+
+        return writtenBytes
     }
 
 

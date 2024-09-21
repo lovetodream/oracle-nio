@@ -17,17 +17,17 @@ import NIOCore
 extension ByteBuffer: OracleEncodable {
     public var oracleType: OracleDataType { .raw }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         preconditionFailure("This should not be called")
     }
 
     /// Encodes `self` into wire data starting from `0` without modifying the `readerIndex`.
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var slice = self
         slice.moveReaderIndex(to: 0)

@@ -125,9 +125,8 @@ extension OracleStatement {
 
         @inlinable
         public mutating func appendInterpolation<
-            Value: OracleThrowingDynamicTypeEncodable,
-            JSONEncoder: OracleJSONEncoder
-        >(_ value: Value, context: OracleEncodingContext<JSONEncoder>) throws {
+            Value: OracleThrowingDynamicTypeEncodable
+        >(_ value: Value, context: OracleEncodingContext) throws {
             let bindName = "\(self.binds.count)"
             try self.binds.append(value, context: context, bindName: bindName)
             self.sql.append(contentsOf: ":\(bindName)")
@@ -288,11 +287,8 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
-    public mutating func append<
-        Value: OracleThrowingDynamicTypeEncodable,
-        JSONEncoder: OracleJSONEncoder
-    >(
-        _ value: Value, context: OracleEncodingContext<JSONEncoder>, bindName: String
+    public mutating func append<Value: OracleThrowingDynamicTypeEncodable>(
+        _ value: Value, context: OracleEncodingContext, bindName: String
     ) throws {
         let metadata = Metadata(
             value: value,
@@ -309,11 +305,9 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
-    public mutating func append<
-        Value: OracleDynamicTypeEncodable, JSONEncoder: OracleJSONEncoder
-    >(
+    public mutating func append<Value: OracleDynamicTypeEncodable>(
         _ value: Value,
-        context: OracleEncodingContext<JSONEncoder>,
+        context: OracleEncodingContext,
         bindName: String
     ) {
         let metadata = Metadata(
@@ -355,12 +349,9 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
-    mutating func appendUnprotected<
-        Value: OracleThrowingDynamicTypeEncodable,
-        JSONEncoder: OracleJSONEncoder
-    >(
+    mutating func appendUnprotected<Value: OracleThrowingDynamicTypeEncodable>(
         _ value: Value,
-        context: OracleEncodingContext<JSONEncoder>,
+        context: OracleEncodingContext,
         bindName: String
     ) throws {
         let metadata = Metadata(
@@ -378,11 +369,9 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
-    mutating func appendUnprotected<
-        Value: OracleDynamicTypeEncodable, JSONEncoder: OracleJSONEncoder
-    >(
+    mutating func appendUnprotected<Value: OracleDynamicTypeEncodable>(
         _ value: Value,
-        context: OracleEncodingContext<JSONEncoder>,
+        context: OracleEncodingContext,
         bindName: String
     ) {
         let metadata = Metadata(

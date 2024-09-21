@@ -49,9 +49,9 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable {
     var arraySize: Int? { get }
 
     /// Encode the entity into the `ByteBuffer` in Oracle binary format, without setting the byte count.
-    func encode<JSONEncoder: OracleJSONEncoder>(
+    func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) throws
 
     /// Encode an entity from the `ByteBuffer` in oracle wire format.
@@ -60,9 +60,9 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable {
     /// handled. You shouldn't have to touch this.
     ///
     /// This method is called from the ``OracleBindings``.
-    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) throws
 }
 
@@ -78,9 +78,9 @@ public protocol OracleThrowingDynamicTypeEncodable: Sendable {
 public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
     /// Encode the entity into `buffer`, using the provided `context` as needed, without setting
     /// the byte count.
-    func encode<JSONEncoder: OracleJSONEncoder>(
+    func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     )
 
     /// Encode an entity from the `ByteBuffer` in oracle wire format.
@@ -89,9 +89,9 @@ public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
     /// handled. You shouldn't have to touch this.
     ///
     /// This method is called by ``OracleBindings``.
-    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     )
 }
 
@@ -174,9 +174,9 @@ public typealias OracleCodable = OracleEncodable & OracleDecodable
 
 extension OracleThrowingDynamicTypeEncodable {
     @inlinable
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) throws {
         // The length of the parameter value, in bytes
         // (this count does not include itself). Can be zero.
@@ -197,9 +197,9 @@ extension OracleThrowingDynamicTypeEncodable {
 
 extension OracleDynamicTypeEncodable {
     @inlinable
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         // The length of the parameter value, in bytes (this count does not
         // include itself). Can be zero.
@@ -221,40 +221,25 @@ extension OracleDynamicTypeEncodable {
 /// A context hat is passed to Swift objects that are encoded into the oracle wire format.
 ///
 /// Used to pass further information to the encoding method.
-public struct OracleEncodingContext<JSONEncoder: OracleJSONEncoder>: Sendable {
-    /// A ``OracleJSONEncoder`` used to encode the object to JSON.
-    public var jsonEncoder: JSONEncoder
-
-    var jsonMaximumFieldNameSize: Int = 255
-
-
-    /// Creates a ``OracleEncodingContext`` with the given ``OracleJSONEncoder``.
-    ///
-    /// In case you want to use a ``OracleEncodingContext`` with an unconfigured Foundation
-    /// `JSONEncoder` you can use the ``default`` context instead.
-    ///
-    /// - Parameter jsonEncoder: A ``OracleJSONEncoder`` to use when encoding objects to
-    /// json.
-    public init(jsonEncoder: JSONEncoder) {
-        self.jsonEncoder = jsonEncoder
-    }
+public struct OracleEncodingContext: Sendable {
+    @TaskLocal static var jsonMaximumFieldNameSize: Int = 255
 }
 
-extension OracleEncodingContext where JSONEncoder == Foundation.JSONEncoder {
-    /// A default ``OracleEncodingContext`` that uses a Foundation `JSONEncoder`.
+extension OracleEncodingContext {
+    /// A default ``OracleEncodingContext``.
     public static let `default` =
-        OracleEncodingContext(jsonEncoder: JSONEncoder())
-}
-
-extension OracleDecodingContext {
-    /// A default ``OracleDecodingContext``.
-    public static let `default` = OracleDecodingContext()
+        OracleEncodingContext()
 }
 
 /// A context that is passed to Swift objects that are decoded from the Oracle wire format.
 ///
 /// Used to pass further information to the decoding method.
 public struct OracleDecodingContext: Sendable {}
+
+extension OracleDecodingContext {
+    /// A default ``OracleDecodingContext``.
+    public static let `default` = OracleDecodingContext()
+}
 
 extension Optional: OracleDecodable
 where Wrapped: OracleDecodable, Wrapped._DecodableType == Wrapped {

@@ -17,9 +17,9 @@ import NIOCore
 extension Bool: OracleEncodable {
     public var oracleType: OracleDataType { .boolean }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         if self {
             buffer.writeInteger(UInt16(0x0101))

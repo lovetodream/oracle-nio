@@ -131,16 +131,16 @@ struct ThrowingByteBuffer: OracleThrowingDynamicTypeEncodable {
         self.base = base
     }
 
-    func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) throws {
         self.base._encodeRaw(into: &buffer, context: context)
     }
 
-    func encode<JSONEncoder: OracleJSONEncoder>(
-        into buffer: inout NIOCore.ByteBuffer,
-        context: OracleNIO.OracleEncodingContext<JSONEncoder>
+    func encode(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext
     ) throws {
         preconditionFailure()
     }

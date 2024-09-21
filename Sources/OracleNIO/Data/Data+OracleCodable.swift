@@ -19,16 +19,16 @@ import struct Foundation.Data
 extension Data: OracleEncodable {
     public var oracleType: OracleDataType { .raw }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         preconditionFailure("This should not be called")
     }
 
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var length = self.count
         var position = 0

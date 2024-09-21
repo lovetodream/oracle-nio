@@ -182,7 +182,11 @@ public final class OracleClient: Sendable, Service {
 
         defer { self.pool.releaseConnection(connection) }
 
-        return try await closure(connection)
+        return try await OracleEncodingContext.$jsonMaximumFieldNameSize.withValue(
+            connection.serverVersion.majorDatabaseReleaseNumber >= 23 ? 65535 : 255
+        ) {
+            return try await closure(connection)
+        }
     }
 
 

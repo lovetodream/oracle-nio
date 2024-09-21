@@ -78,9 +78,9 @@ extension IntervalDS: Decodable {
 extension IntervalDS: OracleEncodable {
     public var oracleType: OracleDataType { .intervalDS }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         buffer.writeInteger(
             UInt32(self.days) + Constants.TNS_DURATION_MID, endianness: .big

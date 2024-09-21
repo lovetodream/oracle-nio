@@ -57,9 +57,9 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         for element in self.base {
             buffer.writeInteger(element)
@@ -131,9 +131,9 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         for element in self.base {
             element.encode(into: &buffer, context: context)
@@ -206,9 +206,9 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         for element in self.base {
             element.encode(into: &buffer, context: context)
@@ -292,9 +292,9 @@ extension _OracleVectorProtocol {
     }
 
     @inlinable
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var temp = ByteBuffer()
         _encodeOracleVectorHeader(

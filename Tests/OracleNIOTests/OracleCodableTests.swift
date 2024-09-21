@@ -265,7 +265,7 @@ extension DataRow: ExpressibleByArrayLiteral {
 
     public init(arrayLiteral elements: any OracleThrowingEncodable...) {
         var buffer = ByteBuffer()
-        let encodingContext = OracleEncodingContext(jsonEncoder: JSONEncoder())
+        let encodingContext = OracleEncodingContext()
         for element in elements {
             try! element._encodeRaw(into: &buffer, context: encodingContext)
         }

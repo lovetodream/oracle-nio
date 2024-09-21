@@ -23,9 +23,9 @@ import func Foundation.pow
 extension Date: OracleEncodable {
     public var oracleType: OracleDataType { .timestampTZ }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var length = self.oracleType.bufferSizeFactor
         let currentCalendarTimeZone = Calendar.current

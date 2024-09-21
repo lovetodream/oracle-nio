@@ -13,9 +13,9 @@ extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable 
         .json
     }
 
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) throws {
         var temp = ByteBuffer()
         try self.encode(into: &temp, context: context)
@@ -29,15 +29,15 @@ extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable 
         buffer.writeBuffer(&temp)
     }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) throws {
         let storage = try _OracleJSONEncoder().encode(value)
         var writer = OracleJSONWriter()
         try writer.encode(
             storage, into: &buffer,
-            maxFieldNameSize: context.jsonMaximumFieldNameSize
+            maxFieldNameSize: OracleEncodingContext.jsonMaximumFieldNameSize
         )
     }
 

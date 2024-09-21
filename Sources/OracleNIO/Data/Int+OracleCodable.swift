@@ -180,9 +180,9 @@ extension UInt: OracleDecodable {
 extension Int: OracleEncodable {
     public var oracleType: OracleDataType { .binaryInteger }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         OracleNumeric.encodeNumeric(self, into: &buffer)
     }

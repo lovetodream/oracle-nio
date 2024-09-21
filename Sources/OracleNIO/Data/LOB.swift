@@ -437,9 +437,9 @@ extension LOB {
 }
 
 extension LOB: OracleEncodable {
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         let locator = self.locator.withLockedValue { $0 }
         let length = locator.count
@@ -447,9 +447,9 @@ extension LOB: OracleEncodable {
         ByteBuffer(bytes: locator)._encodeRaw(into: &buffer, context: context)
     }
 
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         self.encode(into: &buffer, context: context)
     }

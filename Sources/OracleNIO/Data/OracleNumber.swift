@@ -119,9 +119,9 @@ extension OracleNumber: OracleDecodable {
 extension OracleNumber: OracleEncodable {
     public var oracleType: OracleDataType { .number }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         buffer.writeImmutableBuffer(self.value)
     }

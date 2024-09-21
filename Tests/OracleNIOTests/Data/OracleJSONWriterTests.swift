@@ -161,5 +161,57 @@ import struct Foundation.Date
         let result = try OracleJSONParser.parse(from: &buffer)
         #expect(result == .container(["hello": .string("there")]))
     }
+
+    @Test func encodeObjectWithMultipleKeys() throws {
+        var buffer = ByteBuffer()
+        var writer = OracleJSONWriter()
+        try writer.encode(
+            .container([
+                "hello": .string("there"),
+                "foo": .string("bar")
+            ]),
+            into: &buffer,
+            maxFieldNameSize: 255
+        )
+        let result = try OracleJSONParser.parse(from: &buffer)
+        #expect(result == .container([
+            "hello": .string("there"),
+            "foo": .string("bar")
+        ]))
+    }
+
+    @Test func encodeObjectLongValue() throws {
+        var buffer = ByteBuffer()
+        var writer = OracleJSONWriter()
+        let string = String(repeating: "a", count: 66666)
+        try writer.encode(
+            .array([.string(string)]),
+            into: &buffer,
+            maxFieldNameSize: 255
+        )
+        let result = try OracleJSONParser.parse(from: &buffer)
+        #expect(result == .array([.string(string)]))
+    }
+
+    @Test func encodeObjectWithManyKeys() throws {
+        var buffer = ByteBuffer()
+        var writer = OracleJSONWriter()
+        var dict = [String: OracleJSONStorage]()
+        for i in 0..<260 {
+            dict["\(i)"] = .string("\(i)")
+        }
+        try writer.encode(.container(dict), into: &buffer, maxFieldNameSize: 255)
+        let result = try OracleJSONParser.parse(from: &buffer)
+        #expect(result == .container(dict))
+    }
+
+    @Test func encodeObjectWithLongFieldName() throws {
+        var buffer = ByteBuffer()
+        var writer = OracleJSONWriter()
+        let key = String(repeating: "a", count: 500)
+        try writer.encode(.container([key: .string("value")]), into: &buffer, maxFieldNameSize: 65535)
+        let result = try OracleJSONParser.parse(from: &buffer)
+        #expect(result == .container([key: .string("value")]))
+    }
 }
 #endif

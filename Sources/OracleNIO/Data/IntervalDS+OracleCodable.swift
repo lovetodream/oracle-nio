@@ -56,6 +56,17 @@ extension IntervalDS: ExpressibleByFloatLiteral {
     }
 }
 
+extension IntervalDS: Encodable {
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(double)
+        }
+    }
+}
+
 extension IntervalDS: Decodable {
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()

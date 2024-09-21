@@ -79,6 +79,15 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
         return .init(underlying: values)
     }
 
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
+    }
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.base = .init(try container.decode([Element].self))
@@ -142,6 +151,15 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
         }
 
         return .init(underlying: values)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
     }
 
     public init(from decoder: any Decoder) throws {
@@ -210,6 +228,15 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
         return .init(underlying: values)
     }
 
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
+    }
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.base = .init(try container.decode([Element].self))
@@ -246,7 +273,8 @@ extension _OracleVectorJSONEncodable {
 private protocol _OracleVectorProtocol: _OracleVectorJSONEncodable, OracleCodable, Equatable,
     Collection,
     ExpressibleByArrayLiteral,
-    Decodable
+    Decodable,
+    Encodable
 where Index == Int {
     var base: TinySequence<Element> { get set }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self

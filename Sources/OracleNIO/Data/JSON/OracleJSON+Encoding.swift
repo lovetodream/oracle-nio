@@ -52,7 +52,7 @@ final class _OracleJSONEncoder: Encoder {
 
     fileprivate var object: JSONObject?
     fileprivate var array: JSONArray?
-    var singleValue: OracleJSONStorage?
+    fileprivate var singleValue: OracleJSONStorage?
 
     var value: OracleJSONStorage? {
         if let object {
@@ -83,6 +83,10 @@ final class _OracleJSONEncoder: Encoder {
     }
 
     func encode(_ value: some Encodable) throws -> OracleJSONStorage {
+        // workaround to prevent Date being transformed to Double
+        if let value = value as? Date {
+            return .date(value)
+        }
         try value.encode(to: self)
         return self.value ?? .none
     }
@@ -192,18 +196,17 @@ struct OracleKeyedEncodingContainer<Key: CodingKey>: KeyedEncodingContainerProto
             self.object.set(.vectorFloat32(value), for: key.stringValue)
         case let value as OracleVectorFloat64:
             self.object.set(.vectorFloat64(value), for: key.stringValue)
-        default: break
+        default:
+            let newPath = self.codingPath + [key]
+            let newEncoder = _OracleJSONEncoder(codingPath: newPath, userInfo: encoder.userInfo)
+            try value.encode(to: newEncoder)
+
+            guard let value = newEncoder.value else {
+                preconditionFailure()
+            }
+
+            self.object.set(value, for: key.stringValue)
         }
-
-        let newPath = self.codingPath + [key]
-        let newEncoder = _OracleJSONEncoder(codingPath: newPath, userInfo: encoder.userInfo)
-        try value.encode(to: newEncoder)
-
-        guard let value = newEncoder.value else {
-            preconditionFailure()
-        }
-
-        self.object.set(value, for: key.stringValue)
     }
 
     func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
@@ -330,18 +333,17 @@ struct OracleUnkeyedEncodingContainer: UnkeyedEncodingContainer {
             self.array.append(.vectorFloat32(value))
         case let value as OracleVectorFloat64:
             self.array.append(.vectorFloat64(value))
-        default: break
+        default:
+            let newPath = self.codingPath + [ArrayKey(index: self.count)]
+            let newEncoder = _OracleJSONEncoder(codingPath: newPath, userInfo: encoder.userInfo)
+            try value.encode(to: newEncoder)
+
+            guard let value = newEncoder.value else {
+                preconditionFailure()
+            }
+
+            self.array.append(value)
         }
-
-        let newPath = self.codingPath + [ArrayKey(index: self.count)]
-        let newEncoder = _OracleJSONEncoder(codingPath: newPath, userInfo: encoder.userInfo)
-        try value.encode(to: newEncoder)
-
-        guard let value = newEncoder.value else {
-            preconditionFailure()
-        }
-
-        self.array.append(value)
     }
 
     func nestedContainer<NestedKey: CodingKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> {
@@ -458,10 +460,9 @@ struct OracleSingleValueEncodingContainer: SingleValueEncodingContainer {
             self.encoder.singleValue = .vectorFloat32(value)
         case let value as OracleVectorFloat64:
             self.encoder.singleValue = .vectorFloat64(value)
-        default: break
+        default:
+            try value.encode(to: encoder)
         }
-
-        try value.encode(to: encoder)
     }
 }
 

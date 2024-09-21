@@ -13,6 +13,22 @@ extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable 
         .json
     }
 
+    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext<JSONEncoder>
+    ) throws {
+        var temp = ByteBuffer()
+        try self.encode(into: &temp, context: context)
+        buffer.writeQLocator(dataLength: UInt64(temp.readableBytes))
+        if temp.readableBytes <= Constants.TNS_OBJ_MAX_SHORT_LENGTH {
+            buffer.writeInteger(UInt8(temp.readableBytes))
+        } else {
+            buffer.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
+            buffer.writeInteger(UInt32(temp.readableBytes))
+        }
+        buffer.writeBuffer(&temp)
+    }
+
     public func encode<JSONEncoder: OracleJSONEncoder>(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext<JSONEncoder>

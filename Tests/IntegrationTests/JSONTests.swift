@@ -156,4 +156,18 @@ final class JSONTests: XCTIntegrationTest {
             let foo: String
         }
     }
+
+    func testInsertion() async throws {
+        try XCTSkipIf(!testCompressedJSON)
+        struct Foo: Codable, Equatable {
+            let foo: String
+        }
+        try await connection.execute("INSERT INTO TestCompressedJson VALUES (2, \(OracleJSON(Foo(foo: "bar"))))")
+        let stream = try await connection.execute(
+            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
+        for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
+            XCTAssertEqual(id, 2)
+            XCTAssertEqual(json.value, Foo(foo: "bar"))
+        }
+    }
 }

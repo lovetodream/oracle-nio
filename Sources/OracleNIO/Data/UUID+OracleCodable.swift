@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
+import NIOFoundationCompat
 
 import struct Foundation.UUID
 

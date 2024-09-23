@@ -440,9 +440,9 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
 
     let elementsCount =
         if vectorFormat == .binary {
-            Int(try buffer.throwingReadInteger(as: UInt32.self))
-        } else {
             Int(try buffer.throwingReadInteger(as: UInt32.self) / 8)
+        } else {
+            Int(try buffer.throwingReadInteger(as: UInt32.self))
         }
 
     if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {

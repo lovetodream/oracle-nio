@@ -280,6 +280,12 @@ struct OracleJSONParser {
                     let vector = try OracleVectorFloat64._decodeActual(
                         from: &slice, elements: elements)
                     return .vectorFloat64(vector)
+                case .binary:
+                    let vector = try OracleVectorBinary._decodeActual(
+                        from: &slice,
+                        elements: elements
+                    )
+                    return .vectorBinary(vector)
                 }
             }
 

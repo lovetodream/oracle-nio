@@ -207,7 +207,8 @@ enum Constants {
 
     // MARK: VECTOR constants
     static let TNS_VECTOR_MAGIC_BYTE = 0xDB
-    static let TNS_VECTOR_VERSION = 0
+    static let TNS_VECTOR_VERSION_BASE: UInt8 = 0
+    static let TNS_VECTOR_VERSION_WITH_BINARY: UInt8 = 1
     static let TNS_VECTOR_MAX_LENGTH: UInt32 = 1 * 1024 * 1024
 
     // MARK: VECTOR flags
@@ -308,7 +309,8 @@ enum Constants {
     static let TNS_CCAP_TTC4 = 40
     static let TNS_CCAP_LOB2 = 42
     static let TNS_CCAP_TTC5 = 44
-    static let TNS_CCAP_MAX = 51
+    static let TNS_CCAP_VECTOR_FEATURES = 52
+    static let TNS_CCAP_MAX = 53
 
     // MARK: Compile time capability values
     static let TNS_CCAP_SQL_VERSION_MAX: UInt8 = 6
@@ -364,6 +366,7 @@ enum Constants {
     static let TNS_CCAP_END_OF_REQUEST: UInt8 = 0x20
     static let TNS_CCAP_CLIENT_FN_MAX: UInt8 = 12
     static let TNS_CCAP_VECTOR_SUPPORT: UInt8 = 0x08
+    static let TNS_CCAP_VECTOR_FEATURE_BINARY: UInt8 = 0x01
 
     // MARK: Runtime capability indices
     static let TNS_RCAP_COMPAT = 0

@@ -31,6 +31,7 @@ enum OracleJSONStorage: Sendable, Equatable {
     case vectorInt8(OracleVectorInt8)
     case vectorFloat32(OracleVectorFloat32)
     case vectorFloat64(OracleVectorFloat64)
+    case vectorBinary(OracleVectorBinary)
 }
 
 extension OracleJSONStorage {
@@ -62,6 +63,8 @@ extension OracleJSONStorage {
             "a float32 vector"
         case .vectorFloat64:
             "a float64 vector"
+        case .vectorBinary:
+            "a binary vector"
         }
     }
 }

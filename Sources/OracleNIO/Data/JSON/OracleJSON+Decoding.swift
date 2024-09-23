@@ -67,6 +67,9 @@ struct _OracleJSONDecoder: Decoder {
         case is OracleVectorFloat64.Type:
             guard case .vectorFloat64(let value) = value else { break }
             return value as! T
+        case is OracleVectorBinary.Type:
+            guard case .vectorBinary(let value) = value else { break }
+            return value as! T
         default:
             break
         }
@@ -240,6 +243,10 @@ struct OracleKeyedDecodingContainer<Key: CodingKey>: KeyedDecodingContainerProto
         case is OracleVectorFloat64.Type:
             let value = try self.getValue(forKey: key)
             guard case .vectorFloat64(let value) = value else { break }
+            return value as! T
+        case is OracleVectorBinary.Type:
+            let value = try self.getValue(forKey: key)
+            guard case .vectorBinary(let value) = value else { break }
             return value as! T
         default:
             break
@@ -471,6 +478,9 @@ struct OracleSingleValueDecodingContainer: SingleValueDecodingContainer {
         case is OracleVectorFloat64.Type:
             guard case .vectorFloat64(let value) = value else { break }
             return value as! T
+        case is OracleVectorBinary.Type:
+            guard case .vectorBinary(let value) = value else { break }
+            return value as! T
         default:
             break
         }
@@ -665,6 +675,11 @@ struct OracleUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         case is OracleVectorFloat64.Type:
             let value = try self.getNextValue(ofType: OracleVectorFloat64.self)
             guard case .vectorFloat64(let value) = value else { break }
+            self.currentIndex += 1
+            return value as! T
+        case is OracleVectorBinary.Type:
+            let value = try self.getNextValue(ofType: OracleVectorBinary.self)
+            guard case .vectorBinary(let value) = value else { break }
             self.currentIndex += 1
             return value as! T
         default: break

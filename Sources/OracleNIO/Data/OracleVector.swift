@@ -18,7 +18,91 @@ enum VectorFormat: UInt8 {
     case float32 = 2
     case float64 = 3
     case int8 = 4
+    case binary = 5
 }
+
+
+// MARK: Binary
+
+/// A dynamically sized vector of type UInt8, used to send
+/// and receive `vector(n, binary)` data to and from Oracle databases.
+///
+/// The binary format represents each dimension value as a binary value (0 or 1).
+/// Binary vectors require less memory storage. For example, a 16 dimensional vector with binary
+/// format requires only 2 bytes of storage while a 16 dimensional vector with Int8 format
+/// requires 16 bytes of storage.
+///
+/// Binary vectors are represented as 8-bit unsigned integers.
+public struct OracleVectorBinary: _OracleVectorProtocol, OracleVectorProtocol {
+    public typealias Element = UInt8
+
+    static let vectorFormat: VectorFormat = .binary
+
+    @usableFromInline
+    var base: TinySequence<Element>
+
+    @inlinable
+    public init(arrayLiteral elements: Element...) {
+        self.base = .init(elements)
+    }
+
+    @inlinable
+    public init(_ collection: some Collection<Element>) {
+        self.base = .init(collection)
+    }
+
+    init(underlying: TinySequence<Element>) {
+        self.base = underlying
+    }
+
+    @inlinable
+    public subscript(position: Index) -> Element {
+        get {
+            self.base[position]
+        }
+        set(newValue) {
+            self.base[position] = newValue
+        }
+    }
+
+    @inlinable
+    public func encode(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext
+    ) {
+        for element in self.base {
+            buffer.writeInteger(element)
+        }
+    }
+
+    static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
+    -> OracleVectorBinary
+    {
+        var values: TinySequence<Element> = []
+        values.reserveCapacity(elements)
+
+        for _ in 0..<elements {
+            try values.append(buffer.throwingReadInteger(as: Element.self))
+        }
+
+        return .init(underlying: values)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
+    }
+}
+
 
 // MARK: Int8
 
@@ -260,7 +344,7 @@ extension _OracleVectorJSONEncodable {
         buffer.writeInteger(0, as: UInt32.self)
         let writerIndex = buffer.writerIndex
         _encodeOracleVectorHeader(
-            elements: UInt32(self.count),
+            elements: Self.vectorFormat == .binary ? UInt32(self.count * 8) : UInt32(self.count),
             format: Self.vectorFormat,
             into: &buffer
         )
@@ -298,7 +382,7 @@ extension _OracleVectorProtocol {
     ) {
         var temp = ByteBuffer()
         _encodeOracleVectorHeader(
-            elements: UInt32(self.count),
+            elements: Self.vectorFormat == .binary ? UInt32(self.count * 8) : UInt32(self.count),
             format: Self.vectorFormat,
             into: &temp
         )
@@ -344,7 +428,7 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
     }
 
     let version = try buffer.throwingReadInteger(as: UInt8.self)
-    if version != Constants.TNS_VECTOR_VERSION {
+    if version > Constants.TNS_VECTOR_VERSION_WITH_BINARY {
         throw OracleDecodingError.Code.failure
     }
 
@@ -354,7 +438,12 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
         throw OracleDecodingError.Code.typeMismatch
     }
 
-    let elementsCount = Int(try buffer.throwingReadInteger(as: UInt32.self))
+    let elementsCount =
+        if vectorFormat == .binary {
+            Int(try buffer.throwingReadInteger(as: UInt32.self))
+        } else {
+            Int(try buffer.throwingReadInteger(as: UInt32.self) / 8)
+        }
 
     if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {
         buffer.moveReaderIndex(forwardBy: 8)
@@ -368,10 +457,15 @@ func _encodeOracleVectorHeader(
     format: VectorFormat,
     into buffer: inout ByteBuffer
 ) {
+    var flags = Constants.TNS_VECTOR_FLAG_NORM_RESERVED
     buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
-    buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
-    buffer.writeInteger(
-        UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
+    if format == .binary {
+        buffer.writeInteger(Constants.TNS_VECTOR_VERSION_WITH_BINARY)
+    } else {
+        buffer.writeInteger(Constants.TNS_VECTOR_VERSION_BASE)
+        flags |= Constants.TNS_VECTOR_FLAG_NORM
+    }
+    buffer.writeInteger(flags)
     buffer.writeInteger(format.rawValue)
     buffer.writeInteger(elements)
     buffer.writeRepeatingByte(0, count: 8)

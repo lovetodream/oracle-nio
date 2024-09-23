@@ -18,6 +18,18 @@ import XCTest
 @testable import OracleNIO
 
 final class OracleVectorTests: XCTestCase {
+    func testVectorBinary() {
+        let vector1 = OracleVectorBinary()
+        XCTAssertEqual(vector1, [])
+        let vector2: OracleVectorBinary = [1, 2, 3]
+        XCTAssertEqual(vector2.count, 3)
+        var vector3 = OracleVectorBinary([1, 2, 2])
+        XCTAssertNotEqual(vector2, vector3)
+        XCTAssertEqual(vector3[2], 2)
+        vector3[2] = 3
+        XCTAssertEqual(vector2, vector3)
+    }
+
     func testVectorInt8() {
         let vector1 = OracleVectorInt8()
         XCTAssertEqual(vector1, [])
@@ -76,7 +88,7 @@ final class OracleVectorTests: XCTestCase {
         // wrong type
         buffer = ByteBuffer(bytes: [
             UInt8(Constants.TNS_VECTOR_MAGIC_BYTE),
-            UInt8(Constants.TNS_VECTOR_VERSION),
+            UInt8(Constants.TNS_VECTOR_VERSION_BASE),
             0, 0,  // flags
             VectorFormat.float64.rawValue,
             0, 0, 0, 0,  // elements

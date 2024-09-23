@@ -163,6 +163,7 @@ A type must implement the `OracleDecodable` protocol in order to be decoded from
 - `IntervalDS`
 - `OracleNumber`
 - `OracleVectorInt8`, `OracleVectorFloat32`, `OracleVectorFloat64`
+- `OracleJSON`
 - `RowID`
 
 ### Statements with parameters

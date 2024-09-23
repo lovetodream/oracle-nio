@@ -46,6 +46,13 @@ public struct OracleNumber:
         return try? OracleNumeric.parseFloat(from: &value)
     }
 
+    func requireDouble() throws -> Double {
+        var value = self.value.getSlice(
+            at: 1, length: self.value.readableBytes - 1
+        )!  // skip length
+        return try OracleNumeric.parseFloat(from: &value)
+    }
+
     public var description: String {
         if let double = self.double {
             return "\(double)"
@@ -98,10 +105,10 @@ public struct OracleNumber:
 }
 
 extension OracleNumber: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         var bufferWithLength = ByteBuffer(bytes: [UInt8(buffer.readableBytes)])
         bufferWithLength.writeBuffer(&buffer)
@@ -112,9 +119,9 @@ extension OracleNumber: OracleDecodable {
 extension OracleNumber: OracleEncodable {
     public var oracleType: OracleDataType { .number }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         buffer.writeImmutableBuffer(self.value)
     }

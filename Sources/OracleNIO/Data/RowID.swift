@@ -88,10 +88,10 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
 }
 
 extension RowID: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .rowID:
@@ -115,9 +115,9 @@ extension RowID: OracleDecodable {
 extension RowID: OracleEncodable {
     public var oracleType: OracleDataType { .rowID }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         buffer.writeString(self.description)
     }

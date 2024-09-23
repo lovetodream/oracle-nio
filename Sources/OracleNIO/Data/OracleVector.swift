@@ -14,6 +14,12 @@
 
 import NIOCore
 
+enum VectorFormat: UInt8 {
+    case float32 = 2
+    case float64 = 3
+    case int8 = 4
+}
+
 // MARK: Int8
 
 /// A dynamically sized vector of type Int8, used to send
@@ -21,7 +27,7 @@ import NIOCore
 public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Int8
 
-    static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_INT8
+    static let vectorFormat: VectorFormat = .int8
 
     @usableFromInline
     var base: TinySequence<Element>
@@ -51,9 +57,9 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         for element in self.base {
             buffer.writeInteger(element)
@@ -72,6 +78,20 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
 
         return .init(underlying: values)
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
+    }
 }
 
 // MARK: Float32
@@ -81,7 +101,7 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
 public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Float32
 
-    static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT32
+    static let vectorFormat: VectorFormat = .float32
 
     @usableFromInline
     var base: TinySequence<Element>
@@ -111,9 +131,9 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         for element in self.base {
             element.encode(into: &buffer, context: context)
@@ -132,6 +152,20 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
 
         return .init(underlying: values)
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
+    }
 }
 
 
@@ -142,7 +176,7 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
 public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     public typealias Element = Float64
 
-    static let vectorFormat: UInt8 = Constants.VECTOR_FORMAT_FLOAT64
+    static let vectorFormat: VectorFormat = .float64
 
     @usableFromInline
     var base: TinySequence<Element>
@@ -172,9 +206,9 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     @inlinable
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         for element in self.base {
             element.encode(into: &buffer, context: context)
@@ -193,6 +227,20 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
 
         return .init(underlying: values)
     }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(Array(self.base))
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.base = .init(try container.decode([Element].self))
+    }
 }
 
 
@@ -201,12 +249,34 @@ public protocol OracleVectorProtocol {}
 
 // MARK: - Internal helper protocols
 
-private protocol _OracleVectorProtocol: OracleCodable, Equatable, Collection,
-    ExpressibleByArrayLiteral
-where Index == Int {
+protocol _OracleVectorJSONEncodable: OracleEncodable {
     var count: Int { get }
+    static var vectorFormat: VectorFormat { get }
+    func encodeForJSON(into buffer: inout ByteBuffer)
+}
+
+extension _OracleVectorJSONEncodable {
+    func encodeForJSON(into buffer: inout ByteBuffer) {
+        buffer.writeInteger(0, as: UInt32.self)
+        let writerIndex = buffer.writerIndex
+        _encodeOracleVectorHeader(
+            elements: UInt32(self.count),
+            format: Self.vectorFormat,
+            into: &buffer
+        )
+        self.encode(into: &buffer, context: .default)
+        let length = UInt32(buffer.writerIndex - writerIndex)
+        buffer.setInteger(length, at: writerIndex - MemoryLayout<UInt32>.size)
+    }
+}
+
+private protocol _OracleVectorProtocol: _OracleVectorJSONEncodable, OracleCodable, Equatable,
+    Collection,
+    ExpressibleByArrayLiteral,
+    Decodable,
+    Encodable
+where Index == Int {
     var base: TinySequence<Element> { get set }
-    static var vectorFormat: UInt8 { get }
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws -> Self
 }
 
@@ -222,12 +292,12 @@ extension _OracleVectorProtocol {
     }
 
     @inlinable
-    public func _encodeRaw<JSONEncoder: OracleJSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var temp = ByteBuffer()
-        Self._encodeOracleVectorHeader(
+        _encodeOracleVectorHeader(
             elements: UInt32(self.count),
             format: Self.vectorFormat,
             into: &temp
@@ -244,10 +314,10 @@ extension _OracleVectorProtocol {
     }
 
     @inlinable
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         guard type == .vector else {
             throw OracleDecodingError.Code.typeMismatch
@@ -256,43 +326,53 @@ extension _OracleVectorProtocol {
         self = try Self._decodeActual(from: &buffer, elements: elements)
     }
 
-    private static func _encodeOracleVectorHeader(
-        elements: UInt32,
-        format: UInt8,
-        into buffer: inout ByteBuffer
-    ) {
-        buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
-        buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
-        buffer.writeInteger(
-            UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
-        buffer.writeInteger(format)
-        buffer.writeInteger(elements)
-        buffer.writeRepeatingByte(0, count: 8)
-    }
-
     private static func _decodeOracleVectorHeader(from buffer: inout ByteBuffer) throws -> Int {
-        let magicByte = try buffer.throwingReadInteger(as: UInt8.self)
-        if magicByte != Constants.TNS_VECTOR_MAGIC_BYTE {
+        let (format, elements) = try _decodeOracleVectorMetadata(from: &buffer)
+        guard format == self.vectorFormat else {
             throw OracleDecodingError.Code.typeMismatch
         }
-
-        let version = try buffer.throwingReadInteger(as: UInt8.self)
-        if version != Constants.TNS_VECTOR_VERSION {
-            throw OracleDecodingError.Code.failure
-        }
-
-        let flags = try buffer.throwingReadInteger(as: UInt16.self)
-        let vectorFormat = try buffer.throwingReadInteger(as: UInt8.self)
-        if vectorFormat != self.vectorFormat {
-            throw OracleDecodingError.Code.typeMismatch
-        }
-
-        let elementsCount = Int(try buffer.throwingReadInteger(as: UInt32.self))
-
-        if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {
-            buffer.moveReaderIndex(forwardBy: 8)
-        }
-
-        return elementsCount
+        return elements
     }
+}
+
+func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
+    VectorFormat, elements: Int
+) {
+    let magicByte = try buffer.throwingReadInteger(as: UInt8.self)
+    if magicByte != Constants.TNS_VECTOR_MAGIC_BYTE {
+        throw OracleDecodingError.Code.typeMismatch
+    }
+
+    let version = try buffer.throwingReadInteger(as: UInt8.self)
+    if version != Constants.TNS_VECTOR_VERSION {
+        throw OracleDecodingError.Code.failure
+    }
+
+    let flags = try buffer.throwingReadInteger(as: UInt16.self)
+    let vectorFormat = try buffer.throwingReadInteger(as: UInt8.self)
+    guard let vectorFormat = VectorFormat(rawValue: vectorFormat) else {
+        throw OracleDecodingError.Code.typeMismatch
+    }
+
+    let elementsCount = Int(try buffer.throwingReadInteger(as: UInt32.self))
+
+    if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {
+        buffer.moveReaderIndex(forwardBy: 8)
+    }
+
+    return (vectorFormat, elementsCount)
+}
+
+func _encodeOracleVectorHeader(
+    elements: UInt32,
+    format: VectorFormat,
+    into buffer: inout ByteBuffer
+) {
+    buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
+    buffer.writeInteger(UInt8(Constants.TNS_VECTOR_VERSION))
+    buffer.writeInteger(
+        UInt16(Constants.TNS_VECTOR_FLAG_NORM | Constants.TNS_VECTOR_FLAG_NORM_RESERVED))
+    buffer.writeInteger(format.rawValue)
+    buffer.writeInteger(elements)
+    buffer.writeRepeatingByte(0, count: 8)
 }

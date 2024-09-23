@@ -178,10 +178,10 @@ extension OracleRandomAccessRow: Sendable, RandomAccessCollection {
 }
 
 extension OracleRandomAccessRow {
-    func decode<T: OracleDecodable, JSONDecoder: OracleJSONDecoder>(
+    func decode<T: OracleDecodable>(
         column: String,
         as type: T.Type,
-        context: OracleDecodingContext<JSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID, line: Int = #line
     ) throws -> T {
         guard let index = self.lookupTable[column] else {
@@ -193,10 +193,10 @@ extension OracleRandomAccessRow {
         )
     }
 
-    func decode<T: OracleDecodable, JSONDecoder: OracleJSONDecoder>(
+    func decode<T: OracleDecodable>(
         column index: Int,
         as type: T.Type,
-        context: OracleDecodingContext<JSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID, line: Int = #line
     ) throws -> T {
         precondition(index < self.columns.count)

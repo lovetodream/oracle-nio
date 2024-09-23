@@ -13,14 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
+import NIOFoundationCompat
 
 import struct Foundation.UUID
 
 extension UUID: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .raw, .longRAW:

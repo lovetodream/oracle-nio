@@ -23,9 +23,9 @@ import func Foundation.pow
 extension Date: OracleEncodable {
     public var oracleType: OracleDataType { .timestampTZ }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var length = self.oracleType.bufferSizeFactor
         let currentCalendarTimeZone = Calendar.current
@@ -67,10 +67,10 @@ extension Date: OracleEncodable {
 }
 
 extension Date: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .date, .timestamp, .timestampLTZ, .timestampTZ:

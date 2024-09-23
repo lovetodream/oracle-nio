@@ -184,9 +184,9 @@ private struct Timestamp: Sendable, OracleCodable {
         self.underlying = date
     }
 
-    func encode<JSONEncoder: OracleJSONEncoder>(
+    func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var length = 11
         let timeZone = Calendar.current
@@ -214,10 +214,10 @@ private struct Timestamp: Sendable, OracleCodable {
         }
     }
 
-    init<JSONDecoder: OracleJSONDecoder>(
+    init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .date, .timestamp, .timestampLTZ, .timestampTZ:

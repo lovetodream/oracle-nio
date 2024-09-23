@@ -53,9 +53,9 @@ extension OracleCell {
     ///   ``OracleDecodingError``.
     /// - Returns: A decoded Swift type.
     @inlinable
-    public func decode<T: OracleDecodable, JSONDecoder: OracleJSONDecoder>(
+    public func decode<T: OracleDecodable>(
         _: T.Type,
-        context: OracleDecodingContext<JSONDecoder>,
+        context: OracleDecodingContext,
         file: String = #fileID, line: Int = #line
     ) throws -> T {
         var copy = self.bytes

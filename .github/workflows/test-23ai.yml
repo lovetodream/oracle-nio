@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     container:
-      image: swift:5.9-jammy
+      image: swift:6.0-jammy
     services:
       oracle:
         image: gvenzl/oracle-free:23
@@ -45,6 +45,7 @@ jobs:
         ORA_PASSWORD: my_password
         TEST_VECTORS: true
         TEST_PRIVILEGED: true
+        TEST_COMPRESSED_JSON: true
     - name: Prepare Code Coverage
       run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload coverage reports to Codecov

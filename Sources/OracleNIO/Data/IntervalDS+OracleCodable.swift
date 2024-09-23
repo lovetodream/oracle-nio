@@ -56,12 +56,31 @@ extension IntervalDS: ExpressibleByFloatLiteral {
     }
 }
 
+extension IntervalDS: Encodable {
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if encoder is _OracleJSONEncoder {
+            try container.encode(self)
+        } else {
+            try container.encode(double)
+        }
+    }
+}
+
+extension IntervalDS: Decodable {
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(Double.self)
+        self = .init(floatLiteral: value)
+    }
+}
+
 extension IntervalDS: OracleEncodable {
     public var oracleType: OracleDataType { .intervalDS }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         buffer.writeInteger(
             UInt32(self.days) + Constants.TNS_DURATION_MID, endianness: .big
@@ -78,28 +97,22 @@ extension IntervalDS: OracleEncodable {
 }
 
 extension IntervalDS: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .intervalDS:
             let durationMid = Constants.TNS_DURATION_MID
             let durationOffset = Constants.TNS_DURATION_OFFSET
             let days = (buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0) - durationMid
-            buffer.moveReaderIndex(to: 7)
             let fractionalSeconds =
-                (buffer.readInteger(endianness: .big, as: UInt32.self) ?? 0) - durationMid
-            let hours =
-                (buffer.getInteger(at: 4, as: UInt8.self) ?? 0)
-                - durationOffset
-            let minutes =
-                (buffer.getInteger(at: 5, as: UInt8.self) ?? 0)
-                - durationOffset
-            let seconds =
-                (buffer.getInteger(at: 6, as: UInt8.self) ?? 0)
-                - durationOffset
+                try buffer.throwingGetInteger(at: 7, endianness: .big, as: UInt32.self)
+                - durationMid
+            let hours = try buffer.throwingGetInteger(at: 4, as: UInt8.self) - durationOffset
+            let minutes = try buffer.throwingGetInteger(at: 5, as: UInt8.self) - durationOffset
+            let seconds = try buffer.throwingGetInteger(at: 6, as: UInt8.self) - durationOffset
             self = .init(
                 days: Int(days),
                 hours: Int(hours),

@@ -15,18 +15,18 @@
 import NIOCore
 
 extension String: OracleEncodable {
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         preconditionFailure("This should not be called")
     }
 
     @inlinable
-    public func _encodeRaw<JSONEncoder>(
+    public func _encodeRaw(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
-    ) where JSONEncoder: OracleJSONEncoder {
+        context: OracleEncodingContext
+    ) {
         ByteBuffer(string: self)
             ._encodeRaw(into: &buffer, context: context)
     }
@@ -44,11 +44,11 @@ extension String: OracleEncodable {
 
 extension String: OracleDecodable {
     @inlinable
-    static public func _decodeRaw<JSONDecoder>(
+    static public func _decodeRaw(
         from buffer: inout ByteBuffer?,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
-    ) throws -> String where JSONDecoder: OracleJSONDecoder {
+        context: OracleDecodingContext
+    ) throws -> String {
         // because oracle doesn't differentiate between null and empty strings
         // we have to use the internal imp
         guard var buffer else {
@@ -57,14 +57,14 @@ extension String: OracleDecodable {
         return try self.init(from: &buffer, type: type, context: context)
     }
 
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
-        case .varchar, .char, .long, .nVarchar, .longNVarchar:
-            if type.csfrm == Constants.TNS_CS_IMPLICIT {
+        case .varchar, .char, .long, .nVarchar, .longNVarchar, .longRAW:
+            if type.csfrm == Constants.TNS_CS_IMPLICIT || type.csfrm == 0 {
                 self = buffer.readString(length: buffer.readableBytes)!
             } else {
                 self = buffer.readString(

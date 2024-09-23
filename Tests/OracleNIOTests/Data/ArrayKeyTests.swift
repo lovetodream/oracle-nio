@@ -12,17 +12,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+#if compiler(>=6.0)
+    import Testing
 
-extension ByteBuffer {
-    mutating func readOSON() throws -> ByteBuffer? {
-        guard let length = self.readUB4(), length > 0 else {
-            return ByteBuffer(bytes: [0])
+    @testable import OracleNIO
+
+    @Suite struct ArrayKeyTests {
+        @Test func testInitWithInteger() {
+            let key = ArrayKey(intValue: 2)!
+            #expect(key.stringValue == "Index 2")
         }
-        self.skipUB8()  // size (unused)
-        self.skipUB4()  // chunk size (unused)
-        let data = self.readOracleSlice()
-        self.skipRawBytesChunked()  // lob locator (unused)
-        return data
+
+        @Test func testInitWithIndex() {
+            let key = ArrayKey(index: 12)
+            #expect(key.stringValue == "Index 12")
+        }
+
+        @Test func testEquatable() {
+            #expect(ArrayKey(index: 3) == ArrayKey(intValue: 3))
+        }
     }
-}
+#endif

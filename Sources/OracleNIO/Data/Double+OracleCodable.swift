@@ -19,9 +19,9 @@ extension Double: OracleEncodable {
         .binaryDouble
     }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         var b0: UInt8
         var b1: UInt8
@@ -57,10 +57,10 @@ extension Double: OracleEncodable {
 }
 
 extension Double: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:

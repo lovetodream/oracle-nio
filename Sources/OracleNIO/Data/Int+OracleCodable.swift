@@ -17,10 +17,10 @@ import NIOCore
 // MARK: UInt8
 
 extension UInt8: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .char, .nChar, .raw, .longRAW, .long:
@@ -42,10 +42,10 @@ extension UInt8: OracleDecodable {
 // MARK: Int8
 
 extension Int8: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -59,10 +59,10 @@ extension Int8: OracleDecodable {
 // MARK: UInt16
 
 extension UInt16: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -76,10 +76,10 @@ extension UInt16: OracleDecodable {
 // MARK: Int16
 
 extension Int16: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -93,10 +93,10 @@ extension Int16: OracleDecodable {
 // MARK: UInt32
 
 extension UInt32: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -110,10 +110,10 @@ extension UInt32: OracleDecodable {
 // MARK: Int32
 
 extension Int32: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -127,10 +127,10 @@ extension Int32: OracleDecodable {
 // MARK: UInt64
 
 extension UInt64: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
-        from buffer: inout NIOCore.ByteBuffer,
+    public init(
+        from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -144,10 +144,10 @@ extension UInt64: OracleDecodable {
 // MARK: Int64
 
 extension Int64: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
-        from buffer: inout NIOCore.ByteBuffer,
+    public init(
+        from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -161,10 +161,10 @@ extension Int64: OracleDecodable {
 // MARK: UInt
 
 extension UInt: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:
@@ -180,19 +180,19 @@ extension UInt: OracleDecodable {
 extension Int: OracleEncodable {
     public var oracleType: OracleDataType { .binaryInteger }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         OracleNumeric.encodeNumeric(self, into: &buffer)
     }
 }
 
 extension Int: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .number, .binaryInteger:

@@ -39,9 +39,9 @@ public struct Cursor {
 extension Cursor: OracleEncodable {
     public var oracleType: OracleDataType { .cursor }
 
-    public func encode<JSONEncoder: OracleJSONEncoder>(
+    public func encode(
         into buffer: inout ByteBuffer,
-        context: OracleEncodingContext<JSONEncoder>
+        context: OracleEncodingContext
     ) {
         if self.id == 0 {
             buffer.writeInteger(UInt8(0))
@@ -52,10 +52,10 @@ extension Cursor: OracleEncodable {
 }
 
 extension Cursor: OracleDecodable {
-    public init<JSONDecoder: OracleJSONDecoder>(
+    public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
-        context: OracleDecodingContext<JSONDecoder>
+        context: OracleDecodingContext
     ) throws {
         switch type {
         case .cursor:

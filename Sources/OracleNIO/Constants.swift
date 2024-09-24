@@ -206,7 +206,7 @@ enum Constants {
     static let TNS_JSON_TYPE_VECTOR: UInt8 = 0x01
 
     // MARK: VECTOR constants
-    static let TNS_VECTOR_MAGIC_BYTE = 0xDB
+    static let TNS_VECTOR_MAGIC_BYTE: UInt8 = 0xDB
     static let TNS_VECTOR_VERSION_BASE: UInt8 = 0
     static let TNS_VECTOR_VERSION_WITH_BINARY: UInt8 = 1
     static let TNS_VECTOR_MAX_LENGTH: UInt32 = 1 * 1024 * 1024

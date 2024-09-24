@@ -205,6 +205,13 @@
             )
         }
 
+        @Test func decodeVectorBinary() throws {
+            try decodeScalar(
+                expected: OracleVectorBinary([1, 2, 3]),
+                given: .vectorBinary([1, 2, 3])
+            )
+        }
+
         @Test func decodeVectorInt8() throws {
             try decodeScalar(
                 expected: OracleVectorInt8([1, 2, 3, 4, 5, 6, 7, 8]),
@@ -244,6 +251,16 @@
             )
             let interval = try decoder.singleValueContainer().decode(IntervalDS.self)
             #expect(interval == 15.0)
+        }
+
+        @Test func decodeVectorBinaryFromSingleValueContainer() throws {
+            let decoder = _OracleJSONDecoder(
+                codingPath: [],
+                userInfo: [:],
+                value: .vectorBinary([1, 2, 3])
+            )
+            let vector = try decoder.singleValueContainer().decode(OracleVectorBinary.self)
+            #expect(vector == [1, 2, 3])
         }
 
         @Test func decodeVectorInt8FromSingleValueContainer() throws {
@@ -788,6 +805,24 @@
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 #expect(
                     try container.decode(IntervalDS.self, forKey: .hello) == 15.0
+                )
+            }
+
+            @Test func decodeVectorBinary() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .container([
+                        "hello": .vectorBinary([1, 2, 3])
+                    ])
+                )
+                enum CodingKeys: CodingKey {
+                    case hello
+                }
+
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                #expect(
+                    try container.decode(OracleVectorBinary.self, forKey: .hello) == [1, 2, 3]
                 )
             }
 
@@ -1370,6 +1405,21 @@
 
                 var container = try decoder.unkeyedContainer()
                 #expect(try container.decode(IntervalDS.self) == 15.0)
+                #expect(container.currentIndex == 1)
+                #expect(container.isAtEnd)
+            }
+
+            @Test func decodeVectorBinary() throws {
+                let decoder = _OracleJSONDecoder(
+                    codingPath: [],
+                    userInfo: [:],
+                    value: .array([.vectorBinary([1, 2, 3])])
+                )
+
+                var container = try decoder.unkeyedContainer()
+                #expect(
+                    try container.decode(OracleVectorBinary.self) == [1, 2, 3]
+                )
                 #expect(container.currentIndex == 1)
                 #expect(container.isAtEnd)
             }

@@ -25,7 +25,7 @@ enum VectorFormat: UInt8 {
 // MARK: Binary
 
 /// A dynamically sized vector of type UInt8, used to send
-/// and receive `vector(n, binary)` data to and from Oracle databases.
+/// and receive `vector(n * 8, binary)` data to and from Oracle databases.
 ///
 /// The binary format represents each dimension value as a binary value (0 or 1).
 /// Binary vectors require less memory storage. For example, a 16 dimensional vector with binary
@@ -76,7 +76,7 @@ public struct OracleVectorBinary: _OracleVectorProtocol, OracleVectorProtocol {
     }
 
     static func _decodeActual(from buffer: inout ByteBuffer, elements: Int) throws
-    -> OracleVectorBinary
+        -> OracleVectorBinary
     {
         var values: TinySequence<Element> = []
         values.reserveCapacity(elements)
@@ -344,7 +344,7 @@ extension _OracleVectorJSONEncodable {
         buffer.writeInteger(0, as: UInt32.self)
         let writerIndex = buffer.writerIndex
         _encodeOracleVectorHeader(
-            elements: Self.vectorFormat == .binary ? UInt32(self.count * 8) : UInt32(self.count),
+            elements: UInt32(self.count),
             format: Self.vectorFormat,
             into: &buffer
         )
@@ -382,7 +382,7 @@ extension _OracleVectorProtocol {
     ) {
         var temp = ByteBuffer()
         _encodeOracleVectorHeader(
-            elements: Self.vectorFormat == .binary ? UInt32(self.count * 8) : UInt32(self.count),
+            elements: UInt32(self.count),
             format: Self.vectorFormat,
             into: &temp
         )
@@ -445,7 +445,9 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
             Int(try buffer.throwingReadInteger(as: UInt32.self))
         }
 
-    if (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0 {
+    if (flags & Constants.TNS_VECTOR_FLAG_NORM_RESERVED) != 0
+        || (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0
+    {
         buffer.moveReaderIndex(forwardBy: 8)
     }
 
@@ -458,15 +460,20 @@ func _encodeOracleVectorHeader(
     into buffer: inout ByteBuffer
 ) {
     var flags = Constants.TNS_VECTOR_FLAG_NORM_RESERVED
-    buffer.writeInteger(UInt8(Constants.TNS_VECTOR_MAGIC_BYTE))
+    let version: UInt8
+    let count: UInt32
     if format == .binary {
-        buffer.writeInteger(Constants.TNS_VECTOR_VERSION_WITH_BINARY)
+        version = Constants.TNS_VECTOR_VERSION_WITH_BINARY
+        count = elements * 8
     } else {
-        buffer.writeInteger(Constants.TNS_VECTOR_VERSION_BASE)
+        version = Constants.TNS_VECTOR_VERSION_BASE
+        count = elements
         flags |= Constants.TNS_VECTOR_FLAG_NORM
     }
+    buffer.writeInteger(Constants.TNS_VECTOR_MAGIC_BYTE)
+    buffer.writeInteger(version)
     buffer.writeInteger(flags)
     buffer.writeInteger(format.rawValue)
-    buffer.writeInteger(elements)
+    buffer.writeInteger(count)
     buffer.writeRepeatingByte(0, count: 8)
 }

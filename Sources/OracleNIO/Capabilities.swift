@@ -70,7 +70,8 @@ struct Capabilities: Sendable, Hashable {
         self.compileCapabilities[Constants.TNS_CCAP_CLIENT_FN] = Constants.TNS_CCAP_CLIENT_FN_MAX
         self.compileCapabilities[Constants.TNS_CCAP_TTC4] = Constants.TNS_CCAP_INBAND_NOTIFICATION
         self.compileCapabilities[Constants.TNS_CCAP_TTC5] = Constants.TNS_CCAP_VECTOR_SUPPORT
-        self.compileCapabilities[Constants.TNS_CCAP_VECTOR_FEATURES] = Constants.TNS_CCAP_VECTOR_FEATURE_BINARY
+        self.compileCapabilities[Constants.TNS_CCAP_VECTOR_FEATURES] =
+            Constants.TNS_CCAP_VECTOR_FEATURE_BINARY
 
         // Runtime Capabilities
         self.runtimeCapabilities[Constants.TNS_RCAP_COMPAT] = Constants.TNS_RCAP_COMPAT_81

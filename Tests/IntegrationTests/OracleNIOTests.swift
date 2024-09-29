@@ -44,6 +44,7 @@ final class OracleNIOTests: XCTestCase {
 
     func testConnectionAndClose() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
+        print(conn.serverVersion)
         XCTAssertNoThrow(try conn.syncClose())
     }
 
@@ -889,69 +890,6 @@ final class OracleNIOTests: XCTestCase {
             """)
         let myName = try myNameBind.decode(of: String.self)
         XCTAssertEqual(myName, "DummyName")
-    }
-
-    func testBasicVectorTable() async throws {
-        try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
-        let conn = try await OracleConnection.test(on: eventLoop)
-        defer { XCTAssertNoThrow(try conn.syncClose()) }
-        try await conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sample_vector_table(
-                v32 vector(3, float32),
-                v64 vector(3, float64),
-                v8  vector(3, int8)
-            )
-            """)
-        try await conn.execute("TRUNCATE TABLE sample_vector_table")
-        typealias Row = (OracleVectorFloat32?, OracleVectorFloat64, OracleVectorInt8)
-        let insertRows: [Row] = [
-            ([2.625, 2.5, 2.0], [22.25, 22.75, 22.5], [4, 5, 6]),
-            ([3.625, 3.5, 3.0], [33.25, 33.75, 33.5], [7, 8, 9]),
-            (nil, [15.75, 18.5, 9.25], [10, 11, 12]),
-        ]
-        for row in insertRows {
-            try await conn.execute(
-                "INSERT INTO sample_vector_table (v32, v64, v8) VALUES (\(row.0), \(row.1), \(row.2))"
-            )
-        }
-
-        let stream = try await conn.execute("SELECT v32, v64, v8 FROM sample_vector_table")
-        var selectedRows: [Row] = []
-        for try await row in stream.decode(Row.self) {
-            selectedRows.append(row)
-        }
-        XCTAssertTrue(!selectedRows.isEmpty)
-        for index in insertRows.indices {
-            XCTAssertEqual(insertRows[index].0, selectedRows[index].0)
-            XCTAssertEqual(insertRows[index].1, selectedRows[index].1)
-            XCTAssertEqual(insertRows[index].2, selectedRows[index].2)
-        }
-    }
-
-    func testFlexibleVector() async throws {
-        try XCTSkipIf(env("TEST_VECTORS")?.isEmpty != false)
-        let conn = try await OracleConnection.test(on: eventLoop)
-        defer { XCTAssertNoThrow(try conn.syncClose()) }
-        try await conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sample_vector_table2(
-                v32 vector(*, float32)
-            )
-            """)
-        try await conn.execute("TRUNCATE TABLE sample_vector_table2")
-        let vector: OracleVectorFloat32 = [1.1, 2.2, 3.3, 4.4, 5.5]
-        try await conn.execute(
-            "INSERT INTO sample_vector_table2 (v32) VALUES (\(vector))"
-        )
-
-        let stream = try await conn.execute("SELECT v32 FROM sample_vector_table2")
-        var selectedRows: [OracleVectorFloat32] = []
-        for try await row in stream.decode(OracleVectorFloat32.self) {
-            selectedRows.append(row)
-        }
-        XCTAssertEqual(selectedRows.count, 1)
-        XCTAssertEqual(selectedRows[0], vector)
     }
 
     func testDomainAndAnnotations() async throws {

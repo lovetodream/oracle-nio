@@ -283,6 +283,13 @@
                         { buffer in
                             buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
                             buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
+                            OracleVectorBinary([1, 2, 3]).encodeForJSON(into: &buffer)
+                        }, .vectorBinary([1, 2, 3])
+                    ),
+                    (
+                        { buffer in
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
+                            buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
                             OracleVectorInt8([1, 2, 3]).encodeForJSON(into: &buffer)
                         }, .vectorInt8([1, 2, 3])
                     ),

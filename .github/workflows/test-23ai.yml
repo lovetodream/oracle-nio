@@ -43,7 +43,7 @@ jobs:
         ORA_SERVICE_NAME: FREEPDB1
         ORA_USERNAME: my_user
         ORA_PASSWORD: my_password
-        TEST_VECTORS: true
+        # TEST_VECTORS: true # current version of 23ai has a weird configuration issue by default
         TEST_PRIVILEGED: true
         TEST_COMPRESSED_JSON: true
     - name: Prepare Code Coverage

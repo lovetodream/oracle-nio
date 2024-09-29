@@ -363,6 +363,10 @@ struct TreeSegment {
             buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
             buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
             vector.encodeForJSON(into: &buffer)
+        case .vectorBinary(let vector):
+            buffer.writeInteger(Constants.TNS_JSON_TYPE_EXTENDED)
+            buffer.writeInteger(Constants.TNS_JSON_TYPE_VECTOR)
+            vector.encodeForJSON(into: &buffer)
 
         case .array(let array):
             try encodeArray(array)

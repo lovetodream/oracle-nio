@@ -162,7 +162,7 @@ A type must implement the `OracleDecodable` protocol in order to be decoded from
 - `Cursor`
 - `IntervalDS`
 - `OracleNumber`
-- `OracleVectorInt8`, `OracleVectorFloat32`, `OracleVectorFloat64`
+- `OracleVectorBinary`, `OracleVectorInt8`, `OracleVectorFloat32`, `OracleVectorFloat64`
 - `OracleJSON`
 - `RowID`
 

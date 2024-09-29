@@ -129,6 +129,13 @@
             )
         }
 
+        @Test func encodeVectorBinary() throws {
+            try encodeScalar(
+                OracleVectorBinary([1, 2, 3]),
+                expected: .vectorBinary([1, 2, 3])
+            )
+        }
+
         @Test func encodeVectorInt8() throws {
             try encodeScalar(
                 OracleVectorInt8([1, 2, 3, 4, 5, 6, 7, 8]),
@@ -162,6 +169,13 @@
             var container = encoder.singleValueContainer()
             try container.encode(IntervalDS(floatLiteral: 15.0))
             #expect(encoder.value == .intervalDS(15.0))
+        }
+
+        @Test func encodeVectorBinaryInSingleValueContainer() throws {
+            let encoder = _OracleJSONEncoder()
+            var container = encoder.singleValueContainer()
+            try container.encode(OracleVectorBinary([1, 2, 3]))
+            #expect(encoder.value == .vectorBinary([1, 2, 3]))
         }
 
         @Test func encodeVectorInt8InSingleValueContainer() throws {
@@ -396,6 +410,17 @@
                         == .container([
                             "hello": .intervalDS(15.0)
                         ]))
+            }
+
+            @Test func encodeVectorBinary() throws {
+                let encoder = _OracleJSONEncoder()
+                enum CodingKeys: CodingKey {
+                    case hello
+                }
+
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(OracleVectorBinary([1, 2, 3]), forKey: .hello)
+                #expect(encoder.value == .container(["hello": .vectorBinary([1, 2, 3])]))
             }
 
             @Test func encodeVectorInt8() throws {
@@ -663,6 +688,14 @@
                 var container = encoder.unkeyedContainer()
                 try container.encode(IntervalDS(floatLiteral: 15.0))
                 #expect(encoder.value == .array([.intervalDS(15.0)]))
+                #expect(container.count == 1)
+            }
+
+            @Test func encodeVectorBinary() throws {
+                let encoder = _OracleJSONEncoder()
+                var container = encoder.unkeyedContainer()
+                try container.encode(OracleVectorBinary([1, 2, 3]))
+                #expect(encoder.value == .array([.vectorBinary([1, 2, 3])]))
                 #expect(container.count == 1)
             }
 

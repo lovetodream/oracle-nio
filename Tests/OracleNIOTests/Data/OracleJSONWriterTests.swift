@@ -115,6 +115,14 @@
             #expect(result == .string(string))
         }
 
+        @Test func encodeVectorBinary() throws {
+            var buffer = ByteBuffer()
+            var writer = OracleJSONWriter()
+            try writer.encode(.vectorBinary([1, 2, 3]), into: &buffer, maxFieldNameSize: 255)
+            let result = try OracleJSONParser.parse(from: &buffer)
+            #expect(result == .vectorBinary([1, 2, 3]))
+        }
+
         @Test func encodeVectorInt8() throws {
             var buffer = ByteBuffer()
             var writer = OracleJSONWriter()

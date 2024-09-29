@@ -213,6 +213,8 @@ struct OracleKeyedEncodingContainer<Key: CodingKey>: KeyedEncodingContainerProto
             self.object.set(.vectorFloat32(value), for: key.stringValue)
         case let value as OracleVectorFloat64:
             self.object.set(.vectorFloat64(value), for: key.stringValue)
+        case let value as OracleVectorBinary:
+            self.object.set(.vectorBinary(value), for: key.stringValue)
         default:
             let newPath = self.codingPath + [key]
             let newEncoder = _OracleJSONEncoder(codingPath: newPath, userInfo: encoder.userInfo)
@@ -352,6 +354,8 @@ struct OracleUnkeyedEncodingContainer: UnkeyedEncodingContainer {
             self.array.append(.vectorFloat32(value))
         case let value as OracleVectorFloat64:
             self.array.append(.vectorFloat64(value))
+        case let value as OracleVectorBinary:
+            self.array.append(.vectorBinary(value))
         default:
             let newPath = self.codingPath + [ArrayKey(index: self.count)]
             let newEncoder = _OracleJSONEncoder(codingPath: newPath, userInfo: encoder.userInfo)
@@ -481,6 +485,8 @@ struct OracleSingleValueEncodingContainer: SingleValueEncodingContainer {
             self.encoder.singleValue = .vectorFloat32(value)
         case let value as OracleVectorFloat64:
             self.encoder.singleValue = .vectorFloat64(value)
+        case let value as OracleVectorBinary:
+            self.encoder.singleValue = .vectorBinary(value)
         default:
             try value.encode(to: encoder)
         }

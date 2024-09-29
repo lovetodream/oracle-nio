@@ -59,6 +59,7 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude)Makefile" \
   ":(exclude)docker-compose.yaml" \
   ":(exclude)CODEOWNERS" \
+  ":(exclude)codecov.yml" \
   ":(exclude)**/*.docc/*" \
   ":(exclude)**/.gitignore" \
   ":(exclude)**/Package.swift" \
@@ -71,6 +72,7 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude)**/*.pb.swift" \
   ":(exclude)**/*.proto" \
   ":(exclude)Tests/IntegrationTests/Data/*" \
+  ":(exclude)Sources/VendoredConnectionPoolModule/*" \
   | xargs -0 \
 )"
 

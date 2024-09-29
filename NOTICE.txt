@@ -50,3 +50,12 @@ This product contains a derivation of TinyFastSequence methods from PostgresNIO.
     * https://github.com/vapor/postgres-nio/blob/main/LICENSE
   * HOMEPAGE:
     * https://github.com/vapor/postgres-nio
+
+---
+
+This product contains _ConnectionPoolModule from PostgresNIO.
+
+  * LICENSE (Apache License 2.0):
+    * https://github.com/vapor/postgres-nio/blob/main/LICENSE
+  * HOMEPAGE:
+    * https://github.com/vapor/postgres-nio

@@ -208,7 +208,8 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
 
         // First element needs to be the column name
         var iterator = tupleElements.makeIterator()
-        let identifier = iterator.next()! as LabeledExprSyntax  // works as tuple contains at least two elements
+        // works as tuple contains at least two elements
+        let identifier = iterator.next()! as LabeledExprSyntax
         // Type can be force-unwrapped as the compiler ensures it is there.
         let rawType = iterator.next()!.expression.as(MemberAccessExprSyntax.self)!.base!
         let type: TokenSyntax

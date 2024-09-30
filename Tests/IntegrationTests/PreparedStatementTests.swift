@@ -40,7 +40,8 @@
                     stream1Count += 1
                 }
                 #expect(stream1Count == 1)
-                let stream2 = try await connection.execute(SelectFromDualWithWhereClauseQuery(minCount: 1))
+                let stream2 = try await connection.execute(
+                    SelectFromDualWithWhereClauseQuery(minCount: 1))
                 var stream2Count = 0
                 for try await row in stream2 {
                     #expect(row.count == 1)
@@ -54,6 +55,8 @@
     @Statement("SELECT \("1", Int.self, as: "count") FROM dual")
     struct SelectFromDualQuery {}
 
-    @Statement("SELECT \("1", Int.self, as: "count") FROM dual WHERE 1 >= \(bind: "minCount", OracleNumber.self)")
+    @Statement(
+        "SELECT \("1", Int.self, as: "count") FROM dual WHERE 1 >= \(bind: "minCount", OracleNumber.self)"
+    )
     struct SelectFromDualWithWhereClauseQuery {}
 #endif

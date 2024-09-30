@@ -2,8 +2,8 @@
 // Copyright 2024 Timo Zacherl
 // SPDX-License-Identifier: Apache-2.0
 
-import PackageDescription
 import CompilerPluginSupport
+import PackageDescription
 
 let package = Package(
     name: "oracle-nio",
@@ -20,7 +20,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.0.0-latest" ... "600.0.0-latest"),
+        .package(
+            url: "https://github.com/swiftlang/swift-syntax.git",
+            "509.0.0-latest"..."600.0.0-latest"),
     ],
     targets: [
         .target(

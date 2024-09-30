@@ -126,7 +126,5 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
 /// with ``OracleConnection/execute(_:options:logger:file:line:)-9uyvp``.
 @attached(member, names: arbitrary)
 @attached(extension, conformances: OraclePreparedStatement)
-public macro Statement(_ statement: _OracleStatementString) = #externalMacro(module: "OracleNIOMacros", type: "OracleStatementMacro")
-
-@Statement("SELECT \("id", Int.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", OracleNumber.self) < age")
-struct UsersStatement {}
+public macro Statement(_ statement: _OracleStatementString) =
+    #externalMacro(module: "OracleNIOMacros", type: "OracleStatementMacro")

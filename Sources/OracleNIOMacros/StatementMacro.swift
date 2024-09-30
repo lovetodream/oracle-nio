@@ -53,18 +53,24 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         ]
     }
 
-    public static func expansion(of node: AttributeSyntax, providingMembersOf declaration: some DeclGroupSyntax, in context: some MacroExpansionContext) throws -> [DeclSyntax] {
+    public static func expansion(
+        of node: AttributeSyntax, providingMembersOf declaration: some DeclGroupSyntax,
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
         guard declaration.is(StructDeclSyntax.self) else {
-            context.diagnose(Diagnostic(
-                node: node,
-                message: InvalidDeclaration(),
-                fixIt: FixIt(message: InvalidDeclarationFixIt(introducer: declaration.introducer), changes: [
-                    FixIt.Change.replace(
-                        oldNode: Syntax(declaration.introducer),
-                        newNode: Syntax(TokenSyntax.keyword(.struct))
-                    )
-                ])
-            ))
+            context.diagnose(
+                Diagnostic(
+                    node: node,
+                    message: InvalidDeclaration(),
+                    fixIt: FixIt(
+                        message: InvalidDeclarationFixIt(introducer: declaration.introducer),
+                        changes: [
+                            FixIt.Change.replace(
+                                oldNode: Syntax(declaration.introducer),
+                                newNode: Syntax(TokenSyntax.keyword(.struct))
+                            )
+                        ])
+                ))
             return []
         }
 
@@ -97,7 +103,10 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
 
         let rowDeclaration: DeclSyntax
         if columns.isEmpty {
-            let rowAlias = TypeAliasDeclSyntax(name: .identifier("Row"), initializer: TypeInitializerClauseSyntax(value: IdentifierTypeSyntax(name: .identifier("Void"))))
+            let rowAlias = TypeAliasDeclSyntax(
+                name: .identifier("Row"),
+                initializer: TypeInitializerClauseSyntax(
+                    value: IdentifierTypeSyntax(name: .identifier("Void"))))
             rowDeclaration = DeclSyntax(rowAlias)
         } else {
             let rowStruct = makeRowStruct(for: columns)
@@ -116,12 +125,14 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
 
         let bindings = binds.map { name, type in
             VariableDeclSyntax(
-                bindingSpecifier: .keyword(.var, leadingTrivia: .carriageReturnLineFeed, trailingTrivia: .space),
+                bindingSpecifier: .keyword(
+                    .var, leadingTrivia: .carriageReturnLineFeed, trailingTrivia: .space),
                 bindings: PatternBindingListSyntax(
                     itemsBuilder: {
                         PatternBindingSyntax(
                             pattern: IdentifierPatternSyntax(identifier: .identifier(name)),
-                            typeAnnotation: TypeAnnotationSyntax(type: IdentifierTypeSyntax(name: type))
+                            typeAnnotation: TypeAnnotationSyntax(
+                                type: IdentifierTypeSyntax(name: type))
                         )
                     }
                 )
@@ -136,7 +147,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             DeclSyntax(staticSQL),
         ] + bindings.map(DeclSyntax.init) + [
             DeclSyntax(makeBindings),
-            DeclSyntax(decodeRow)
+            DeclSyntax(decodeRow),
         ]
     }
 
@@ -146,12 +157,15 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
     }
     private static func extractInterpolations(_ node: ExpressionSegmentSyntax) -> Interpolation {
         let tupleElements = node.expressions
-        precondition(tupleElements.count >= 2, "Expected tuple with two or more elements, less are impossible as the compiler already checks for it")
+        precondition(
+            tupleElements.count >= 2,
+            "Expected tuple with two or more elements, less are impossible as the compiler already checks for it"
+        )
 
         // First element needs to be the column name
         var iterator = tupleElements.makeIterator()
-        let identifier = iterator.next()! as LabeledExprSyntax // works as tuple contains at least two elements
-                                                               // Type can be force-unwrapped as the compiler ensures it is there.
+        let identifier = iterator.next()! as LabeledExprSyntax  // works as tuple contains at least two elements
+        // Type can be force-unwrapped as the compiler ensures it is there.
         let type = iterator.next()!.expression.as(MemberAccessExprSyntax.self)!
             .base!.as(DeclReferenceExprSyntax.self)!
         // Same thing as with type.
@@ -180,8 +194,10 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                             bindings: PatternBindingListSyntax(
                                 itemsBuilder: {
                                     PatternBindingSyntax(
-                                        pattern: IdentifierPatternSyntax(identifier: .identifier(alias ?? name)),
-                                        typeAnnotation: TypeAnnotationSyntax(type: IdentifierTypeSyntax(name: type))
+                                        pattern: IdentifierPatternSyntax(
+                                            identifier: .identifier(alias ?? name)),
+                                        typeAnnotation: TypeAnnotationSyntax(
+                                            type: IdentifierTypeSyntax(name: type))
                                     )
                                 }
                             )
@@ -198,53 +214,77 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             name: .identifier("makeBindings"),
             signature: FunctionSignatureSyntax(
                 parameterClause: .init(parameters: []),
-                effectSpecifiers: FunctionEffectSpecifiersSyntax(throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
+                effectSpecifiers: FunctionEffectSpecifiersSyntax(
+                    throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
                 returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "OracleBindings"))
             ),
             body: CodeBlockSyntax(statementsBuilder: {
                 CodeBlockItemSyntax(
-                    item: .decl(DeclSyntax(
-                        VariableDeclSyntax(
-                            bindingSpecifier: .keyword(.var),
-                            bindings: PatternBindingListSyntax(itemsBuilder: {
-                                PatternBindingSyntax(
-                                    pattern: IdentifierPatternSyntax(identifier: .identifier("bindings")),
-                                    initializer: InitializerClauseSyntax(value: FunctionCallExprSyntax(
-                                        calledExpression: DeclReferenceExprSyntax(baseName: .identifier("OracleBindings")),
-                                        leftParen: .leftParenToken(),
-                                        arguments: [
-                                            LabeledExprSyntax(
-                                                label: "capacity",
-                                                expression: IntegerLiteralExprSyntax(binds.count)
-                                            )
-                                        ],
-                                        rightParen: .rightParenToken()
-                                    ))
-                                )
-                            })
-                        )
-                    ))
+                    item: .decl(
+                        DeclSyntax(
+                            VariableDeclSyntax(
+                                bindingSpecifier: .keyword(.var),
+                                bindings: PatternBindingListSyntax(itemsBuilder: {
+                                    PatternBindingSyntax(
+                                        pattern: IdentifierPatternSyntax(
+                                            identifier: .identifier("bindings")),
+                                        initializer: InitializerClauseSyntax(
+                                            value: FunctionCallExprSyntax(
+                                                calledExpression: DeclReferenceExprSyntax(
+                                                    baseName: .identifier("OracleBindings")),
+                                                leftParen: .leftParenToken(),
+                                                arguments: [
+                                                    LabeledExprSyntax(
+                                                        label: "capacity",
+                                                        expression: IntegerLiteralExprSyntax(
+                                                            binds.count)
+                                                    )
+                                                ],
+                                                rightParen: .rightParenToken()
+                                            ))
+                                    )
+                                })
+                            )
+                        ))
                 )
                 for (index, (bind, _)) in binds.enumerated() {
-                    CodeBlockItemSyntax(item: .expr(ExprSyntax(
-                        FunctionCallExprSyntax(
-                            calledExpression: MemberAccessExprSyntax(
-                                base: DeclReferenceExprSyntax(baseName: .identifier("bindings")),
-                                declName: DeclReferenceExprSyntax(baseName: .identifier("append"))
-                            ),
-                            leftParen: .leftParenToken(),
-                            arguments: [
-                                LabeledExprSyntax(label: nil, expression: DeclReferenceExprSyntax(baseName: .identifier(bind)), trailingComma: .commaToken()),
-                                LabeledExprSyntax(label: "context", colon: .colonToken(), expression: MemberAccessExprSyntax(name: "default"), trailingComma: .commaToken()),
-                                LabeledExprSyntax(label: "bindName", expression: StringLiteralExprSyntax(content: "\(index + 1)"))
-                            ],
-                            rightParen: .rightParenToken()
-                        )
-                    )))
+                    CodeBlockItemSyntax(
+                        item: .expr(
+                            ExprSyntax(
+                                FunctionCallExprSyntax(
+                                    calledExpression: MemberAccessExprSyntax(
+                                        base: DeclReferenceExprSyntax(
+                                            baseName: .identifier("bindings")),
+                                        declName: DeclReferenceExprSyntax(
+                                            baseName: .identifier("append"))
+                                    ),
+                                    leftParen: .leftParenToken(),
+                                    arguments: [
+                                        LabeledExprSyntax(
+                                            label: nil,
+                                            expression: DeclReferenceExprSyntax(
+                                                baseName: .identifier(bind)),
+                                            trailingComma: .commaToken()),
+                                        LabeledExprSyntax(
+                                            label: "context", colon: .colonToken(),
+                                            expression: MemberAccessExprSyntax(name: "default"),
+                                            trailingComma: .commaToken()),
+                                        LabeledExprSyntax(
+                                            label: "bindName",
+                                            expression: StringLiteralExprSyntax(
+                                                content: "\(index + 1)")),
+                                    ],
+                                    rightParen: .rightParenToken()
+                                )
+                            )))
                 }
-                CodeBlockItemSyntax(item: .stmt(StmtSyntax(ReturnStmtSyntax(
-                    expression: DeclReferenceExprSyntax(baseName: .identifier("bindings"))
-                ))))
+                CodeBlockItemSyntax(
+                    item: .stmt(
+                        StmtSyntax(
+                            ReturnStmtSyntax(
+                                expression: DeclReferenceExprSyntax(
+                                    baseName: .identifier("bindings"))
+                            ))))
             })
         )
     }
@@ -254,19 +294,23 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             name: .identifier("makeBindings"),
             signature: FunctionSignatureSyntax(
                 parameterClause: .init(parameters: []),
-                effectSpecifiers: FunctionEffectSpecifiersSyntax(throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
+                effectSpecifiers: FunctionEffectSpecifiersSyntax(
+                    throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
                 returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "OracleBindings"))
             ),
             body: CodeBlockSyntax(statementsBuilder: {
                 CodeBlockItemSyntax(
-                    item: .stmt(StmtSyntax(
-                        ReturnStmtSyntax(expression: FunctionCallExprSyntax(
-                            calledExpression: DeclReferenceExprSyntax(baseName: .identifier("OracleBindings")),
-                            leftParen: .leftParenToken(),
-                            arguments: [],
-                            rightParen: .rightParenToken()
+                    item: .stmt(
+                        StmtSyntax(
+                            ReturnStmtSyntax(
+                                expression: FunctionCallExprSyntax(
+                                    calledExpression: DeclReferenceExprSyntax(
+                                        baseName: .identifier("OracleBindings")),
+                                    leftParen: .leftParenToken(),
+                                    arguments: [],
+                                    rightParen: .rightParenToken()
+                                ))
                         ))
-                    ))
                 )
             })
         )
@@ -290,55 +334,79 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             ),
             body: CodeBlockSyntax(statementsBuilder: {
                 if !columns.isEmpty {
-                    CodeBlockItemSyntax(item: .decl(DeclSyntax(
-                        VariableDeclSyntax(
-                            bindingSpecifier: .keyword(.let),
-                            bindings: [
-                                PatternBindingSyntax(
-                                    pattern: TuplePatternSyntax(elementsBuilder: {
-                                        for (column, _, alias) in columns {
-                                            TuplePatternElementSyntax(pattern: IdentifierPatternSyntax(identifier: .identifier(alias ?? column)))
-                                        }
-                                    }),
-                                    initializer: InitializerClauseSyntax(
-                                        value: TryExprSyntax(
-                                            expression: FunctionCallExprSyntax(
-                                                calledExpression: MemberAccessExprSyntax(
-                                                    base: DeclReferenceExprSyntax(baseName: .identifier("row")),
-                                                    name: .identifier("decode")
-                                                ),
-                                                leftParen: .leftParenToken(),
-                                                rightParen: .rightParenToken(),
-                                                argumentsBuilder: {
-                                                    LabeledExprSyntax(expression: MemberAccessExprSyntax(
-                                                        base: TupleExprSyntax(elementsBuilder: {
-                                                            for (_, column, _) in columns {
-                                                                LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: column))
-                                                            }
-                                                        }),
-                                                        declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
-                                                    ))
+                    CodeBlockItemSyntax(
+                        item: .decl(
+                            DeclSyntax(
+                                VariableDeclSyntax(
+                                    bindingSpecifier: .keyword(.let),
+                                    bindings: [
+                                        PatternBindingSyntax(
+                                            pattern: TuplePatternSyntax(elementsBuilder: {
+                                                for (column, _, alias) in columns {
+                                                    TuplePatternElementSyntax(
+                                                        pattern: IdentifierPatternSyntax(
+                                                            identifier: .identifier(alias ?? column)
+                                                        ))
                                                 }
+                                            }),
+                                            initializer: InitializerClauseSyntax(
+                                                value: TryExprSyntax(
+                                                    expression: FunctionCallExprSyntax(
+                                                        calledExpression: MemberAccessExprSyntax(
+                                                            base: DeclReferenceExprSyntax(
+                                                                baseName: .identifier("row")),
+                                                            name: .identifier("decode")
+                                                        ),
+                                                        leftParen: .leftParenToken(),
+                                                        rightParen: .rightParenToken(),
+                                                        argumentsBuilder: {
+                                                            LabeledExprSyntax(
+                                                                expression: MemberAccessExprSyntax(
+                                                                    base: TupleExprSyntax(
+                                                                        elementsBuilder: {
+                                                                            for (_, column, _)
+                                                                                in columns
+                                                                            {
+                                                                                LabeledExprSyntax(
+                                                                                    expression:
+                                                                                        DeclReferenceExprSyntax(
+                                                                                            baseName:
+                                                                                                column
+                                                                                        ))
+                                                                            }
+                                                                        }),
+                                                                    declName:
+                                                                        DeclReferenceExprSyntax(
+                                                                            baseName: .keyword(
+                                                                                .self))
+                                                                ))
+                                                        }
+                                                    )
+                                                )
                                             )
                                         )
-                                    )
+                                    ]
                                 )
-                            ]
-                        )
-                    )))
-                    CodeBlockItemSyntax(item: .stmt(StmtSyntax(ReturnStmtSyntax(expression: FunctionCallExprSyntax(
-                        calledExpression: DeclReferenceExprSyntax(baseName: .identifier("Row")),
-                        leftParen: .leftParenToken(),
-                        rightParen: .rightParenToken(),
-                        argumentsBuilder: {
-                            for (column, _, alias) in columns {
-                                LabeledExprSyntax(
-                                    label: alias ?? column,
-                                    expression: DeclReferenceExprSyntax(baseName: .identifier(alias ?? column))
-                                )
-                            }
-                        }
-                    )))))
+                            )))
+                    CodeBlockItemSyntax(
+                        item: .stmt(
+                            StmtSyntax(
+                                ReturnStmtSyntax(
+                                    expression: FunctionCallExprSyntax(
+                                        calledExpression: DeclReferenceExprSyntax(
+                                            baseName: .identifier("Row")),
+                                        leftParen: .leftParenToken(),
+                                        rightParen: .rightParenToken(),
+                                        argumentsBuilder: {
+                                            for (column, _, alias) in columns {
+                                                LabeledExprSyntax(
+                                                    label: alias ?? column,
+                                                    expression: DeclReferenceExprSyntax(
+                                                        baseName: .identifier(alias ?? column))
+                                                )
+                                            }
+                                        }
+                                    )))))
                 }
             })
         )

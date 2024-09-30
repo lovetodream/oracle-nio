@@ -18,6 +18,6 @@ import SwiftSyntaxMacros
 @main
 struct OracleNIOMacrosPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
-        OracleStatementMacro.self,
+        OracleStatementMacro.self
     ]
 }

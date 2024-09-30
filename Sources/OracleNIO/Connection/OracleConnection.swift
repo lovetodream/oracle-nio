@@ -481,8 +481,10 @@ extension OracleConnection {
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
     ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row {
-        let sendableStatement = try OracleStatement(unsafeSQL: Statement.sql, binds: statement.makeBindings())
-        let stream: OracleRowSequence = try await execute(sendableStatement, options: options, logger: logger, file: file, line: line)
+        let sendableStatement = try OracleStatement(
+            unsafeSQL: Statement.sql, binds: statement.makeBindings())
+        let stream: OracleRowSequence = try await execute(
+            sendableStatement, options: options, logger: logger, file: file, line: line)
         return stream.map { try statement.decodeRow($0) }
     }
 

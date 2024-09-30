@@ -281,4 +281,115 @@ final class PreparedStatementsPostgresNIOTests: XCTestCase {
             throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
+
+    func testMacroWithOptionalBind() throws {
+        #if canImport(OracleNIOMacros)
+            assertMacroExpansion(
+                #"""
+                @Statement("SELECT \("id", UUID.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", Int?.self) > age")
+                struct MyStatement {}
+                """#,
+                expandedSource: """
+                    struct MyStatement {
+
+                        struct Row {
+                            var id: UUID
+                            var name: String
+                            var age: Int
+                        }
+
+                        static let sql = "SELECT id, name, age FROM users WHERE :1 > age"
+
+                        var age: Int?
+
+                        func makeBindings() throws -> OracleBindings {
+                            var bindings = OracleBindings(capacity: 1)
+                            bindings.append(age, context: .default, bindName: "1")
+                            return bindings
+                        }
+
+                        func decodeRow(_ row: OracleRow) throws -> Row {
+                            let (id, name, age) = try row.decode((UUID, String, Int).self)
+                            return Row(id: id, name: name, age: age)
+                        }
+                    }
+
+                    extension MyStatement: OraclePreparedStatement {
+                    }
+                    """,
+                macroSpecs: testMacros
+            )
+        #else
+            throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testMacroWithOptionalColumn() throws {
+        #if canImport(OracleNIOMacros)
+            assertMacroExpansion(
+                #"""
+                @Statement("SELECT \("id", UUID?.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", Int?.self) > age")
+                struct MyStatement {}
+                """#,
+                expandedSource: """
+                    struct MyStatement {
+
+                        struct Row {
+                            var id: UUID?
+                            var name: String
+                            var age: Int
+                        }
+
+                        static let sql = "SELECT id, name, age FROM users WHERE :1 > age"
+
+                        var age: Int?
+
+                        func makeBindings() throws -> OracleBindings {
+                            var bindings = OracleBindings(capacity: 1)
+                            bindings.append(age, context: .default, bindName: "1")
+                            return bindings
+                        }
+
+                        func decodeRow(_ row: OracleRow) throws -> Row {
+                            let (id, name, age) = try row.decode((UUID?, String, Int).self)
+                            return Row(id: id, name: name, age: age)
+                        }
+                    }
+
+                    extension MyStatement: OraclePreparedStatement {
+                    }
+                    """,
+                macroSpecs: testMacros
+            )
+        #else
+            throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testMacroWithWithInvalidTypeDoesNotWork() throws {
+        #if canImport(OracleNIOMacros)
+            assertMacroExpansion(
+                #"""
+                @Statement("SELECT \("id", UUID??.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", Int?.self) > age")
+                struct MyStatement {}
+                """#,
+                expandedSource: """
+                    struct MyStatement {}
+
+                    extension MyStatement: OraclePreparedStatement {
+                    }
+                    """,
+                diagnostics: [
+                    DiagnosticSpec(
+                        message: "Cannot parse type for column with name 'id'",
+                        line: 1,
+                        column: 1
+                    )
+                ],
+                macroSpecs: testMacros
+            )
+        #else
+            throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
 }

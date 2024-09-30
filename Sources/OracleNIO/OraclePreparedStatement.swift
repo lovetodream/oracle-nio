@@ -103,6 +103,27 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
             as: String? = nil
         ) {}
 
+        /// Adds a column, e.g. inside a `SELECT` statement.
+        /// - Parameters:
+        ///   - name: The column name in SQL.
+        ///   - type: The type used to represent the column data in Swift.
+        ///   - as: An optional alias for the column. It will be used in as an alias in SQL and the declaration Swifts ``OraclePreparedStatement/Row`` struct.
+        ///
+        /// ```swift
+        ///"SELECT \("id", Int.self) FROM users"
+        ///// -> SQL:   SELECT id FROM users
+        ///// -> Swift: struct Row { var id: Int }
+        ///
+        ///"SELECT \("user_id", Int.self, as: userID) FROM users"
+        ///// -> SQL:   SELECT id as userID FROM users
+        ///// -> SWIFT: struct Row { var userID: Int }
+        /// ```
+        public mutating func appendInterpolation(
+            _ name: String,
+            _ type: (some OracleThrowingDynamicTypeEncodable)?.Type,
+            as: String? = nil
+        ) {}
+
         /// Adds a bind variable.
         /// - Parameters:
         ///   - bind: The name of the bind variable in Swift.
@@ -110,6 +131,15 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
         public mutating func appendInterpolation(
             bind: String,
             _ type: (some OracleDecodable).Type
+        ) {}
+
+        /// Adds a bind variable.
+        /// - Parameters:
+        ///   - bind: The name of the bind variable in Swift.
+        ///   - type: The Swift type of the bind variable.
+        public mutating func appendInterpolation(
+            bind: String,
+            _ type: (some OracleDecodable)?.Type
         ) {}
     }
 }

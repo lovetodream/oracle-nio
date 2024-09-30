@@ -47,6 +47,8 @@ Oracle Database 12.1 or later.
 - ``OracleCell``
 - ``OracleColumn``
 - ``StatementOptions``
+- ``OraclePreparedStatement``
+- ``Statement(_:)``
 
 ### Encoding and Decoding
 
@@ -58,8 +60,6 @@ Oracle Database 12.1 or later.
 - ``OracleDecodable``
 - ``OracleDecodingContext``
 - ``OracleCodable``
-- ``OracleJSONEncoder``
-- ``OracleJSONDecoder``
 - ``OracleDataType``
 - ``OracleDataTypeNumber``
 - ``OracleNumber``
@@ -67,6 +67,9 @@ Oracle Database 12.1 or later.
 - ``Cursor``
 - ``RowID``
 - ``IntervalDS``
+- ``OracleJSON``
+- ``OracleVectorProtocol``
+- ``OracleVectorBinary``
 - ``OracleVectorInt8``
 - ``OracleVectorFloat32``
 - ``OracleVectorFloat64``

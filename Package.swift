@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import PackageDescription
+import CompilerPluginSupport
 
 let package = Package(
     name: "oracle-nio",
@@ -19,6 +20,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.0.0-latest" ... "600.0.0-latest"),
     ],
     targets: [
         .target(
@@ -43,7 +45,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_PBKDF2", "VendoredConnectionPoolModule",
+                "_PBKDF2", "VendoredConnectionPoolModule", "OracleNIOMacros",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete"),
@@ -61,6 +63,20 @@ let package = Package(
             name: "IntegrationTests",
             dependencies: ["OracleNIO"],
             resources: [.process("Data")]
+        ),
+        .macro(
+            name: "OracleNIOMacros",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ]
+        ),
+        .testTarget(
+            name: "OracleNIOMacrosTests",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+                "OracleNIOMacros",
+            ]
         ),
     ]
 )

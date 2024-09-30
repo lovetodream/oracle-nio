@@ -21,7 +21,7 @@
 /// ```swift
 /// struct Example: OraclePreparedStatement {
 ///     static let sql = "SELECT id, name, age FROM users WHERE :1 < age"
-///     typealias Row = (UUID, String, Int)
+///     typealias Row = (Int, String, Int)
 ///
 ///     var age: Int
 ///
@@ -67,7 +67,7 @@ extension OraclePreparedStatement {
 /// A parsable String literal for the ``Statement(_:)`` macro. It doesn't store anything and is completely useless outside of the ``Statement(_:)`` declaration.
 ///
 /// ```swift
-/// @Statement("SELECT \("id", UUID.self), \("name", String.self), \("age", Int.self) FROM users")
+/// @Statement("SELECT \("id", Int.self), \("name", String.self), \("age", Int.self) FROM users")
 /// struct UsersStatement {}
 /// ```
 public struct _OracleStatementString: ExpressibleByStringInterpolation {
@@ -89,13 +89,13 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
         ///   - as: An optional alias for the column. It will be used in as an alias in SQL and the declaration Swifts ``OraclePreparedStatement/Row`` struct.
         ///
         /// ```swift
-        ///"SELECT \("id", UUID.self) FROM users"
+        ///"SELECT \("id", Int.self) FROM users"
         ///// -> SQL:   SELECT id FROM users
-        ///// -> Swift: struct Row { let id: UUID }
+        ///// -> Swift: struct Row { var id: Int }
         ///
-        ///"SELECT \("user_id", UUID.self, as: userID) FROM users"
+        ///"SELECT \("user_id", Int.self, as: userID) FROM users"
         ///// -> SQL:   SELECT id as userID FROM users
-        ///// -> SWIFT: struct Row { let userID: UUID }
+        ///// -> SWIFT: struct Row { var userID: Int }
         /// ```
         public mutating func appendInterpolation(
             _ name: String,
@@ -118,7 +118,7 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
 ///
 /// For example, the following code applies the `Statement` macro to the type `UsersStatement`:
 /// ```swift
-/// @Statement("SELECT \("id", UUID.self), \("name", String.self), \("age", Int.self) FROM users")
+/// @Statement("SELECT \("id", Int.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", OracleNumber.self) < age")
 /// struct UsersStatement {}
 /// ```
 ///
@@ -127,3 +127,6 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
 @attached(member, names: arbitrary)
 @attached(extension, conformances: OraclePreparedStatement)
 public macro Statement(_ statement: _OracleStatementString) = #externalMacro(module: "OracleNIOMacros", type: "OracleStatementMacro")
+
+@Statement("SELECT \("id", Int.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", OracleNumber.self) < age")
+struct UsersStatement {}

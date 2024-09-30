@@ -116,7 +116,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
 
         let bindings = binds.map { name, type in
             VariableDeclSyntax(
-                bindingSpecifier: .keyword(.let, leadingTrivia: .carriageReturnLineFeed, trailingTrivia: .space),
+                bindingSpecifier: .keyword(.var, leadingTrivia: .carriageReturnLineFeed, trailingTrivia: .space),
                 bindings: PatternBindingListSyntax(
                     itemsBuilder: {
                         PatternBindingSyntax(
@@ -176,7 +176,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                 for (name, type, alias) in columns {
                     MemberBlockItemSyntax(
                         decl: VariableDeclSyntax(
-                            bindingSpecifier: .keyword(.let, trailingTrivia: .space),
+                            bindingSpecifier: .keyword(.var, trailingTrivia: .space),
                             bindings: PatternBindingListSyntax(
                                 itemsBuilder: {
                                     PatternBindingSyntax(

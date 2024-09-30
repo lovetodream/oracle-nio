@@ -43,18 +43,18 @@ final class PreparedStatementsPostgresNIOTests: XCTestCase {
             struct MyStatement {
             
                 struct Row {
-                    let id: UUID
-                    let name: String
-                    let age: Int
+                    var id: UUID
+                    var name: String
+                    var age: Int
                 }
             
-                static let sql = "SELECT id, name, age FROM users WHERE $1 > age"
+                static let sql = "SELECT id, name, age FROM users WHERE :1 > age"
             
-                let age: Int
+                var age: Int
             
                 func makeBindings() throws -> OracleBindings {
                     var bindings = OracleBindings(capacity: 1)
-                    bindings.append(age)
+                    bindings.append(age, context: .default, bindName: "1")
                     return bindings
                 }
             
@@ -85,9 +85,9 @@ final class PreparedStatementsPostgresNIOTests: XCTestCase {
             struct MyStatement {
             
                 struct Row {
-                    let id: UUID
-                    let name: String
-                    let age: Int
+                    var id: UUID
+                    var name: String
+                    var age: Int
                 }
             
                 static let sql = "SELECT id, name, age FROM users"
@@ -124,19 +124,19 @@ final class PreparedStatementsPostgresNIOTests: XCTestCase {
             
                 typealias Row = Void
             
-                static let sql = "INSERT INTO users (id, name, age) VALUES ($1, $2, $3)"
+                static let sql = "INSERT INTO users (id, name, age) VALUES (:1, :2, :3)"
             
-                let id: Int
+                var id: Int
             
-                let name: String
+                var name: String
             
-                let age: Int
+                var age: Int
             
                 func makeBindings() throws -> OracleBindings {
                     var bindings = OracleBindings(capacity: 3)
-                    bindings.append(id)
-                    bindings.append(name)
-                    bindings.append(age)
+                    bindings.append(id, context: .default, bindName: "1")
+                    bindings.append(name, context: .default, bindName: "2")
+                    bindings.append(age, context: .default, bindName: "3")
                     return bindings
                 }
             
@@ -165,18 +165,18 @@ final class PreparedStatementsPostgresNIOTests: XCTestCase {
             struct MyStatement {
             
                 struct Row {
-                    let userID: UUID
-                    let name: String
-                    let age: Int
+                    var userID: UUID
+                    var name: String
+                    var age: Int
                 }
             
-                static let sql = "SELECT user_id AS userID, name, age FROM users WHERE $1 > age"
+                static let sql = "SELECT user_id AS userID, name, age FROM users WHERE :1 > age"
             
-                let age: Int
+                var age: Int
             
                 func makeBindings() throws -> OracleBindings {
                     var bindings = OracleBindings(capacity: 1)
-                    bindings.append(age)
+                    bindings.append(age, context: .default, bindName: "1")
                     return bindings
                 }
             

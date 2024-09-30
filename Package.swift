@@ -26,11 +26,12 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "VendoredConnectionPoolModule",
+            name: "_ConnectionPoolModule",
             dependencies: [
                 .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "DequeModule", package: "swift-collections"),
-            ]
+            ],
+            path: "Sources/VendoredConnectionPoolModule"
         ),
         .target(name: "_PBKDF2", dependencies: [.product(name: "Crypto", package: "swift-crypto")]),
         .testTarget(name: "_PBKDF2Tests", dependencies: ["_PBKDF2"]),
@@ -47,7 +48,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_PBKDF2", "VendoredConnectionPoolModule", "OracleNIOMacros",
+                "_PBKDF2", "_ConnectionPoolModule", "OracleNIOMacros",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete"),

@@ -14,6 +14,7 @@
 
 #if compiler(>=6.0)
     import OracleNIO
+    import OracleNIOMacros
     import Testing
 
     @Suite

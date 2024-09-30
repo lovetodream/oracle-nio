@@ -143,18 +143,3 @@ public struct _OracleStatementString: ExpressibleByStringInterpolation {
         ) {}
     }
 }
-
-/// Defines and implements conformance of the OraclePreparedStatement protocol for Structs.
-///
-/// For example, the following code applies the `Statement` macro to the type `UsersStatement`:
-/// ```swift
-/// @Statement("SELECT \("id", Int.self), \("name", String.self), \("age", Int.self) FROM users WHERE \(bind: "age", OracleNumber.self) < age")
-/// struct UsersStatement {}
-/// ```
-///
-/// You can send Statements to an Oracle Database server
-/// with ``OracleConnection/execute(_:options:logger:file:line:)-9uyvp``.
-@attached(member, names: arbitrary)
-@attached(extension, conformances: OraclePreparedStatement)
-public macro Statement(_ statement: _OracleStatementString) =
-    #externalMacro(module: "OracleNIOMacros", type: "OracleStatementMacro")

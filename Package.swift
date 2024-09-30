@@ -9,7 +9,8 @@ let package = Package(
     name: "oracle-nio",
     platforms: [.macOS(.v13), .iOS(.v16), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
     products: [
-        .library(name: "OracleNIO", targets: ["OracleNIO"])
+        .library(name: "OracleNIO", targets: ["OracleNIO"]),
+        .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
@@ -48,7 +49,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_PBKDF2", "_ConnectionPoolModule", "OracleNIOMacros",
+                "_PBKDF2", "_ConnectionPoolModule",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete"),
@@ -64,11 +65,15 @@ let package = Package(
         ),
         .testTarget(
             name: "IntegrationTests",
-            dependencies: ["OracleNIO"],
+            dependencies: ["OracleNIO", "OracleNIOMacros"],
             resources: [.process("Data")]
         ),
-        .macro(
+        .target(
             name: "OracleNIOMacros",
+            dependencies: ["OracleNIO", "OracleNIOMacrosPlugin"]
+        ),
+        .macro(
+            name: "OracleNIOMacrosPlugin",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -78,7 +83,7 @@ let package = Package(
             name: "OracleNIOMacrosTests",
             dependencies: [
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
-                "OracleNIOMacros",
+                "OracleNIOMacrosPlugin",
             ]
         ),
     ]

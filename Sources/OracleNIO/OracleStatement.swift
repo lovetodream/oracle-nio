@@ -286,6 +286,10 @@ public struct OracleBindings: Sendable, Hashable {
             ))
     }
 
+    public mutating func appendNull() {
+        self.appendNull(.varchar, bindName: "\(count + 1)")
+    }
+
     @inlinable
     public mutating func append<Value: OracleThrowingDynamicTypeEncodable>(
         _ value: Value, context: OracleEncodingContext, bindName: String
@@ -302,6 +306,11 @@ public struct OracleBindings: Sendable, Hashable {
             try value._encodeRaw(into: &self.bytes, context: context)
         }
         self.metadata.append(metadata)
+    }
+
+    @inlinable
+    public mutating func append(_ value: some OracleThrowingDynamicTypeEncodable) throws {
+        try self.append(value, context: .default, bindName: "\(count + 1)")
     }
 
     @inlinable
@@ -325,6 +334,11 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
+    public mutating func append(_ value: some OracleDynamicTypeEncodable) {
+        self.append(value, context: .default, bindName: "\(count + 1)")
+    }
+
+    @inlinable
     public mutating func append<Value: OracleRef>(
         _ value: Value, bindName: String
     ) {
@@ -345,6 +359,15 @@ public struct OracleBindings: Sendable, Hashable {
                 }
             }
             self.metadata.append(metadata)
+        }
+    }
+
+    @inlinable
+    public mutating func append(_ value: some OracleRef) {
+        if let name = contains(ref: value) {
+            self.append(value, bindName: name)
+        } else {
+            self.append(value, bindName: "\(count + 1)")
         }
     }
 
@@ -395,6 +418,7 @@ public struct OracleBindings: Sendable, Hashable {
     ///
     /// You might wonder why we don't use the metadata on `OracleRef` itself.
     /// This is because we cannot know if the metadata is from a previous statement or not.
+    @usableFromInline
     func contains(ref: OracleRef) -> String? {
         self.metadata.first(where: { $0.outContainer === ref })?.bindName
     }

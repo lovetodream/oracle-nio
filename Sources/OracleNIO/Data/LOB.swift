@@ -149,7 +149,7 @@ extension LOB {
     ///
     /// - Parameters:
     ///   - chunkSize: The size of a single chunk of data read from the database.
-    ///                If empty, ``chunkSize`` will be used.
+    ///                If empty, a sensible default will be used.
     ///   - connection: The connection used the stream the buffer from.
     ///                 This has to be the same one the LOB reference was created on.
     /// - Returns: An async sequence used to iterate over

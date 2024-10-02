@@ -43,10 +43,9 @@ extension OracleCell {
     /// Decode the cell into a Swift type, that conforms to ``OracleDecodable``.
     ///
     /// - Parameters:
-    ///   - _:  The Swift type, which conforms to ``OracleDecodable``, to decode from the cell's
+    ///   - : The Swift type, which conforms to ``OracleDecodable``, to decode from the cell's
     ///     ``OracleCell/bytes`` values.
-    ///   - context: A ``OracleDecodingContext`` to supply a custom
-    ///   ``OracleJSONDecoder`` for decoding JSON fields.
+    ///  - context: A ``OracleDecodingContext`` to supply custom properties for decoding.
     ///   - file: The source file in which this methods was called. Used in the error case in
     ///   ``OracleDecodingError``.
     ///   - line: The source file line in which this method was called. Used in the error case in
@@ -77,6 +76,16 @@ extension OracleCell {
         }
     }
 
+    /// Decode the cell into a Swift type, that conforms to ``OracleDecodable``.
+    ///
+    /// - Parameters:
+    ///   - : The Swift type, which conforms to ``OracleDecodable``, to decode from the cell's
+    ///     ``OracleCell/bytes`` values.
+    ///  - file: The source file in which this methods was called. Used in the error case in
+    ///   ``OracleDecodingError``.
+    ///   - line: The source file line in which this method was called. Used in the error case in
+    ///   ``OracleDecodingError``.
+    /// - Returns: A decoded Swift type.
     @inlinable
     public func decode<T: OracleDecodable>(
         _: T.Type, file: String = #fileID, line: Int = #line

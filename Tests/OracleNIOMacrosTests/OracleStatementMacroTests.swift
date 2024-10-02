@@ -408,7 +408,7 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
     }
 
     func testMultilineMacro() throws {
-        #if canImport(OracleNIOMacrosPlugin)
+        #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
             @Statement("""

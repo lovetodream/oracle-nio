@@ -64,7 +64,7 @@
     struct SelectFromDualQuery {}
 
     @Statement(
-        "SELECT \("1", Int.self, as: "count") FROM dual WHERE 1 >= \(bind: "minCount", OracleNumber.self)"
+        "SELECT \("1", Int.self, as: "count") FROM dual WHERE 1 >= \(bind: "minCount", OracleNumber?.self)"
     )
     struct SelectFromDualWithWhereClauseQuery {}
 

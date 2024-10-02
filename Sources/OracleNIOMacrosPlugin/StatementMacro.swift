@@ -12,11 +12,20 @@
 //
 //===----------------------------------------------------------------------===//
 
+// swift-format-ignore-file
+
 import SwiftCompilerPlugin
 import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+
+// db driver specifics
+private let domain = "OracleNIO"
+private let protocolName = "OraclePreparedStatement"
+private let row = "OracleRow"
+private let bindings = "OracleBindings"
+private let bindPrefix = ":"
 
 private enum StatementMacroDiagnosticMessages: DiagnosticMessage {
     case invalidDeclaration
@@ -24,7 +33,7 @@ private enum StatementMacroDiagnosticMessages: DiagnosticMessage {
     var diagnosticID: MessageID {
         switch self {
         case .invalidDeclaration:
-            MessageID(domain: "OracleNIO", id: "statement-invalid-declaration")
+            MessageID(domain: domain, id: "statement-invalid-declaration")
         }
     }
 
@@ -38,14 +47,14 @@ private enum StatementMacroDiagnosticMessages: DiagnosticMessage {
     var severity: DiagnosticSeverity {
         switch self {
         case .invalidDeclaration:
-            .error
+                .error
         }
     }
 }
 private struct InvalidDeclarationFixIt: FixItMessage {
     var introducer: TokenSyntax
     var message: String { "Replace '\(introducer.text)' with 'struct'" }
-    let fixItID = MessageID(domain: "OracleNIO", id: "statement-invalid-declaration-fix-it")
+    let fixItID = MessageID(domain: domain, id: "statement-invalid-declaration-fix-it")
 }
 private enum StatementMacroError: Error, DiagnosticMessage {
     case unprocessableInterpolation(name: String, isBind: Bool)
@@ -53,7 +62,7 @@ private enum StatementMacroError: Error, DiagnosticMessage {
     var diagnosticID: MessageID {
         switch self {
         case .unprocessableInterpolation:
-            MessageID(domain: "OracleNIO", id: "unprocessable-interpolation")
+            MessageID(domain: domain, id: "unprocessable-interpolation")
         }
     }
 
@@ -67,7 +76,7 @@ private enum StatementMacroError: Error, DiagnosticMessage {
     var severity: DiagnosticSeverity {
         switch self {
         case .unprocessableInterpolation:
-            .error
+                .error
         }
     }
 }
@@ -86,7 +95,16 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         guard declaration.is(StructDeclSyntax.self) else {
             return []
         }
+        #if canImport(SwiftSyntax600)
         let protocols = protocols.map { InheritedTypeSyntax(type: $0) }
+        #else
+        let protocols = if protocols.isEmpty {
+            // In tests, the protocol is not added before 600, so we'll add it manually
+            [InheritedTypeSyntax(type: TypeSyntax(stringLiteral: protocolName))]
+        } else {
+            protocols.map { InheritedTypeSyntax(type: $0) }
+        }
+        #endif
         return [
             ExtensionDeclSyntax(
                 extendedType: type,
@@ -96,60 +114,59 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         ]
     }
 
-    public static func expansion(
-        of node: AttributeSyntax, providingMembersOf declaration: some DeclGroupSyntax,
-        in context: some MacroExpansionContext
-    ) throws -> [DeclSyntax] {
+    public static func expansion(of node: AttributeSyntax, providingMembersOf declaration: some DeclGroupSyntax, in context: some MacroExpansionContext) throws -> [DeclSyntax] {
         guard declaration.is(StructDeclSyntax.self) else {
+            #if canImport(SwiftSyntax600)
+            context.diagnose(Diagnostic(
+                node: node,
+                message: StatementMacroDiagnosticMessages.invalidDeclaration,
+                fixIt: FixIt(message: InvalidDeclarationFixIt(introducer: declaration.introducer), changes: [
+                    FixIt.Change.replace(
+                        oldNode: Syntax(declaration.introducer),
+                        newNode: Syntax(TokenSyntax.keyword(.struct))
+                    )
+                ])
+            ))
+            #else
             context.diagnose(
                 Diagnostic(
                     node: node,
-                    message: StatementMacroDiagnosticMessages.invalidDeclaration,
-                    fixIt: FixIt(
-                        message: InvalidDeclarationFixIt(introducer: declaration.introducer),
-                        changes: [
-                            FixIt.Change.replace(
-                                oldNode: Syntax(declaration.introducer),
-                                newNode: Syntax(TokenSyntax.keyword(.struct))
-                            )
-                        ])
+                    message: StatementMacroDiagnosticMessages.invalidDeclaration
                 ))
+            #endif
             return []
         }
 
         // It is fine to force unwrap here, because the compiler ensures we receive this exact syntax tree here.
-        let elements = node
+        let unparsedString = node
             .arguments!.as(LabeledExprListSyntax.self)!
-            .first!.expression.as(StringLiteralExprSyntax.self)!.segments
+            .first!.expression.as(StringLiteralExprSyntax.self)!
 
-        var sql = ""
+        var sql: StringLiteralSegmentListSyntax = []
         var columns: [Column] = []
         var binds: [Bind] = []
-        for element in elements {
+        for element in unparsedString.segments {
             if let expression = element.as(ExpressionSegmentSyntax.self) {
                 let interpolation = try extractInterpolations(expression)
                 switch interpolation {
                 case .column(let column):
                     columns.append(column)
-                    sql.append(column.name)
+                    sql.append(.init(StringSegmentSyntax(content: .stringSegment(column.name))))
                     if let alias = column.alias {
-                        sql.append(" AS \(alias)")
+                        sql.append(.init(StringSegmentSyntax(content: .stringSegment(" AS \(alias)"))))
                     }
                 case .bind(let bind):
                     binds.append(bind)
-                    sql.append(":\(binds.count)")
+                    sql.append(.init(StringSegmentSyntax(content: .stringSegment("\(bindPrefix)\(binds.count)"))))
                 }
             } else if let expression = element.as(StringSegmentSyntax.self) {
-                sql.append(expression.content.text)
+                sql.append(.init(expression))
             }
         }
 
         let rowDeclaration: DeclSyntax
         if columns.isEmpty {
-            let rowAlias = TypeAliasDeclSyntax(
-                name: .identifier("Row"),
-                initializer: TypeInitializerClauseSyntax(
-                    value: IdentifierTypeSyntax(name: .identifier("Void"))))
+            let rowAlias = TypeAliasDeclSyntax(name: .identifier("Row"), initializer: TypeInitializerClauseSyntax(value: IdentifierTypeSyntax(name: .identifier("Void"))))
             rowDeclaration = DeclSyntax(rowAlias)
         } else {
             let rowStruct = makeRowStruct(for: columns)
@@ -162,14 +179,19 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         ) {
             PatternBindingSyntax(
                 pattern: IdentifierPatternSyntax(identifier: .identifier("sql")),
-                initializer: InitializerClauseSyntax(value: StringLiteralExprSyntax(content: sql))
+                initializer: InitializerClauseSyntax(
+                    value: StringLiteralExprSyntax(
+                        openingQuote: unparsedString.openingQuote,
+                        segments: sql,
+                        closingQuote: unparsedString.closingQuote
+                    )
+                )
             )
         }
 
         let bindings = binds.map { name, type, isOptional in
             VariableDeclSyntax(
-                bindingSpecifier: .keyword(
-                    .var, leadingTrivia: .carriageReturnLineFeed, trailingTrivia: .space),
+                bindingSpecifier: .keyword(.var, leadingTrivia: .carriageReturnLineFeed, trailingTrivia: .space),
                 bindings: PatternBindingListSyntax(
                     itemsBuilder: {
                         PatternBindingSyntax(
@@ -189,7 +211,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             DeclSyntax(staticSQL),
         ] + bindings.map(DeclSyntax.init) + [
             DeclSyntax(makeBindings),
-            DeclSyntax(decodeRow),
+            DeclSyntax(decodeRow)
         ]
     }
 
@@ -197,21 +219,20 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         case column(Column)
         case bind(Bind)
     }
-    private static func extractInterpolations(_ node: ExpressionSegmentSyntax) throws
-        -> Interpolation
-    {
+    private static func extractInterpolations(_ node: ExpressionSegmentSyntax) throws -> Interpolation {
         let tupleElements = node.expressions
-        precondition(
-            tupleElements.count >= 2,
-            "Expected tuple with two or more elements, less are impossible as the compiler already checks for it"
-        )
+        precondition(tupleElements.count >= 2, "Expected tuple with two or more elements, less are impossible as the compiler already checks for it")
 
         // First element needs to be the column name
         var iterator = tupleElements.makeIterator()
-        // works as tuple contains at least two elements
-        let identifier = iterator.next()! as LabeledExprSyntax
-        // Type can be force-unwrapped as the compiler ensures it is there.
+        let identifier = iterator.next()! as LabeledExprSyntax // works as tuple contains at least two elements
+                                                               // Type can be force-unwrapped as the compiler ensures it is there.
         let rawType = iterator.next()!.expression.as(MemberAccessExprSyntax.self)!.base!
+        #if canImport(SwiftSyntax600)
+        let label = identifier.label?.identifier?.name
+        #else
+        let label = identifier.label?.text
+        #endif
         let type: TokenSyntax
         let isOptional: Bool
         if let nonOptional = rawType.as(DeclReferenceExprSyntax.self)?.baseName {
@@ -226,13 +247,13 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             throw StatementMacroError.unprocessableInterpolation(
                 name: identifier.expression.as(StringLiteralExprSyntax.self)?.segments.first?.as(
                     StringSegmentSyntax.self)?.content.text ?? "<invalid>",
-                isBind: identifier.label?.identifier?.name == "bind"
+                isBind: label == "bind"
             )
         }
         // Same thing as with type.
         let name = identifier.expression.as(StringLiteralExprSyntax.self)!
             .segments.first!.as(StringSegmentSyntax.self)!.content.text
-        switch identifier.label?.identifier?.name {
+        switch label {
         case "bind":
             return .bind((name: name, type: type, isOptional: isOptional))
         default:
@@ -255,8 +276,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                             bindings: PatternBindingListSyntax(
                                 itemsBuilder: {
                                     PatternBindingSyntax(
-                                        pattern: IdentifierPatternSyntax(
-                                            identifier: .identifier(alias ?? name)),
+                                        pattern: IdentifierPatternSyntax(identifier: .identifier(alias ?? name)),
                                         typeAnnotation: makeTypeSyntax(type, optional: isOptional)
                                     )
                                 }
@@ -272,224 +292,226 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
     private static func makeBindings(for binds: [Bind]) -> FunctionDeclSyntax {
         FunctionDeclSyntax(
             name: .identifier("makeBindings"),
-            signature: FunctionSignatureSyntax(
-                parameterClause: .init(parameters: []),
-                effectSpecifiers: FunctionEffectSpecifiersSyntax(
-                    throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
-                returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "OracleBindings"))
-            ),
+            signature: bindingsFunctionSignature(),
             body: CodeBlockSyntax(statementsBuilder: {
                 CodeBlockItemSyntax(
-                    item: .decl(
-                        DeclSyntax(
-                            VariableDeclSyntax(
-                                bindingSpecifier: .keyword(.var),
-                                bindings: PatternBindingListSyntax(itemsBuilder: {
-                                    PatternBindingSyntax(
-                                        pattern: IdentifierPatternSyntax(
-                                            identifier: .identifier("bindings")),
-                                        initializer: InitializerClauseSyntax(
-                                            value: FunctionCallExprSyntax(
-                                                calledExpression: DeclReferenceExprSyntax(
-                                                    baseName: .identifier("OracleBindings")),
-                                                leftParen: .leftParenToken(),
-                                                arguments: [
-                                                    LabeledExprSyntax(
-                                                        label: "capacity",
-                                                        expression: IntegerLiteralExprSyntax(
-                                                            binds.count)
-                                                    )
-                                                ],
-                                                rightParen: .rightParenToken()
-                                            ))
-                                    )
-                                })
-                            )
-                        ))
-                )
-                for (index, (bind, _, _)) in binds.enumerated() {
-                    CodeBlockItemSyntax(
-                        item: .expr(
-                            ExprSyntax(
-                                FunctionCallExprSyntax(
-                                    calledExpression: MemberAccessExprSyntax(
-                                        base: DeclReferenceExprSyntax(
-                                            baseName: .identifier("bindings")),
-                                        declName: DeclReferenceExprSyntax(
-                                            baseName: .identifier("append"))
-                                    ),
-                                    leftParen: .leftParenToken(),
-                                    arguments: [
-                                        LabeledExprSyntax(
-                                            label: nil,
-                                            expression: DeclReferenceExprSyntax(
-                                                baseName: .identifier(bind)),
-                                            trailingComma: .commaToken()),
-                                        LabeledExprSyntax(
-                                            label: "context", colon: .colonToken(),
-                                            expression: MemberAccessExprSyntax(name: "default"),
-                                            trailingComma: .commaToken()),
-                                        LabeledExprSyntax(
-                                            label: "bindName",
-                                            expression: StringLiteralExprSyntax(
-                                                content: "\(index + 1)")),
-                                    ],
-                                    rightParen: .rightParenToken()
+                    item: .decl(DeclSyntax(
+                        VariableDeclSyntax(
+                            bindingSpecifier: .keyword(.var),
+                            bindings: PatternBindingListSyntax(itemsBuilder: {
+                                PatternBindingSyntax(
+                                    pattern: IdentifierPatternSyntax(identifier: .identifier("bindings")),
+                                    initializer: InitializerClauseSyntax(value: FunctionCallExprSyntax(
+                                        calledExpression: DeclReferenceExprSyntax(baseName: .identifier(bindings)),
+                                        leftParen: .leftParenToken(),
+                                        arguments: [
+                                            LabeledExprSyntax(
+                                                label: "capacity",
+                                                expression: IntegerLiteralExprSyntax(binds.count)
+                                            )
+                                        ],
+                                        rightParen: .rightParenToken()
+                                    ))
                                 )
-                            )))
+                            })
+                        )
+                    ))
+                )
+                for (bind, _, isOptional) in binds {
+                    appendBind(bind, isOptional: isOptional)
                 }
-                CodeBlockItemSyntax(
-                    item: .stmt(
-                        StmtSyntax(
-                            ReturnStmtSyntax(
-                                expression: DeclReferenceExprSyntax(
-                                    baseName: .identifier("bindings"))
-                            ))))
+                CodeBlockItemSyntax(item: .stmt(StmtSyntax(ReturnStmtSyntax(
+                    expression: DeclReferenceExprSyntax(baseName: .identifier("bindings"))
+                ))))
             })
         )
+    }
+
+    private static func appendBind(_ name: String, isOptional: Bool) -> CodeBlockItemSyntax {
+        if isOptional {
+            CodeBlockItemSyntax(item: .expr(ExprSyntax(
+                IfExprSyntax(
+                    conditions: [
+                        ConditionElementSyntax(condition: .optionalBinding(OptionalBindingConditionSyntax(
+                            bindingSpecifier: .keyword(.let),
+                            pattern: IdentifierPatternSyntax(identifier: .identifier(name))
+                        )))
+                    ],
+                    body: CodeBlockSyntax(statements: [appendBind(name, isOptional: false)]),
+                    elseKeyword: .keyword(.else),
+                    elseBody: IfExprSyntax.ElseBody(
+                        CodeBlockSyntax(
+                            leftBrace: .leftBraceToken(),
+                            statements: [CodeBlockItemSyntax(item: .expr(
+                                ExprSyntax(FunctionCallExprSyntax(
+                                    calledExpression: MemberAccessExprSyntax(
+                                        base: DeclReferenceExprSyntax(baseName: .identifier("bindings")),
+                                        declName: DeclReferenceExprSyntax(baseName: .identifier("appendNull"))
+                                    ),
+                                    leftParen: .leftParenToken(),
+                                    arguments: [],
+                                    rightParen: .rightParenToken()
+                                ))
+                            ))],
+                            rightBrace: .rightBraceToken()
+                        )
+                    )
+                )
+            )))
+        } else {
+            CodeBlockItemSyntax(item: .expr(ExprSyntax(
+                FunctionCallExprSyntax(
+                    calledExpression: MemberAccessExprSyntax(
+                        base: DeclReferenceExprSyntax(baseName: .identifier("bindings")),
+                        declName: DeclReferenceExprSyntax(baseName: .identifier("append"))
+                    ),
+                    leftParen: .leftParenToken(),
+                    arguments: [LabeledExprSyntax(label: nil, expression: DeclReferenceExprSyntax(baseName: .identifier(name)))],
+                    rightParen: .rightParenToken()
+                )
+            )))
+        }
     }
 
     private static func makeEmptyBindings() -> FunctionDeclSyntax {
         FunctionDeclSyntax(
             name: .identifier("makeBindings"),
-            signature: FunctionSignatureSyntax(
-                parameterClause: .init(parameters: []),
-                effectSpecifiers: FunctionEffectSpecifiersSyntax(
-                    throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
-                returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "OracleBindings"))
-            ),
+            signature: bindingsFunctionSignature(),
             body: CodeBlockSyntax(statementsBuilder: {
                 CodeBlockItemSyntax(
-                    item: .stmt(
-                        StmtSyntax(
-                            ReturnStmtSyntax(
-                                expression: FunctionCallExprSyntax(
-                                    calledExpression: DeclReferenceExprSyntax(
-                                        baseName: .identifier("OracleBindings")),
-                                    leftParen: .leftParenToken(),
-                                    arguments: [],
-                                    rightParen: .rightParenToken()
-                                ))
+                    item: .stmt(StmtSyntax(
+                        ReturnStmtSyntax(expression: FunctionCallExprSyntax(
+                            calledExpression: DeclReferenceExprSyntax(baseName: .identifier(bindings)),
+                            leftParen: .leftParenToken(),
+                            arguments: [],
+                            rightParen: .rightParenToken()
                         ))
+                    ))
                 )
             })
         )
     }
 
+    private static func bindingsFunctionSignature() -> FunctionSignatureSyntax {
+        #if canImport(SwiftSyntax600)
+        FunctionSignatureSyntax(
+            parameterClause: .init(parameters: []),
+            effectSpecifiers: FunctionEffectSpecifiersSyntax(
+                throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
+            returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: bindings))
+        )
+        #else
+        FunctionSignatureSyntax(
+            parameterClause: .init(parameters: []),
+            effectSpecifiers: FunctionEffectSpecifiersSyntax(throwsSpecifier: .keyword(.throws)),
+            returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: bindings))
+        )
+        #endif
+    }
+
     private static func decodeRow(from columns: [Column]) -> FunctionDeclSyntax {
-        FunctionDeclSyntax(
+        return FunctionDeclSyntax(
             name: .identifier("decodeRow"),
-            signature: FunctionSignatureSyntax(
-                parameterClause: .init(parameters: [
-                    FunctionParameterSyntax(
-                        firstName: .wildcardToken(),
-                        secondName: .identifier("row"),
-                        type: TypeSyntax(stringLiteral: "OracleRow")
-                    )
-                ]),
-                effectSpecifiers: FunctionEffectSpecifiersSyntax(
-                    throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))
-                ),
-                returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "Row"))
-            ),
+            signature: decodeRowFunctionSignature(),
             body: CodeBlockSyntax(statementsBuilder: {
                 if !columns.isEmpty {
-                    CodeBlockItemSyntax(
-                        item: .decl(
-                            DeclSyntax(
-                                VariableDeclSyntax(
-                                    bindingSpecifier: .keyword(.let),
-                                    bindings: [
-                                        PatternBindingSyntax(
-                                            pattern: TuplePatternSyntax(elementsBuilder: {
-                                                for (column, _, _, alias) in columns {
-                                                    TuplePatternElementSyntax(
-                                                        pattern: IdentifierPatternSyntax(
-                                                            identifier: .identifier(alias ?? column)
-                                                        ))
+                    CodeBlockItemSyntax(item: .decl(DeclSyntax(
+                        VariableDeclSyntax(
+                            bindingSpecifier: .keyword(.let),
+                            bindings: [
+                                PatternBindingSyntax(
+                                    pattern: TuplePatternSyntax(elementsBuilder: {
+                                        for (column, _, _, alias) in columns {
+                                            TuplePatternElementSyntax(pattern: IdentifierPatternSyntax(identifier: .identifier(alias ?? column)))
+                                        }
+                                    }),
+                                    initializer: InitializerClauseSyntax(
+                                        value: TryExprSyntax(
+                                            expression: FunctionCallExprSyntax(
+                                                calledExpression: MemberAccessExprSyntax(
+                                                    base: DeclReferenceExprSyntax(baseName: .identifier("row")),
+                                                    name: .identifier("decode")
+                                                ),
+                                                leftParen: .leftParenToken(),
+                                                rightParen: .rightParenToken(),
+                                                argumentsBuilder: {
+                                                    LabeledExprSyntax(expression: MemberAccessExprSyntax(
+                                                        base: TupleExprSyntax(elementsBuilder: {
+                                                            for (_, column, isOptional, _) in columns {
+                                                                makeTypeExpressionSyntax(for: column, optional: isOptional)
+                                                            }
+                                                        }),
+                                                        declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
+                                                    ))
                                                 }
-                                            }),
-                                            initializer: InitializerClauseSyntax(
-                                                value: TryExprSyntax(
-                                                    expression: FunctionCallExprSyntax(
-                                                        calledExpression: MemberAccessExprSyntax(
-                                                            base: DeclReferenceExprSyntax(
-                                                                baseName: .identifier("row")),
-                                                            name: .identifier("decode")
-                                                        ),
-                                                        leftParen: .leftParenToken(),
-                                                        rightParen: .rightParenToken(),
-                                                        argumentsBuilder: {
-                                                            LabeledExprSyntax(
-                                                                expression: MemberAccessExprSyntax(
-                                                                    base: TupleExprSyntax(
-                                                                        elementsBuilder: {
-                                                                            for (
-                                                                                _, column,
-                                                                                isOptional, _
-                                                                            )
-                                                                                in columns
-                                                                            {
-                                                                                makeTypeExpressionSyntax(
-                                                                                    for: column,
-                                                                                    optional:
-                                                                                        isOptional)
-                                                                            }
-                                                                        }),
-                                                                    declName:
-                                                                        DeclReferenceExprSyntax(
-                                                                            baseName: .keyword(
-                                                                                .self))
-                                                                ))
-                                                        }
-                                                    )
-                                                )
                                             )
                                         )
-                                    ]
+                                    )
                                 )
-                            )))
-                    CodeBlockItemSyntax(
-                        item: .stmt(
-                            StmtSyntax(
-                                ReturnStmtSyntax(
-                                    expression: FunctionCallExprSyntax(
-                                        calledExpression: DeclReferenceExprSyntax(
-                                            baseName: .identifier("Row")),
-                                        leftParen: .leftParenToken(),
-                                        rightParen: .rightParenToken(),
-                                        argumentsBuilder: {
-                                            for (column, _, _, alias) in columns {
-                                                LabeledExprSyntax(
-                                                    label: alias ?? column,
-                                                    expression: DeclReferenceExprSyntax(
-                                                        baseName: .identifier(alias ?? column))
-                                                )
-                                            }
-                                        }
-                                    )))))
+                            ]
+                        )
+                    )))
+                    CodeBlockItemSyntax(item: .stmt(StmtSyntax(ReturnStmtSyntax(expression: FunctionCallExprSyntax(
+                        calledExpression: DeclReferenceExprSyntax(baseName: .identifier("Row")),
+                        leftParen: .leftParenToken(),
+                        rightParen: .rightParenToken(),
+                        argumentsBuilder: {
+                            for (column, _, _, alias) in columns {
+                                LabeledExprSyntax(
+                                    label: alias ?? column,
+                                    expression: DeclReferenceExprSyntax(baseName: .identifier(alias ?? column))
+                                )
+                            }
+                        }
+                    )))))
                 }
             })
         )
     }
 
-    private static func makeTypeExpressionSyntax(for type: TokenSyntax, optional: Bool)
-        -> LabeledExprSyntax
-    {
+    private static func decodeRowFunctionSignature() -> FunctionSignatureSyntax {
+        #if canImport(SwiftSyntax600)
+        FunctionSignatureSyntax(
+            parameterClause: .init(parameters: [
+                FunctionParameterSyntax(
+                    firstName: .wildcardToken(),
+                    secondName: .identifier("row"),
+                    type: TypeSyntax(stringLiteral: row)
+                )
+            ]),
+            effectSpecifiers: FunctionEffectSpecifiersSyntax(
+                throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))
+            ),
+            returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "Row"))
+        )
+        #else
+        FunctionSignatureSyntax(
+            parameterClause: .init(parameters: [
+                FunctionParameterSyntax(
+                    firstName: .wildcardToken(),
+                    secondName: .identifier("row"),
+                    type: TypeSyntax(stringLiteral: row)
+                )
+            ]),
+            effectSpecifiers: FunctionEffectSpecifiersSyntax(
+                throwsSpecifier: .keyword(.throws)
+            ),
+            returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "Row"))
+        )
+        #endif
+    }
+
+    private static func makeTypeExpressionSyntax(for type: TokenSyntax, optional: Bool) -> LabeledExprSyntax {
         if optional {
-            LabeledExprSyntax(
-                expression: OptionalChainingExprSyntax(
-                    expression: DeclReferenceExprSyntax(baseName: type)))
+            LabeledExprSyntax(expression: OptionalChainingExprSyntax(expression: DeclReferenceExprSyntax(baseName: type)))
         } else {
             LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: type))
         }
     }
 
-    private static func makeTypeSyntax(_ type: TokenSyntax, optional: Bool) -> TypeAnnotationSyntax
-    {
+    private static func makeTypeSyntax(_ type: TokenSyntax, optional: Bool) -> TypeAnnotationSyntax {
         if optional {
-            TypeAnnotationSyntax(
-                type: OptionalTypeSyntax(wrappedType: IdentifierTypeSyntax(name: type)))
+            TypeAnnotationSyntax(type: OptionalTypeSyntax(wrappedType: IdentifierTypeSyntax(name: type)))
         } else {
             TypeAnnotationSyntax(type: IdentifierTypeSyntax(name: type))
         }

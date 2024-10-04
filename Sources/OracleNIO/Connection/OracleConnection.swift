@@ -41,7 +41,7 @@ import class Foundation.ProcessInfo
 /// ## Usage
 ///
 /// Now you can use the connection to run queries on your database using
-/// ``OracleConnection/execute(_:options:logger:file:line:)``.
+/// ``OracleConnection/execute(_:options:logger:file:line:)-vguo``.
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "use")
 ///
@@ -472,6 +472,20 @@ extension OracleConnection {
             error.statement = statement
             throw error  // rethrow with more metadata
         }
+    }
+
+    /// Execute a prepared statement.
+    public func execute<Statement: OraclePreparedStatement, Row>(
+        _ statement: Statement,
+        options: StatementOptions = .init(),
+        logger: Logger? = nil,
+        file: String = #fileID, line: Int = #line
+    ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row {
+        let sendableStatement = try OracleStatement(
+            unsafeSQL: Statement.sql, binds: statement.makeBindings())
+        let stream: OracleRowSequence = try await execute(
+            sendableStatement, options: options, logger: logger, file: file, line: line)
+        return stream.map { try statement.decodeRow($0) }
     }
 
     func execute(

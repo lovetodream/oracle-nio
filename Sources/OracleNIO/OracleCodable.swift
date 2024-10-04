@@ -130,15 +130,14 @@ public protocol OracleDecodable: Sendable {
     ///
     /// This is an escape hatch to prevent a cycle in the conformance of the Optional type to
     /// ``OracleDecodable``.
-    /// `String?` should be OracleDecodable, `String??` should not be ORacleDecodable.
+    /// `String?` should be OracleDecodable, `String??` should not be OracleDecodable.
     associatedtype _DecodableType: OracleDecodable = Self
 
     /// Create an entity from the `ByteBuffer` in Oracle wire format.
     /// - Parameters:
-    ///   - byteBuffer: A `ByteBuffer` to decode. The `ByteBuffer` is sliced in such a way that it is expected that the complete buffer is consumed for decoding.
+    ///   - buffer: A `ByteBuffer` to decode. The `ByteBuffer` is sliced in such a way that it is expected that the complete buffer is consumed for decoding.
     ///   - type: The oracle data type. Depending on this type the `ByteBuffer`'s bytes need to be interpreted in different ways.
-    ///   - format: The oracle wire format.
-    ///   - context: A `OracleDecodingContext` providing context for decoding. This includes a `JSONDecoder` to use when decoding json and metadata to create better errors.
+    ///   - context: A `OracleDecodingContext` providing context for decoding.
     init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

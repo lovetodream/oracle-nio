@@ -2,13 +2,15 @@
 // Copyright 2024 Timo Zacherl
 // SPDX-License-Identifier: Apache-2.0
 
+import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
     name: "oracle-nio",
     platforms: [.macOS(.v13), .iOS(.v16), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
     products: [
-        .library(name: "OracleNIO", targets: ["OracleNIO"])
+        .library(name: "OracleNIO", targets: ["OracleNIO"]),
+        .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
@@ -19,14 +21,18 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
+        .package(
+            url: "https://github.com/swiftlang/swift-syntax.git",
+            "509.0.0-latest"..."600.0.0-latest"),
     ],
     targets: [
         .target(
-            name: "VendoredConnectionPoolModule",
+            name: "_ConnectionPoolModule",
             dependencies: [
                 .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "DequeModule", package: "swift-collections"),
-            ]
+            ],
+            path: "Sources/VendoredConnectionPoolModule"
         ),
         .target(name: "_PBKDF2", dependencies: [.product(name: "Crypto", package: "swift-crypto")]),
         .testTarget(name: "_PBKDF2Tests", dependencies: ["_PBKDF2"]),
@@ -43,7 +49,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_PBKDF2", "VendoredConnectionPoolModule",
+                "_PBKDF2", "_ConnectionPoolModule",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete"),
@@ -59,8 +65,26 @@ let package = Package(
         ),
         .testTarget(
             name: "IntegrationTests",
-            dependencies: ["OracleNIO"],
+            dependencies: ["OracleNIO", "OracleNIOMacros"],
             resources: [.process("Data")]
+        ),
+        .target(
+            name: "OracleNIOMacros",
+            dependencies: ["OracleNIO", "OracleNIOMacrosPlugin"]
+        ),
+        .macro(
+            name: "OracleNIOMacrosPlugin",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ]
+        ),
+        .testTarget(
+            name: "OracleNIOMacrosTests",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+                "OracleNIOMacrosPlugin",
+            ]
         ),
     ]
 )

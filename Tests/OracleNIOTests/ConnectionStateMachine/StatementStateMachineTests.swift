@@ -175,6 +175,48 @@ final class StatementStateMachineTests: XCTestCase {
                 .statementCancelled, read: false, cursorID: nil, clientCancelled: true))
         XCTAssertEqual(state.statementStreamCancelled(), .sendMarker(read: true))
     }
+
+    func testCancellationDoesNotCrashOnBitVector() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
+        let query: OracleStatement = "SELECT 1 AS id FROM dual"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        let describeInfo = DescribeInfo(columns: [
+            .init(
+                name: "ID",
+                dataType: .number,
+                dataTypeSize: 0,
+                precision: 11,
+                scale: 0,
+                bufferSize: 22,
+                nullsAllowed: true,
+                typeScheme: nil,
+                typeName: nil,
+                domainSchema: nil,
+                domainName: nil,
+                annotations: [:],
+                vectorDimensions: nil,
+                vectorFormat: nil
+            )
+        ])
+        let rowHeader = OracleBackendMessage.RowHeader()
+        let result = StatementResult(value: .describeInfo(describeInfo.columns))
+
+        var state = ConnectionStateMachine.readyForStatement()
+        XCTAssertEqual(
+            state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
+        XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
+        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
+        let row1: DataRow = .makeTestDataRow(1)
+        XCTAssertEqual(state.rowDataReceived(.init(1), capabilities: .init()), .wait)
+        XCTAssertEqual(
+            state.cancelStatementStream(),
+            .forwardStreamError(
+                .statementCancelled, read: false, cursorID: nil, clientCancelled: true))
+        XCTAssertEqual(state.bitVectorReceived(.init(columnsCountSent: 1, bitVector: nil)), .wait)
+        XCTAssertEqual(state.statementStreamCancelled(), .sendMarker(read: true))
+    }
 }
 
 extension OracleBackendMessage.RowData {

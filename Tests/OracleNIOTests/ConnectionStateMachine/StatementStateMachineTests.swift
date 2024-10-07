@@ -208,7 +208,6 @@ final class StatementStateMachineTests: XCTestCase {
             state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
         XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
-        let row1: DataRow = .makeTestDataRow(1)
         XCTAssertEqual(state.rowDataReceived(.init(1), capabilities: .init()), .wait)
         XCTAssertEqual(
             state.cancelStatementStream(),

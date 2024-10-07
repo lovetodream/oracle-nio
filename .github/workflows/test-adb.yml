@@ -9,41 +9,6 @@ on:
     - cron: '0 15 * * 1'
 
 jobs:
-  test-21c:
-    container:
-      image: swift:6.0-jammy
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set DEBUG specific environment variables
-      if: runner.debug == '1'
-      run: |
-        echo "LOG_LEVEL=trace" >> "$GITHUB_ENV"
-    - name: Build
-      run: swift build
-    - name: Run tests
-      run: swift test --enable-code-coverage
-      env:
-        ORA_HOSTNAME: ${{ secrets.ORA_HOSTNAME_CLOUD }}
-        ORA_PORT: ${{ secrets.ORA_PORT_CLOUD }}
-        ORA_SERVICE_NAME: ${{ secrets.ORA_SERVICE_NAME_CLOUD }}
-        ORA_USERNAME: ${{ secrets.ORA_USERNAME_CLOUD }}
-        ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD }}
-        ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD }}
-        ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD }}
-        SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
-    - name: Prepare Code Coverage
-      if: github.event_name != 'schedule'
-      run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
-    - name: Upload coverage reports to Codecov
-      if: github.event_name != 'schedule'
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: info.lcov
-
   test-23ai:
     container:
       image: swift:6.0-jammy

@@ -116,6 +116,10 @@ final class OracleStatementTests: XCTestCase {
         let query5: OracleStatement = "INSERT INTO table (col) VALUES \(longRef)"
         XCTAssertEqual(query5.binds.bytes.readableBytes, 0)
         XCTAssertGreaterThan(query5.binds.longBytes.readableBytes, 0)
+
+        let query6: OracleStatement = try "INSERT INTO table (col) VALUES \(Optional(ThrowingByteBuffer(.init())))"
+        XCTAssertGreaterThan(query6.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query6.binds.longBytes.readableBytes, 0)
     }
 
     func testBindList() {

@@ -116,6 +116,20 @@ final class OracleStatementTests: XCTestCase {
         let query5: OracleStatement = "INSERT INTO table (col) VALUES \(longRef)"
         XCTAssertEqual(query5.binds.bytes.readableBytes, 0)
         XCTAssertGreaterThan(query5.binds.longBytes.readableBytes, 0)
+
+        let query6: OracleStatement = try "INSERT INTO table (col) VALUES \(Optional(ThrowingByteBuffer(.init())))"
+        XCTAssertGreaterThan(query6.binds.bytes.readableBytes, 0)
+        XCTAssertEqual(query6.binds.longBytes.readableBytes, 0)
+    }
+
+    func testBindList() {
+        let statement1: OracleStatement = "SELECT id FROM table WHERE id IN (\(list: [Int]()))"
+        XCTAssertEqual(statement1.sql, "SELECT id FROM table WHERE id IN ()")
+        XCTAssertEqual(statement1.binds.bytes.readableBytes, 0)
+
+        let statement2: OracleStatement = "SELECT id FROM table WHERE id IN (\(list: [1, 2, 3, 4, 5]))"
+        XCTAssertEqual(statement2.sql, "SELECT id FROM table WHERE id IN (:0, :1, :2, :3, :4)")
+        XCTAssertGreaterThan(statement2.binds.bytes.readableBytes, 0)
     }
 }
 

@@ -63,57 +63,59 @@ extension OracleStatement {
         }
 
         @inlinable
-        public mutating func appendInterpolation<
-            Value: OracleThrowingDynamicTypeEncodable
-        >(_ value: Value) throws {
+        public mutating func appendInterpolation(
+            _ value: some OracleThrowingDynamicTypeEncodable,
+            context: OracleEncodingContext = .default
+        ) throws {
             let bindName = "\(self.binds.count)"
-            try self.binds.append(value, context: .default, bindName: bindName)
+            try self.binds.append(value, context: context, bindName: bindName)
             self.sql.append(contentsOf: ":\(bindName)")
         }
 
         @inlinable
-        public mutating func appendInterpolation<
-            Value: OracleThrowingDynamicTypeEncodable
-        >(_ value: Value?) throws {
+        public mutating func appendInterpolation(
+            _ value: (some OracleThrowingDynamicTypeEncodable)?,
+            context: OracleEncodingContext = .default
+        ) throws {
             let bindName = "\(self.binds.count)"
             switch value {
             case .none:
                 self.binds.appendNull(value?.oracleType, bindName: bindName)
             case .some(let value):
                 try self.binds
-                    .append(value, context: .default, bindName: bindName)
+                    .append(value, context: context, bindName: bindName)
             }
 
             self.sql.append(contentsOf: ":\(bindName)")
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleDynamicTypeEncodable>(
-            _ value: Value
+        public mutating func appendInterpolation(
+            _ value: some OracleDynamicTypeEncodable,
+            context: OracleEncodingContext = .default
         ) {
             let bindName = "\(self.binds.count)"
-            self.binds.append(value, context: .default, bindName: bindName)
+            self.binds.append(value, context: context, bindName: bindName)
             self.sql.append(contentsOf: ":\(bindName)")
         }
 
         @inlinable
-        public mutating func appendInterpolation<Value: OracleDynamicTypeEncodable>(
-            _ value: Value?
+        public mutating func appendInterpolation(
+            _ value: (some OracleDynamicTypeEncodable)?,
+            context: OracleEncodingContext = .default
         ) {
             let bindName = "\(self.binds.count)"
             switch value {
             case .none:
                 self.binds.appendNull(value?.oracleType, bindName: bindName)
             case .some(let value):
-                self.binds.append(value, context: .default, bindName: bindName)
+                self.binds.append(value, context: context, bindName: bindName)
             }
 
             self.sql.append(contentsOf: ":\(bindName)")
         }
 
-        public mutating func appendInterpolation<Value: OracleRef>(
-            _ value: Value
-        ) {
+        public mutating func appendInterpolation(_ value: some OracleRef) {
             if let bindName = self.binds.contains(ref: value) {
                 self.sql.append(contentsOf: ":\(bindName)")
             } else {
@@ -123,13 +125,25 @@ extension OracleStatement {
             }
         }
 
+        /// Adds a list of values as individual binds.
+        ///
+        /// ```swift
+        /// let values = [15, 24, 33]
+        /// let statement: OracleStatement = "SELECT id FROM my_table WHERE id IN (\(list: values))"
+        /// print(statement.sql)
+        /// // SELECT id FROM my_table WHERE id IN (:1, :2, :3)
+        /// ```
         @inlinable
-        public mutating func appendInterpolation<
-            Value: OracleThrowingDynamicTypeEncodable
-        >(_ value: Value, context: OracleEncodingContext) throws {
-            let bindName = "\(self.binds.count)"
-            try self.binds.append(value, context: context, bindName: bindName)
-            self.sql.append(contentsOf: ":\(bindName)")
+        public mutating func appendInterpolation(
+            list: [some OracleDynamicTypeEncodable],
+            context: OracleEncodingContext = .default
+        ) {
+            guard !list.isEmpty else { return }
+            for value in list {
+                self.appendInterpolation(value, context: context)
+                self.sql.append(", ")
+            }
+            self.sql.removeLast(2)
         }
 
         @inlinable

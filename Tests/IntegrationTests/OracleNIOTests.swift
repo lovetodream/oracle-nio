@@ -1073,6 +1073,43 @@ final class OracleNIOTests: XCTestCase {
         }
     }
 
+    func testListBind() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { XCTAssertNoThrow(try conn.syncClose()) }
+        do {
+            try await conn.execute(
+                "DROP TABLE sortable_ids", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            XCTAssertEqual(error.serverInfo?.number, 942)
+        }
+        try await conn.execute("CREATE TABLE sortable_ids (id NUMBER, sortorder NUMBER)")
+        for i in 1...10 {
+            try await conn.execute("INSERT INTO sortable_ids (id, sortorder) VALUES (\(OracleNumber(i)), 0)")
+        }
+        let shuffled = (1...10).shuffled()
+        try await conn.execute(
+            """
+            DECLARE 
+                TYPE id_array IS TABLE OF NUMBER;
+                ids id_array := id_array(\(list: shuffled.map(OracleNumber.init)));
+            BEGIN
+                FOR i IN 1..ids.COUNT LOOP
+                    UPDATE sortable_ids
+                    SET sortorder = i
+                    WHERE id = ids(i);
+                END LOOP;
+
+                COMMIT;
+            END;
+            """)
+        print(shuffled)
+        let stream = try await conn.execute("SELECT id, sortorder FROM sortable_ids")
+        for try await (id, order) in stream.decode((Int, Int).self) {
+            print(id, order)
+        }
+    }
 }
 
 let isLoggingConfigured: Bool = {

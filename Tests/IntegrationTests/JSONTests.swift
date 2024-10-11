@@ -59,8 +59,7 @@ final class JSONTests: XCTIntegrationTest {
     func testFetchJSONColumns() async throws {
         let stream = try await connection.execute(
             "SELECT intcol, jsonvarchar, jsonclob, jsonblob FROM testjsoncols")
-        for try await (id, varchar, clob, blob) in stream.decode((Int, String, String, String).self)
-        {
+        for try await (id, varchar, clob, blob) in stream.decode((Int, String, String, String).self) {
             XCTAssertEqual(id, 1)
             XCTAssertEqual(varchar, "[1, 2, 3]")
             XCTAssertEqual(clob, "[4, 5, 6]")

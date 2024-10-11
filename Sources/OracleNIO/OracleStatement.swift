@@ -124,7 +124,7 @@ extension OracleStatement {
                 self.sql.append(contentsOf: ":\(bindName)")
             }
         }
-        
+
         /// Adds a list of values as individual binds.
         ///
         /// ```swift

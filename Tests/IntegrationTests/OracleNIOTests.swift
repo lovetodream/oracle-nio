@@ -1089,20 +1089,21 @@ final class OracleNIOTests: XCTestCase {
             try await conn.execute("INSERT INTO sortable_ids (id, sortorder) VALUES (\(OracleNumber(i)), 0)")
         }
         let shuffled = (1...10).shuffled()
-        try await conn.execute("""
-        DECLARE 
-            TYPE id_array IS TABLE OF NUMBER;
-            ids id_array := id_array(\(list: shuffled.map(OracleNumber.init)));
-        BEGIN
-            FOR i IN 1..ids.COUNT LOOP
-                UPDATE sortable_ids
-                SET sortorder = i
-                WHERE id = ids(i);
-            END LOOP;
-        
-            COMMIT;
-        END;
-        """)
+        try await conn.execute(
+            """
+            DECLARE 
+                TYPE id_array IS TABLE OF NUMBER;
+                ids id_array := id_array(\(list: shuffled.map(OracleNumber.init)));
+            BEGIN
+                FOR i IN 1..ids.COUNT LOOP
+                    UPDATE sortable_ids
+                    SET sortorder = i
+                    WHERE id = ids(i);
+                END LOOP;
+
+                COMMIT;
+            END;
+            """)
         print(shuffled)
         let stream = try await conn.execute("SELECT id, sortorder FROM sortable_ids")
         for try await (id, order) in stream.decode((Int, Int).self) {

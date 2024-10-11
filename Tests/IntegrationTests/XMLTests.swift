@@ -117,8 +117,7 @@ struct OracleXML {
         }
 
         mutating func skipLength() throws {
-            if try buffer.throwingReadInteger(as: UInt8.self) == Constants.TNS_LONG_LENGTH_INDICATOR
-            {
+            if try buffer.throwingReadInteger(as: UInt8.self) == Constants.TNS_LONG_LENGTH_INDICATOR {
                 buffer.moveReaderIndex(forwardBy: 4)
             }
         }

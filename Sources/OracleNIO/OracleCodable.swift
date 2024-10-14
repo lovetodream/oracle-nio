@@ -23,7 +23,14 @@ import class Foundation.JSONEncoder
 /// For example, custom types created at runtime, such as enums, or extension types whose OID is not
 /// stable between databases.
 public protocol OracleThrowingDynamicTypeEncodable: Sendable {
+    /// Identifies the default data type that we will encode into `ByteBuffer` in `encode`.
+    ///
+    /// It is used to encode `NULL` values to the correct format.
+    static var defaultOracleType: OracleDataType { get }
+
     /// Identifies the data type that we will encode into `ByteBuffer` in `encode`.
+    ///
+    /// A default implementation is provided.
     var oracleType: OracleDataType { get }
 
     /// Identifies the byte size indicator which will be sent to Oracle.
@@ -99,6 +106,8 @@ public protocol OracleDynamicTypeEncodable: OracleThrowingDynamicTypeEncodable {
 public protocol OracleThrowingEncodable: OracleThrowingDynamicTypeEncodable {}
 
 extension OracleThrowingDynamicTypeEncodable {
+    public var oracleType: OracleDataType { Self.defaultOracleType }
+
     public var size: UInt32 { UInt32(self.oracleType.defaultSize) }
 
     public static var isArray: Bool { false }
@@ -108,6 +117,8 @@ extension OracleThrowingDynamicTypeEncodable {
 
 // swift-format-ignore: DontRepeatTypeInStaticProperties
 extension Array where Element: OracleThrowingDynamicTypeEncodable {
+    public var oracleType: OracleDataType { Element.defaultOracleType }
+
     public static var isArray: Bool { true }
     public var arrayCount: Int? { self.count }
     public var arraySize: Int? { self.capacity }

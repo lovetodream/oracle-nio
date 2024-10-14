@@ -23,9 +23,7 @@ extension OracleJSON: Encodable where Value: Encodable {
 }
 
 extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable {
-    public var oracleType: OracleDataType {
-        .json
-    }
+    public static var defaultOracleType: OracleDataType { .json }
 
     public func _encodeRaw(
         into buffer: inout ByteBuffer,

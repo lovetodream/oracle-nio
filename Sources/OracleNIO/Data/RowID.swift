@@ -113,7 +113,7 @@ extension RowID: OracleDecodable {
 }
 
 extension RowID: OracleEncodable {
-    public var oracleType: OracleDataType { .rowID }
+    public static var defaultOracleType: OracleDataType { .rowID }
 
     public func encode(
         into buffer: inout ByteBuffer,

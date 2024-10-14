@@ -199,7 +199,7 @@ struct StatementStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            let outBinds = context.statement.binds.metadata.compactMap(\.outContainer)
+            let outBinds = context.binds.metadata.compactMap(\.outContainer)
             precondition(rowData.columns.count == outBinds.count)
             for (index, column) in rowData.columns.enumerated() {
                 switch column {
@@ -492,10 +492,10 @@ struct StatementStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            guard context.statement.binds.count == vector.bindMetadata.count else {
+            guard context.binds.count == vector.bindMetadata.count else {
                 preconditionFailure(
                     """
-                    mismatch in binds - sent: \(context.statement.binds.count), \
+                    mismatch in binds - sent: \(context.binds.count), \
                     received: \(vector.bindMetadata.count)
                     """)
             }

@@ -441,7 +441,6 @@ struct OracleFrontendMessageEncoder {
     ) {
         self.clearIfNeeded()
 
-        let statement = statementContext.statement
         let statementOptions = statementContext.options
 
         // 1. options
@@ -450,12 +449,12 @@ struct OracleFrontendMessageEncoder {
         var parametersCount: UInt32 = 0
         var iterationsCount: UInt32 = 1
 
-        if !statementContext.requiresDefine && statement.binds.count != 0 {
-            parametersCount = .init(statement.binds.count)
+        if !statementContext.requiresDefine && statementContext.binds.count != 0 {
+            parametersCount = .init(statementContext.binds.count)
         }
         if statementContext.requiresDefine {
             options |= Constants.TNS_EXEC_OPTION_DEFINE
-        } else if !statement.sql.isEmpty {
+        } else if !statementContext.sql.isEmpty {
             dmlOptions = Constants.TNS_EXEC_OPTION_IMPLICIT_RESULTSET
             options |= Constants.TNS_EXEC_OPTION_EXECUTE
         }
@@ -573,8 +572,7 @@ struct OracleFrontendMessageEncoder {
             }
         }
         if statementContext.cursorID == 0 || statementContext.type.isDDL {
-            statementContext.statement.sql
-                ._encodeRaw(into: &self.buffer, context: .default)
+            statementContext.sql._encodeRaw(into: &self.buffer, context: .default)
             self.buffer.writeUB4(1)  // al8i4[0] parse
         } else {
             self.buffer.writeUB4(0)  // al8i4[0] parse
@@ -586,7 +584,7 @@ struct OracleFrontendMessageEncoder {
                 self.buffer.writeUB4(iterationsCount)
             }
         } else {
-            self.buffer.writeUB4(1)  // al8i4[1] execution count
+            self.buffer.writeUB4(statementContext.executionCount)  // al8i4[1] execution count
         }
         self.buffer.writeUB4(0)  // al8i4[2]
         self.buffer.writeUB4(0)  // al8i4[3]
@@ -608,7 +606,7 @@ struct OracleFrontendMessageEncoder {
 
             self.writeColumnMetadata(columns)
         } else if parametersCount > 0 {
-            self.writeBindParameters(statementContext.statement.binds)
+            self.writeBindParameters(statementContext.binds)
         }
 
         self.endRequest()
@@ -629,7 +627,7 @@ struct OracleFrontendMessageEncoder {
         } else {
             functionCode = .reexecute
         }
-        let parameters = statementContext.statement.binds
+        let parameters = statementContext.binds
         var executionFlags1: UInt32 = 0
         var executionFlags2: UInt32 = 0
         var numberOfIterations: UInt32 = 0
@@ -654,8 +652,18 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeUB4(executionFlags1)
         self.buffer.writeUB4(executionFlags2)
         if !parameters.metadata.isEmpty {
-            self.buffer.writeOracleMessageID(.rowData)
-            self.writeBindParameterRow(bindings: parameters)
+            switch parameters {
+            case .one(let binds):
+                self.buffer.writeOracleMessageID(.rowData)
+                self.writeBindParameterRow(bytes: binds.bytes, longBytes: binds.longBytes)
+            case .many(let collection):
+                for binds in collection.bindings {
+                    self.buffer.writeOracleMessageID(.rowData)
+                    self.writeBindParameterRow(bytes: binds.0, longBytes: binds.long)
+                }
+            case .none:
+                preconditionFailure("How can no binds have metadata?")
+            }
         }
         self.endRequest()
     }
@@ -1147,16 +1155,23 @@ extension OracleFrontendMessageEncoder {
         }
     }
 
-    private mutating func writeBindParameters(_ binds: OracleBindings) {
+    private mutating func writeBindParameters(_ binds: StatementContext.Binds) {
         self.writeColumnMetadata(binds.metadata)
 
         // write parameter values unless statement contains only return binds
-        if !binds.metadata.isEmpty
-            && (binds.bytes.readableBytes > 0
-                || binds.longBytes.readableBytes > 0)
-        {
-            self.buffer.writeOracleMessageID(.rowData)
-            self.writeBindParameterRow(bindings: binds)
+        if binds.hasData {
+            switch binds {
+            case .one(let binds):
+                self.buffer.writeOracleMessageID(.rowData)
+                self.writeBindParameterRow(bytes: binds.bytes, longBytes: binds.longBytes)
+            case .many(let collection):
+                for binds in collection.bindings {
+                    self.buffer.writeOracleMessageID(.rowData)
+                    self.writeBindParameterRow(bytes: binds.0, longBytes: binds.long)
+                }
+            case .none:
+                preconditionFailure("How can no binds have data?")
+            }
         }
     }
 
@@ -1221,10 +1236,10 @@ extension OracleFrontendMessageEncoder {
         }
     }
 
-    private mutating func writeBindParameterRow(bindings: OracleBindings) {
-        self.buffer.writeImmutableBuffer(bindings.bytes)
-        if bindings.longBytes.readableBytes > 0 {
-            self.buffer.writeImmutableBuffer(bindings.longBytes)
+    private mutating func writeBindParameterRow(bytes: ByteBuffer, longBytes: ByteBuffer) {
+        self.buffer.writeImmutableBuffer(bytes)
+        if longBytes.readableBytes > 0 {
+            self.buffer.writeImmutableBuffer(longBytes)
         }
     }
 

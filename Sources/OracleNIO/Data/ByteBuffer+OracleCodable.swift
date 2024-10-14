@@ -15,7 +15,7 @@
 import NIOCore
 
 extension ByteBuffer: OracleEncodable {
-    public var oracleType: OracleDataType { .raw }
+    public static var defaultOracleType: OracleDataType { .raw }
 
     public func encode(
         into buffer: inout ByteBuffer,

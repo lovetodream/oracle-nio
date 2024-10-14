@@ -266,5 +266,5 @@ private struct Timestamp: Sendable, OracleCodable {
         }
     }
 
-    var oracleType: OracleDataType { .timestamp }
+    static var defaultOracleType: OracleDataType { .timestamp }
 }

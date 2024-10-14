@@ -117,7 +117,7 @@ extension OracleNumber: OracleDecodable {
 }
 
 extension OracleNumber: OracleEncodable {
-    public var oracleType: OracleDataType { .number }
+    public static var defaultOracleType: OracleDataType { .number }
 
     public func encode(
         into buffer: inout ByteBuffer,

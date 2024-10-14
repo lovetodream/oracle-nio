@@ -178,7 +178,7 @@ extension UInt: OracleDecodable {
 // MARK: Int
 
 extension Int: OracleEncodable {
-    public var oracleType: OracleDataType { .binaryInteger }
+    public static var defaultOracleType: OracleDataType { .binaryInteger }
 
     public func encode(
         into buffer: inout ByteBuffer,

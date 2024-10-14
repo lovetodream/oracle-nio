@@ -21,7 +21,7 @@ import struct Foundation.TimeZone
 import func Foundation.pow
 
 extension Date: OracleEncodable {
-    public var oracleType: OracleDataType { .timestampTZ }
+    public static var defaultOracleType: OracleDataType { .timestampTZ }
 
     public func encode(
         into buffer: inout ByteBuffer,

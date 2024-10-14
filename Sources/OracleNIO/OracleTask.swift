@@ -119,8 +119,52 @@ final class StatementContext {
         }
     }
 
+    enum Binds {
+        case none
+        /// Single statement.
+        case one(OracleBindings)
+        /// Bulk statement, e.g. multiple rows to insert.
+        ///
+        /// Used in ``OracleConnection/execute(_:binds:encodingContext:options:logger:)``.
+        case many(OracleBindingsCollection)
+
+        var count: Int {
+            switch self {
+            case .none:
+                return 0
+            case .one(let binds):
+                return binds.count
+            case .many(let collection):
+                return collection.metadata.count
+            }
+        }
+
+        var metadata: [OracleBindings.Metadata] {
+            switch self {
+            case .none:
+                return []
+            case .one(let binds):
+                return binds.metadata
+            case .many(let collection):
+                return collection.metadata
+            }
+        }
+
+        var hasData: Bool {
+            switch self {
+            case .none:
+                return false
+            case .one(let binds):
+                return !binds.metadata.isEmpty && (binds.bytes.readableBytes > 0 || binds.longBytes.readableBytes > 0)
+            case .many(let collection):
+                return collection.hasData
+            }
+        }
+    }
+
     let type: StatementType
-    let statement: OracleStatement
+    let sql: String
+    let binds: Binds
     let options: StatementOptions
     let logger: Logger
 
@@ -131,6 +175,7 @@ final class StatementContext {
     var requiresDefine: Bool = false
     var noPrefetch: Bool = false
     let isReturning: Bool
+    let executionCount: UInt32
 
     var sequenceNumber: UInt8 = 2
 
@@ -141,9 +186,11 @@ final class StatementContext {
         promise: EventLoopPromise<OracleRowStream>
     ) {
         self.logger = logger
-        self.statement = statement
+        self.sql = statement.sql
+        self.binds = .one(statement.binds)
         self.options = options
         self.sqlLength = .init(statement.sql.data(using: .utf8)?.count ?? 0)
+        self.executionCount = 1
 
         // strip single/multiline comments and and strings from the sql
         var sql = statement.sql
@@ -151,12 +198,34 @@ final class StatementContext {
         sql = sql.replacing(/\--.*(\n|$)/, with: "")
         sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
 
+        self.isReturning = statement.binds.metadata.first(where: \.isReturnBind) != nil
+        let type = Self.determineStatementType(minifiedSQL: sql, promise: promise)
+        self.type = type
+    }
+
+    init(
+        statement: String,
+        bindCollection: OracleBindingsCollection,
+        options: StatementOptions,
+        logger: Logger,
+        promise: EventLoopPromise<OracleRowStream>
+    ) {
+        self.logger = logger
+        self.sql = statement
+        self.binds = .many(bindCollection)
+        self.options = options
+        self.sqlLength = UInt32(statement.utf8.count)
+        self.executionCount = UInt32(bindCollection.bindings.count)
+
+        // strip single/multiline comments and and strings from the sql
+        var sql = statement
+        sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
+        sql = sql.replacing(/\--.*(\n|$)/, with: "")
+        sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
+
         self.isReturning =
-            statement.binds.metadata
-            .first(where: \.isReturnBind) != nil
-        let type = Self.determineStatementType(
-            minifiedSQL: sql, promise: promise
-        )
+            bindCollection.metadata.first(where: \.isReturnBind) != nil
+        let type = Self.determineStatementType(minifiedSQL: sql, promise: promise)
         self.type = type
     }
 
@@ -167,11 +236,13 @@ final class StatementContext {
         promise: EventLoopPromise<OracleRowStream>
     ) {
         self.logger = logger
-        self.statement = ""
+        self.sql = ""
+        self.binds = .none
         self.sqlLength = 0
         self.cursorID = cursor.id
         self.options = options
         self.isReturning = false
+        self.executionCount = 1
         self.type = .cursor(cursor, promise)
     }
 

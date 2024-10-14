@@ -87,6 +87,7 @@ public final class LOB: Sendable {
     let locator: NIOLockedValueBox<[UInt8]>
     private let hasMetadata: Bool
 
+    public static let defaultOracleType: OracleDataType = .blob
     public let oracleType: OracleDataType
 
     init(

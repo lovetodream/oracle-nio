@@ -280,8 +280,9 @@ public struct StatementOptions {
     /// This happens on the Oracle server side. So it won't cause additional roundtrips to the database.
     public var autoCommit: Bool = false
 
-    internal var arrayDMLRowCounts: Bool = false
-    internal var batchErrors: Bool = false
+    public var arrayDMLRowCounts: Bool = false
+
+    public var batchErrors: Bool = false
 
     /// Indicates how many rows will be returned with the initial roundtrip.
     ///

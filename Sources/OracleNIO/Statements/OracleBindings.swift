@@ -77,6 +77,18 @@ struct OracleBindingsCollection {
             try bind._encodeRaw(into: &buffers.long, context: context)
         } else if let bind {
             try bind._encodeRaw(into: &buffers.0, context: context)
+        } else if T.defaultOracleType == .boolean {
+            buffers.0.writeInteger(Constants.TNS_ESCAPE_CHAR)
+            buffers.0.writeInteger(UInt8(1))
+        } else if T.defaultOracleType._oracleType == .intNamed {
+            buffers.0.writeUB4(0)  // TOID
+            buffers.0.writeUB4(0)  // OID
+            buffers.0.writeUB4(0)  // snapshot
+            buffers.0.writeUB4(0)  // version
+            buffers.0.writeUB4(0)  // packed data length
+            buffers.0.writeUB4(Constants.TNS_OBJ_TOP_LEVEL)  // flags
+        } else {
+            buffers.0.writeInteger(UInt8(0))
         }
         if metadata.count <= index {
             metadata.append(newMetadata)

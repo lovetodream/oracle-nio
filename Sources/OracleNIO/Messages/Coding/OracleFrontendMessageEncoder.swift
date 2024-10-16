@@ -483,7 +483,7 @@ struct OracleFrontendMessageEncoder {
             options |= Constants.TNS_EXEC_OPTION_BATCH_ERRORS
         }
         if statementContext.options.arrayDMLRowCounts {
-            options |= Constants.TNS_EXEC_OPTION_DML_ROWCOUNTS
+            dmlOptions |= Constants.TNS_EXEC_OPTION_DML_ROWCOUNTS
         }
         if statementOptions.autoCommit {
             options |= Constants.TNS_EXEC_OPTION_COMMIT
@@ -549,7 +549,7 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeUB4(0)  // al8regid_msb
         if statementOptions.arrayDMLRowCounts {
             self.buffer.writeInteger(UInt8(1))  // pointer (al8pidmlrc)
-            self.buffer.writeUB4(1)  // al8pidmlrcbl / numberOfExecutions
+            self.buffer.writeUB4(statementContext.executionCount)  // al8pidmlrcbl / numberOfExecutions
             self.buffer.writeInteger(UInt8(1))  // pointer (al8pidmlrcl)
         } else {
             self.buffer.writeInteger(UInt8(0))  // pointer (al8pidmlrc)

@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 
 struct StatementResult {
     enum Value: Equatable {
@@ -62,14 +62,28 @@ final class OracleRowStream: @unchecked Sendable {
         case asyncSequence(AsyncSequenceSource, OracleRowsDataSource)
     }
 
-    final class MetadataListeners: Sendable {
+    #if swift(>=5.10)
+        typealias MetadataListenersSendable = Sendable
+    #else
+        typealias MetadataListenersSendable = @unchecked Sendable
+    #endif
+    final class MetadataListeners: MetadataListenersSendable {
         private let lock = NIOLock()
-        /// This property must only be accessed when ``lock`` is aquired.
-        private nonisolated(unsafe) var affectedRowsListeners: [CheckedContinuation<Int, Error>] = []
-        /// This property must only be accessed when ``lock`` is aquired.
-        private nonisolated(unsafe) var affectedRows: Int?
-        /// This property must only be accessed when ``lock`` is aquired.
-        private nonisolated(unsafe) var error: (any Error)?
+        #if swift(>=5.10)
+            /// This property must only be accessed when ``lock`` is aquired.
+            private nonisolated(unsafe) var affectedRowsListeners: [CheckedContinuation<Int, Error>] = []
+            /// This property must only be accessed when ``lock`` is aquired.
+            private nonisolated(unsafe) var affectedRows: Int?
+            /// This property must only be accessed when ``lock`` is aquired.
+            private nonisolated(unsafe) var error: (any Error)?
+        #else
+            /// This property must only be accessed when ``lock`` is aquired.
+            private var affectedRowsListeners: [CheckedContinuation<Int, Error>] = []
+            /// This property must only be accessed when ``lock`` is aquired.
+            private var affectedRows: Int?
+            /// This property must only be accessed when ``lock`` is aquired.
+            private var error: (any Error)?
+        #endif
 
         let rowCounts: [Int]?
         let batchErrors: [OracleSQLError.BatchError]?

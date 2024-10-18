@@ -240,7 +240,7 @@
                 options.arrayDMLRowCounts = true
                 do {
                     try await connection.executeBatch(binds, options: options)
-                } catch let error as OracleBatchExecutionEror {
+                } catch let error as OracleBatchExecutionError {
                     #expect(error.result.affectedRows == 4)
                     #expect(error.result.affectedRowsPerStatement == [1, 1, 0, 1, 1])
                     #expect(error.errors.first?.statementIndex == 2)

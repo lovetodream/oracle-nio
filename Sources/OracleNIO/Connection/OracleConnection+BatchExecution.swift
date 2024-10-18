@@ -29,7 +29,7 @@ extension OracleConnection {
     /// - Returns: A ``OracleBatchExecutionResult`` containing the amount of affected rows and other metadata the server sent.
     ///
     /// Batch execution is useful for inserting or updating multiple rows efficiently when working with large data sets. It significally outperforms
-    /// repeated calls to ``execute(_:options:logger:file:line:)`` by reducing network transfer costs and database overheads.
+    /// repeated calls to ``execute(_:options:logger:file:line:)-9uyvp`` by reducing network transfer costs and database overheads.
     /// It can also be used to execute PL/SQL statements multiple times at once.
     /// ```swift
     /// let binds: [(Int, String, Int)] = [
@@ -157,7 +157,7 @@ extension OracleConnection {
                 affectedRowsPerStatement: affectedRowsPerStatement
             )
             if let batchErrors {
-                throw OracleBatchExecutionEror(
+                throw OracleBatchExecutionError(
                     result: result,
                     errors: batchErrors,
                     statement: statement,
@@ -175,6 +175,7 @@ extension OracleConnection {
     }
 }
 
+/// The result of a batch execution.
 public struct OracleBatchExecutionResult: Sendable {
     /// The total amount of affected rows.
     public let affectedRows: Int
@@ -189,13 +190,13 @@ public struct OracleBatchExecutionResult: Sendable {
     public let affectedRowsPerStatement: [Int]?
 }
 
-/// This error is thrown when a batch execution contains both successful and failed statements.
+/// An error that is thrown when a batch execution contains both successful and failed statements.
 ///
 /// - Note: This error is only thrown when ``StatementOptions/batchErrors`` is set to `true`.
 ///         Otherwise ``OracleSQLError`` will be thrown as usual. Be aware that all the statements
 ///         executed before the error is thrown won't be reverted regardless of this setting.
 ///         They can still be reverted using a ``OracleConnection/rollback()``.
-public struct OracleBatchExecutionEror: Error, Sendable {
+public struct OracleBatchExecutionError: Error, Sendable {
     /// The result of the partially finished batch execution.
     public let result: OracleBatchExecutionResult
     /// A collection of errors thrown by statements in the batch execution.

@@ -49,6 +49,7 @@ Oracle Database 12.1 or later.
 - ``StatementOptions``
 - ``OraclePreparedStatement``
 - ``Statement(_:)``
+- ``OracleBatchExecutionResult``
 
 ### Encoding and Decoding
 
@@ -79,3 +80,4 @@ Oracle Database 12.1 or later.
 
 - ``OracleSQLError``
 - ``OracleDecodingError``
+- ``OracleBatchExecutionError``

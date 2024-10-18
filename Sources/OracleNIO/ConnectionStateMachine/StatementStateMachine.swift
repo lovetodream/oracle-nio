@@ -332,11 +332,11 @@ struct StatementStateMachine {
 
                 switch context.type {
                 case .query(let promise),
-                        .plsql(let promise),
-                        .dml(let promise),
-                        .ddl(let promise),
-                        .cursor(_, let promise),
-                        .plain(let promise):
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .cursor(_, let promise),
+                    .plain(let promise):
                     action = .succeedStatement(
                         promise,
                         .init(
@@ -356,7 +356,8 @@ struct StatementStateMachine {
                 }
 
                 let rows = demandStateMachine.end()
-                action = .forwardStreamComplete(rows, cursorID: context.cursorID, affectedRows: Int(error.rowCount ?? 0))
+                action = .forwardStreamComplete(
+                    rows, cursorID: context.cursorID, affectedRows: Int(error.rowCount ?? 0))
 
             case .modifying:
                 preconditionFailure("Invalid state: \(self.state)")
@@ -461,11 +462,11 @@ struct StatementStateMachine {
                 }
                 switch context.type {
                 case .query(let promise),
-                        .plsql(let promise),
-                        .dml(let promise),
-                        .ddl(let promise),
-                        .cursor(_, let promise),
-                        .plain(let promise):
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .cursor(_, let promise),
+                    .plain(let promise):
                     action = .succeedStatement(
                         promise,
                         StatementResult(

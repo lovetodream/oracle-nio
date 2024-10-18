@@ -365,6 +365,7 @@ where Index == Int {
 }
 
 extension _OracleVectorProtocol {
+    public static var defaultOracleType: OracleDataType { .vector }
     public var oracleType: OracleDataType { .vector }
     @inlinable public var count: Int { base.count }
     @inlinable public var startIndex: Index { 0 }

@@ -76,7 +76,7 @@ extension IntervalDS: Decodable {
 }
 
 extension IntervalDS: OracleEncodable {
-    public var oracleType: OracleDataType { .intervalDS }
+    public static var defaultOracleType: OracleDataType { .intervalDS }
 
     public func encode(
         into buffer: inout ByteBuffer,

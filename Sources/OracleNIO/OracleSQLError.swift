@@ -36,6 +36,7 @@ public struct OracleSQLError: Sendable, Error {
             case sidNotSupported
             case missingParameter
             case unsupportedDataType
+            case missingStatement
         }
 
         internal var base: Base
@@ -63,6 +64,7 @@ public struct OracleSQLError: Sendable, Error {
         public static let sidNotSupported = Self(.sidNotSupported)
         public static let missingParameter = Self(.missingParameter)
         public static let unsupportedDataType = Self(.unsupportedDataType)
+        public static let missingStatement = Self(.missingStatement)
 
         public var description: String {
             switch self.base {
@@ -96,6 +98,8 @@ public struct OracleSQLError: Sendable, Error {
                 return "missingParameter"
             case .unsupportedDataType:
                 return "unsupportedDataType"
+            case .missingStatement:
+                return "missingStatement"
             }
         }
     }
@@ -224,8 +228,36 @@ public struct OracleSQLError: Sendable, Error {
             self.underlying.message
         }
 
+        /// The amount of rows affected by the operation.
+        ///
+        /// In most cases, this is `0`, although it is posslbe that a statement
+        /// (e.g. ``OracleConnection/executeBatch(_:binds:encodingContext:options:logger:file:line:)``
+        /// executes some if its statements successfully, while others might have failed. In this case, `affectedRows` shows
+        /// how many operations have been succesful.
+        ///
+        ///
+        /// Defaults to `0`.
+        public var affectedRows: Int {
+            Int(self.underlying.rowCount ?? 0)
+        }
+
         init(_ underlying: OracleBackendMessage.BackendError) {
             self.underlying = underlying
+        }
+    }
+
+    public struct BatchError: Sendable {
+        /// The index of the statement in which the error occurred.
+        public let statementIndex: Int
+        /// The error number/identifier.
+        public let number: Int
+        /// The error message, typically prefixed with `ORA-` & ``number``.
+        public let message: String
+
+        init(_ error: OracleError) {
+            self.statementIndex = error.offset
+            self.number = error.code
+            self.message = error.message ?? ""
         }
     }
 
@@ -310,6 +342,7 @@ public struct OracleSQLError: Sendable, Error {
 
     static let unsupportedDataType = OracleSQLError(code: .unsupportedDataType)
 
+    static let missingStatement = OracleSQLError(code: .missingStatement)
 }
 
 extension OracleSQLError: CustomStringConvertible {

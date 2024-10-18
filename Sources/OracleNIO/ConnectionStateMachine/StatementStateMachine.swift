@@ -18,6 +18,7 @@ struct StatementStateMachine {
 
     private enum State {
         case initialized(StatementContext)
+        case rowCountsReceived(StatementContext, [Int])
         case describeInfoReceived(StatementContext, DescribeInfo)
         case streaming(
             StatementContext,
@@ -47,7 +48,7 @@ struct StatementStateMachine {
         case evaluateErrorAtConnectionLevel(OracleSQLError)
 
         case forwardRows([DataRow])
-        case forwardStreamComplete([DataRow], cursorID: UInt16)
+        case forwardStreamComplete([DataRow], cursorID: UInt16, affectedRows: Int)
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
         case forwardStreamError(
             OracleSQLError,
@@ -90,7 +91,7 @@ struct StatementStateMachine {
                 "Start must be called immediately after the statement was created"
             )
 
-        case .describeInfoReceived(let context, _):
+        case .rowCountsReceived(let context, _), .describeInfoReceived(let context, _):
             guard !self.isCancelled else {
                 return .wait
             }
@@ -162,7 +163,9 @@ struct StatementStateMachine {
                     promise,
                     StatementResult(
                         value: .describeInfo(describeInfo.columns),
-                        logger: context.logger
+                        logger: context.logger,
+                        batchErrors: nil,
+                        rowCounts: nil
                     )
                 )
             }
@@ -185,7 +188,7 @@ struct StatementStateMachine {
             // marker. Due to that it might send more data without knowing yet.
             return .wait
 
-        case .initialized, .error, .commandComplete:
+        case .initialized, .rowCountsReceived, .error, .commandComplete:
             preconditionFailure("Invalid state: \(self.state)")
 
         case .modifying:
@@ -199,7 +202,7 @@ struct StatementStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            let outBinds = context.statement.binds.metadata.compactMap(\.outContainer)
+            let outBinds = context.binds.metadata.compactMap(\.outContainer)
             precondition(rowData.columns.count == outBinds.count)
             for (index, column) in rowData.columns.enumerated() {
                 switch column {
@@ -270,9 +273,21 @@ struct StatementStateMachine {
         }
     }
 
+    mutating func queryParameterReceived(_ parameter: OracleBackendMessage.QueryParameter) -> Action {
+        if let rowCounts = parameter.rowCounts {
+            guard case .initialized(let statementContext) = state else {
+                preconditionFailure("Invalid state: \(self.state)")
+            }
+            self.state = .modifying
+            self.state = .rowCountsReceived(statementContext, rowCounts.map(Int.init))
+        }
+        return .wait
+    }
+
     mutating func errorReceived(
         _ error: OracleBackendMessage.BackendError
     ) -> Action {
+        let batchErrors = error.batchErrors.map(OracleSQLError.BatchError.init)
 
         let action: Action
         if Constants.TNS_ERR_NO_DATA_FOUND == error.number
@@ -281,6 +296,7 @@ struct StatementStateMachine {
             switch self.state {
             case .commandComplete, .error, .drain:
                 return .wait  // stream has already finished
+
             case .initialized(let context),
                 .describeInfoReceived(let context, _):
                 context.cursorID = error.cursorID ?? context.cursorID
@@ -297,7 +313,38 @@ struct StatementStateMachine {
                     .cursor(_, let promise),
                     .plain(let promise):
                     action = .succeedStatement(
-                        promise, .init(value: .noRows, logger: context.logger)
+                        promise,
+                        .init(
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: nil
+                        )
+                    )  // empty response
+                }
+
+            case .rowCountsReceived(let context, let rowCounts):
+                context.cursorID = error.cursorID ?? context.cursorID
+
+                self.avoidingStateMachineCoWVoid { state in
+                    state = .commandComplete
+                }
+
+                switch context.type {
+                case .query(let promise),
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .cursor(_, let promise),
+                    .plain(let promise):
+                    action = .succeedStatement(
+                        promise,
+                        .init(
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: rowCounts
+                        )
                     )  // empty response
                 }
 
@@ -309,7 +356,8 @@ struct StatementStateMachine {
                 }
 
                 let rows = demandStateMachine.end()
-                action = .forwardStreamComplete(rows, cursorID: context.cursorID)
+                action = .forwardStreamComplete(
+                    rows, cursorID: context.cursorID, affectedRows: Int(error.rowCount ?? 0))
 
             case .modifying:
                 preconditionFailure("Invalid state: \(self.state)")
@@ -399,7 +447,33 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         StatementResult(
-                            value: .noRows, logger: context.logger
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: nil
+                        )
+                    )
+                }
+                self.state = .commandComplete
+
+            case .rowCountsReceived(let context, let rowCounts):
+                if let cursorID = error.cursorID {
+                    context.cursorID = cursorID
+                }
+                switch context.type {
+                case .query(let promise),
+                    .plsql(let promise),
+                    .dml(let promise),
+                    .ddl(let promise),
+                    .cursor(_, let promise),
+                    .plain(let promise):
+                    action = .succeedStatement(
+                        promise,
+                        StatementResult(
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: rowCounts
                         )
                     )
                 }
@@ -492,10 +566,10 @@ struct StatementStateMachine {
     ) -> Action {
         switch self.state {
         case .initialized(let context):
-            guard context.statement.binds.count == vector.bindMetadata.count else {
+            guard context.binds.count == vector.bindMetadata.count else {
                 preconditionFailure(
                     """
-                    mismatch in binds - sent: \(context.statement.binds.count), \
+                    mismatch in binds - sent: \(context.binds.count), \
                     received: \(vector.bindMetadata.count)
                     """)
             }
@@ -503,7 +577,8 @@ struct StatementStateMachine {
             // we won't change the state
             return .wait
 
-        case .describeInfoReceived,
+        case .rowCountsReceived,
+            .describeInfoReceived,
             .streaming,
             .drain,
             .commandComplete,
@@ -526,7 +601,8 @@ struct StatementStateMachine {
             // round trip.
             return .sendFlushOutBinds
 
-        case .describeInfoReceived,
+        case .rowCountsReceived,
+            .describeInfoReceived,
             .streaming,
             .drain,
             .commandComplete,
@@ -545,6 +621,7 @@ struct StatementStateMachine {
     mutating func requestFetch() -> Action {
         switch self.state {
         case .initialized(let context),
+            .rowCountsReceived(let context, _),
             .describeInfoReceived(let context, _),
             .streaming(let context, _, _, _):
             return .sendFetch(context)
@@ -580,7 +657,7 @@ struct StatementStateMachine {
                 }
             }
 
-        case .drain, .describeInfoReceived:
+        case .drain, .rowCountsReceived, .describeInfoReceived:
             return .wait
 
         case .initialized:
@@ -605,6 +682,7 @@ struct StatementStateMachine {
     mutating func channelReadComplete() -> Action {
         switch self.state {
         case .initialized,
+            .rowCountsReceived,
             .describeInfoReceived,
             .drain,
             .commandComplete,
@@ -654,6 +732,7 @@ struct StatementStateMachine {
             .commandComplete,
             .drain,
             .error,
+            .rowCountsReceived,
             .describeInfoReceived:
             // we already have the complete stream received, now we are waiting
             // for a `readyForStatement` package. To receive this we need to read.
@@ -669,6 +748,7 @@ struct StatementStateMachine {
     private mutating func setAndFireError(_ error: OracleSQLError) -> Action {
         switch self.state {
         case .initialized(let context),
+            .rowCountsReceived(let context, _),
             .describeInfoReceived(let context, _):
             if self.isCancelled {
                 return .evaluateErrorAtConnectionLevel(error)
@@ -714,6 +794,7 @@ struct StatementStateMachine {
     var isComplete: Bool {
         switch self.state {
         case .initialized,
+            .rowCountsReceived,
             .describeInfoReceived,
             .streaming,
             .drain:

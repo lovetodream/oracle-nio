@@ -135,7 +135,7 @@ final class OracleStatementTests: XCTestCase {
 
 // Testing utility, because we do not have a throwing encodable, luckily :)
 struct ThrowingByteBuffer: OracleThrowingDynamicTypeEncodable {
-    let oracleType: OracleNIO.OracleDataType = .raw
+    static let defaultOracleType: OracleNIO.OracleDataType = .raw
 
     var size: UInt32 { UInt32(self.base.readableBytes) }
 

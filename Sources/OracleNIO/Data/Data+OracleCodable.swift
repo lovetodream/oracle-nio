@@ -17,7 +17,7 @@ import NIOCore
 import struct Foundation.Data
 
 extension Data: OracleEncodable {
-    public var oracleType: OracleDataType { .raw }
+    public static var defaultOracleType: OracleDataType { .raw }
 
     public func encode(
         into buffer: inout ByteBuffer,

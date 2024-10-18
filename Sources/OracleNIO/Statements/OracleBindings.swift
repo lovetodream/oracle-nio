@@ -15,153 +15,90 @@
 import NIOConcurrencyHelpers
 import NIOCore
 
-/// A Oracle SQL statement, that can be executed on a Oracle server.
-/// Contains the raw sql string and bindings.
-public struct OracleStatement: Sendable, Hashable {
-    /// The statement's string.
-    public var sql: String
-    /// The statement's binds.
-    public var binds: OracleBindings
+struct OracleBindingsCollection {
+    /// Metadata is shared by all bind rows.
+    var metadata: [OracleBindings.Metadata] = []
+    var bindings: [(ByteBuffer, long: ByteBuffer)] = []
+    var hasData = false
 
-    public init(
-        unsafeSQL sql: String,
-        binds: OracleBindings = OracleBindings()
-    ) {
-        self.sql = sql
-        self.binds = binds
-    }
-}
-
-extension OracleStatement: ExpressibleByStringInterpolation {
-    public init(stringInterpolation: StringInterpolation) {
-        self.sql = stringInterpolation.sql
-        self.binds = stringInterpolation.binds
+    mutating func appendRow<each Bind: OracleThrowingDynamicTypeEncodable>(
+        _ row: repeat (each Bind)?,
+        context: OracleEncodingContext
+    ) throws {
+        var index = 0
+        var bindings: (ByteBuffer, long: ByteBuffer) = (ByteBuffer(), ByteBuffer())
+        repeat try appendBind(each row, context: context, into: &bindings, index: &index)
+        if !hasData { hasData = bindings.0.readableBytes > 0 || bindings.long.readableBytes > 0 }
+        self.bindings.append(bindings)
     }
 
-    public init(stringLiteral value: StringLiteralType) {
-        self.sql = value
-        self.binds = OracleBindings()
-    }
-}
-
-extension OracleStatement {
-    public struct StringInterpolation: StringInterpolationProtocol {
-        public typealias StringLiteralType = String
-
-        @usableFromInline
-        var sql: String
-        @usableFromInline
-        var binds: OracleBindings
-
-        public init(literalCapacity: Int, interpolationCount: Int) {
-            self.sql = ""
-            self.binds = OracleBindings(capacity: interpolationCount)
-        }
-
-        public mutating func appendLiteral(_ literal: String) {
-            self.sql.append(contentsOf: literal)
-        }
-
-        @inlinable
-        public mutating func appendInterpolation(
-            _ value: some OracleThrowingDynamicTypeEncodable,
-            context: OracleEncodingContext = .default
-        ) throws {
-            let bindName = "\(self.binds.count)"
-            try self.binds.append(value, context: context, bindName: bindName)
-            self.sql.append(contentsOf: ":\(bindName)")
-        }
-
-        @inlinable
-        public mutating func appendInterpolation(
-            _ value: (some OracleThrowingDynamicTypeEncodable)?,
-            context: OracleEncodingContext = .default
-        ) throws {
-            let bindName = "\(self.binds.count)"
-            switch value {
-            case .none:
-                self.binds.appendNull(value?.oracleType, bindName: bindName)
-            case .some(let value):
-                try self.binds
-                    .append(value, context: context, bindName: bindName)
-            }
-
-            self.sql.append(contentsOf: ":\(bindName)")
-        }
-
-        @inlinable
-        public mutating func appendInterpolation(
-            _ value: some OracleDynamicTypeEncodable,
-            context: OracleEncodingContext = .default
-        ) {
-            let bindName = "\(self.binds.count)"
-            self.binds.append(value, context: context, bindName: bindName)
-            self.sql.append(contentsOf: ":\(bindName)")
-        }
-
-        @inlinable
-        public mutating func appendInterpolation(
-            _ value: (some OracleDynamicTypeEncodable)?,
-            context: OracleEncodingContext = .default
-        ) {
-            let bindName = "\(self.binds.count)"
-            switch value {
-            case .none:
-                self.binds.appendNull(value?.oracleType, bindName: bindName)
-            case .some(let value):
-                self.binds.append(value, context: context, bindName: bindName)
-            }
-
-            self.sql.append(contentsOf: ":\(bindName)")
-        }
-
-        public mutating func appendInterpolation(_ value: some OracleRef) {
-            if let bindName = self.binds.contains(ref: value) {
-                self.sql.append(contentsOf: ":\(bindName)")
+    mutating func appendRow(_ row: OracleBindings) throws {
+        for (index, column) in row.metadata.enumerated() {
+            if metadata.count <= index {
+                metadata.append(column)
             } else {
-                let bindName = "\(self.binds.count)"
-                self.binds.append(value, bindName: bindName)
-                self.sql.append(contentsOf: ":\(bindName)")
+                let currentMetadata = metadata[index]
+                if column.size > currentMetadata.size || column.bufferSize > currentMetadata.bufferSize {
+                    metadata[index] = column
+                }
             }
         }
+        if !hasData { hasData = row.bytes.readableBytes > 0 || row.longBytes.readableBytes > 0 }
+        self.bindings.append((row.bytes, row.longBytes))
+    }
 
-        /// Adds a list of values as individual binds.
-        ///
-        /// ```swift
-        /// let values = [15, 24, 33]
-        /// let statement: OracleStatement = "SELECT id FROM my_table WHERE id IN (\(list: values))"
-        /// print(statement.sql)
-        /// // SELECT id FROM my_table WHERE id IN (:1, :2, :3)
-        /// ```
-        @inlinable
-        public mutating func appendInterpolation(
-            list: [some OracleDynamicTypeEncodable],
-            context: OracleEncodingContext = .default
-        ) {
-            guard !list.isEmpty else { return }
-            for value in list {
-                self.appendInterpolation(value, context: context)
-                self.sql.append(", ")
+    private mutating func appendBind<T: OracleThrowingDynamicTypeEncodable>(
+        _ bind: T?,
+        context: OracleEncodingContext,
+        into buffers: inout (ByteBuffer, long: ByteBuffer),
+        index: inout Int
+    ) throws {
+        let newMetadata =
+            if let bind {
+                OracleBindings.Metadata(
+                    value: bind,
+                    protected: true,
+                    isReturnBind: false,
+                    bindName: "\(index)"
+                )
+            } else {
+                OracleBindings.Metadata(
+                    dataType: T.defaultOracleType,
+                    protected: false,
+                    isReturnBind: false,
+                    size: 1,
+                    isArray: false,
+                    arrayCount: nil,
+                    maxArraySize: nil,
+                    bindName: "\(index)"
+                )
             }
-            self.sql.removeLast(2)
+        if let bind, newMetadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
+            try bind._encodeRaw(into: &buffers.long, context: context)
+        } else if let bind {
+            try bind._encodeRaw(into: &buffers.0, context: context)
+        } else if T.defaultOracleType == .boolean {
+            buffers.0.writeInteger(Constants.TNS_ESCAPE_CHAR)
+            buffers.0.writeInteger(UInt8(1))
+        } else if T.defaultOracleType._oracleType == .intNamed {
+            buffers.0.writeUB4(0)  // TOID
+            buffers.0.writeUB4(0)  // OID
+            buffers.0.writeUB4(0)  // snapshot
+            buffers.0.writeUB4(0)  // version
+            buffers.0.writeUB4(0)  // packed data length
+            buffers.0.writeUB4(Constants.TNS_OBJ_TOP_LEVEL)  // flags
+        } else {
+            buffers.0.writeInteger(UInt8(0))
         }
-
-        @inlinable
-        public mutating func appendInterpolation(unescaped interpolation: String) {
-            self.sql.append(contentsOf: interpolation)
+        if metadata.count <= index {
+            metadata.append(newMetadata)
+        } else {
+            let currentMetadata = metadata[index]
+            if newMetadata.size > currentMetadata.size || newMetadata.bufferSize > currentMetadata.bufferSize {
+                metadata[index] = newMetadata
+            }
         }
-    }
-}
-
-extension OracleStatement: CustomStringConvertible {
-    public var description: String {
-        "\(self.sql) \(self.binds)"
-    }
-}
-
-extension OracleStatement: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "OracleStatement(sql: \(String(describing: self.sql)), binds: \(String(reflecting: self.binds))"
+        index += 1
     }
 }
 

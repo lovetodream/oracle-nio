@@ -475,6 +475,15 @@ extension OracleConnection {
     }
 
     /// Execute a prepared statement.
+    /// - Parameters:
+    ///   - statement: The statement to be executed.
+    ///   - options: A bunch of parameters to optimize the statement in different ways.
+    ///              Normally this can be ignored, but feel free to experiment based on your needs.
+    ///              Every option and its impact is documented.
+    ///   - logger: The `Logger` to log statement related background events into. Defaults to logging disabled.
+    ///   - file: The file, the statement was started in. Used for better error reporting.
+    ///   - line: The line, the statement was started in. Used for better error reporting.
+    /// - Returns: An async sequence of `Row`s. The result sequence can be discarded if the statement has no result.
     public func execute<Statement: OraclePreparedStatement, Row>(
         _ statement: Statement,
         options: StatementOptions = .init(),

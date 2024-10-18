@@ -31,9 +31,7 @@ extension String: OracleEncodable {
             ._encodeRaw(into: &buffer, context: context)
     }
 
-    public var oracleType: OracleDataType {
-        .varchar
-    }
+    public static var defaultOracleType: OracleDataType { .varchar }
 
     public var size: UInt32 {
         // empty strings have a length of 1

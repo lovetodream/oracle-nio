@@ -137,7 +137,7 @@ struct ConnectionStateMachine {
 
         // Statement streaming
         case forwardRows([DataRow])
-        case forwardStreamComplete([DataRow], cursorID: UInt16)
+        case forwardStreamComplete([DataRow], cursorID: UInt16, affectedRows: Int)
         case forwardStreamError(
             OracleSQLError, read: Bool, cursorID: UInt16?, clientCancelled: Bool
         )
@@ -639,7 +639,17 @@ struct ConnectionStateMachine {
     mutating func queryParameterReceived(
         _ parameter: OracleBackendMessage.QueryParameter
     ) -> ConnectionAction {
-        return .wait
+        switch self.state {
+        case .statement(var statement):
+            return self.avoidingStateMachineCoW { machine in
+                let action = statement.queryParameterReceived(parameter)
+                machine.state = .statement(statement)
+                return machine.modify(with: action)
+            }
+        default:
+            assertionFailure("Invalid state: \(self.state)")
+            return self.closeConnectionAndCleanup(.unexpectedBackendMessage(.queryParameter(parameter)))
+        }
     }
 
     mutating func bitVectorReceived(
@@ -1016,7 +1026,7 @@ extension ConnectionStateMachine {
             .uncleanShutdown,
             .unsupportedDataType:
             return true
-        case .statementCancelled, .nationalCharsetNotSupported:
+        case .statementCancelled, .nationalCharsetNotSupported, .missingStatement:
             return false
         case .server:
             switch error.serverInfo?.number {
@@ -1147,8 +1157,8 @@ extension ConnectionStateMachine {
             return .succeedStatement(promise, columns)
         case .forwardRows(let rows):
             return .forwardRows(rows)
-        case .forwardStreamComplete(let rows, let cursorID):
-            return .forwardStreamComplete(rows, cursorID: cursorID)
+        case .forwardStreamComplete(let rows, let cursorID, let affectedRows):
+            return .forwardStreamComplete(rows, cursorID: cursorID, affectedRows: affectedRows)
         case .forwardStreamError(
             let error, let read, let cursorID, let clientCancelled
         ):

@@ -37,7 +37,7 @@ public struct Cursor {
 }
 
 extension Cursor: OracleEncodable {
-    public var oracleType: OracleDataType { .cursor }
+    public static var defaultOracleType: OracleDataType { .cursor }
 
     public func encode(
         into buffer: inout ByteBuffer,

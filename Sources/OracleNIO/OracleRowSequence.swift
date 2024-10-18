@@ -28,15 +28,18 @@ public struct OracleRowSequence: AsyncSequence, Sendable {
     let backing: BackingSequence
     let lookupTable: [String: Int]
     let columns: [OracleColumn]
+    let listeners: OracleRowStream.MetadataListeners
 
     init(
         _ backing: BackingSequence,
         lookupTable: [String: Int],
-        columns: [OracleColumn]
+        columns: [OracleColumn],
+        listeners: OracleRowStream.MetadataListeners
     ) {
         self.backing = backing
         self.lookupTable = lookupTable
         self.columns = columns
+        self.listeners = listeners
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
@@ -45,6 +48,25 @@ public struct OracleRowSequence: AsyncSequence, Sendable {
             lookupTable: self.lookupTable,
             columns: self.columns
         )
+    }
+
+    /// Receive the total number of rows affected by the operation.
+    ///
+    /// The metric is only available after the query has completed, e.g. after all rows are retrieved from the server.
+    public var affectedRows: Int {
+        get async throws {
+            try await withCheckedThrowingContinuation { continuation in
+                listeners.addAffectedRowsListener(continuation)
+            }
+        }
+    }
+
+    internal var rowCounts: [Int] {
+        listeners.rowCounts ?? []
+    }
+
+    internal var batchErrors: [OracleSQLError.BatchError] {
+        listeners.batchErrors ?? []
     }
 }
 

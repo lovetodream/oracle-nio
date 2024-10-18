@@ -261,7 +261,7 @@ extension OracleBackendMessage {
             statementContext: StatementContext,
             capabilities: Capabilities
         ) throws -> [ColumnStorage] {
-            let outBinds = statementContext.statement.binds.metadata.compactMap(\.outContainer)
+            let outBinds = statementContext.binds.metadata.compactMap(\.outContainer)
             guard !outBinds.isEmpty else { preconditionFailure() }
             var columns: [ColumnStorage] = []
             if statementContext.isReturning {

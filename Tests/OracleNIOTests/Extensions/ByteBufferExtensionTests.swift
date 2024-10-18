@@ -147,4 +147,9 @@ final class ByteBufferExtensionTests: XCTestCase {
         buffer = longLengthData
         XCTAssertNoThrow(try buffer.throwingReadOracleSpecificLengthPrefixedSlice())
     }
+
+    func testReadOracleSliceReturnsNilOnEmptyBuffer() {
+        var buffer = ByteBuffer()
+        XCTAssertEqual(buffer.readOracleSlice(), nil)
+    }
 }

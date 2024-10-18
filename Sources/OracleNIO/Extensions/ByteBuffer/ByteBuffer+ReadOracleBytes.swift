@@ -89,7 +89,7 @@ extension ByteBuffer {
         guard
             var length = self.getInteger(at: self.readerIndex, as: UInt8.self)
         else {
-            preconditionFailure()
+            return nil  // need more data
         }
         if length == Constants.TNS_NULL_LENGTH_INDICATOR {
             length = 0

@@ -246,6 +246,21 @@ public struct OracleSQLError: Sendable, Error {
         }
     }
 
+    public struct BatchError: Sendable {
+        /// The index of the statement in which the error occurred.
+        public let statementIndex: Int
+        /// The error number/identifier.
+        public let number: Int
+        /// The error message, typically prefixed with `ORA-` & ``number``.
+        public let message: String
+
+        init(_ error: OracleError) {
+            self.statementIndex = error.offset
+            self.number = error.code
+            self.message = error.message ?? ""
+        }
+    }
+
     // MARK: - Internal convenience factory methods -
 
     static func unexpectedBackendMessage(

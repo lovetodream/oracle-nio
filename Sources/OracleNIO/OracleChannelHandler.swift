@@ -389,8 +389,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .succeedStatement(let promise, let result, let rowCounts):
-            self.succeedStatement(promise, result: result, rowCounts: rowCounts, context: context)
+        case .succeedStatement(let promise, let result):
+            self.succeedStatement(promise, result: result, context: context)
         case .failStatement(let promise, let error, let cleanupContext):
             promise.fail(error)
             if let cleanupContext {
@@ -693,7 +693,6 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private func succeedStatement(
         _ promise: EventLoopPromise<OracleRowStream>,
         result: StatementResult,
-        rowCounts: [Int]?,
         context: ChannelHandlerContext
     ) {
         let rows: OracleRowStream
@@ -704,7 +703,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 eventLoop: context.channel.eventLoop,
                 logger: result.logger,
                 affectedRows: nil,
-                rowCounts: rowCounts
+                rowCounts: result.rowCounts,
+                batchErrors: result.batchErrors
             )
             self.rowStream = rows
             promise.succeed(rows)
@@ -715,7 +715,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 eventLoop: context.channel.eventLoop,
                 logger: result.logger,
                 affectedRows: affectedRows,
-                rowCounts: rowCounts
+                rowCounts: result.rowCounts,
+                batchErrors: result.batchErrors
             )
             promise.succeed(rows)
             self.run(self.state.readyForStatementReceived(), with: context)

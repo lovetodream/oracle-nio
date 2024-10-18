@@ -62,11 +62,11 @@ public struct OracleRowSequence: AsyncSequence, Sendable {
     }
 
     internal var rowCounts: [Int] {
-        get async throws {
-            try await withCheckedThrowingContinuation { continuation in
-                listeners.addRowCountsListener(continuation)
-            }
-        }
+        listeners.rowCounts ?? []
+    }
+
+    internal var batchErrors: [OracleSQLError.BatchError] {
+        listeners.batchErrors ?? []
     }
 }
 

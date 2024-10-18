@@ -19,6 +19,6 @@ import NIOEmbedded
 
 extension StatementResult {
     init(value: Value) {
-        self.init(value: value, logger: OracleConnection.noopLogger)
+        self.init(value: value, logger: OracleConnection.noopLogger, batchErrors: nil, rowCounts: nil)
     }
 }

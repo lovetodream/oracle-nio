@@ -150,12 +150,21 @@ extension OracleConnection {
                 .map({ $0.asyncSequence() })
                 .get()
             let affectedRows = try await stream.affectedRows
-            let affectedRowsPerStatement = options.arrayDMLRowCounts ? try await stream.rowCounts : nil
+            let affectedRowsPerStatement = options.arrayDMLRowCounts ? stream.rowCounts : nil
+            let batchErrors = options.batchErrors ? stream.batchErrors : nil
             let result = OracleBatchExecutionResult(
                 affectedRows: affectedRows,
                 affectedRowsPerStatement: affectedRowsPerStatement
             )
-            // TODO: check for errors and throw if needed
+            if let batchErrors {
+                throw OracleBatchExecutionEror(
+                    result: result,
+                    errors: batchErrors,
+                    statement: statement,
+                    file: file,
+                    line: line
+                )
+            }
             return result
         } catch var error as OracleSQLError {
             error.file = file
@@ -190,5 +199,8 @@ public struct OracleBatchExecutionEror: Error, Sendable {
     /// The result of the partially finished batch execution.
     public let result: OracleBatchExecutionResult
     /// A collection of errors thrown by statements in the batch execution.
-    public let errors: [OracleSQLError.ServerInfo]
+    public let errors: [OracleSQLError.BatchError]
+    public let statement: String
+    public let file: String
+    public let line: Int
 }

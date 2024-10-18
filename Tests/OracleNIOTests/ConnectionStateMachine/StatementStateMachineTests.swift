@@ -33,7 +33,7 @@ final class StatementStateMachineTests: XCTestCase {
         var state = ConnectionStateMachine.readyForStatement()
         XCTAssertEqual(
             state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
-        XCTAssertEqual(state.backendErrorReceived(backendError), .succeedStatement(promise, result, rowCounts: nil))
+        XCTAssertEqual(state.backendErrorReceived(backendError), .succeedStatement(promise, result))
         XCTAssertEqual(state.channelReadComplete(), .wait)
         XCTAssertEqual(state.readEventCaught(), .read)
     }
@@ -69,7 +69,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(
             state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
-        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result, rowCounts: nil))
+        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         let row1: DataRow = .makeTestDataRow(1)
         XCTAssertEqual(state.rowDataReceived(.init(1), capabilities: .init()), .wait)
         XCTAssertEqual(state.queryParameterReceived(.init()), .wait)
@@ -112,7 +112,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(
             state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
-        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result, rowCounts: nil))
+        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
             state.rowDataReceived(.init(1_024_834), capabilities: .init()),
             .wait)
@@ -160,7 +160,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(
             state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
-        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result, rowCounts: nil))
+        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(
             state.rowDataReceived(.init(1_024_834), capabilities: .init()),
             .wait)
@@ -207,7 +207,7 @@ final class StatementStateMachineTests: XCTestCase {
         XCTAssertEqual(
             state.enqueue(task: .statement(queryContext)), .sendExecute(queryContext, nil))
         XCTAssertEqual(state.describeInfoReceived(describeInfo), .wait)
-        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result, rowCounts: nil))
+        XCTAssertEqual(state.rowHeaderReceived(rowHeader), .succeedStatement(promise, result))
         XCTAssertEqual(state.rowDataReceived(.init(1), capabilities: .init()), .wait)
         XCTAssertEqual(
             state.cancelStatementStream(),

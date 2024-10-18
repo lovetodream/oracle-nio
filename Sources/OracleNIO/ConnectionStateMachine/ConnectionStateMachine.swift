@@ -132,8 +132,7 @@ struct ConnectionStateMachine {
         )
         case succeedStatement(
             EventLoopPromise<OracleRowStream>,
-            StatementResult,
-            rowCounts: [Int]?
+            StatementResult
         )
 
         // Statement streaming
@@ -1154,8 +1153,8 @@ extension ConnectionStateMachine {
             return .sendFlushOutBinds
         case .failStatement(let promise, let error):
             return .failStatement(promise, with: error, cleanupContext: nil)
-        case .succeedStatement(let promise, let columns, let rowCounts):
-            return .succeedStatement(promise, columns, rowCounts: rowCounts)
+        case .succeedStatement(let promise, let columns):
+            return .succeedStatement(promise, columns)
         case .forwardRows(let rows):
             return .forwardRows(rows)
         case .forwardStreamComplete(let rows, let cursorID, let affectedRows):

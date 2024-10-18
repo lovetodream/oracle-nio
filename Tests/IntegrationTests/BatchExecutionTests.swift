@@ -238,9 +238,14 @@
                 var options = StatementOptions()
                 options.batchErrors = true
                 options.arrayDMLRowCounts = true
-                let batchResult = try await connection.executeBatch(binds, options: options)
-                #expect(batchResult.affectedRows == 4)
-                #expect(batchResult.affectedRowsPerStatement == [1, 1, 0, 1, 1])
+                do {
+                    try await connection.executeBatch(binds, options: options)
+                } catch let error as OracleBatchExecutionEror {
+                    #expect(error.result.affectedRows == 4)
+                    #expect(error.result.affectedRowsPerStatement == [1, 1, 0, 1, 1])
+                    #expect(error.errors.first?.statementIndex == 2)
+                    #expect(error.errors.first?.number == 12899)
+                }
                 let stream = try await connection.execute(
                     "SELECT id, name, age FROM users_batch_error_does_not_discard_batch_exec ORDER BY id ASC")
                 var index: Int = 0

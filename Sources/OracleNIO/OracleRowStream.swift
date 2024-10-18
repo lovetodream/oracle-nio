@@ -24,6 +24,8 @@ struct StatementResult {
 
     var value: Value
     var logger: Logger
+    var batchErrors: Optional<[OracleSQLError.BatchError]>
+    var rowCounts: Optional<[Int]>
 }
 
 final class OracleRowStream: @unchecked Sendable {
@@ -65,17 +67,17 @@ final class OracleRowStream: @unchecked Sendable {
         /// This property must only be accessed when ``lock`` is aquired.
         private nonisolated(unsafe) var affectedRowsListeners: [CheckedContinuation<Int, Error>] = []
         /// This property must only be accessed when ``lock`` is aquired.
-        private nonisolated(unsafe) var rowCountsListeners: [CheckedContinuation<[Int], Error>] = []
-        /// This property must only be accessed when ``lock`` is aquired.
         private nonisolated(unsafe) var affectedRows: Int?
-        /// This property must only be accessed when ``lock`` is aquired.
-        private nonisolated(unsafe) var rowCounts: [Int]?
         /// This property must only be accessed when ``lock`` is aquired.
         private nonisolated(unsafe) var error: (any Error)?
 
-        init(affectedRows: Int? = nil, rowCounts: [Int]?) {
+        let rowCounts: [Int]?
+        let batchErrors: [OracleSQLError.BatchError]?
+
+        init(affectedRows: Int? = nil, rowCounts: [Int]?, batchErrors: [OracleSQLError.BatchError]?) {
             self.affectedRows = affectedRows
             self.rowCounts = rowCounts
+            self.batchErrors = batchErrors
         }
 
         func addAffectedRowsListener(_ listener: CheckedContinuation<Int, Error>) {
@@ -90,18 +92,6 @@ final class OracleRowStream: @unchecked Sendable {
             }
         }
 
-        func addRowCountsListener(_ listener: CheckedContinuation<[Int], Error>) {
-            lock.withLock {
-                if let rowCounts {
-                    listener.resume(returning: rowCounts)
-                } else if let error {
-                    listener.resume(throwing: error)
-                } else {
-                    rowCountsListeners.append(listener)
-                }
-            }
-        }
-
         func receiveAffectedRows(_ affectedRows: Int) {
             let listeners = lock.withLock {
                 self.affectedRows = affectedRows
@@ -111,18 +101,6 @@ final class OracleRowStream: @unchecked Sendable {
             }
             for listener in listeners {
                 listener.resume(returning: affectedRows)
-            }
-        }
-
-        func receiveRowCounts(_ rowCounts: [Int]) {
-            let listeners = lock.withLock {
-                self.rowCounts = rowCounts
-                let listeners = self.rowCountsListeners
-                self.rowCountsListeners.removeAll()
-                return listeners
-            }
-            for listener in listeners {
-                listener.resume(returning: rowCounts)
             }
         }
 
@@ -149,7 +127,8 @@ final class OracleRowStream: @unchecked Sendable {
         eventLoop: EventLoop,
         logger: Logger,
         affectedRows: Int?,
-        rowCounts: [Int]?
+        rowCounts: [Int]?,
+        batchErrors: [OracleSQLError.BatchError]?
     ) {
         let bufferState: BufferState
         switch source {
@@ -176,7 +155,7 @@ final class OracleRowStream: @unchecked Sendable {
         }
         self.lookupTable = lookup
 
-        self.listeners = MetadataListeners(affectedRows: affectedRows, rowCounts: rowCounts)
+        self.listeners = MetadataListeners(affectedRows: affectedRows, rowCounts: rowCounts, batchErrors: batchErrors)
     }
 
     // MARK: Async Sequence
@@ -461,12 +440,6 @@ final class OracleRowStream: @unchecked Sendable {
         case .consumed(.failure):
             break
         }
-    }
-
-    internal func receive(rowCounts: [Int]) {
-        self.eventLoop.preconditionInEventLoop()
-
-        self.listeners.receiveRowCounts(rowCounts)
     }
 
     internal func receive(completion result: Result<Int, Error>) {

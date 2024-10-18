@@ -117,11 +117,11 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
             return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
                 && lhsCleanup == rhsCleanup
         case (
-            .succeedStatement(let lhsPromise, let lhsResult, let lhsRowCounts),
-            .succeedStatement(let rhsPromise, let rhsResult, let rhsRowCounts)
+            .succeedStatement(let lhsPromise, let lhsResult),
+            .succeedStatement(let rhsPromise, let rhsResult)
         ):
             return lhsPromise.futureResult === rhsPromise.futureResult
-                && lhsResult.value == rhsResult.value && lhsRowCounts == rhsRowCounts
+                && lhsResult.value == rhsResult.value
 
         case (.forwardRows(let lhs), .forwardRows(let rhs)):
             return lhs == rhs

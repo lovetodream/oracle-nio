@@ -23,14 +23,16 @@ extension OracleRowStream {
         source: Source,
         eventLoop: any EventLoop = EmbeddedEventLoop(),
         affectedRows: Int? = nil,
-        rowCounts: [Int]? = nil
+        rowCounts: [Int]? = nil,
+        batchErrors: [OracleSQLError.BatchError]? = nil
     ) {
         self.init(
             source: source,
             eventLoop: eventLoop,
             logger: OracleConnection.noopLogger,
             affectedRows: affectedRows,
-            rowCounts: rowCounts
+            rowCounts: rowCounts,
+            batchErrors: batchErrors
         )
     }
 

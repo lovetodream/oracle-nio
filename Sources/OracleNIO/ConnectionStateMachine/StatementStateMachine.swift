@@ -43,7 +43,7 @@ struct StatementStateMachine {
         case sendFlushOutBinds
 
         case failStatement(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
-        case succeedStatement(EventLoopPromise<OracleRowStream>, StatementResult, rowCounts: [Int]?)
+        case succeedStatement(EventLoopPromise<OracleRowStream>, StatementResult)
 
         case evaluateErrorAtConnectionLevel(OracleSQLError)
 
@@ -163,9 +163,10 @@ struct StatementStateMachine {
                     promise,
                     StatementResult(
                         value: .describeInfo(describeInfo.columns),
-                        logger: context.logger
-                    ),
-                    rowCounts: nil
+                        logger: context.logger,
+                        batchErrors: nil,
+                        rowCounts: nil
+                    )
                 )
             }
 
@@ -286,6 +287,7 @@ struct StatementStateMachine {
     mutating func errorReceived(
         _ error: OracleBackendMessage.BackendError
     ) -> Action {
+        let batchErrors = error.batchErrors.map(OracleSQLError.BatchError.init)
 
         let action: Action
         if Constants.TNS_ERR_NO_DATA_FOUND == error.number
@@ -312,8 +314,12 @@ struct StatementStateMachine {
                     .plain(let promise):
                     action = .succeedStatement(
                         promise,
-                        .init(value: .noRows(affectedRows: Int(error.rowCount ?? 0)), logger: context.logger),
-                        rowCounts: nil
+                        .init(
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: nil
+                        )
                     )  // empty response
                 }
 
@@ -333,8 +339,12 @@ struct StatementStateMachine {
                         .plain(let promise):
                     action = .succeedStatement(
                         promise,
-                        .init(value: .noRows(affectedRows: Int(error.rowCount ?? 0)), logger: context.logger),
-                        rowCounts: rowCounts
+                        .init(
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: rowCounts
+                        )
                     )  // empty response
                 }
 
@@ -436,9 +446,11 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         StatementResult(
-                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)), logger: context.logger
-                        ),
-                        rowCounts: nil
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: nil
+                        )
                     )
                 }
                 self.state = .commandComplete
@@ -457,9 +469,11 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         StatementResult(
-                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)), logger: context.logger
-                        ),
-                        rowCounts: rowCounts
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            logger: context.logger,
+                            batchErrors: batchErrors,
+                            rowCounts: rowCounts
+                        )
                     )
                 }
                 self.state = .commandComplete

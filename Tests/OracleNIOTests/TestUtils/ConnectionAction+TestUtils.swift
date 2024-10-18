@@ -117,19 +117,19 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
             return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
                 && lhsCleanup == rhsCleanup
         case (
-            .succeedStatement(let lhsPromise, let lhsResult),
-            .succeedStatement(let rhsPromise, let rhsResult)
+            .succeedStatement(let lhsPromise, let lhsResult, let lhsRowCounts),
+            .succeedStatement(let rhsPromise, let rhsResult, let rhsRowCounts)
         ):
             return lhsPromise.futureResult === rhsPromise.futureResult
-                && lhsResult.value == rhsResult.value
+                && lhsResult.value == rhsResult.value && lhsRowCounts == rhsRowCounts
 
         case (.forwardRows(let lhs), .forwardRows(let rhs)):
             return lhs == rhs
         case (
-            .forwardStreamComplete(let lhsRows, let lhsCursorID),
-            .forwardStreamComplete(let rhsRows, let rhsCursorID)
+            .forwardStreamComplete(let lhsRows, let lhsCursorID, let lhsAffectedRows),
+            .forwardStreamComplete(let rhsRows, let rhsCursorID, let rhsAffectedRows)
         ):
-            return lhsRows == rhsRows && lhsCursorID == rhsCursorID
+            return lhsRows == rhsRows && lhsCursorID == rhsCursorID && lhsAffectedRows == rhsAffectedRows
         case (
             .forwardStreamError(let lhsError, let lhsRead, let lhsCursorID, let lhsClientCancelled),
             .forwardStreamError(let rhsError, let rhsRead, let rhsCursorID, let rhsClientCancelled)

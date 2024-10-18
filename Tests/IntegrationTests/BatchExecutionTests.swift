@@ -22,7 +22,7 @@
         private var running: Task<Void, Error>!
 
         init() throws {
-            self.client = try OracleClient(configuration: OracleConnection.testConfig())
+            self.client = try OracleClient(configuration: OracleConnection.testConfig(), backgroundLogger: .oracleTest)
             self.running = Task { await client.run() }
         }
 
@@ -48,8 +48,9 @@
                     (4, "Jill", 50),
                     (5, "Pete", nil),
                 ]
-                try await connection.executeBatch(
+                let batchResult = try await connection.executeBatch(
                     "INSERT INTO users_simple_batch_exec (id, name, age) VALUES (:1, :2, :3)", binds: binds)
+                #expect(batchResult.affectedRows == binds.count)
                 let stream = try await connection.execute(
                     "SELECT id, name, age FROM users_simple_batch_exec ORDER BY id ASC")
                 var index: Int = 0
@@ -107,7 +108,8 @@
                     InsertUserStatement(id: 4, name: "Jill", age: 50),
                     InsertUserStatement(id: 5, name: "Pete", age: 60),
                 ]
-                try await connection.executeBatch(binds)
+                let batchResult = try await connection.executeBatch(binds)
+                #expect(batchResult.affectedRows == binds.count)
                 let stream = try await connection.execute(
                     "SELECT id, name, age FROM users_prepared_statement_batch_exec ORDER BY id ASC")
                 var index: Int = 0
@@ -169,7 +171,9 @@
                 do {
                     try await connection.executeBatch(binds)
                 } catch let error as OracleSQLError {
+                    // expect a value too long for column error here
                     guard error.serverInfo?.number == 12899 else { throw error }
+                    #expect(error.serverInfo?.affectedRows == 2)
                 }
                 let stream = try await connection.execute(
                     "SELECT id, name, age FROM users_error_discards_batch_exec ORDER BY id ASC")
@@ -234,7 +238,9 @@
                 var options = StatementOptions()
                 options.batchErrors = true
                 options.arrayDMLRowCounts = true
-                try await connection.executeBatch(binds, options: options)
+                let batchResult = try await connection.executeBatch(binds, options: options)
+                #expect(batchResult.affectedRows == 4)
+                #expect(batchResult.affectedRowsPerStatement == [1, 1, 0, 1, 1])
                 let stream = try await connection.execute(
                     "SELECT id, name, age FROM users_batch_error_does_not_discard_batch_exec ORDER BY id ASC")
                 var index: Int = 0

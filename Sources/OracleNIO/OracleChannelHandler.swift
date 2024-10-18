@@ -389,8 +389,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
-        case .succeedStatement(let promise, let result):
-            self.succeedStatement(promise, result: result, context: context)
+        case .succeedStatement(let promise, let result, let rowCounts):
+            self.succeedStatement(promise, result: result, rowCounts: rowCounts, context: context)
         case .failStatement(let promise, let error, let cleanupContext):
             promise.fail(error)
             if let cleanupContext {
@@ -400,7 +400,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         case .forwardRows(let rows):
             self.rowStream!.receive(rows)
-        case .forwardStreamComplete(let buffer, let cursorID):
+        case .forwardStreamComplete(let buffer, let cursorID, let affectedRows):
             guard let rowStream else {
                 // if the stream was cancelled we don't have it here anymore.
                 return
@@ -409,7 +409,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             if buffer.count > 0 {
                 rowStream.receive(buffer)
             }
-            rowStream.receive(completion: .success(()))
+            rowStream.receive(completion: .success(affectedRows))
 
             if cursorID != 0 {
                 self.cleanupContext.cursorsToClose.insert(cursorID)
@@ -693,6 +693,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private func succeedStatement(
         _ promise: EventLoopPromise<OracleRowStream>,
         result: StatementResult,
+        rowCounts: [Int]?,
         context: ChannelHandlerContext
     ) {
         let rows: OracleRowStream
@@ -701,16 +702,20 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             rows = OracleRowStream(
                 source: .stream(describeInfo, self),
                 eventLoop: context.channel.eventLoop,
-                logger: result.logger
+                logger: result.logger,
+                affectedRows: nil,
+                rowCounts: rowCounts
             )
             self.rowStream = rows
             promise.succeed(rows)
 
-        case .noRows:
+        case .noRows(let affectedRows):
             rows = OracleRowStream(
                 source: .noRows(.success(())),
                 eventLoop: context.channel.eventLoop,
-                logger: result.logger
+                logger: result.logger,
+                affectedRows: affectedRows,
+                rowCounts: rowCounts
             )
             promise.succeed(rows)
             self.run(self.state.readyForStatementReceived(), with: context)

@@ -26,8 +26,7 @@ extension OracleConnection {
     ///   - logger: The `Logger` to log statement related background events into. Defaults to logging disabled.
     ///   - file: The file, the statement was started in. Used for better error reporting.
     ///   - line: The line, the statement was started in. Used for better error reporting.
-    /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the statement
-    ///            result. The result sequence can be discarded if the statement has no result.
+    /// - Returns: A ``OracleBatchExecutionResult`` containing the amount of affected rows and other metadata the server sent.
     ///
     /// Batch execution is useful for inserting or updating multiple rows efficiently when working with large data sets. It significally outperforms
     /// repeated calls to ``execute(_:options:logger:file:line:)`` by reducing network transfer costs and database overheads.
@@ -53,7 +52,7 @@ extension OracleConnection {
         options: StatementOptions = .init(),
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
-    ) async throws -> OracleRowSequence {
+    ) async throws -> OracleBatchExecutionResult {
         var logger = logger ?? Self.noopLogger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
         logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
@@ -82,7 +81,7 @@ extension OracleConnection {
     ///   - logger: The `Logger` to log statement related background events into. Defaults to logging disabled.
     ///   - file: The file, the statement was started in. Used for better error reporting.
     ///   - line: The line, the statement was started in. Used for better error reporting.
-    /// - Returns: An async sequence of `Row`s. The result sequence can be discarded if the statement has no result.
+    /// - Returns: A ``OracleBatchExecutionResult`` containing the amount of affected rows and other metadata the server sent.
     ///
     /// Batch execution is useful for inserting or updating multiple rows efficiently when working with large data sets. It significally outperforms
     /// repeated calls to ``execute(_:options:logger:file:line:)-9uyvp`` by reducing network transfer costs and database overheads.
@@ -97,12 +96,12 @@ extension OracleConnection {
     /// ])
     /// ```
     @discardableResult
-    public func executeBatch<Statement: OraclePreparedStatement, Row>(
+    public func executeBatch<Statement: OraclePreparedStatement>(
         _ statements: [Statement],
         options: StatementOptions = .init(),
         logger: Logger? = nil,
         file: String = #fileID, line: Int = #line
-    ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row {
+    ) async throws -> OracleBatchExecutionResult {
         if statements.isEmpty {
             throw OracleSQLError.missingStatement
         }
@@ -115,8 +114,7 @@ extension OracleConnection {
         for statement in statements {
             try collection.appendRow(statement.makeBindings())
         }
-        let decoder = statements[0]
-        let stream: OracleRowSequence = try await _executeBatch(
+        return try await _executeBatch(
             statement: Statement.sql,
             collection: collection,
             options: options,
@@ -124,7 +122,6 @@ extension OracleConnection {
             file: file,
             line: line
         )
-        return stream.map { try decoder.decodeRow($0) }
     }
 
     private func _executeBatch(
@@ -134,7 +131,7 @@ extension OracleConnection {
         logger: Logger,
         file: String,
         line: Int
-    ) async throws -> OracleRowSequence {
+    ) async throws -> OracleBatchExecutionResult {
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
@@ -149,9 +146,17 @@ extension OracleConnection {
         self.channel.write(OracleTask.statement(context), promise: nil)
 
         do {
-            return try await promise.futureResult
+            let stream = try await promise.futureResult
                 .map({ $0.asyncSequence() })
                 .get()
+            let affectedRows = try await stream.affectedRows
+            let affectedRowsPerStatement = options.arrayDMLRowCounts ? try await stream.rowCounts : nil
+            let result = OracleBatchExecutionResult(
+                affectedRows: affectedRows,
+                affectedRowsPerStatement: affectedRowsPerStatement
+            )
+            // TODO: check for errors and throw if needed
+            return result
         } catch var error as OracleSQLError {
             error.file = file
             error.line = line
@@ -159,4 +164,31 @@ extension OracleConnection {
             throw error  // rethrow with more metadata
         }
     }
+}
+
+public struct OracleBatchExecutionResult: Sendable {
+    /// The total amount of affected rows.
+    public let affectedRows: Int
+    /// The amount of affected rows per statement.
+    ///
+    /// - Note: Only available if ``StatementOptions/arrayDMLRowCounts`` is set to `true`.
+    ///
+    /// For example, if five single row `INSERT` statements are executed and the fifth one fails, the following array would be returned.
+    /// ```swift
+    /// [1, 1, 1, 1, 0]
+    /// ```
+    public let affectedRowsPerStatement: [Int]?
+}
+
+/// This error is thrown when a batch execution contains both successful and failed statements.
+///
+/// - Note: This error is only thrown when ``StatementOptions/batchErrors`` is set to `true`.
+///         Otherwise ``OracleSQLError`` will be thrown as usual. Be aware that all the statements
+///         executed before the error is thrown won't be reverted regardless of this setting.
+///         They can still be reverted using a ``OracleConnection/rollback()``.
+public struct OracleBatchExecutionEror: Error, Sendable {
+    /// The result of the partially finished batch execution.
+    public let result: OracleBatchExecutionResult
+    /// A collection of errors thrown by statements in the batch execution.
+    public let errors: [OracleSQLError.ServerInfo]
 }

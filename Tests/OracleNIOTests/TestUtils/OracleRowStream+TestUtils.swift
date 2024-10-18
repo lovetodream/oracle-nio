@@ -21,12 +21,16 @@ extension OracleRowStream {
 
     convenience init(
         source: Source,
-        eventLoop: any EventLoop = EmbeddedEventLoop()
+        eventLoop: any EventLoop = EmbeddedEventLoop(),
+        affectedRows: Int? = nil,
+        rowCounts: [Int]? = nil
     ) {
         self.init(
             source: source,
             eventLoop: eventLoop,
-            logger: OracleConnection.noopLogger
+            logger: OracleConnection.noopLogger,
+            affectedRows: affectedRows,
+            rowCounts: rowCounts
         )
     }
 

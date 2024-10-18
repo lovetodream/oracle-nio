@@ -282,6 +282,12 @@ public struct StatementOptions {
 
     public var arrayDMLRowCounts: Bool = false
 
+    /// Indicates how errors will be handled in batch executions.
+    ///
+    /// If false, batch executions will discard all remaining data sets after an error occurred.
+    ///
+    /// If true, all data sets will be executed. Data sets with errors are skipped and the corresponding errors are
+    /// returned after the full operation is finished.
     public var batchErrors: Bool = false
 
     /// Indicates how many rows will be returned with the initial roundtrip.
@@ -329,6 +335,8 @@ public struct StatementOptions {
     /// - Parameters:
     ///   - autoCommit: Automatically commit after execution of the statement without needing an
     ///                 additional roundtrip.
+    ///   - batchErrors: Indicates how errors are handled in batch executions. Refer to
+    ///                  ``batchErrors`` for additional explanation.
     ///   - prefetchRows: Indicates how many rows should be fetched with the initial response from
     ///                   the database. Refer to ``prefetchRows`` for additional explanation.
     ///   - arraySize: Indicates how many rows will be returned by any subsequent fetch calls to the
@@ -337,6 +345,7 @@ public struct StatementOptions {
     ///                requires another round-trip to the server.
     public init(
         autoCommit: Bool = false,
+        batchErrors: Bool = false,
         prefetchRows: Int = 2,
         arraySize: Int = 50,
         fetchLOBs: Bool = false

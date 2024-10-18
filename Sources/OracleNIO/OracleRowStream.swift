@@ -62,12 +62,7 @@ final class OracleRowStream: @unchecked Sendable {
         case asyncSequence(AsyncSequenceSource, OracleRowsDataSource)
     }
 
-    #if swift(>=5.10)
-        typealias MetadataListenersSendable = Sendable
-    #else
-        typealias MetadataListenersSendable = @unchecked Sendable
-    #endif
-    final class MetadataListeners: MetadataListenersSendable {
+    final class MetadataListeners {
         private let lock = NIOLock()
         #if swift(>=5.10)
             /// This property must only be accessed when ``lock`` is aquired.
@@ -557,3 +552,9 @@ protocol OracleRowsDataSource {
     func request(for stream: OracleRowStream)
     func cancel(for stream: OracleRowStream)
 }
+
+#if swift(>=5.10)
+    extension OracleRowStream.MetadataListeners: Sendable {}
+#else
+    extension OracleRowStream.MetadataListeners: @unchecked Sendable {}
+#endif

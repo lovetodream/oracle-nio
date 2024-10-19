@@ -94,6 +94,33 @@ final class OracleClientTests: XCTestCase {
         }
     }
 
+    func testTransaction() async throws {
+        let config = try OracleConnection.testConfig()
+        let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
+        let runTask = Task {
+            await client.run()
+        }
+        try await client.withTransaction { connection in
+            _ = try? await connection.execute("DROP TABLE test_pool_transaction")
+            try await connection.execute("CREATE TABLE test_pool_transaction (id NUMBER)")
+            let affectedRows = try await connection.executeBatch(
+                "INSERT INTO test_pool_transaction (id) VALUES (:1)",
+                binds: Array(1...10)
+            ).affectedRows
+            XCTAssertEqual(affectedRows, 10)
+        }
+        try await client.withConnection { connection in
+            let stream = try await connection.execute("SELECT id FROM test_pool_transaction")
+            var index = 0
+            for try await id in stream.decode(Int.self) {
+                index += 1
+                XCTAssertEqual(index, id)
+            }
+            XCTAssertEqual(index, 10)
+        }
+        runTask.cancel()
+    }
+
     @available(macOS 14.0, *)
     func testPingPong() async throws {
         let idleTimeout = Duration.seconds(20)

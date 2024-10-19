@@ -189,6 +189,30 @@ public final class OracleClient: Sendable, Service {
         }
     }
 
+    /// Lease a connection in the context of an isolated transaction for the provided `closure`'s lifetime.
+    ///
+    /// - Note: If the closure does not fail, all changes will be committed via `COMMIT`.
+    ///         If the closure throws, a `ROLLBACK` will be issued, the original error rethrows.
+    ///
+    /// - Parameter closure: A closure that uses the passed `OracleConnection`. The closure **must not** capture
+    ///                      the provided `OracleConnection`.
+    /// - Returns: The closure's return value.
+    @discardableResult
+    public func withTransaction<Result>(
+        _ closure: (OracleConnection) async throws -> Result
+    ) async throws -> Result {
+        try await self.withConnection { connection in
+            do {
+                let result = try await closure(connection)
+                try await connection.commit()
+                return result
+            } catch {
+                try await connection.rollback()
+                throw error
+            }
+        }
+    }
+
 
     /// The client's run method. Users must call this function in order to start the client's background task processing
     /// like creating and destroying connections and running timers.

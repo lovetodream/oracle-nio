@@ -280,6 +280,15 @@ public struct StatementOptions {
     /// This happens on the Oracle server side. So it won't cause additional roundtrips to the database.
     public var autoCommit: Bool = false
 
+    /// Adds row counts per statement to ``OracleBatchExecutionResult``.
+    ///
+    /// This means, when running a batch execute with 5 update statements,
+    /// ``OracleBatchExecutionResult/affectedRowsPerStatement`` shows how many
+    /// rows have been affected by each statement.
+    /// ``OracleBatchExecutionResult/affectedRows`` still returns the total
+    /// amount of affected rows.
+    ///
+    /// This setting won't work for normal statement executions.
     public var arrayDMLRowCounts: Bool = false
 
     /// Indicates how errors will be handled in batch executions.
@@ -288,6 +297,8 @@ public struct StatementOptions {
     ///
     /// If true, all data sets will be executed. Data sets with errors are skipped and the corresponding errors are
     /// returned after the full operation is finished.
+    ///
+    /// This setting won't work for normal statement executions.
     public var batchErrors: Bool = false
 
     /// Indicates how many rows will be returned with the initial roundtrip.
@@ -335,6 +346,8 @@ public struct StatementOptions {
     /// - Parameters:
     ///   - autoCommit: Automatically commit after execution of the statement without needing an
     ///                 additional roundtrip.
+    ///   - arrayDMLRowCounts: Adds row counts per statement to ``OracleBatchExecutionResult``.
+    ///                        Refer to ``arrayDMLRowCounts`` for additional explanation.
     ///   - batchErrors: Indicates how errors are handled in batch executions. Refer to
     ///                  ``batchErrors`` for additional explanation.
     ///   - prefetchRows: Indicates how many rows should be fetched with the initial response from
@@ -345,14 +358,15 @@ public struct StatementOptions {
     ///                requires another round-trip to the server.
     public init(
         autoCommit: Bool = false,
+        arrayDMLRowCounts: Bool = false,
         batchErrors: Bool = false,
         prefetchRows: Int = 2,
         arraySize: Int = 50,
         fetchLOBs: Bool = false
     ) {
         self.autoCommit = autoCommit
-        self.arrayDMLRowCounts = false
-        self.batchErrors = false
+        self.arrayDMLRowCounts = arrayDMLRowCounts
+        self.batchErrors = batchErrors
         self.prefetchRows = prefetchRows
         self.arraySize = arraySize
         self.fetchLOBs = fetchLOBs

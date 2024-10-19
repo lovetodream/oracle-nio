@@ -215,7 +215,7 @@ public struct OracleSQLError: Sendable, Error {
         }
     }
 
-    public struct ServerInfo: Sendable {
+    public struct ServerInfo: Sendable, CustomStringConvertible {
         let underlying: OracleBackendMessage.BackendError
 
         /// The error number/identifier.
@@ -243,6 +243,10 @@ public struct OracleSQLError: Sendable, Error {
 
         init(_ underlying: OracleBackendMessage.BackendError) {
             self.underlying = underlying
+        }
+
+        public var description: String {
+            message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "ORA-\(number)"
         }
     }
 

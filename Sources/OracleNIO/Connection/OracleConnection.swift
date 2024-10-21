@@ -484,6 +484,7 @@ extension OracleConnection {
     ///   - file: The file, the statement was started in. Used for better error reporting.
     ///   - line: The line, the statement was started in. Used for better error reporting.
     /// - Returns: An async sequence of `Row`s. The result sequence can be discarded if the statement has no result.
+    @discardableResult
     public func execute<Statement: OraclePreparedStatement, Row>(
         _ statement: Statement,
         options: StatementOptions = .init(),

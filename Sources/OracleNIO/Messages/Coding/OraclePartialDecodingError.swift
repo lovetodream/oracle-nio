@@ -62,4 +62,19 @@ struct OraclePartialDecodingError: Error {
             line: line
         )
     }
+
+    static func unknownControlTypeReceived(
+        controlType: UInt16,
+        file: String = #fileID,
+        line: Int = #line
+    ) -> Self {
+        OraclePartialDecodingError(
+            description: """
+                Received a control packet with control type '\(controlType)'. 
+                This is unhandled and should be reported, please file an issue.
+                """,
+            file: file,
+            line: line
+        )
+    }
 }

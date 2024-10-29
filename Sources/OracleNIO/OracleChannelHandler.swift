@@ -217,6 +217,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.lobDataReceived(lobData: lobData)
         case .lobParameter(let parameter):
             action = self.state.lobParameterReceived(parameter: parameter)
+        case .resetOOB:
+            self.capabilities.supportsOOB = false
+            action = self.state.oobCheckComplete()
         }
 
         self.run(action, flags: flags, with: context)
@@ -322,6 +325,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             break
         case .sendConnect:
             self.sendConnect(withFlags: flags, context: context)
+        case .sendOOBCheck:
+            context.writeAndFlush(self.wrapOutboundOut(ByteBuffer(bytes: "!".ascii)), promise: nil)
+            self.encoder.marker()
+            context.writeAndFlush(self.wrapOutboundOut(self.encoder.flush()), promise: nil)
         case .sendProtocol:
             self.encoder.protocol()
             context.writeAndFlush(

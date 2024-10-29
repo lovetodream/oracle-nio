@@ -233,7 +233,7 @@ enum Constants {
 
     // MARK: Control packet types
     static let TNS_CONTROL_TYPE_INBAND_NOTIFICATION = 8
-    static let TNS_CONTROL_TYPE_RESET_OOB = 9
+    static let TNS_CONTROL_TYPE_RESET_OOB: UInt16 = 9
 
     // MARK: Connect flags
     static let TNS_GSO_DONT_CARE: UInt16 = 0x0001

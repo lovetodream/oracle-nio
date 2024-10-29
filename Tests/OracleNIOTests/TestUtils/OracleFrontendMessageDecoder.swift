@@ -27,6 +27,13 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
             return nil
         }
 
+        if buffer.readableBytes == 1
+            && buffer.getInteger(at: buffer.readerIndex, as: UInt8.self) == Character("!").asciiValue!
+        {
+            buffer.moveReaderIndex(forwardBy: 1)
+            return .oob
+        }
+
         let startReaderIndex = buffer.readerIndex
         let length =
             buffer
@@ -42,11 +49,13 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
                 as: UInt8.self
             ) ?? 0  // packet flags
 
+        let typeByte = buffer.getInteger(
+            at: startReaderIndex + MemoryLayout<UInt32>.size,
+            as: UInt8.self
+        )
+
         guard
-            let typeByte = buffer.getInteger(
-                at: startReaderIndex + MemoryLayout<UInt32>.size,
-                as: UInt8.self
-            ),
+            let typeByte,
             let type = PacketType(rawValue: typeByte)
         else {
             preconditionFailure("invalid packet")
@@ -86,6 +95,9 @@ struct OracleFrontendMessageDecoder: NIOSingleStepByteToMessageDecoder {
             default:
                 preconditionFailure("TODO: Unimplemented")
             }
+        case .marker:
+            buffer.moveReaderIndex(forwardBy: buffer.readableBytes)
+            return .marker
         default:
             preconditionFailure("TODO: Unimplemented")
         }

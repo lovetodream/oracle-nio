@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.67.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.21.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.27.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.4.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.9.0"..<"5.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
@@ -34,8 +34,6 @@ let package = Package(
             ],
             path: "Sources/VendoredConnectionPoolModule"
         ),
-        .target(name: "_PBKDF2", dependencies: [.product(name: "Crypto", package: "swift-crypto")]),
-        .testTarget(name: "_PBKDF2Tests", dependencies: ["_PBKDF2"]),
         .target(
             name: "OracleNIO",
             dependencies: [
@@ -49,7 +47,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_PBKDF2", "_ConnectionPoolModule",
+                "_ConnectionPoolModule",
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete"),

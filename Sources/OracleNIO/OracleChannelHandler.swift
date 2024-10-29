@@ -219,7 +219,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             action = self.state.lobParameterReceived(parameter: parameter)
         case .resetOOB:
             self.capabilities.supportsOOB = false
-            action = self.state.oobCheckComplete(capabilities: self.capabilities)
+            action = self.state.oobCheckComplete()
         }
 
         self.run(action, flags: flags, with: context)

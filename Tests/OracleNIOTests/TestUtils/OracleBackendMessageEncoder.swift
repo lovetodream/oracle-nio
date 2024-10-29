@@ -54,6 +54,18 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
                     payload: status,
                     out: &out
                 )
+            case .resetOOB:
+                struct ResetOOB: OracleMessagePayloadEncodable {
+                    func encode(into buffer: inout ByteBuffer) {
+                        buffer.writeInteger(Constants.TNS_CONTROL_TYPE_RESET_OOB)
+                    }
+                }
+                self.encode(id: .control, flags: 0, payload: ResetOOB(), out: &out)
+            case .marker:
+                struct Marker: OracleMessagePayloadEncodable {
+                    func encode(into buffer: inout ByteBuffer) {}
+                }
+                self.encode(id: .marker, flags: 0, payload: Marker(), out: &out)
             default:
                 fatalError("Not implemented")
             }

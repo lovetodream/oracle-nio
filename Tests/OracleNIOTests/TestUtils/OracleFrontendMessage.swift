@@ -18,4 +18,6 @@ enum OracleFrontendMessage {
     case authPhaseTwo
     case logoff
     case close
+    case oob
+    case marker
 }

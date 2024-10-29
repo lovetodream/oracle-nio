@@ -20,7 +20,7 @@ struct ConnectionStateMachine {
     enum State {
         case initialized
         case connectMessageSent
-        case oobCheckInProgress
+        case oobCheckInProgress(fastAuth: Bool)
         case protocolMessageSent
         case dataTypesMessageSent
         case waitingToStartAuthentication
@@ -391,7 +391,7 @@ struct ConnectionStateMachine {
         if capabilities.supportsOOB
             && capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK
         {
-            self.state = .oobCheckInProgress
+            self.state = .oobCheckInProgress(fastAuth: capabilities.supportsOOB)
             return .sendOOBCheck
         }
 
@@ -406,13 +406,13 @@ struct ConnectionStateMachine {
         return .sendProtocol
     }
 
-    mutating func oobCheckComplete(capabilities: Capabilities) -> ConnectionAction {
-        guard case .oobCheckInProgress = self.state else {
+    mutating func oobCheckComplete() -> ConnectionAction {
+        guard case .oobCheckInProgress(let fastAuth) = self.state else {
             assertionFailure("Why are we completing an OOB check when there isn't one in progress?")
             return self.errorHappened(.unexpectedBackendMessage(.resetOOB))
         }
 
-        if capabilities.supportsFastAuth {
+        if fastAuth {
             self.state = .waitingToStartAuthentication
             return .provideAuthenticationContext(.allowed)
         }
@@ -528,13 +528,16 @@ struct ConnectionStateMachine {
     mutating func markerReceived() -> ConnectionAction {
         switch self.state {
         case .initialized,
-            .oobCheckInProgress,
             .waitingToStartAuthentication,
             .readyForStatement,
             .readyToLogOff,
             .closed,
             .renegotiatingTLS:
             preconditionFailure("Invalid state: \(self.state)")
+
+        case .oobCheckInProgress:
+            return self.oobCheckComplete()
+
         case .connectMessageSent,
             .protocolMessageSent,
             .dataTypesMessageSent,

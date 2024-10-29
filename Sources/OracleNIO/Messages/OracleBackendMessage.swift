@@ -111,7 +111,8 @@ extension OracleBackendMessage {
             if controlType == Constants.TNS_CONTROL_TYPE_RESET_OOB {
                 return (.init(element: .resetOOB), true)
             } else {
-                throw OraclePartialDecodingError
+                throw
+                    OraclePartialDecodingError
                     .unknownControlTypeReceived(controlType: controlType)
             }
         case .data:

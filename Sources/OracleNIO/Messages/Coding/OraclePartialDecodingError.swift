@@ -70,9 +70,9 @@ struct OraclePartialDecodingError: Error {
     ) -> Self {
         OraclePartialDecodingError(
             description: """
-            Received a control packet with control type '\(controlType)'. 
-            This is unhandled and should be reported, please file an issue.
-            """,
+                Received a control packet with control type '\(controlType)'. 
+                This is unhandled and should be reported, please file an issue.
+                """,
             file: file,
             line: line
         )

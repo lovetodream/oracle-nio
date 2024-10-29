@@ -15,7 +15,6 @@
 import Crypto
 import RegexBuilder
 import _CryptoExtras
-import _PBKDF2
 
 import struct Foundation.Data
 
@@ -48,8 +47,15 @@ func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throw
 }
 
 func getDerivedKey(key: Data, salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
-    Array(
-        try PBKDF2<SHA512>.calculate(length: length, password: key, salt: salt, rounds: iterations))
+    try KDF.Insecure.PBKDF2.deriveKey(
+        from: key,
+        salt: salt,
+        using: .sha512,
+        outputByteCount: length,
+        unsafeUncheckedRounds: iterations
+    ).withUnsafeBytes { bytes in
+        Array(bytes)
+    }
 }
 
 /// Returns a signed version of the given payload (used for Oracle IAM token authentication) in base64

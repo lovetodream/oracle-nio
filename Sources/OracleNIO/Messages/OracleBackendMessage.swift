@@ -56,6 +56,7 @@ enum OracleBackendMessage: Sendable, Hashable {
     case warning(BackendError)
     case ioVector(InOutVector)
     case flushOutBinds
+    case resetOOB
 }
 
 extension OracleBackendMessage {
@@ -65,6 +66,7 @@ extension OracleBackendMessage {
         case data = 6
         case resend = 11
         case marker = 12
+        case control = 14
     }
 
     /// Equivalent to ``MessageType``.
@@ -104,6 +106,14 @@ extension OracleBackendMessage {
             )
         case .marker:
             return (.init(element: .marker), true)
+        case .control:
+            let controlType = try buffer.throwingReadInteger(as: UInt16.self)
+            if controlType == Constants.TNS_CONTROL_TYPE_RESET_OOB {
+                return (.init(element: .resetOOB), true)
+            } else {
+                throw OraclePartialDecodingError
+                    .unknownControlTypeReceived(controlType: controlType)
+            }
         case .data:
             var messages: TinySequence<OracleBackendMessage> = []
             let flags = try buffer.throwingReadInteger(as: UInt16.self)
@@ -268,6 +278,8 @@ extension OracleBackendMessage: CustomDebugStringConvertible {
             return ".ioVector(\(String(reflecting: vector)))"
         case .flushOutBinds:
             return ".flushOutBinds"
+        case .resetOOB:
+            return ".resetOOB"
         }
     }
 }

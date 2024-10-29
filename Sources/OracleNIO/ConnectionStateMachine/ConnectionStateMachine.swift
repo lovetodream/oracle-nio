@@ -20,6 +20,7 @@ struct ConnectionStateMachine {
     enum State {
         case initialized
         case connectMessageSent
+        case oobCheckInProgress
         case protocolMessageSent
         case dataTypesMessageSent
         case waitingToStartAuthentication
@@ -91,6 +92,7 @@ struct ConnectionStateMachine {
 
         // Connection Establishment Actions
         case sendConnect
+        case sendOOBCheck
         case sendProtocol
         case sendDataTypes
 
@@ -193,6 +195,7 @@ struct ConnectionStateMachine {
                 "How can a connection be closed, if it was never connected."
             )
         case .connectMessageSent,
+            .oobCheckInProgress,
             .protocolMessageSent,
             .dataTypesMessageSent,
             .waitingToStartAuthentication,
@@ -223,6 +226,7 @@ struct ConnectionStateMachine {
     mutating func errorHappened(_ error: OracleSQLError) -> ConnectionAction {
         switch self.state {
         case .connectMessageSent,
+            .oobCheckInProgress,
             .dataTypesMessageSent,
             .protocolMessageSent,
             .waitingToStartAuthentication,
@@ -272,6 +276,7 @@ struct ConnectionStateMachine {
             switch self.state {
             case .initialized,
                 .connectMessageSent,
+                .oobCheckInProgress,
                 .protocolMessageSent,
                 .dataTypesMessageSent,
                 .waitingToStartAuthentication,
@@ -323,6 +328,7 @@ struct ConnectionStateMachine {
     mutating func channelReadComplete() -> ConnectionAction {
         switch self.state {
         case .initialized,
+            .oobCheckInProgress,
             .connectMessageSent,
             .protocolMessageSent,
             .dataTypesMessageSent,
@@ -385,12 +391,27 @@ struct ConnectionStateMachine {
         if capabilities.supportsOOB
             && capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK
         {
-            // TODO: Perform OOB Check
-            // send OUT_OF_BAND + reset marker message through socket
+            self.state = .oobCheckInProgress
+            return .sendOOBCheck
         }
 
         // Starting in 23ai, fast authentication is possible.
         // Let's see if the server supports it.
+        if capabilities.supportsFastAuth {
+            self.state = .waitingToStartAuthentication
+            return .provideAuthenticationContext(.allowed)
+        }
+
+        self.state = .protocolMessageSent
+        return .sendProtocol
+    }
+
+    mutating func oobCheckComplete(capabilities: Capabilities) -> ConnectionAction {
+        guard case .oobCheckInProgress = self.state else {
+            assertionFailure("Why are we completing an OOB check when there isn't one in progress?")
+            return self.errorHappened(.unexpectedBackendMessage(.resetOOB))
+        }
+
         if capabilities.supportsFastAuth {
             self.state = .waitingToStartAuthentication
             return .provideAuthenticationContext(.allowed)
@@ -445,7 +466,7 @@ struct ConnectionStateMachine {
             return .wait
         case .loggingOff(let promise):
             return .logoffConnection(promise)
-        case .renegotiatingTLS:
+        case .oobCheckInProgress, .renegotiatingTLS:
             fatalError("Does this even happen?")
 
         case .closing, .closed:
@@ -476,6 +497,7 @@ struct ConnectionStateMachine {
     ) -> ConnectionAction {
         switch self.state {
         case .initialized,
+            .oobCheckInProgress,
             .connectMessageSent,
             .protocolMessageSent,
             .dataTypesMessageSent,
@@ -506,6 +528,7 @@ struct ConnectionStateMachine {
     mutating func markerReceived() -> ConnectionAction {
         switch self.state {
         case .initialized,
+            .oobCheckInProgress,
             .waitingToStartAuthentication,
             .readyForStatement,
             .readyToLogOff,
@@ -543,7 +566,7 @@ struct ConnectionStateMachine {
         _ status: OracleBackendMessage.Status
     ) -> ConnectionAction {
         switch self.state {
-        case .initialized:
+        case .initialized, .oobCheckInProgress:
             preconditionFailure("Invalid state: \(self.state)")
 
         case .connectMessageSent,
@@ -845,6 +868,7 @@ struct ConnectionStateMachine {
         switch self.state {
         case .initialized,
             .connectMessageSent,
+            .oobCheckInProgress,
             .protocolMessageSent,
             .dataTypesMessageSent,
             .waitingToStartAuthentication,

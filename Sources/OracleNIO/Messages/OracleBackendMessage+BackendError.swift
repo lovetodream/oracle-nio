@@ -34,11 +34,12 @@ extension OracleBackendMessage {
             let length = try buffer.throwingReadInteger(as: UInt16.self)
             // length of error message
             try buffer.throwingMoveReaderIndex(forwardBy: 2)  // skip flags
-            let errorMessage: String? = if number != 0 && length > 0 {
-                try buffer.throwingReadString(length: Int(length))
-            } else {
-                nil
-            }
+            let errorMessage: String? =
+                if number != 0 && length > 0 {
+                    try buffer.throwingReadString(length: Int(length))
+                } else {
+                    nil
+                }
             return .init(
                 number: UInt32(number),
                 isWarning: true,
@@ -133,11 +134,12 @@ extension OracleBackendMessage {
                 try buffer.throwingSkipUB4()  // server checksum
             }
 
-            let errorMessage: String? = if number != 0 {
-                try buffer.readString().trimmingCharacters(in: .whitespaces)
-            } else {
-                nil
-            }
+            let errorMessage: String? =
+                if number != 0 {
+                    try buffer.readString().trimmingCharacters(in: .whitespaces)
+                } else {
+                    nil
+                }
 
             return .init(
                 number: number,

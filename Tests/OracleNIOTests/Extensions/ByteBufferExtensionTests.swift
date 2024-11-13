@@ -167,4 +167,12 @@ final class ByteBufferExtensionTests: XCTestCase {
         var locatorMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0, 0])
         XCTAssertNil(try? locatorMissingBuffer.throwingReadOSON())
     }
+
+    func testThrowingSkipUBThrowsOnMissingLength() {
+        var buffer = ByteBuffer()
+        XCTAssertThrowsError(
+            try buffer.throwingSkipUB4(),
+            expected: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0)
+        )
+    }
 }

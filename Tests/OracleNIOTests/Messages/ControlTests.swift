@@ -36,6 +36,6 @@ final class ControlTests: XCTestCase {
                 from: &message,
                 of: .control,
                 context: .init(capabilities: .desired())
-            ), expected: OraclePartialDecodingError.unknownControlTypeReceived(controlType: 0x0109))
+            ), expected: OraclePartialDecodingError.unknownControlType(controlType: 0x0109))
     }
 }

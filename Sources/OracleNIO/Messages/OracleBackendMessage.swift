@@ -113,7 +113,7 @@ extension OracleBackendMessage {
             } else {
                 throw
                     OraclePartialDecodingError
-                    .unknownControlTypeReceived(controlType: controlType)
+                    .unknownControlType(controlType: controlType)
             }
         case .data:
             var messages: TinySequence<OracleBackendMessage> = []
@@ -150,14 +150,22 @@ extension OracleBackendMessage {
                         break readLoop
                     }
                 case .error:
-                    let error = try BackendError.decode(from: &buffer, context: context)
-                    // not ideal but the most reliable way I could come up with
-                    if error.number != 0 { context.clearStatementContext() }
-                    messages.append(.error(error))
-                    // error marks the end of response if no explicit end of
-                    // response is available
-                    if !context.capabilities.supportsEndOfRequest {
-                        break readLoop
+                    do {
+                        let error = try BackendError.decode(from: &buffer, context: context)
+                        // not ideal but the most reliable way I could come up with
+                        if error.number != 0 { context.clearStatementContext() }
+                        messages.append(.error(error))
+                        // error marks the end of response if no explicit end of
+                        // response is available
+                        if !context.capabilities.supportsEndOfRequest {
+                            break readLoop
+                        }
+                    } catch let error as OraclePartialDecodingError {
+                        if error.category == .expectedAtLeastNRemainingBytes {
+                            throw MissingDataDecodingError.Trigger()
+                        } else {
+                            throw error
+                        }
                     }
                 case .parameter:
                     if context.lobContext != nil {
@@ -228,11 +236,17 @@ extension OracleBackendMessage {
                 case nil:
                     throw
                         OraclePartialDecodingError
-                        .unknownMessageIDReceived(messageID: messageIDByte)
+                        .unknownMessageID(messageID: messageIDByte)
                 }
             } catch is MissingDataDecodingError.Trigger {
                 throw MissingDataDecodingError(
                     decodedMessages: messages, resetToReaderIndex: savePoint)
+            } catch let error as OraclePartialDecodingError {
+                if error.category == .expectedAtLeastNRemainingBytes {
+                    throw MissingDataDecodingError(
+                        decodedMessages: messages, resetToReaderIndex: savePoint)
+                }
+                throw error
             }
         }
     }

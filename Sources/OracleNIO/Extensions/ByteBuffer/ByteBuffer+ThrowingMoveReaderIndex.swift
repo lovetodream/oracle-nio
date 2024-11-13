@@ -15,19 +15,16 @@
 import NIOCore
 
 extension ByteBuffer {
-    mutating func throwingReadOSON() throws -> ByteBuffer? {
-        let length = try self.throwingReadUB4()
-        guard length > 0 else {
-            return ByteBuffer(bytes: [0])
+    @inline(__always)
+    mutating func throwingMoveReaderIndex(forwardBy: Int, file: String = #fileID, line: Int = #line) throws {
+        if self.readableBytes < forwardBy {
+            throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                forwardBy,
+                actual: self.readableBytes,
+                file: file,
+                line: line
+            )
         }
-        try self.throwingSkipUB8()  // size (unused)
-        try self.throwingSkipUB4()  // chunk size (unused)
-        guard let data = self.readOracleSlice() else {
-            return nil
-        }
-        if !self.skipRawBytesChunked() {  // lob locator (unused)
-            return nil
-        }
-        return data
+        self.moveReaderIndex(forwardBy: forwardBy)
     }
 }

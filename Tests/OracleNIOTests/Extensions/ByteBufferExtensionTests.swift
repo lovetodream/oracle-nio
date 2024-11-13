@@ -152,4 +152,27 @@ final class ByteBufferExtensionTests: XCTestCase {
         var buffer = ByteBuffer()
         XCTAssertEqual(buffer.readOracleSlice(), nil)
     }
+
+    func testThrowingSkipUBShouldThrowOnMissingBytes() {
+        var buffer = ByteBuffer(bytes: [1])
+        XCTAssertThrowsError(
+            try buffer.throwingSkipUB4(),
+            expected: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0)
+        )
+    }
+
+    func testReadOSONFailsAppropriately() {
+        var sliceMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0])
+        XCTAssertNil(try? sliceMissingBuffer.throwingReadOSON())
+        var locatorMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0, 0])
+        XCTAssertNil(try? locatorMissingBuffer.throwingReadOSON())
+    }
+
+    func testThrowingSkipUBThrowsOnMissingLength() {
+        var buffer = ByteBuffer()
+        XCTAssertThrowsError(
+            try buffer.throwingSkipUB4(),
+            expected: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0)
+        )
+    }
 }

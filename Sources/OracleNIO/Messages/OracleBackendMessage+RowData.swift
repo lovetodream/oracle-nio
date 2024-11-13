@@ -185,7 +185,7 @@ extension OracleBackendMessage {
                     columnValue = .init(bytes: [0])  // empty buffer
                 }
             case .json:
-                switch try buffer.readOSON() {
+                switch try buffer.throwingReadOSON() {
                 case .some(let slice):
                     columnValue = slice
                 case .none:

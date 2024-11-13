@@ -13,6 +13,16 @@
 //===----------------------------------------------------------------------===//
 
 struct OraclePartialDecodingError: Error {
+    enum Category {
+        case expectedAtLeastNRemainingBytes
+        case fieldNotDecodable
+        case unsupportedDataType
+        case unknownMessageID
+        case unknownControlType
+    }
+
+    let category: Category
+
     /// A textual description of the error.
     let description: String
 
@@ -27,6 +37,7 @@ struct OraclePartialDecodingError: Error {
         file: String = #fileID, line: Int = #line
     ) -> Self {
         OraclePartialDecodingError(
+            category: .expectedAtLeastNRemainingBytes,
             description: "Expected at least '\(expected)' remaining bytes. But found \(actual).",
             file: file, line: line
         )
@@ -36,6 +47,7 @@ struct OraclePartialDecodingError: Error {
         type: Any.Type, file: String = #fileID, line: Int = #line
     ) -> Self {
         OraclePartialDecodingError(
+            category: .fieldNotDecodable,
             description: "Could not read '\(type)' from ByteBuffer.", file: file, line: line)
     }
 
@@ -43,17 +55,19 @@ struct OraclePartialDecodingError: Error {
         type: _TNSDataType, file: String = #fileID, line: Int = #line
     ) -> Self {
         OraclePartialDecodingError(
+            category: .unsupportedDataType,
             description: "Could not process unsupported data type '\(type)'.",
             file: file, line: line
         )
     }
 
-    static func unknownMessageIDReceived(
+    static func unknownMessageID(
         messageID: UInt8,
         file: String = #fileID,
         line: Int = #line
     ) -> Self {
         OraclePartialDecodingError(
+            category: .unknownMessageID,
             description: """
                 Received a message with messageID '\(messageID)'. There is no \
                 message type associated with this message identifier.
@@ -63,12 +77,13 @@ struct OraclePartialDecodingError: Error {
         )
     }
 
-    static func unknownControlTypeReceived(
+    static func unknownControlType(
         controlType: UInt16,
         file: String = #fileID,
         line: Int = #line
     ) -> Self {
         OraclePartialDecodingError(
+            category: .unknownControlType,
             description: """
                 Received a control packet with control type '\(controlType)'. 
                 This is unhandled and should be reported, please file an issue.

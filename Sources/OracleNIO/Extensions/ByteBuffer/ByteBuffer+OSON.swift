@@ -15,14 +15,19 @@
 import NIOCore
 
 extension ByteBuffer {
-    mutating func readOSON() throws -> ByteBuffer? {
-        guard let length = self.readUB4(), length > 0 else {
+    mutating func throwingReadOSON() throws -> ByteBuffer? {
+        let length = try self.throwingReadUB4()
+        guard length > 0 else {
             return ByteBuffer(bytes: [0])
         }
-        self.skipUB8()  // size (unused)
-        self.skipUB4()  // chunk size (unused)
-        let data = self.readOracleSlice()
-        self.skipRawBytesChunked()  // lob locator (unused)
+        try self.throwingSkipUB8()  // size (unused)
+        try self.throwingSkipUB4()  // chunk size (unused)
+        guard let data = self.readOracleSlice() else {
+            return nil
+        }
+        if !self.skipRawBytesChunked() {  // lob locator (unused)
+            return nil
+        }
         return data
     }
 }

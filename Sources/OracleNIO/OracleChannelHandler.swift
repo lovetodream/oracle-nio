@@ -68,8 +68,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         #if os(Windows)
             capabilities.supportsOOB = false
         #else
-            if !configuration.disableOOB || configuration._protocol == .tcps {
-                capabilities.supportsOOB = true
+            if configuration._protocol == .tcps {
+                capabilities.supportsOOB = false
+            } else {
+                capabilities.supportsOOB = !configuration.disableOOB
             }
         #endif
         self.decoderContext = .init(capabilities: capabilities)

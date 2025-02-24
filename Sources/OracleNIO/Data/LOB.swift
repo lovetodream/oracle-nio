@@ -254,7 +254,7 @@ extension LOB {
         )
         connection.channel.write(OracleTask.lobOperation(context), promise: nil)
         _ = try await promise.futureResult.get()
-        return context.boolFlag ?? false
+        return context.withLock { $0.boolFlag ?? false }
     }
     /// Closes the LOB if it is currently open for ``write(_:at:on:)`` operations.
     ///
@@ -372,9 +372,8 @@ extension LOB {
 
     /// Frees/removes a temporary LOB from the given connection
     /// with the next round trip to the database.
-    public func free(on connection: OracleConnection) async throws {
-        let handler = try await connection.channel.pipeline
-            .handler(type: OracleChannelHandler.self).get()
+    public func free(on connection: OracleConnection) throws {
+        let handler = try connection.channel.pipeline.syncOperations.handler(type: OracleChannelHandler.self)
         self.free(from: handler.cleanupContext)
     }
 
@@ -396,7 +395,7 @@ extension LOB {
         )
         connection.channel.write(OracleTask.lobOperation(context), promise: nil)
         _ = try await promise.futureResult.get()
-        return Int(context.fetchedAmount ?? 0)
+        return Int(context.withLock({ $0.fetchedAmount ?? 0 }))
     }
 
     /// The total size of the LOB data when it was first received from the database.
@@ -420,7 +419,7 @@ extension LOB {
         )
         connection.channel.write(OracleTask.lobOperation(context), promise: nil)
         _ = try await promise.futureResult.get()
-        return Int(context.fetchedAmount ?? Int64(self._chunkSize))
+        return Int(context.withLock({ $0.fetchedAmount ?? Int64(self._chunkSize) }))
     }
 
     /// Reading and writing to the LOB in chunks of multiples of this size will improve performance.

@@ -299,7 +299,9 @@ struct StatementStateMachine {
 
             case .initialized(let context),
                 .describeInfoReceived(let context, _):
-                context.cursorID = error.cursorID ?? context.cursorID
+                if let cursorID = error.cursorID {
+                    context.cursorID.store(cursorID, ordering: .relaxed)
+                }
 
                 self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
@@ -324,7 +326,9 @@ struct StatementStateMachine {
                 }
 
             case .rowCountsReceived(let context, let rowCounts):
-                context.cursorID = error.cursorID ?? context.cursorID
+                if let cursorID = error.cursorID {
+                    context.cursorID.store(cursorID, ordering: .relaxed)
+                }
 
                 self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
@@ -349,7 +353,9 @@ struct StatementStateMachine {
                 }
 
             case .streaming(let context, _, _, var demandStateMachine):
-                context.cursorID = error.cursorID ?? context.cursorID
+                if let cursorID = error.cursorID {
+                    context.cursorID.store(cursorID, ordering: .relaxed)
+                }
 
                 self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
@@ -357,7 +363,7 @@ struct StatementStateMachine {
 
                 let rows = demandStateMachine.end()
                 action = .forwardStreamComplete(
-                    rows, cursorID: context.cursorID, affectedRows: Int(error.rowCount ?? 0))
+                    rows, cursorID: context.cursorID.load(ordering: .relaxed), affectedRows: Int(error.rowCount ?? 0))
 
             case .modifying:
                 preconditionFailure("Invalid state: \(self.state)")
@@ -370,7 +376,7 @@ struct StatementStateMachine {
         {
             switch self.state {
             case .initialized(let context):
-                context.cursorID = cursor
+                context.cursorID.store(cursor, ordering: .relaxed)
 
                 switch context.type {
                 case .query(let promise),
@@ -396,7 +402,7 @@ struct StatementStateMachine {
             let exception = getExceptionClass(for: Int32(error.number))
             switch self.state {
             case .initialized(let context):
-                context.cursorID = cursor
+                context.cursorID.store(cursor, ordering: .relaxed)
 
                 switch context.type {
                 case .query(let promise),
@@ -435,7 +441,7 @@ struct StatementStateMachine {
 
             case .initialized(let context):
                 if let cursorID = error.cursorID {
-                    context.cursorID = cursorID
+                    context.cursorID.store(cursorID, ordering: .relaxed)
                 }
                 switch context.type {
                 case .query(let promise),
@@ -458,7 +464,7 @@ struct StatementStateMachine {
 
             case .rowCountsReceived(let context, let rowCounts):
                 if let cursorID = error.cursorID {
-                    context.cursorID = cursorID
+                    context.cursorID.store(cursorID, ordering: .relaxed)
                 }
                 switch context.type {
                 case .query(let promise),
@@ -481,13 +487,13 @@ struct StatementStateMachine {
 
             case .describeInfoReceived(let context, let describeInfo):
                 if let cursorID = error.cursorID {
-                    context.cursorID = cursorID
+                    context.cursorID.store(cursorID, ordering: .relaxed)
                 }
                 if describeInfo.columns.contains(where: {
                     [.clob, .nCLOB, .blob, .json, .vector].contains($0.dataType)
                 }) {
-                    context.requiresDefine = true
-                    context.noPrefetch = true
+                    context.requiresDefine.store(true, ordering: .relaxed)
+                    context.noPrefetch.store(true, ordering: .relaxed)
 
                     if !context.options.fetchLOBs {
                         var describeInfo = describeInfo
@@ -545,7 +551,7 @@ struct StatementStateMachine {
             case .streaming(let statementContext, _, _, _):
                 // no error actually happened, we need more rows
                 if let cursorID = error.cursorID {
-                    statementContext.cursorID = cursorID
+                    statementContext.cursorID.store(cursorID, ordering: .relaxed)
                 }
                 action = .sendFetch(statementContext)
 

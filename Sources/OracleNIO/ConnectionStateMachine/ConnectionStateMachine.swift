@@ -828,7 +828,7 @@ struct ConnectionStateMachine {
         guard case .lobOperation(let context) = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
-        context.data = lobData.buffer
+        context.withLock { $0.data = lobData.buffer }
         return .wait  // waiting for parameter
     }
 
@@ -838,8 +838,10 @@ struct ConnectionStateMachine {
         guard case .lobOperation(let context) = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
-        context.fetchedAmount = parameter.amount
-        context.boolFlag = parameter.boolFlag
+        context.withLock {
+            $0.fetchedAmount = parameter.amount
+            $0.boolFlag = parameter.boolFlag
+        }
         return .wait  // waiting for error
     }
 

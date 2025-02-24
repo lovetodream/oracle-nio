@@ -504,7 +504,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .succeedLOBOperation(let lobContext):
             switch lobContext.operation {
             case .read:
-                lobContext.promise.succeed(lobContext.data)
+                lobContext.promise.succeed(lobContext.withLock({ $0.data }))
             case .open, .isOpen, .close, .write, .trim, .createTemp, .getLength,
                 .getChunkSize:
                 lobContext.promise.succeed(nil)
@@ -570,7 +570,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             let sslContext = self.configuration.tls.sslContext!
             let hostname = self.configuration.serverNameForTLS
             let pipeline = context.pipeline
-            pipeline.removeHandler(currentSSLHandler!, promise: promise)
+            pipeline.syncOperations.removeHandler(currentSSLHandler!, promise: promise)
             promise.futureResult.whenComplete { result in
                 switch result {
                 case .success:
@@ -690,7 +690,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         context: ChannelHandlerContext
     ) {
         self.encoder.fetch(
-            cursorID: statementContext.cursorID,
+            cursorID: statementContext.cursorID.load(ordering: .relaxed),
             fetchArraySize: UInt32(statementContext.options.arraySize)
         )
 

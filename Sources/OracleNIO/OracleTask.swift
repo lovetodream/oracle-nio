@@ -12,11 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import Logging
 import NIOCore
 import RegexBuilder
+import NIOConcurrencyHelpers
 
-enum OracleTask {
+enum OracleTask: Sendable {
     case statement(StatementContext)
     case ping(EventLoopPromise<Void>)
     case commit(EventLoopPromise<Void>)
@@ -43,7 +45,7 @@ enum OracleTask {
     }
 }
 
-final class LOBOperationContext {
+final class LOBOperationContext: Sendable {
     let sourceLOB: LOB?
     let sourceOffset: UInt64
     let destinationLOB: LOB?
@@ -53,9 +55,13 @@ final class LOBOperationContext {
     let amount: UInt64
     let promise: EventLoopPromise<ByteBuffer?>
 
-    var fetchedAmount: Int64?
-    var boolFlag: Bool?
-    var data: ByteBuffer?
+    private let storage: NIOLockedValueBox<Storage>
+
+    struct Storage {
+        var fetchedAmount: Int64?
+        var boolFlag: Bool?
+        var data: ByteBuffer?
+    }
 
     init(
         sourceLOB: LOB?,
@@ -76,11 +82,15 @@ final class LOBOperationContext {
         self.sendAmount = sendAmount
         self.amount = amount
         self.promise = promise
-        self.data = data
+        self.storage = .init(.init(data: data))
+    }
+
+    func withLock<R>(_ body: (inout Storage) throws -> R) rethrows -> R {
+        return try self.storage.withLockedValue(body)
     }
 }
 
-final class StatementContext {
+final class StatementContext: Sendable {
     enum StatementType {
         case query(EventLoopPromise<OracleRowStream>)
         case plsql(EventLoopPromise<OracleRowStream>)
@@ -170,14 +180,14 @@ final class StatementContext {
 
     // metadata
     let sqlLength: UInt32
-    var cursorID: UInt16 = 0
+    let cursorID: ManagedAtomic<UInt16>
     let requiresFullExecute: Bool = false
-    var requiresDefine: Bool = false
-    var noPrefetch: Bool = false
+    let requiresDefine: ManagedAtomic<Bool> = .init(false)
+    let noPrefetch: ManagedAtomic<Bool> = .init(false)
     let isReturning: Bool
     let executionCount: UInt32
 
-    var sequenceNumber: UInt8 = 2
+    let sequenceNumber: ManagedAtomic<UInt8> = .init(2)
 
     init(
         statement: OracleStatement,
@@ -190,6 +200,7 @@ final class StatementContext {
         self.binds = .one(statement.binds)
         self.options = options
         self.sqlLength = .init(statement.sql.data(using: .utf8)?.count ?? 0)
+        self.cursorID = .init(0)
         self.executionCount = 1
 
         // strip single/multiline comments and and strings from the sql
@@ -215,6 +226,7 @@ final class StatementContext {
         self.binds = .many(bindCollection)
         self.options = options
         self.sqlLength = UInt32(statement.utf8.count)
+        self.cursorID = .init(0)
         self.executionCount = UInt32(bindCollection.bindings.count)
 
         // strip single/multiline comments and and strings from the sql
@@ -239,7 +251,7 @@ final class StatementContext {
         self.sql = ""
         self.binds = .none
         self.sqlLength = 0
-        self.cursorID = cursor.id
+        self.cursorID = .init(cursor.id)
         self.options = options
         self.isReturning = false
         self.executionCount = 1
@@ -274,7 +286,7 @@ final class StatementContext {
     }
 }
 
-public struct StatementOptions {
+public struct StatementOptions: Sendable {
     /// Automatically commit every change made to the database.
     ///
     /// This happens on the Oracle server side. So it won't cause additional roundtrips to the database.

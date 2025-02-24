@@ -283,29 +283,4 @@
             try await closePromise
         }
     }
-
-    extension Capabilities {
-        static func desired(supportsOOB: Bool = false) -> Capabilities {
-            var caps = Capabilities()
-            caps.protocolVersion = Constants.TNS_VERSION_DESIRED
-            caps.protocolOptions = supportsOOB ? Constants.TNS_GSO_CAN_RECV_ATTENTION : caps.protocolOptions
-            caps.supportsFastAuth = true
-            caps.supportsOOB = supportsOOB
-            return caps
-        }
-    }
-
-    extension OracleConnection.Configuration.EndpointInfo: Equatable {
-        public static func == (lhs: Self, rhs: Self) -> Bool {
-            switch (lhs, rhs) {
-            case (.configureChannel(let lhs), .configureChannel(let rhs)):
-                return lhs === rhs
-            case (.connectTCP(let lhsHost, let lhsPort), .connectTCP(let rhsHost, let rhsPort)):
-                return lhsHost == rhsHost && lhsPort == rhsPort
-            default:
-                return false
-            }
-        }
-
-    }
 #endif

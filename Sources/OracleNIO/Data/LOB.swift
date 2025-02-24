@@ -372,9 +372,11 @@ extension LOB {
 
     /// Frees/removes a temporary LOB from the given connection
     /// with the next round trip to the database.
-    public func free(on connection: OracleConnection) throws {
-        let handler = try connection.channel.pipeline.syncOperations.handler(type: OracleChannelHandler.self)
-        self.free(from: handler.cleanupContext)
+    public func free(on connection: OracleConnection) async throws {
+        try await connection.eventLoop.submit {
+            let handler = try connection.channel.pipeline.syncOperations.handler(type: OracleChannelHandler.self)
+            self.free(from: handler.cleanupContext)
+        }.get()
     }
 
     /// Retrieve the total size of the data in the LOB.

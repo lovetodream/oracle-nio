@@ -44,10 +44,10 @@ final class OracleTraceHandler: ChannelDuplexHandler, Sendable {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         if self.shouldLog {
             let buffer = self.unwrapInboundIn(data)
-            self.packetCount.wrappingIncrement(ordering: .relaxed)
+            let count = self.packetCount.wrappingIncrementThenLoad(ordering: .relaxed)
             self.logger.info(
                 """
-                Receiving packet [op \(self.packetCount)] on socket \(self.connectionID)
+                Receiving packet [op \(count)] on socket \(self.connectionID)
                 \(buffer.oracleHexDump())
                 """
             )
@@ -62,10 +62,10 @@ final class OracleTraceHandler: ChannelDuplexHandler, Sendable {
     ) {
         if self.shouldLog {
             let buffer = self.unwrapOutboundIn(data)
-            self.packetCount.wrappingIncrement(ordering: .relaxed)
+            let count = self.packetCount.wrappingIncrementThenLoad(ordering: .relaxed)
             self.logger.info(
                 """
-                Sending packet [op \(self.packetCount)] on socket \(self.connectionID)
+                Sending packet [op \(count)] on socket \(self.connectionID)
                 \(buffer.oracleHexDump())
                 """
             )

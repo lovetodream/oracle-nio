@@ -50,12 +50,6 @@ jobs:
           brew install jemalloc
 
 
-      - name: Ubuntu deps
-        if: ${{ runner.os == 'Linux' }}
-        run: |
-          sudo apt-get install -y libjemalloc-dev
-
-
       - name: Git URL token override and misc
         run: |
           [ -d Benchmarks ] && echo "hasBenchmark=1" >> $GITHUB_ENV

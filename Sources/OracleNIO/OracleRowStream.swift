@@ -26,6 +26,7 @@ struct StatementResult {
     var logger: Logger
     var batchErrors: Optional<[OracleSQLError.BatchError]>
     var rowCounts: Optional<[Int]>
+    var cursorID: UInt16?
 }
 
 final class OracleRowStream: @unchecked Sendable {

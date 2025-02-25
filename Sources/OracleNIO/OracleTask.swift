@@ -180,14 +180,9 @@ final class StatementContext: Sendable {
 
     // metadata
     let sqlLength: UInt32
-    let cursorID: ManagedAtomic<UInt16>
-    let requiresFullExecute: Bool = false
-    let requiresDefine: ManagedAtomic<Bool> = .init(false)
-    let noPrefetch: ManagedAtomic<Bool> = .init(false)
+    let cursorID: UInt16
     let isReturning: Bool
     let executionCount: UInt32
-
-    let sequenceNumber: ManagedAtomic<UInt8> = .init(2)
 
     init(
         statement: OracleStatement,
@@ -200,7 +195,7 @@ final class StatementContext: Sendable {
         self.binds = .one(statement.binds)
         self.options = options
         self.sqlLength = .init(statement.sql.data(using: .utf8)?.count ?? 0)
-        self.cursorID = .init(0)
+        self.cursorID = 0
         self.executionCount = 1
 
         // strip single/multiline comments and and strings from the sql
@@ -226,7 +221,7 @@ final class StatementContext: Sendable {
         self.binds = .many(bindCollection)
         self.options = options
         self.sqlLength = UInt32(statement.utf8.count)
-        self.cursorID = .init(0)
+        self.cursorID = 0
         self.executionCount = UInt32(bindCollection.bindings.count)
 
         // strip single/multiline comments and and strings from the sql
@@ -251,7 +246,7 @@ final class StatementContext: Sendable {
         self.sql = ""
         self.binds = .none
         self.sqlLength = 0
-        self.cursorID = .init(cursor.id)
+        self.cursorID = cursor.id
         self.options = options
         self.isReturning = false
         self.executionCount = 1

@@ -33,6 +33,8 @@ struct OracleFrontendMessageEncoder {
     private var state: State = .writable
     var capabilities: Capabilities
 
+    private var sequenceNumber: UInt8 = 0
+
     init(buffer: ByteBuffer, capabilities: Capabilities) {
         self.buffer = buffer
         self.capabilities = capabilities
@@ -438,7 +440,10 @@ struct OracleFrontendMessageEncoder {
     mutating func execute(
         statementContext: StatementContext,
         cleanupContext: CleanupContext,
-        describeInfo: DescribeInfo?
+        describeInfo: DescribeInfo?,
+        cursorID: UInt16?,
+        requiresDefine: Bool,
+        noPrefetch: Bool
     ) {
         self.clearIfNeeded()
 
@@ -450,8 +455,7 @@ struct OracleFrontendMessageEncoder {
         var parametersCount: UInt32 = 0
         var iterationsCount: UInt32 = 1
 
-        let cursorID = statementContext.cursorID.load(ordering: .relaxed)
-        let requiresDefine = statementContext.requiresDefine.load(ordering: .relaxed)
+        let cursorID = cursorID ?? statementContext.cursorID
 
         if !requiresDefine && statementContext.binds.count != 0 {
             parametersCount = .init(statementContext.binds.count)
@@ -462,7 +466,7 @@ struct OracleFrontendMessageEncoder {
             dmlOptions = Constants.TNS_EXEC_OPTION_IMPLICIT_RESULTSET
             options |= Constants.TNS_EXEC_OPTION_EXECUTE
         }
-        if statementContext.cursorID.load(ordering: .relaxed) == 0 || statementContext.type.isDDL {
+        if cursorID == 0 || statementContext.type.isDDL {
             options |= Constants.TNS_EXEC_OPTION_PARSE
         }
         if statementContext.type.isQuery {
@@ -471,7 +475,7 @@ struct OracleFrontendMessageEncoder {
             } else {
                 iterationsCount = UInt32(statementOptions.arraySize)
             }
-            if iterationsCount > 0 && !statementContext.noPrefetch.load(ordering: .relaxed) {
+            if iterationsCount > 0 && !noPrefetch {
                 options |= Constants.TNS_EXEC_OPTION_FETCH
             }
         }
@@ -501,8 +505,7 @@ struct OracleFrontendMessageEncoder {
         // 3 write function code
         self.writeFunctionCode(
             messageType: .function,
-            functionCode: .execute,
-            sequenceNumber: statementContext.sequenceNumber
+            functionCode: .execute
         )
 
         // 4. write body of message
@@ -617,14 +620,14 @@ struct OracleFrontendMessageEncoder {
     }
 
     mutating func reexecute(
-        statementContext: StatementContext, cleanupContext: CleanupContext
+        statementContext: StatementContext, cleanupContext: CleanupContext, cursorID: UInt16?, requiresDefine: Bool
     ) {
         self.clearIfNeeded()
 
         self.startRequest()
 
         let functionCode: Constants.FunctionCode
-        if statementContext.type.isQuery && !statementContext.requiresDefine.load(ordering: .relaxed)
+        if statementContext.type.isQuery && !requiresDefine
             && statementContext.options.prefetchRows > 0
         {
             functionCode = .reexecuteAndFetch
@@ -648,10 +651,8 @@ struct OracleFrontendMessageEncoder {
         }
 
         self.writePiggybacks(context: cleanupContext)
-        self.writeFunctionCode(
-            messageType: .function, functionCode: functionCode
-        )
-        self.buffer.writeUB4(UInt32(statementContext.cursorID.load(ordering: .relaxed)))
+        self.writeFunctionCode(messageType: .function, functionCode: functionCode)
+        self.buffer.writeUB4(UInt32(cursorID ?? statementContext.cursorID))
         self.buffer.writeUB4(numberOfIterations)
         self.buffer.writeUB4(executionFlags1)
         self.buffer.writeUB4(executionFlags2)
@@ -817,21 +818,13 @@ struct OracleFrontendMessageEncoder {
         messageType: OracleFrontendMessageID,
         functionCode: Constants.FunctionCode
     ) {
-        self.writeFunctionCode(
-            messageType: messageType,
-            functionCode: functionCode,
-            sequenceNumber: .init(0)
-        )
-    }
-
-    private mutating func writeFunctionCode(
-        messageType: OracleFrontendMessageID,
-        functionCode: Constants.FunctionCode,
-        sequenceNumber: ManagedAtomic<UInt8>
-    ) {
+        self.sequenceNumber &+= 1
+        if self.sequenceNumber == 0 {
+            self.sequenceNumber = 1
+        }
         self.buffer.writeInteger(messageType.rawValue)
         self.buffer.writeInteger(functionCode.rawValue)
-        self.buffer.writeInteger(sequenceNumber.wrappingIncrementThenLoad(ordering: .relaxed))
+        self.buffer.writeInteger(self.sequenceNumber)
         if self.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_1 {
             buffer.writeUB8(0)  // token number
         }
@@ -1059,11 +1052,9 @@ extension OracleFrontendMessageEncoder {
         let hasUser: UInt8 = usernameLength > 0 ? 1 : 0
 
         // 1. write function code
-        let sequenceNumber: UInt8 = authPhase == .authPhaseOne ? 0 : 1
         self.writeFunctionCode(
             messageType: .function,
-            functionCode: authPhase,
-            sequenceNumber: .init(sequenceNumber)
+            functionCode: authPhase
         )
 
         // 2. write basic data

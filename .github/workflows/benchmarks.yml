@@ -60,7 +60,7 @@ jobs:
         run: |
           swift package --disable-sandbox --allow-writing-to-directory .benchmarkBaselines/ benchmark baseline update pull_request --no-progress --quiet
         env:
-          ORA_HOSTNAME: oracle
+          ORA_HOSTNAME: 127.0.0.1
           ORA_PORT: 1521
           ORA_SERVICE_NAME: FREEPDB1
           ORA_USERNAME: my_user
@@ -76,7 +76,7 @@ jobs:
         run: |
           swift package --disable-sandbox --allow-writing-to-directory .benchmarkBaselines/ benchmark baseline update main --no-progress --quiet
         env:
-          ORA_HOSTNAME: oracle
+          ORA_HOSTNAME: 127.0.0.1
           ORA_PORT: 1521
           ORA_SERVICE_NAME: FREEPDB1
           ORA_USERNAME: my_user

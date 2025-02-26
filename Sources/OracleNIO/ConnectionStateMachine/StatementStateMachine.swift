@@ -37,9 +37,9 @@ struct StatementStateMachine {
     }
 
     enum Action {
-        case sendExecute(StatementContext, DescribeInfo?)
-        case sendReexecute(StatementContext, CleanupContext)
-        case sendFetch(StatementContext)
+        case sendExecute(StatementContext, DescribeInfo?, cursorID: UInt16?, requiresDefine: Bool, noPrefetch: Bool)
+        case sendReexecute(StatementContext, CleanupContext, cursorID: UInt16?, requiresDefine: Bool)
+        case sendFetch(StatementContext, cursorID: UInt16?)
         case sendFlushOutBinds
 
         case failStatement(EventLoopPromise<OracleRowStream>, with: OracleSQLError)
@@ -81,7 +81,13 @@ struct StatementStateMachine {
             self.state = .describeInfoReceived(statementContext, cursor.describeInfo)
         }
 
-        return .sendExecute(statementContext, nil)
+        return .sendExecute(
+            statementContext,
+            nil,
+            cursorID: statementContext.cursorID,
+            requiresDefine: false,
+            noPrefetch: false
+        )
     }
 
     mutating func cancel() -> Action {
@@ -299,8 +305,6 @@ struct StatementStateMachine {
 
             case .initialized(let context),
                 .describeInfoReceived(let context, _):
-                context.cursorID = error.cursorID ?? context.cursorID
-
                 self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
                 }
@@ -318,14 +322,13 @@ struct StatementStateMachine {
                             value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
                             logger: context.logger,
                             batchErrors: batchErrors,
-                            rowCounts: nil
+                            rowCounts: nil,
+                            cursorID: error.cursorID
                         )
                     )  // empty response
                 }
 
             case .rowCountsReceived(let context, let rowCounts):
-                context.cursorID = error.cursorID ?? context.cursorID
-
                 self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
                 }
@@ -343,21 +346,23 @@ struct StatementStateMachine {
                             value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
                             logger: context.logger,
                             batchErrors: batchErrors,
-                            rowCounts: rowCounts
+                            rowCounts: rowCounts,
+                            cursorID: error.cursorID
                         )
                     )  // empty response
                 }
 
             case .streaming(let context, _, _, var demandStateMachine):
-                context.cursorID = error.cursorID ?? context.cursorID
-
                 self.avoidingStateMachineCoWVoid { state in
                     state = .commandComplete
                 }
 
                 let rows = demandStateMachine.end()
                 action = .forwardStreamComplete(
-                    rows, cursorID: context.cursorID, affectedRows: Int(error.rowCount ?? 0))
+                    rows,
+                    cursorID: error.cursorID ?? context.cursorID,
+                    affectedRows: Int(error.rowCount ?? 0)
+                )
 
             case .modifying:
                 preconditionFailure("Invalid state: \(self.state)")
@@ -370,8 +375,6 @@ struct StatementStateMachine {
         {
             switch self.state {
             case .initialized(let context):
-                context.cursorID = cursor
-
                 switch context.type {
                 case .query(let promise),
                     .plsql(let promise),
@@ -396,8 +399,6 @@ struct StatementStateMachine {
             let exception = getExceptionClass(for: Int32(error.number))
             switch self.state {
             case .initialized(let context):
-                context.cursorID = cursor
-
                 switch context.type {
                 case .query(let promise),
                     .plsql(let promise),
@@ -434,9 +435,6 @@ struct StatementStateMachine {
                 preconditionFailure("This is impossible...")
 
             case .initialized(let context):
-                if let cursorID = error.cursorID {
-                    context.cursorID = cursorID
-                }
                 switch context.type {
                 case .query(let promise),
                     .plsql(let promise),
@@ -450,16 +448,14 @@ struct StatementStateMachine {
                             value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
                             logger: context.logger,
                             batchErrors: batchErrors,
-                            rowCounts: nil
+                            rowCounts: nil,
+                            cursorID: error.cursorID
                         )
                     )
                 }
                 self.state = .commandComplete
 
             case .rowCountsReceived(let context, let rowCounts):
-                if let cursorID = error.cursorID {
-                    context.cursorID = cursorID
-                }
                 switch context.type {
                 case .query(let promise),
                     .plsql(let promise),
@@ -473,22 +469,17 @@ struct StatementStateMachine {
                             value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
                             logger: context.logger,
                             batchErrors: batchErrors,
-                            rowCounts: rowCounts
+                            rowCounts: rowCounts,
+                            cursorID: error.cursorID
                         )
                     )
                 }
                 self.state = .commandComplete
 
             case .describeInfoReceived(let context, let describeInfo):
-                if let cursorID = error.cursorID {
-                    context.cursorID = cursorID
-                }
                 if describeInfo.columns.contains(where: {
                     [.clob, .nCLOB, .blob, .json, .vector].contains($0.dataType)
                 }) {
-                    context.requiresDefine = true
-                    context.noPrefetch = true
-
                     if !context.options.fetchLOBs {
                         var describeInfo = describeInfo
                         self.avoidingStateMachineCoWVoid { state in
@@ -519,9 +510,21 @@ struct StatementStateMachine {
                             }
                             state = .describeInfoReceived(context, describeInfo)
                         }
-                        action = .sendExecute(context, describeInfo)
+                        action = .sendExecute(
+                            context,
+                            describeInfo,
+                            cursorID: error.cursorID,
+                            requiresDefine: true,
+                            noPrefetch: true
+                        )
                     } else {
-                        action = .sendExecute(context, describeInfo)
+                        action = .sendExecute(
+                            context,
+                            describeInfo,
+                            cursorID: error.cursorID,
+                            requiresDefine: true,
+                            noPrefetch: true
+                        )
                     }
 
                 } else if error.number != 0 {
@@ -539,15 +542,12 @@ struct StatementStateMachine {
                         state = .error(.server(error))
                     }
                 } else {
-                    action = .sendFetch(context)
+                    action = .sendFetch(context, cursorID: error.cursorID)
                 }
 
             case .streaming(let statementContext, _, _, _):
                 // no error actually happened, we need more rows
-                if let cursorID = error.cursorID {
-                    statementContext.cursorID = cursorID
-                }
-                action = .sendFetch(statementContext)
+                action = .sendFetch(statementContext, cursorID: error.cursorID)
 
             case .modifying:
                 preconditionFailure("Invalid state: \(self.state)")
@@ -624,7 +624,7 @@ struct StatementStateMachine {
             .rowCountsReceived(let context, _),
             .describeInfoReceived(let context, _),
             .streaming(let context, _, _, _):
-            return .sendFetch(context)
+            return .sendFetch(context, cursorID: nil)
         case .drain,
             .commandComplete,
             .error:

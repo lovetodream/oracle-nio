@@ -99,15 +99,20 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
         ):
             return lhsPromise.futureResult === rhsPromise.futureResult && lhsError == rhsError
 
-        case (.sendExecute(let lhsContext, let lhsInfo), .sendExecute(let rhsContext, let rhsInfo)):
-            return lhsContext == rhsContext && lhsInfo == rhsInfo
         case (
-            .sendReexecute(let lhsContext, let lhsCleanup),
-            .sendReexecute(let rhsContext, let rhsCleanup)
+            .sendExecute(let lhsContext, let lhsInfo, let lhsCursorID, let lhsRequiresDefine, let lhsNoPrefetch),
+            .sendExecute(let rhsContext, let rhsInfo, let rhsCursorID, let rhsRequiresDefine, let rhsNoPrefetch)
         ):
-            return lhsContext == rhsContext && lhsCleanup == rhsCleanup
-        case (.sendFetch(let lhs), .sendFetch(let rhs)):
-            return lhs == rhs
+            return lhsContext == rhsContext && lhsInfo == rhsInfo && lhsCursorID == rhsCursorID
+                && lhsRequiresDefine == rhsRequiresDefine && lhsNoPrefetch == rhsNoPrefetch
+        case (
+            .sendReexecute(let lhsContext, let lhsCleanup, let lhsCursorID, let lhsRequiresDefine),
+            .sendReexecute(let rhsContext, let rhsCleanup, let rhsCursorID, let rhsRequiresDefine)
+        ):
+            return lhsContext == rhsContext && lhsCleanup == rhsCleanup && lhsCursorID == rhsCursorID
+                && lhsRequiresDefine == rhsRequiresDefine
+        case (.sendFetch(let lhsContext, let lhsCursor), .sendFetch(let rhsContext, let rhsCursor)):
+            return lhsContext == rhsContext && lhsCursor == rhsCursor
         case (.sendFlushOutBinds, .sendFlushOutBinds):
             return true
         case (

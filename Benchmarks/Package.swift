@@ -1,11 +1,11 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "Benchmarks",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/ordo-one/package-benchmark.git", from: "1.0.0"),
+        .package(url: "https://github.com/ordo-one/package-benchmark.git", from: "1.29.2"),
         .package(path: "../../oracle-nio"),
     ],
     targets: [

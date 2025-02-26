@@ -379,20 +379,25 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .authenticated(let parameters):
             self.authenticated(parameters: parameters, context: context)
 
-        case .sendExecute(let statementContext, let describeInfo):
+        case .sendExecute(let statementContext, let describeInfo, let cursorID, let requiresDefine, let noPrefetch):
             self.sendExecute(
                 statementContext: statementContext,
                 describeInfo: describeInfo,
+                cursorID: cursorID,
+                requiresDefine: requiresDefine,
+                noPrefetch: noPrefetch,
                 context: context
             )
-        case .sendReexecute(let statementContext, let cleanupContext):
+        case .sendReexecute(let statementContext, let cleanupContext, let cursorID, let requiresDefine):
             self.sendReexecute(
                 statementContext: statementContext,
                 cleanupContext: cleanupContext,
+                cursorID: cursorID,
+                requiresDefine: requiresDefine,
                 context: context
             )
-        case .sendFetch(let statementContext):
-            self.sendFetch(statementContext: statementContext, context: context)
+        case .sendFetch(let statementContext, let cursorID):
+            self.sendFetch(statementContext: statementContext, cursorID: cursorID, context: context)
         case .sendFlushOutBinds:
             self.encoder.flushOutBinds()
             context.writeAndFlush(
@@ -504,7 +509,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .succeedLOBOperation(let lobContext):
             switch lobContext.operation {
             case .read:
-                lobContext.promise.succeed(lobContext.data)
+                lobContext.promise.succeed(lobContext.withLock({ $0.data }))
             case .open, .isOpen, .close, .write, .trim, .createTemp, .getLength,
                 .getChunkSize:
                 lobContext.promise.succeed(nil)
@@ -570,7 +575,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             let sslContext = self.configuration.tls.sslContext!
             let hostname = self.configuration.serverNameForTLS
             let pipeline = context.pipeline
-            pipeline.removeHandler(currentSSLHandler!, promise: promise)
+            pipeline.syncOperations.removeHandler(currentSSLHandler!, promise: promise)
             promise.futureResult.whenComplete { result in
                 switch result {
                 case .success:
@@ -653,12 +658,18 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private func sendExecute(
         statementContext: StatementContext,
         describeInfo: DescribeInfo?,
+        cursorID: UInt16?,
+        requiresDefine: Bool,
+        noPrefetch: Bool,
         context: ChannelHandlerContext
     ) {
         self.encoder.execute(
             statementContext: statementContext,
             cleanupContext: self.cleanupContext,
-            describeInfo: describeInfo
+            describeInfo: describeInfo,
+            cursorID: cursorID,
+            requiresDefine: requiresDefine,
+            noPrefetch: noPrefetch
         )
 
         self.decoderContext.statementContext = statementContext
@@ -674,10 +685,15 @@ final class OracleChannelHandler: ChannelDuplexHandler {
     private func sendReexecute(
         statementContext: StatementContext,
         cleanupContext: CleanupContext,
+        cursorID: UInt16?,
+        requiresDefine: Bool,
         context: ChannelHandlerContext
     ) {
         self.encoder.reexecute(
-            statementContext: statementContext, cleanupContext: cleanupContext
+            statementContext: statementContext,
+            cleanupContext: cleanupContext,
+            cursorID: cursorID,
+            requiresDefine: requiresDefine
         )
 
         context.writeAndFlush(
@@ -687,10 +703,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     private func sendFetch(
         statementContext: StatementContext,
+        cursorID: UInt16?,
         context: ChannelHandlerContext
     ) {
         self.encoder.fetch(
-            cursorID: statementContext.cursorID,
+            cursorID: cursorID ?? statementContext.cursorID,
             fetchArraySize: UInt32(statementContext.options.arraySize)
         )
 

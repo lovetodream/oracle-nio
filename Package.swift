@@ -14,16 +14,16 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.67.0"),
-        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.21.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.27.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.23.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.29.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "3.9.0"..<"5.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
         .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
-            "509.0.0-latest"..."600.0.0-latest"),
+            "509.0.0-latest"..."600.0.1-latest"),
     ],
     targets: [
         .target(
@@ -32,7 +32,8 @@ let package = Package(
                 .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "DequeModule", package: "swift-collections"),
             ],
-            path: "Sources/VendoredConnectionPoolModule"
+            path: "Sources/VendoredConnectionPoolModule",
+            exclude: ["LICENSE"]
         ),
         .target(
             name: "OracleNIO",

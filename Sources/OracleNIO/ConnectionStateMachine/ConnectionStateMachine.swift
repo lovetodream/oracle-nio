@@ -124,9 +124,9 @@ struct ConnectionStateMachine {
         case failLOBOperation(EventLoopPromise<ByteBuffer?>, with: OracleSQLError)
 
         // Statement
-        case sendExecute(StatementContext, DescribeInfo?)
-        case sendReexecute(StatementContext, CleanupContext)
-        case sendFetch(StatementContext)
+        case sendExecute(StatementContext, DescribeInfo?, cursorID: UInt16?, requiresDefine: Bool, noPrefetch: Bool)
+        case sendReexecute(StatementContext, CleanupContext, cursorID: UInt16?, requiresDefine: Bool)
+        case sendFetch(StatementContext, cursorID: UInt16?)
         case sendFlushOutBinds
         case failStatement(
             EventLoopPromise<OracleRowStream>,
@@ -828,7 +828,7 @@ struct ConnectionStateMachine {
         guard case .lobOperation(let context) = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
-        context.data = lobData.buffer
+        context.withLock { $0.data = lobData.buffer }
         return .wait  // waiting for parameter
     }
 
@@ -838,8 +838,10 @@ struct ConnectionStateMachine {
         guard case .lobOperation(let context) = self.state else {
             preconditionFailure("How can we receive LOB data in \(self.state)")
         }
-        context.fetchedAmount = parameter.amount
-        context.boolFlag = parameter.boolFlag
+        context.withLock {
+            $0.fetchedAmount = parameter.amount
+            $0.boolFlag = parameter.boolFlag
+        }
         return .wait  // waiting for error
     }
 
@@ -1170,12 +1172,18 @@ extension ConnectionStateMachine {
         with action: StatementStateMachine.Action
     ) -> ConnectionAction {
         switch action {
-        case .sendExecute(let context, let describeInfo):
-            return .sendExecute(context, describeInfo)
-        case .sendReexecute(let statementContxt, let cleanupContext):
-            return .sendReexecute(statementContxt, cleanupContext)
-        case .sendFetch(let context):
-            return .sendFetch(context)
+        case .sendExecute(let context, let describeInfo, let cursorID, let requiresDefine, let noPrefetch):
+            return .sendExecute(
+                context,
+                describeInfo,
+                cursorID: cursorID,
+                requiresDefine: requiresDefine,
+                noPrefetch: noPrefetch
+            )
+        case .sendReexecute(let statementContext, let cleanupContext, let cursorID, let requiresDefine):
+            return .sendReexecute(statementContext, cleanupContext, cursorID: cursorID, requiresDefine: requiresDefine)
+        case .sendFetch(let context, let cursorID):
+            return .sendFetch(context, cursorID: cursorID)
         case .sendFlushOutBinds:
             return .sendFlushOutBinds
         case .failStatement(let promise, let error):

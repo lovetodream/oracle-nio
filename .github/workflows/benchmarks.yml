@@ -58,7 +58,7 @@ jobs:
         if: ${{ env.hasBenchmark == '1' }}
         working-directory: ./Benchmarks
         run: |
-          swift package --allow-writing-to-directory .benchmarkBaselines/ benchmark baseline update pull_request --no-progress --quiet
+          swift package --disable-sandbox --allow-writing-to-directory .benchmarkBaselines/ benchmark baseline update pull_request --no-progress --quiet
         env:
           ORA_HOSTNAME: oracle
           ORA_PORT: 1521
@@ -74,7 +74,7 @@ jobs:
         if: ${{ env.hasBenchmark == '1' }}
         working-directory: ./Benchmarks
         run: |
-          swift package --allow-writing-to-directory .benchmarkBaselines/ benchmark baseline update main --no-progress --quiet
+          swift package --disable-sandbox --allow-writing-to-directory .benchmarkBaselines/ benchmark baseline update main --no-progress --quiet
         env:
           ORA_HOSTNAME: oracle
           ORA_PORT: 1521

@@ -12,17 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
 import NIOEmbedded
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
 private typealias RowData = OracleBackendMessage.RowData
 
-final class RowDataTests: XCTestCase {
+@Suite struct RowDataTests {
 
-    func testProcessVectorColumnDataRequestsMissingData() {
+    @Test func processVectorColumnDataRequestsMissingData() {
         let type = OracleDataType.vector
 
         var buffer = ByteBuffer(bytes: [
@@ -31,10 +32,9 @@ final class RowDataTests: XCTestCase {
             0,  // chunk size
             1,  // value (partial)
         ])
-        XCTAssertThrowsError(
-            try RowData.decode(from: &buffer, context: .init(columns: type)),
-            expected: MissingDataDecodingError.Trigger()
-        )
+        #expect(throws: MissingDataDecodingError.Trigger(), performing: {
+            try RowData.decode(from: &buffer, context: .init(columns: type))
+        })
 
         buffer = ByteBuffer(bytes: [
             1, 1,  // length
@@ -43,39 +43,35 @@ final class RowDataTests: XCTestCase {
             1, 1,  // value
             1,  // locator (partial)
         ])
-        XCTAssertThrowsError(
-            try RowData.decode(from: &buffer, context: .init(columns: type)),
-            expected: MissingDataDecodingError.Trigger()
-        )
+        #expect(throws: MissingDataDecodingError.Trigger(), performing: {
+            try RowData.decode(from: &buffer, context: .init(columns: type))
+        })
     }
 
-    func testProcessObjectColumnDataRequestsMissingData() throws {
+    @Test func processObjectColumnDataRequestsMissingData() throws {
         let type = OracleDataType.object
 
         var buffer = ByteBuffer(bytes: [1, 1])  // type oid
-        XCTAssertThrowsError(
-            try RowData.decode(from: &buffer, context: .init(columns: type)),
-            expected: MissingDataDecodingError.Trigger()
-        )
+        #expect(throws: MissingDataDecodingError.Trigger(), performing: {
+            try RowData.decode(from: &buffer, context: .init(columns: type))
+        })
 
         buffer = ByteBuffer(bytes: [
             1, 1, 0,  // type oid
             1, 1,  // oid
         ])
-        XCTAssertThrowsError(
-            try RowData.decode(from: &buffer, context: .init(columns: type)),
-            expected: MissingDataDecodingError.Trigger()
-        )
+        #expect(throws: MissingDataDecodingError.Trigger(), performing: {
+            try RowData.decode(from: &buffer, context: .init(columns: type))
+        })
 
         buffer = ByteBuffer(bytes: [
             1, 1, 0,  // type oid
             1, 1, 0,  // oid
             1, 1,  // snapshot
         ])
-        XCTAssertThrowsError(
-            try RowData.decode(from: &buffer, context: .init(columns: type)),
-            expected: MissingDataDecodingError.Trigger()
-        )
+        #expect(throws: MissingDataDecodingError.Trigger(), performing: {
+            try RowData.decode(from: &buffer, context: .init(columns: type))
+        })
 
         buffer = ByteBuffer(bytes: [
             1, 1, 0,  // type oid
@@ -85,12 +81,12 @@ final class RowDataTests: XCTestCase {
             0,  // data length
             0,  // flags
         ])
-        XCTAssertNoThrow(
+        #expect(throws: Never.self, performing: {
             try RowData.decode(from: &buffer, context: .init(columns: type))
-        )
+        })
     }
 
-    func testProcessLOBColumnDataRequestsMissingData() throws {
+    @Test func processLOBColumnDataRequestsMissingData() throws {
         let type = OracleDataType.blob
 
         var buffer = ByteBuffer(bytes: [
@@ -99,10 +95,9 @@ final class RowDataTests: XCTestCase {
             1, 1,  // chunk size
             2, 0,  // locator (partial)
         ])
-        XCTAssertThrowsError(
-            try RowData.decode(from: &buffer, context: .init(columns: type)),
-            expected: MissingDataDecodingError.Trigger()
-        )
+        #expect(throws: MissingDataDecodingError.Trigger(), performing: {
+            try RowData.decode(from: &buffer, context: .init(columns: type))
+        })
 
         buffer = ByteBuffer(bytes: [
             1, 1,  // length
@@ -110,17 +105,17 @@ final class RowDataTests: XCTestCase {
             1, 1,  // chunk size
             1, 0,  // locator
         ])
-        XCTAssertNoThrow(
+        #expect(throws: Never.self, performing: {
             try RowData.decode(from: &buffer, context: .init(columns: type))
-        )
+        })
 
         buffer = ByteBuffer(bytes: [0])
-        XCTAssertNoThrow(
+        #expect(throws: Never.self, performing: {
             try RowData.decode(from: &buffer, context: .init(columns: type))
-        )
+        })
     }
 
-    func testProcessBufferSizeZero() {
+    @Test func processBufferSizeZero() throws {
         var buffer = ByteBuffer()
         let context = OracleBackendMessageDecoder.Context(capabilities: .init())
         context.statementContext = .init(statement: "")
@@ -142,22 +137,18 @@ final class RowDataTests: XCTestCase {
                 vectorFormat: nil
             )
         ])
-        XCTAssertEqual(
-            try RowData.decode(from: &buffer, context: context),
-            .init(columns: [.data(ByteBuffer(bytes: [0]))])
-        )
+        let result = try RowData.decode(from: &buffer, context: context)
+        #expect(result == .init(columns: [.data(ByteBuffer(bytes: [0]))]))
     }
 
-    func testEmptyRowID() {
+    @Test func emptyRowID() throws {
         var buffer = ByteBuffer(bytes: [0])
         let context = OracleBackendMessageDecoder.Context(columns: .rowID)
-        XCTAssertEqual(
-            try RowData.decode(from: &buffer, context: context),
-            .init(columns: [.data(ByteBuffer(bytes: [0]))])
-        )
+        let result = try RowData.decode(from: &buffer, context: context)
+        #expect(result == .init(columns: [.data(ByteBuffer(bytes: [0]))]))
     }
 
-    func testEmptyBufferZeroActualBytes() {
+    @Test func emptyBufferZeroActualBytes() throws {
         var buffer = ByteBuffer(bytes: [0, 1, 255])
         let context = OracleBackendMessageDecoder.Context(capabilities: .init())
         let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
@@ -165,9 +156,8 @@ final class RowDataTests: XCTestCase {
         var statement: OracleStatement = ""
         statement.binds.append(.init(dataType: .boolean), bindName: "1")
         context.statementContext = .init(statement: statement)
-        XCTAssertEqual(
-            try RowData.decode(from: &buffer, context: context),
-            .init(columns: [.data(ByteBuffer(bytes: [0]))])
-        )
+        let result = try RowData.decode(from: &buffer, context: context)
+        #expect(result == .init(columns: [.data(ByteBuffer(bytes: [0]))]))
     }
 }
+#endif

@@ -12,70 +12,62 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class StatementContextTests: XCTestCase {
+@Suite struct StatementContextTests {
 
-    func testStatementWithSpaceSeparator() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
-                statement: "SELECT any FROM any")
-        )
-        XCTAssertEqual(context?.type.isQuery, true)
+    @Test func statementWithSpaceSeparator() {
+        let context = StatementContext(statement: "SELECT any FROM any")
+        defer { context.cleanup() }
+        #expect(context.type.isQuery)
     }
 
-    func testStatementWithNewlineSeparator() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
-                statement: """
-                    SELECT
-                    any,
-                    any2,
-                    any3
-                    FROM
-                    any
-                    """))
-        XCTAssertEqual(context?.type.isQuery, true)
+    @Test func statementWithNewlineSeparator() {
+        let context = StatementContext(
+            statement: """
+                SELECT
+                any,
+                any2,
+                any3
+                FROM
+                any
+                """)
+        defer { context.cleanup() }
+        #expect(context.type.isQuery)
     }
 
-    func testQueryWithSingleLineComments() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
-                statement: """
-                    -- hello there
-                    SELECT any, any2,
-                    -- hello again
-                    any3 FROM any
-                    -- goodby
-                    """))
-        XCTAssertEqual(context?.type.isQuery, true)
+    @Test func queryWithSingleLineComments() {
+        let context = StatementContext(
+            statement: """
+                -- hello there
+                SELECT any, any2,
+                -- hello again
+                any3 FROM any
+                -- goodby
+                """)
+        defer { context.cleanup() }
+        #expect(context.type.isQuery)
     }
 
-    func testQueryWithMultiLineComments() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
-                statement: """
-                    /* Hello there */
-                    SELECT any, any2,
-                    -- I'm sneaky
-                    /*
-                    Hello again,
-                    I'd like to tell you a tale!
-                    */
-                    any3 FROM any --bye
-                    """))
-        XCTAssertEqual(context?.type.isQuery, true)
+    @Test func queryWithMultiLineComments() {
+        let context = StatementContext(
+            statement: """
+                /* Hello there */
+                SELECT any, any2,
+                -- I'm sneaky
+                /*
+                Hello again,
+                I'd like to tell you a tale!
+                */
+                any3 FROM any --bye
+                """)
+        defer { context.cleanup() }
+        #expect(context.type.isQuery)
     }
 
 }
+#endif

@@ -12,18 +12,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
+#if compiler(>=6.0)
+import Testing
 
 @testable import OracleNIO
 
-final class RowIDTests: XCTestCase {
-    func testDescription() {
+@Suite struct RowIDTests {
+    @Test func description() {
         let id = RowID(
             rba: 76402,
             partitionID: 15,
             blockNumber: 733,
             slotNumber: 0
         )
-        XCTAssertEqual(id.description, "AAASpyAAPAAAALdAAA")
+        #expect(id.description == "AAASpyAAPAAAALdAAA")
     }
 }
+#endif

@@ -12,14 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
+
+import struct Foundation.Calendar
+import struct Foundation.Date
 
 @testable import OracleNIO
 
-final class OracleCodableTests: XCTestCase {
+@Suite struct OracleCodableTests {
 
-    func testDecodeAnOptionalFromARow() {
+    @Test func decodeAnOptionalFromARow() throws {
         let row = OracleRow(
             lookupTable: ["id": 0, "name": 1],
             data: .makeTestDataRow(nil, "Hello world!"),
@@ -43,16 +47,12 @@ final class OracleCodableTests: XCTestCase {
             )
         )
 
-        var result: (String?, String?)
-        XCTAssertNoThrow(
-            result = try row.decode(
-                (String?, String?).self, context: .default)
-        )
-        XCTAssertNil(result.0)
-        XCTAssertEqual(result.1, "Hello world!")
+        let result = try row.decode((String?, String?).self, context: .default)
+        #expect(result.0 == nil)
+        #expect(result.1 == "Hello world!")
     }
 
-    func testDecodeOracleNumbersFromARow() {
+    @Test func decodeOracleNumbersFromARow() throws {
         let row = OracleRow(
             lookupTable: ["int": 0, "float": 1, "double": 2],
             data: .makeTestDataRow(
@@ -112,18 +112,13 @@ final class OracleCodableTests: XCTestCase {
             ]
         )
 
-        var result: (OracleNumber?, OracleNumber?, OracleNumber?)
-        XCTAssertNoThrow(
-            result = try row.decode(
-                (OracleNumber?, OracleNumber?, OracleNumber?).self,
-                context: .default)
-        )
-        XCTAssert(result.0?.double == 42)
-        XCTAssert(result.1?.double == -24.42)
-        XCTAssert(result.2?.double == 420.08150042)
+        let result = try row.decode((OracleNumber?, OracleNumber?, OracleNumber?).self, context: .default)
+        #expect(result.0?.double == 42)
+        #expect(result.1?.double == -24.42)
+        #expect(result.2?.double == 420.08150042)
     }
 
-    func testDecodeDateFromARow() {
+    @Test func decodeDateFromARow() throws {
         let date = Date()
         let row = OracleRow(
             lookupTable: ["date": 0],
@@ -148,19 +143,17 @@ final class OracleCodableTests: XCTestCase {
             ]
         )
 
-        var result: (Date?)
-        XCTAssertNoThrow(
-            result = try row.decode(
-                (Date?).self, context: .default
-            ))
-        XCTAssert(
+        let result = try row.decode(
+            (Date?).self, context: .default
+        )
+        #expect(
             Calendar.current.isDate(
                 date, equalTo: result ?? .distantPast, toGranularity: .second
             )
         )
     }
 
-    func testDecodeDifferentNumericsFromARow() {
+    @Test func decodeDifferentNumericsFromARow() throws {
         let row = OracleRow(
             lookupTable: ["int": 0, "float": 1, "double": 2],
             data: .makeTestDataRow(Int(42), Float(24.42), Double(420.081500420)),
@@ -216,17 +209,13 @@ final class OracleCodableTests: XCTestCase {
             ]
         )
 
-        var result: (Int?, Float?, Double?)
-        XCTAssertNoThrow(
-            result = try row.decode(
-                (Int?, Float?, Double?).self, context: .default)
-        )
-        XCTAssertEqual(result.0, 42)
-        XCTAssertEqual(result.1, 24.42)
-        XCTAssertEqual(result.2, 420.081500420)
+        let result = try row.decode((Int?, Float?, Double?).self, context: .default)
+        #expect(result.0 == 42)
+        #expect(result.1 == 24.42)
+        #expect(result.2 == 420.081500420)
     }
 
-    func testDecodeMalformedRowFailsWithDetails() {
+    @Test func decodeMalformedRowFailsWithDetails() {
         let row = OracleRow(
             lookupTable: ["int": 0],
             data: .init(columnCount: 1, bytes: .init(bytes: [1, 0])),
@@ -250,12 +239,12 @@ final class OracleCodableTests: XCTestCase {
             ]
         )
 
-        do {
+        #expect(performing: {
             _ = try row.decode(String.self)
-        } catch {
-            XCTAssertTrue("\(error)".contains("columnName: ***"))  // should be redacted
-            XCTAssertTrue(String(reflecting: error).contains(#"columnName: "int""#))
-        }
+        }, throws: { error in
+            "\(error)".contains("columnName: ***")  // should be redacted
+            && String(reflecting: error).contains(#"columnName: "int""#)
+        })
     }
 
 }
@@ -286,3 +275,4 @@ extension DataRow: ExpressibleByArrayLiteral {
         return DataRow(columnCount: encodables.count, bytes: bytes)
     }
 }
+#endif

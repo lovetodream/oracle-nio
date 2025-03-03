@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class OracleStatementTests: XCTestCase {
-    func testDebugDescriptionWithLongBindDoesNotCrash() {
+@Suite struct OracleStatementTests {
+    @Test func debugDescriptionWithLongBindDoesNotCrash() {
         let string = "Hello World"
         let null: Int? = nil
         let id: Int? = 1
@@ -29,9 +30,8 @@ final class OracleStatementTests: XCTestCase {
             INSERT INTO foo (id, title, something, data) SET (\(id), \(string), \(null), \(buffer)) RETURNING id INTO \(idReturnBind)
             """
 
-        XCTAssertEqual(
-            query.sql,
-            "INSERT INTO foo (id, title, something, data) SET (:0, :1, :2, :3) RETURNING id INTO :4"
+        #expect(
+            query.sql == "INSERT INTO foo (id, title, something, data) SET (:0, :1, :2, :3) RETURNING id INTO :4"
         )
 
         var expected = ByteBuffer()
@@ -56,80 +56,80 @@ final class OracleStatementTests: XCTestCase {
         expected.writeInteger(UInt8(0))
 
         //  just check if the string is there
-        XCTAssertFalse(String(reflecting: query).isEmpty)
-        XCTAssertEqual(query.binds.bytes, expected)
+        #expect(String(reflecting: query).isEmpty == false)
+        #expect(query.binds.bytes == expected)
     }
 
-    func testBindsAreStored() throws {
+    @Test func bindsAreStored() throws {
         let bind = ByteBuffer(bytes: [UInt8](repeating: 42, count: 50))
 
         let query1: OracleStatement = "INSERT INTO table (col) VALUES \(bind)"
-        XCTAssertGreaterThan(query1.binds.bytes.readableBytes, 0)
-        XCTAssertEqual(query1.binds.longBytes.readableBytes, 0)
+        #expect(query1.binds.bytes.readableBytes > 0)
+        #expect(query1.binds.longBytes.readableBytes == 0)
 
         var query2: OracleStatement = "INSERT INTO table (col) VALUES :1"
         query2.binds.appendUnprotected(bind, context: .default, bindName: "1")
-        XCTAssertGreaterThan(query2.binds.bytes.readableBytes, 0)
-        XCTAssertEqual(query2.binds.longBytes.readableBytes, 0)
+        #expect(query2.binds.bytes.readableBytes > 0)
+        #expect(query2.binds.longBytes.readableBytes == 0)
 
         let throwingBind = ThrowingByteBuffer(bind)
 
         let query3: OracleStatement = try "INSERT INTO table (col) VALUES \(throwingBind)"
-        XCTAssertGreaterThan(query3.binds.bytes.readableBytes, 0)
-        XCTAssertEqual(query3.binds.longBytes.readableBytes, 0)
+        #expect(query3.binds.bytes.readableBytes > 0)
+        #expect(query3.binds.longBytes.readableBytes == 0)
 
         var query4: OracleStatement = "INSERT INTO table (col) VALUES :1"
         try query4.binds.appendUnprotected(throwingBind, context: .default, bindName: "1")
-        XCTAssertGreaterThan(query4.binds.bytes.readableBytes, 0)
-        XCTAssertEqual(query4.binds.longBytes.readableBytes, 0)
+        #expect(query4.binds.bytes.readableBytes > 0)
+        #expect(query4.binds.longBytes.readableBytes == 0)
 
         let bindRef = OracleRef(bind)
         let query5: OracleStatement = "INSERT INTO table (col) VALUES \(bindRef)"
-        XCTAssertGreaterThan(query5.binds.bytes.readableBytes, 0)
-        XCTAssertEqual(query5.binds.longBytes.readableBytes, 0)
+        #expect(query5.binds.bytes.readableBytes > 0)
+        #expect(query5.binds.longBytes.readableBytes == 0)
     }
 
-    func testLongValuesAreStoredInDedicatedBuffer() throws {
+    @Test func longValuesAreStoredInDedicatedBuffer() throws {
         let long = ByteBuffer(bytes: [UInt8](repeating: 42, count: 50000))
 
         let query1: OracleStatement = "INSERT INTO table (col) VALUES \(long)"
-        XCTAssertEqual(query1.binds.bytes.readableBytes, 0)
-        XCTAssertGreaterThan(query1.binds.longBytes.readableBytes, 0)
+        #expect(query1.binds.bytes.readableBytes == 0)
+        #expect(query1.binds.longBytes.readableBytes > 0)
 
         var query2: OracleStatement = "INSERT INTO table (col) VALUES :1"
         query2.binds.appendUnprotected(long, context: .default, bindName: "1")
-        XCTAssertEqual(query2.binds.bytes.readableBytes, 0)
-        XCTAssertGreaterThan(query2.binds.longBytes.readableBytes, 0)
+        #expect(query2.binds.bytes.readableBytes == 0)
+        #expect(query2.binds.longBytes.readableBytes > 0)
 
         let throwingLong = ThrowingByteBuffer(long)
 
         let query3: OracleStatement = try "INSERT INTO table (col) VALUES \(throwingLong)"
-        XCTAssertEqual(query3.binds.bytes.readableBytes, 0)
-        XCTAssertGreaterThan(query3.binds.longBytes.readableBytes, 0)
+        #expect(query3.binds.bytes.readableBytes == 0)
+        #expect(query3.binds.longBytes.readableBytes > 0)
 
         var query4: OracleStatement = "INSERT INTO table (col) VALUES :1"
         try query4.binds.appendUnprotected(throwingLong, context: .default, bindName: "1")
-        XCTAssertEqual(query4.binds.bytes.readableBytes, 0)
-        XCTAssertGreaterThan(query4.binds.longBytes.readableBytes, 0)
+        #expect(query4.binds.bytes.readableBytes == 0)
+        #expect(query4.binds.longBytes.readableBytes > 0)
 
         let longRef = OracleRef(long)
         let query5: OracleStatement = "INSERT INTO table (col) VALUES \(longRef)"
-        XCTAssertEqual(query5.binds.bytes.readableBytes, 0)
-        XCTAssertGreaterThan(query5.binds.longBytes.readableBytes, 0)
+        #expect(query5.binds.bytes.readableBytes == 0)
+        #expect(query5.binds.longBytes.readableBytes > 0)
 
         let query6: OracleStatement = try "INSERT INTO table (col) VALUES \(Optional(ThrowingByteBuffer(.init())))"
-        XCTAssertGreaterThan(query6.binds.bytes.readableBytes, 0)
-        XCTAssertEqual(query6.binds.longBytes.readableBytes, 0)
+        #expect(query6.binds.bytes.readableBytes > 0)
+        #expect(query6.binds.longBytes.readableBytes == 0)
     }
 
-    func testBindList() {
+    @Test func bindList() {
         let statement1: OracleStatement = "SELECT id FROM table WHERE id IN (\(list: [Int]()))"
-        XCTAssertEqual(statement1.sql, "SELECT id FROM table WHERE id IN ()")
-        XCTAssertEqual(statement1.binds.bytes.readableBytes, 0)
+        #expect(statement1.sql == "SELECT id FROM table WHERE id IN ()")
+        #expect(statement1.binds.bytes.readableBytes == 0)
 
         let statement2: OracleStatement = "SELECT id FROM table WHERE id IN (\(list: [1, 2, 3, 4, 5]))"
-        XCTAssertEqual(statement2.sql, "SELECT id FROM table WHERE id IN (:0, :1, :2, :3, :4)")
-        XCTAssertGreaterThan(statement2.binds.bytes.readableBytes, 0)
+        #expect(statement2.sql == "SELECT id FROM table WHERE id IN (:0, :1, :2, :3, :4)")
+        #expect(statement2.binds.bytes.readableBytes > 0)
     }
 }
 
@@ -159,3 +159,4 @@ struct ThrowingByteBuffer: OracleThrowingDynamicTypeEncodable {
         preconditionFailure()
     }
 }
+#endif

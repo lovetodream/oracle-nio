@@ -12,16 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import Logging
 import NIOConcurrencyHelpers
 import NIOCore
 import NIOEmbedded
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class OracleTraceHandlerTests: XCTestCase {
-    func testTracer() async throws {
+@Suite final class OracleTraceHandlerTests {
+    @Test func tracer() async throws {
         let lines: NIOLockedValueBox<[String]> = .init([])
         let logger = Logger(label: "Tracer") { _ in
             Handler(lines: lines)
@@ -37,9 +38,9 @@ final class OracleTraceHandlerTests: XCTestCase {
         try await channel.writeInbound(buffer)
         do {
             let lines = lines.withLockedValue { $0 }
-            XCTAssertEqual(lines.count, 1)
-            XCTAssertEqual(
-                lines.first,
+            #expect(lines.count == 1)
+            #expect(
+                lines.first ==
                 """
                 Receiving packet [op 1] on socket 1
                 0000 : 00 01 02 03 04 05 06 07 |........|
@@ -51,9 +52,9 @@ final class OracleTraceHandlerTests: XCTestCase {
         try await channel.writeOutbound(buffer)
         do {
             let lines = lines.withLockedValue { $0 }
-            XCTAssertEqual(lines.count, 2)
-            XCTAssertEqual(
-                lines.last,
+            #expect(lines.count == 2)
+            #expect(
+                lines.last ==
                 """
                 Sending packet [op 2] on socket 1
                 0000 : 00 01 02 03 04 05 06 07 |........|
@@ -98,3 +99,4 @@ final class OracleTraceHandlerTests: XCTestCase {
         }
     }
 }
+#endif

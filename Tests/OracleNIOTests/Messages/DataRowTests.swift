@@ -12,17 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class DataRowTests: XCTestCase {
-    func testColumnWithNullIndicator() {
+@Suite struct DataRowTests {
+    @Test func columnWithNullIndicator() {
         let buffer = ByteBuffer(bytes: [Constants.TNS_NULL_LENGTH_INDICATOR])
         let row = DataRow(columnCount: 1, bytes: buffer)
         for column in row {
-            XCTAssertEqual(column, .none)
+            #expect(column == .none)
         }
     }
 }
+#endif

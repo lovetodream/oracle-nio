@@ -19,10 +19,8 @@
 
     @testable import OracleNIO
 
-    @Suite
-    struct StatementStateMachineTests {
-        @Test
-        func queryWithoutDataRowsHappyPath() throws {
+    @Suite struct StatementStateMachineTests {
+        @Test func queryWithoutDataRowsHappyPath() throws {
             let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
             promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
             let query: OracleStatement = "DELETE FROM table"
@@ -43,8 +41,7 @@
             #expect(state.readEventCaught() == .read)
         }
 
-        @Test
-        func queryWithDataRowsHappyPath() throws {
+        @Test func queryWithDataRowsHappyPath() throws {
             let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
             promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
             let query: OracleStatement = "SELECT 1 AS id FROM dual"
@@ -85,8 +82,7 @@
                 state.backendErrorReceived(.noData) == .forwardStreamComplete([row1], cursorID: 1, affectedRows: 1))
         }
 
-        @Test
-        func cancellationCompletesQueryOnlyOnce() throws {
+        @Test func cancellationCompletesQueryOnlyOnce() throws {
             let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
             promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
             let query: OracleStatement = "SELECT 1 AS id FROM dual"
@@ -135,8 +131,7 @@
             #expect(state.backendErrorReceived(backendError) == .fireEventReadyForStatement)
         }
 
-        @Test
-        func cancellationFiresRead() throws {
+        @Test func cancellationFiresRead() throws {
             let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
             promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
             let query: OracleStatement = "SELECT 1 AS id FROM dual"
@@ -181,8 +176,7 @@
             #expect(state.statementStreamCancelled() == .sendMarker(read: true))
         }
 
-        @Test
-        func cancellationDoesNotCrashOnBitVector() throws {
+        @Test func cancellationDoesNotCrashOnBitVector() throws {
             let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
             promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
             let query: OracleStatement = "SELECT 1 AS id FROM dual"

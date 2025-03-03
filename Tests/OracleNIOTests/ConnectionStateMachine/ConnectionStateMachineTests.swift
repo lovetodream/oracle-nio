@@ -12,15 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import Atomics
 import NIOCore
 import NIOEmbedded
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class ConnectionStateMachineTests: XCTestCase {
-    func testQueuedTasksAreExecuted() throws {
+@Suite struct ConnectionStateMachineTests {
+    @Test func queuedTasksAreExecuted() throws {
         var state = ConnectionStateMachine(.readyForStatement)
         let promise1 = EmbeddedEventLoop().makePromise(of: Void.self)
         promise1.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
@@ -28,13 +29,13 @@ final class ConnectionStateMachineTests: XCTestCase {
         promise2.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
         let success = OracleBackendMessage.Status(callStatus: 1, endToEndSequenceNumber: 0)
 
-        XCTAssertEqual(state.enqueue(task: .ping(promise1)), .sendPing)
-        XCTAssertEqual(state.enqueue(task: .ping(promise2)), .wait)
-        XCTAssertEqual(state.statusReceived(success), .succeedPing(promise1))
-        XCTAssertEqual(state.readyForStatementReceived(), .sendPing)
+        #expect(state.enqueue(task: .ping(promise1)) == .sendPing)
+        #expect(state.enqueue(task: .ping(promise2)) == .wait)
+        #expect(state.statusReceived(success) == .succeedPing(promise1))
+        #expect(state.readyForStatementReceived() == .sendPing)
     }
 
-    func testFailedPingDoesNotLeak() {
+    @Test func failedPingDoesNotLeak() {
         var state = ConnectionStateMachine(.readyForStatement)
         let atomic = ManagedAtomic(false)
         let pingPromise = EmbeddedEventLoop().makePromise(of: Void.self)
@@ -42,9 +43,9 @@ final class ConnectionStateMachineTests: XCTestCase {
             atomic.store(true, ordering: .relaxed)
         }
 
-        XCTAssertEqual(state.enqueue(task: .ping(pingPromise)), .sendPing)
-        XCTAssertEqual(
-            state.errorHappened(.uncleanShutdown),
+        #expect(state.enqueue(task: .ping(pingPromise)) == .sendPing)
+        #expect(
+            state.errorHappened(.uncleanShutdown) ==
             .closeConnectionAndCleanup(
                 .init(
                     action: .fireChannelInactive,
@@ -55,10 +56,10 @@ final class ConnectionStateMachineTests: XCTestCase {
                 )
             )
         )
-        XCTAssertTrue(atomic.load(ordering: .relaxed))
+        #expect(atomic.load(ordering: .relaxed) == true)
     }
 
-    func testFailedLOBDoesNotLeak() {
+    @Test func failedLOBDoesNotLeak() {
         var state = ConnectionStateMachine(.readyForStatement)
         let atomic = ManagedAtomic(false)
         let promise = EmbeddedEventLoop().makePromise(of: ByteBuffer?.self)
@@ -71,12 +72,9 @@ final class ConnectionStateMachineTests: XCTestCase {
             operation: .read, sendAmount: false, amount: 0, promise: promise
         )
 
-        XCTAssertEqual(
-            state.enqueue(task: .lobOperation(context)),
-            .sendLOBOperation(context)
-        )
-        XCTAssertEqual(
-            state.errorHappened(.uncleanShutdown),
+        #expect(state.enqueue(task: .lobOperation(context)) == .sendLOBOperation(context))
+        #expect(
+            state.errorHappened(.uncleanShutdown) ==
             .closeConnectionAndCleanup(
                 .init(
                     action: .fireChannelInactive,
@@ -87,10 +85,10 @@ final class ConnectionStateMachineTests: XCTestCase {
                 )
             )
         )
-        XCTAssertTrue(atomic.load(ordering: .relaxed))
+        #expect(atomic.load(ordering: .relaxed) == true)
     }
 
-    func testFailLOBOperationOnError() {
+    @Test func failLOBOperationOnError() {
         var state = ConnectionStateMachine(.readyForStatement)
         let promise = EmbeddedEventLoop().makePromise(of: ByteBuffer?.self)
         promise.fail(StatementContext.TestComplete())
@@ -103,17 +101,11 @@ final class ConnectionStateMachineTests: XCTestCase {
             OracleBackendMessage
             .BackendError(number: 1, isWarning: false, batchErrors: [])
 
-        XCTAssertEqual(
-            state.enqueue(task: .lobOperation(context)),
-            .sendLOBOperation(context)
-        )
-        XCTAssertEqual(
-            state.backendErrorReceived(error),
-            .failLOBOperation(promise, with: .server(error))
-        )
+        #expect(state.enqueue(task: .lobOperation(context)) == .sendLOBOperation(context))
+        #expect(state.backendErrorReceived(error) == .failLOBOperation(promise, with: .server(error)))
     }
 
-    func testFailLOBOperationWhileClosing() {
+    @Test func failLOBOperationWhileClosing() {
         var state = ConnectionStateMachine(.closing)
         let promise = EmbeddedEventLoop().makePromise(of: ByteBuffer?.self)
         promise.fail(StatementContext.TestComplete())
@@ -126,13 +118,10 @@ final class ConnectionStateMachineTests: XCTestCase {
             OracleBackendMessage
             .BackendError(number: 1, isWarning: false, batchErrors: [])
 
-        XCTAssertEqual(
-            state.enqueue(task: .lobOperation(context)),
-            .failLOBOperation(promise, with: .server(error))
-        )
+        #expect(state.enqueue(task: .lobOperation(context)) == .failLOBOperation(promise, with: .server(error)))
     }
 
-    func testResendLOBOperation() {
+    @Test func resendLOBOperation() {
         var state = ConnectionStateMachine(.readyForStatement)
         let promise = EmbeddedEventLoop().makePromise(of: ByteBuffer?.self)
         promise.fail(StatementContext.TestComplete())
@@ -142,10 +131,8 @@ final class ConnectionStateMachineTests: XCTestCase {
             operation: .read, sendAmount: false, amount: 0, promise: promise
         )
 
-        XCTAssertEqual(
-            state.enqueue(task: .lobOperation(context)),
-            .sendLOBOperation(context)
-        )
-        XCTAssertEqual(state.resendReceived(), .sendLOBOperation(context))
+        #expect(state.enqueue(task: .lobOperation(context)) == .sendLOBOperation(context))
+        #expect(state.resendReceived() == .sendLOBOperation(context))
     }
 }
+#endif

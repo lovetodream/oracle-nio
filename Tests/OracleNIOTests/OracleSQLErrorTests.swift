@@ -17,10 +17,8 @@
 
     @testable import OracleNIO
 
-    @Suite
-    struct OracleSQLErrorTests {
-        @Test
-        func serverInfoDescription() {
+    @Suite struct OracleSQLErrorTests {
+        @Test func serverInfoDescription() {
             let errorWithMessage = OracleSQLError.ServerInfo(
                 .init(
                     number: 1017,

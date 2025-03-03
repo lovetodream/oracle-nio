@@ -12,12 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
+#if compiler(>=6.0)
+import Testing
 
 @testable import OracleNIO
 
-final class AuthenticationStateMachineTests: XCTestCase {
-    func testFastAuthHappyPath() {
+@Suite struct AuthenticationStateMachineTests {
+    @Test func fastAuthHappyPath() {
         var capabilities = Capabilities()
         capabilities.supportsFastAuth = true
         capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
@@ -43,22 +44,16 @@ final class AuthenticationStateMachineTests: XCTestCase {
 
         var state = ConnectionStateMachine()
 
-        XCTAssertEqual(state.connected(), .sendConnect)
-        XCTAssertEqual(
-            state.acceptReceived(accept, description: description),
-            .provideAuthenticationContext(.allowed))
-        XCTAssertEqual(
-            state.provideAuthenticationContext(authContext, fastAuth: .allowed),
-            .sendFastAuth(authContext))
-        XCTAssertEqual(state.protocolReceived(), .wait)
-        XCTAssertEqual(state.dataTypesReceived(), .wait)
-        XCTAssertEqual(
-            state.parameterReceived(parameters: .init([:])),
-            .sendAuthenticationPhaseTwo(authContext, .init([:])))
-        XCTAssertEqual(state.parameterReceived(parameters: [:]), .authenticated([:]))
+        #expect(state.connected() == .sendConnect)
+        #expect(state.acceptReceived(accept, description: description) == .provideAuthenticationContext(.allowed))
+        #expect(state.provideAuthenticationContext(authContext, fastAuth: .allowed) == .sendFastAuth(authContext))
+        #expect(state.protocolReceived() == .wait)
+        #expect(state.dataTypesReceived() == .wait)
+        #expect(state.parameterReceived(parameters: .init([:])) == .sendAuthenticationPhaseTwo(authContext, .init([:])))
+        #expect(state.parameterReceived(parameters: [:]) == .authenticated([:]))
     }
 
-    func testAuthHappyPath() {
+    @Test func authHappyPath() {
         var capabilities = Capabilities()
         capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
         let accept = OracleBackendMessage.Accept(newCapabilities: capabilities)
@@ -83,16 +78,18 @@ final class AuthenticationStateMachineTests: XCTestCase {
 
         var state = ConnectionStateMachine()
 
-        XCTAssertEqual(state.connected(), .sendConnect)
-        XCTAssertEqual(state.acceptReceived(accept, description: description), .sendProtocol)
-        XCTAssertEqual(state.protocolReceived(), .sendDataTypes)
-        XCTAssertEqual(state.dataTypesReceived(), .provideAuthenticationContext(.denied))
-        XCTAssertEqual(
-            state.provideAuthenticationContext(authContext, fastAuth: .denied),
-            .sendAuthenticationPhaseOne(authContext))
-        XCTAssertEqual(
-            state.parameterReceived(parameters: .init([:])),
+        #expect(state.connected() == .sendConnect)
+        #expect(state.acceptReceived(accept, description: description) == .sendProtocol)
+        #expect(state.protocolReceived() == .sendDataTypes)
+        #expect(state.dataTypesReceived() == .provideAuthenticationContext(.denied))
+        #expect(
+            state.provideAuthenticationContext(authContext, fastAuth: .denied) ==
+            .sendAuthenticationPhaseOne(authContext)
+        )
+        #expect(
+            state.parameterReceived(parameters: .init([:])) ==
             .sendAuthenticationPhaseTwo(authContext, .init([:])))
-        XCTAssertEqual(state.parameterReceived(parameters: [:]), .authenticated([:]))
+        #expect(state.parameterReceived(parameters: [:]) == .authenticated([:]))
     }
 }
+#endif

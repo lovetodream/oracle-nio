@@ -12,30 +12,33 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
 import NIOTestUtils
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class ControlTests: XCTestCase {
-    func testResetOOB() throws {
+@Suite struct ControlTests {
+    @Test func resetOOB() throws {
         var message = try ByteBuffer(plainHexEncodedBytes: "00 09")
         let result = try OracleBackendMessage.decode(
             from: &message,
             of: .control,
             context: .init(capabilities: .desired())
         )
-        XCTAssertEqual(result.0, [.resetOOB])
+        #expect(result.0 == [.resetOOB])
     }
 
-    func testUnknown() throws {
+    @Test func unknown() throws {
         var message = try ByteBuffer(plainHexEncodedBytes: "01 09")
-        try XCTAssertThrowsError(
-            OracleBackendMessage.decode(
+        #expect(throws: OraclePartialDecodingError.unknownControlType(controlType: 0x0109), performing: {
+            try OracleBackendMessage.decode(
                 from: &message,
                 of: .control,
                 context: .init(capabilities: .desired())
-            ), expected: OraclePartialDecodingError.unknownControlType(controlType: 0x0109))
+            )
+        })
     }
 }
+#endif

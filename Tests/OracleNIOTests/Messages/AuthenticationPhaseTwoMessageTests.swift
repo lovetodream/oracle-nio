@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
 import NIOTestUtils
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class AuthenticationPhaseTwoMessageTests: XCTestCase {
+@Suite struct AuthenticationPhaseTwoMessageTests {
     let testPrivateKey = """
         -----BEGIN RSA PRIVATE KEY-----
         MIICWgIBAAKBgGhXeKN8/4vESCXIgvZV+61Pp8sCWlnBGuOSgQ0wAHzvz9VVm8fs
@@ -37,7 +38,7 @@ final class AuthenticationPhaseTwoMessageTests: XCTestCase {
         -----END RSA PRIVATE KEY-----
         """
 
-    func testEncodeWithTokenAndPrivateKeyDoesNotFailWithValidKey() throws {
+    @Test func encodeWithTokenAndPrivateKeyDoesNotFailWithValidKey() throws {
         let context = AuthContext(
             method: .init(token: .tokenAndPrivateKey(token: "my_token", key: testPrivateKey)),
             service: .serviceName("test"),
@@ -59,3 +60,4 @@ final class AuthenticationPhaseTwoMessageTests: XCTestCase {
         try encoder.authenticationPhaseTwo(authContext: context, parameters: .init([:]))
     }
 }
+#endif

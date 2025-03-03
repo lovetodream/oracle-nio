@@ -12,24 +12,29 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
 import NIOPosix
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class OracleRowStreamTests: XCTestCase {
-    func testEmptyStream() {
+@Suite struct OracleRowStreamTests {
+    @Test func emptyStream() {
         let stream = OracleRowStream(source: .noRows(.success(())))
 
-        XCTAssertEqual(try stream.all().wait(), [])
+        #expect(throws: Never.self, performing: {
+            let result = try stream.all().wait()
+            #expect(result == [])
+        })
     }
 
-    func testAsyncEmptyStream() async throws {
+    @Test func asyncEmptyStream() async throws {
         let stream = OracleRowStream(source: .noRows(.success(())))
 
         let rows = try await stream.asyncSequence().collect()
-        XCTAssertEqual(rows, [])
+        #expect(rows == [])
     }
 
 }
+#endif

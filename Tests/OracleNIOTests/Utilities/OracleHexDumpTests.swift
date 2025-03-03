@@ -12,20 +12,21 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class OracleHexDumpTests: XCTestCase {
-    func testOracleDump() {
+@Suite struct OracleHexDumpTests {
+    @Test func oracleDump() {
         let buffer = ByteBuffer(bytes: [
             0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
             0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
             UInt8(ascii: "a"),
         ])
-        XCTAssertEqual(
-            buffer.oracleHexDump(),
+        #expect(
+            buffer.oracleHexDump() ==
             """
             0000 : 00 01 02 03 04 05 06 07 |........|
             0008 : 08 09 0A 0B 0C 0D 0E 0F |........|
@@ -34,12 +35,13 @@ final class OracleHexDumpTests: XCTestCase {
             """)
     }
 
-    func testEmpty() {
+    @Test func empty() {
         let buffer = ByteBuffer()
-        XCTAssertEqual(buffer.oracleHexDump(), "")
+        #expect(buffer.oracleHexDump() == "")
     }
 
-    func testStringInitializationIsTruncatedIfNeeded() {
-        XCTAssertEqual(String(10_000, radix: 10, padding: 4), "0000")
+    @Test func stringInitializationIsTruncatedIfNeeded() {
+        #expect(String(10_000, radix: 10, padding: 4) == "0000")
     }
 }
+#endif

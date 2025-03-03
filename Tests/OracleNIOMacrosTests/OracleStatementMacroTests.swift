@@ -14,12 +14,13 @@
 
 // swift-format-ignore-file
 
+#if compiler(>=6.0)
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacroExpansion
 import SwiftSyntaxMacros
-import SwiftSyntaxMacrosTestSupport
-import XCTest
+import SwiftSyntaxMacrosGenericTestSupport
+import Testing
 
 // We only test for Swift 6 SwiftSyntax here.
 // The Postgres version tests for older SwiftSyntax versions too.
@@ -37,8 +38,8 @@ let testMacros: [String: MacroSpec] = [
 ]
 #endif
 
-final class PreparedStatementsOracleNIOTests: XCTestCase {
-    func testMacro() throws {
+@Suite struct PreparedStatementsOracleNIOTests {
+    @Test func macro() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -73,14 +74,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithoutBinds() throws {
+    @Test func macroWithoutBinds() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -111,14 +123,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroOnInsertStatement() throws {
+    @Test func macroOnInsertStatement() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -153,14 +176,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithAliasInColumn() throws {
+    @Test func macroWithAliasInColumn() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -195,14 +229,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithoutAnything() throws {
+    @Test func macroWithoutAnything() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -227,14 +272,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithEmptyString() throws {
+    @Test func macroWithEmptyString() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -259,14 +315,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroOnClassDoesNotWork() throws {
+    @Test func macroOnClassDoesNotWork() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"@Statement("")  class MyStatement {}"#,
@@ -281,14 +348,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                     ]
                 )
             ],
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithOptionalBind() throws {
+    @Test func macroWithOptionalBind() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -327,14 +405,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithOptionalColumn() throws {
+    @Test func macroWithOptionalColumn() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -373,14 +462,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                 extension MyStatement: OraclePreparedStatement {
                 }
                 """,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMacroWithWithInvalidTypeDoesNotWork() throws {
+    @Test func macroWithWithInvalidTypeDoesNotWork() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -400,14 +500,25 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
                     column: 1
                 )
             ],
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
-    func testMultilineMacro() throws {
+    @Test func multilineMacro() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
             #"""
@@ -450,11 +561,23 @@ final class PreparedStatementsOracleNIOTests: XCTestCase {
             extension MyStatement: OraclePreparedStatement {
             }
             """#,
-            macroSpecs: testMacros
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
         )
         #else
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 }
+#endif
 #endif

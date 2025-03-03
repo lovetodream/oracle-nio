@@ -23,7 +23,8 @@
         private var running: Task<Void, Error>!
 
         init() throws {
-            self.client = try OracleClient(configuration: OracleConnection.testConfig())
+            let client = try OracleClient(configuration: OracleConnection.testConfig())
+            self.client = client
             self.running = Task { await client.run() }
         }
 

@@ -12,16 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
 import NIOTestUtils
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class AcceptMessageTests: XCTestCase {
+@Suite final class AcceptMessageTests {
     typealias Message = OracleBackendMessageDecoder.Container
 
-    func testDecodeAccept() {
+    @Test func decodeAccept() {
         var expected = [Message]()
         var buffer = ByteBuffer()
         let encoder = OracleBackendMessageEncoder(protocolVersion: 0)
@@ -48,27 +49,28 @@ final class AcceptMessageTests: XCTestCase {
         encoder.encode(data: message3, out: &buffer)
         expected.append(message3)
 
-        XCTAssertNoThrow(
+        #expect(throws: Never.self, performing: {
             try ByteToMessageDecoderVerifier.verifyDecoder(
                 inputOutputPairs: [(buffer, expected.map({ [$0] }))],
                 decoderFactory: {
                     OracleBackendMessageDecoder()
                 }
-            ))
+            )
+        })
     }
 
-    func testDecodeUnsupportedVersion() throws {
+    @Test func decodeUnsupportedVersion() throws {
         let message = try ByteBuffer(
             bytes: Array(
                 hexString:
                     "00 20 00 00 02 00 00 00 01 3a 04 01 20 00 20 00 01 00 00 00 00 20 c5 00 00 00 00 00 00 00 00 00"
                     .replacingOccurrences(of: " ", with: "")
             ))
-        XCTAssertThrowsError(
+        #expect(throws: OracleSQLError.serverVersionNotSupported, performing: {
             try ByteToMessageDecoderVerifier.verifyDecoder(inputOutputPairs: [(message, [])]) {
                 OracleBackendMessageDecoder()
-            },
-            expected: OracleSQLError.serverVersionNotSupported
-        )
+            }
+        })
     }
 }
+#endif

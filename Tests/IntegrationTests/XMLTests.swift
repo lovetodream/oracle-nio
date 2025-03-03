@@ -12,13 +12,25 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class XMLTests: XCTIntegrationTest {
-    func testXMLType() async throws {
+@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1")) final class XMLTests: IntegrationTest {
+    let connection: OracleConnection
+
+    init() async throws {
+        #expect(isLoggingConfigured)
+        self.connection = try await OracleConnection.test()
+    }
+
+    deinit {
+        #expect(throws: Never.self, performing: { try self.connection.syncClose() })
+    }
+
+    @Test func xmlType() async throws {
         _ = try? await connection.execute("DROP TABLE testxml")
         try await connection.execute(
             """
@@ -43,18 +55,18 @@ final class XMLTests: XCTIntegrationTest {
         var currentID = 0
         for try await (id, value, lob) in stream.decode((Int, CustomOracleObject, String).self) {
             currentID += 1
-            XCTAssertEqual(id, currentID)
+            #expect(id == currentID)
             var buffer = value.data
             let xml = try OracleXML(from: &buffer)
-            XCTAssert(lob.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
-            XCTAssert(lob.hasSuffix("</records>\n"))
+            #expect(lob.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
+            #expect(lob.hasSuffix("</records>\n"))
             switch xml.value {
             case .string(let value):
-                XCTAssert(value.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
-                XCTAssert(value.hasSuffix("</records>\n"))
+                #expect(value.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
+                #expect(value.hasSuffix("</records>\n"))
             }
         }
-        XCTAssertEqual(currentID, 100)
+        #expect(currentID == 100)
     }
 }
 
@@ -123,3 +135,4 @@ struct OracleXML {
         }
     }
 }
+#endif

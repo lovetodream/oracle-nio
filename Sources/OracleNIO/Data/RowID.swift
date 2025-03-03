@@ -66,7 +66,7 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
                 size: 3,
                 offset: offset
             )
-            return String(bytes: bytes, encoding: .utf8) ?? ""
+            return String(decoding: bytes, as: UTF8.self)
         }
         return ""
     }

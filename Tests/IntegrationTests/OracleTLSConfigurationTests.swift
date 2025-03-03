@@ -12,13 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOSSL
 import OracleNIO
-import XCTest
+import Testing
 
-final class OracleTLSConfigurationTests: XCTestCase {
-    func testTLSUtilities() throws {
-        let filePath = try XCTUnwrap(
+import class Foundation.Bundle
+
+@Suite final class OracleTLSConfigurationTests {
+    @Test func tlsUtilities() throws {
+        let filePath = try #require(
             Bundle.module.path(
                 forResource: "ewallet", ofType: "pem"
             ))
@@ -30,8 +33,8 @@ final class OracleTLSConfigurationTests: XCTestCase {
             case .privateKey: true
             default: false
             }
-        XCTAssert(pemHasPrivateKey)
-        XCTAssert(!pemConfig.certificateChain.isEmpty)
+        #expect(pemHasPrivateKey)
+        #expect(!pemConfig.certificateChain.isEmpty)
 
         let folderPath = filePath.dropLast("ewallet.pem".count)
         for path in [folderPath, folderPath.dropLast()] {
@@ -43,8 +46,9 @@ final class OracleTLSConfigurationTests: XCTestCase {
                 case .privateKey: true
                 default: false
                 }
-            XCTAssert(walletHasPrivateKey)
-            XCTAssert(!walletConfig.certificateChain.isEmpty)
+            #expect(walletHasPrivateKey)
+            #expect(!walletConfig.certificateChain.isEmpty)
         }
     }
 }
+#endif

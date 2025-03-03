@@ -14,6 +14,6 @@
 
 import OracleNIO
 
-protocol IntegrationTest {
-    var connection: OracleConnection! { get set }
+protocol IntegrationTest: AnyObject {
+    var connection: OracleConnection { get }
 }

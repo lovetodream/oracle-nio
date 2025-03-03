@@ -12,15 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
+#if compiler(>=6.0)
+import Testing
+import OracleNIO
 
-@testable import OracleNIO
+@Suite final class OracleClientTests {
 
-final class OracleClientTests: XCTestCase {
-
-    func testPool() async throws {
-        try XCTSkipIf(
-            env("NO_DRCP") != nil, "The testing database does not support DRCP, skipping test...")
+    @Test(.disabled(if: env("NO_DRCP") != nil, "The testing database does not support DRCP"))
+    func pool() async throws {
         let config = try OracleConnection.testConfig()
         let client = OracleClient(configuration: config, backgroundLogger: .oracleTest)
         await withThrowingTaskGroup(of: Void.self) { taskGroup in
@@ -31,19 +30,14 @@ final class OracleClientTests: XCTestCase {
             for i in 0..<10000 {
                 taskGroup.addTask {
                     try await client.withConnection { connection in
-                        do {
-                            let rows = try await connection.execute(
-                                "SELECT 1, 'Timo', 23 FROM dual", logger: .oracleTest)
-                            for try await (userID, name, age) in rows.decode(
-                                (Int, String, Int).self)
-                            {
-                                XCTAssertEqual(userID, 1)
-                                XCTAssertEqual(name, "Timo")
-                                XCTAssertEqual(age, 23)
-                                print("done: \(i)/10000")
-                            }
-                        } catch {
-                            XCTFail("Unexpected error: \(error)")
+                        let rows = try await connection.execute("SELECT 1, 'Timo', 23 FROM dual", logger: .oracleTest)
+                        for try await (userID, name, age) in rows.decode(
+                            (Int, String, Int).self)
+                        {
+                            #expect(userID == 1)
+                            #expect(name == "Timo")
+                            #expect(age == 23)
+                            print("done: \(i)/10000")
                         }
                     }
                 }
@@ -57,7 +51,7 @@ final class OracleClientTests: XCTestCase {
         }
     }
 
-    func testPoolWithoutDRCP() async throws {
+    @Test func poolWithoutDRCP() async throws {
         let config = try OracleConnection.testConfig()
         let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
         await withThrowingTaskGroup(of: Void.self) { taskGroup in
@@ -68,19 +62,14 @@ final class OracleClientTests: XCTestCase {
             for i in 0..<10000 {
                 taskGroup.addTask {
                     try await client.withConnection { connection in
-                        do {
-                            let rows = try await connection.execute(
-                                "SELECT 1, 'Timo', 23 FROM dual", logger: .oracleTest)
-                            for try await (userID, name, age) in rows.decode(
-                                (Int, String, Int).self)
-                            {
-                                XCTAssertEqual(userID, 1)
-                                XCTAssertEqual(name, "Timo")
-                                XCTAssertEqual(age, 23)
-                                print("done: \(i)/10000")
-                            }
-                        } catch {
-                            XCTFail("Unexpected error: \(error)")
+                        let rows = try await connection.execute("SELECT 1, 'Timo', 23 FROM dual", logger: .oracleTest)
+                        for try await (userID, name, age) in rows.decode(
+                            (Int, String, Int).self)
+                        {
+                            #expect(userID == 1)
+                            #expect(name == "Timo")
+                            #expect(age == 23)
+                            print("done: \(i)/10000")
                         }
                     }
                 }
@@ -94,7 +83,7 @@ final class OracleClientTests: XCTestCase {
         }
     }
 
-    func testTransactionSuccess() async throws {
+    @Test func transactionSuccess() async throws {
         let config = try OracleConnection.testConfig()
         let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
         let runTask = Task {
@@ -107,21 +96,21 @@ final class OracleClientTests: XCTestCase {
                 "INSERT INTO test_pool_transaction_success (id) VALUES (:1)",
                 binds: Array(1...10)
             ).affectedRows
-            XCTAssertEqual(affectedRows, 10)
+            #expect(affectedRows == 10)
         }
         try await client.withConnection { connection in
             let stream = try await connection.execute("SELECT id FROM test_pool_transaction_success")
             var index = 0
             for try await id in stream.decode(Int.self) {
                 index += 1
-                XCTAssertEqual(index, id)
+                #expect(index == id)
             }
-            XCTAssertEqual(index, 10)
+            #expect(index == 10)
         }
         runTask.cancel()
     }
 
-    func testTransactionFailure() async throws {
+    @Test func transactionFailure() async throws {
         let config = try OracleConnection.testConfig()
         let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
         let runTask = Task {
@@ -137,7 +126,7 @@ final class OracleClientTests: XCTestCase {
                 )
             }
         } catch let error as OracleSQLError {
-            XCTAssertEqual(error.serverInfo?.affectedRows, 9)
+            #expect(error.serverInfo?.affectedRows == 9)
         }
         try await client.withConnection { connection in
             let rows =
@@ -145,13 +134,13 @@ final class OracleClientTests: XCTestCase {
                 .execute("SELECT id FROM test_pool_transaction_failure")
                 .collect()
                 .count
-            XCTAssertEqual(rows, 0)
+            #expect(rows == 0)
         }
         runTask.cancel()
     }
 
     @available(macOS 14.0, *)
-    func testPingPong() async throws {
+    @Test func pingPong() async throws {
         let idleTimeout = Duration.seconds(20)
         let config = try OracleConnection.testConfig()
         var options = OracleClient.Options()
@@ -170,7 +159,7 @@ final class OracleClientTests: XCTestCase {
                     let hello = try await client.withConnection { db in
                         try await db.execute("SELECT 'hello' FROM dual", logger: .oracleTest)
                     }.collect().first?.decode(String.self)
-                    XCTAssertEqual(hello, "hello")
+                    #expect(hello == "hello")
 
                     // wait for the connection pool to do ping pong and close
                     try await Task.sleep(for: idleTimeout + .seconds(1))
@@ -182,3 +171,4 @@ final class OracleClientTests: XCTestCase {
     }
 
 }
+#endif

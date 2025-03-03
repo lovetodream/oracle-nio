@@ -12,13 +12,25 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
-import XCTest
+import Testing
 
 @testable import OracleNIO
 
-final class CustomTypeTests: XCTIntegrationTest {
-    func testCustomType() async throws {
+@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1")) final class CustomTypeTests: IntegrationTest {
+    let connection: OracleConnection
+
+    init() async throws {
+        #expect(isLoggingConfigured)
+        self.connection = try await OracleConnection.test()
+    }
+
+    deinit {
+        #expect(throws: Never.self, performing: { try self.connection.syncClose() })
+    }
+
+    @Test func customType() async throws {
         // create types and scheme
         _ = try? await self.connection.execute(
             """
@@ -130,9 +142,9 @@ final class CustomTypeTests: XCTIntegrationTest {
         var id = 0
         while let row = try await iterator.next() {
             id += 1
-            XCTAssertEqual(row.0, id)
+            #expect(row.0 == id)
         }
-        XCTAssertEqual(id, 3)
+        #expect(id == 3)
     }
 }
 
@@ -197,3 +209,4 @@ struct CustomOracleObject: OracleDecodable {
         }
     }
 }
+#endif

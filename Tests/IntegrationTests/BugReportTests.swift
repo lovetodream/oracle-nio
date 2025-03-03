@@ -12,12 +12,28 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
 import NIOCore
 import NIOPosix
 import OracleNIO
-import XCTest
+import Testing
 
-final class BugReportTests: XCTIntegrationTest {
+import struct Foundation.Calendar
+import struct Foundation.Date
+import struct Foundation.DateComponents
+import struct Foundation.UUID
+
+@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1")) final class BugReportTests: IntegrationTest {
+    let connection: OracleConnection
+
+    init() async throws {
+        #expect(isLoggingConfigured)
+        self.connection = try await OracleConnection.test()
+    }
+
+    deinit {
+        #expect(throws: Never.self, performing: { try self.connection.syncClose() })
+    }
 
     func testRowsFetchFailsWithDecodingError() async throws {
         let schema: OracleStatement = """
@@ -268,3 +284,4 @@ private struct Timestamp: Sendable, OracleCodable {
 
     static var defaultOracleType: OracleDataType { .timestamp }
 }
+#endif

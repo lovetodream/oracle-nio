@@ -16,8 +16,7 @@
     import OracleNIO
     import Testing
 
-    @Suite(.enabled(if: env("TEST_VECTORS")?.isEmpty == false))
-    final class VectorTests {
+    @Suite(.enabled(if: env("TEST_VECTORS")?.isEmpty == false)) final class VectorTests {
         private let client: OracleClient
         private var running: Task<Void, Error>!
 
@@ -31,8 +30,7 @@
             running.cancel()
         }
 
-        @Test
-        func basicVectorTable() async throws {
+        @Test func basicVectorTable() async throws {
             try await client.withConnection { connection in
                 try await connection.execute(
                     """
@@ -74,8 +72,7 @@
             }
         }
 
-        @Test
-        func flexibleVector() async throws {
+        @Test func flexibleVector() async throws {
             try await client.withConnection { connection in
                 try await connection.execute(
                     """

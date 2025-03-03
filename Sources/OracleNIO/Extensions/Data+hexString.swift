@@ -35,6 +35,6 @@ extension DataProtocol {
             }
         }
 
-        return String(bytes: hexChars, encoding: .utf8)!
+        return String(decoding: hexChars, as: UTF8.self)
     }
 }

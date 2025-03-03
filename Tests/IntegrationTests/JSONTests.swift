@@ -12,18 +12,40 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=6.0)
+import Atomics
 import OracleNIO
-import XCTest
+import Testing
 
-final class JSONTests: XCTIntegrationTest {
-    let testCompressedJSON: Bool = env("TEST_COMPRESSED_JSON")?.isEmpty == false
+@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1")) final class JSONTests: IntegrationTest {
+    static let testCompressedJSON: Bool = env("TEST_COMPRESSED_JSON")?.isEmpty == false
+    let connection: OracleConnection
 
-    override func setUp() async throws {
-        try await super.setUp()
-        _ = try? await connection.execute("DROP TABLE TestJsonCols")
+    private static let counter = ManagedAtomic(0)
+
+    init() async throws {
+        #expect(isLoggingConfigured)
+        self.connection = try await OracleConnection.test()
+    }
+
+    deinit {
+        #expect(throws: Never.self, performing: { try self.connection.syncClose() })
+    }
+
+    func runPopulatedJsonTest<R>(_ test: @escaping (OracleConnection, String) async throws -> R) async throws {
+        let key = String(Self.counter.wrappingIncrementThenLoad(ordering: .relaxed))
+        do {
+            try await connection.execute(
+                "DROP TABLE TestJsonCols\(unescaped: key)", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            #expect(error.serverInfo?.number == 942)
+        }
+
         try await connection.execute(
             """
-            create table TestJsonCols (
+            CREATE TABLE TestJsonCols\(unescaped: key) (
                 IntCol                              number(9) not null,
                 JsonVarchar                         varchar2(4000) not null,
                 JsonClob                            clob not null,
@@ -32,57 +54,85 @@ final class JSONTests: XCTIntegrationTest {
                 constraint TestJsonCols_ck_2 check (JsonClob is json),
                 constraint TestJsonCols_ck_3 check (JsonBlob is json)
             )
-            """)
+            """,
+            logger: .oracleTest
+        )
         try await connection.execute(
-            "insert into TestJsonCols values (1, '[1, 2, 3]', '[4, 5, 6]', '[7, 8, 9]')")
-        if testCompressedJSON {
-            _ = try? await connection.execute("DROP TABLE TestCompressedJson")
-            try await connection.execute(
-                """
-                create table TestCompressedJson (
-                    IntCol number(9) not null,
-                    JsonCol json not null
-                )
-                json (JsonCol)
-                store as (compress high)
-                """)
-            try await connection.execute(
-                """
-                INSERT INTO TestCompressedJson VALUES (
-                    1,
-                    '{"key": "value", "int": 8, "array": [1, 2, 3], "bool1": true, "bool2": false, "nested": {"float": 1.2, "double": 1.23, "null": null}}'
-                )
-                """)
-        }
+            "INSERT INTO TestJsonCols\(unescaped: key) values (1, '[1, 2, 3]', '[4, 5, 6]', '[7, 8, 9]')"
+        )
+
+        await #expect(throws: Never.self, performing: { try await test(connection, "TestJsonCols\(key)") })
+
+        try await connection.execute(
+            "DROP TABLE TestJsonCols\(unescaped: key)", logger: .oracleTest
+        )
     }
 
-    func testFetchJSONColumns() async throws {
+    func runPopulatedCompressedJsonTest<R>(_ test: @escaping (OracleConnection, String) async throws -> R) async throws {
+        let key = String(Self.counter.wrappingIncrementThenLoad(ordering: .relaxed))
+        do {
+            try await connection.execute(
+                "DROP TABLE TestCompressedJson\(unescaped: key)", logger: .oracleTest
+            )
+        } catch let error as OracleSQLError {
+            // "ORA-00942: table or view does not exist" can be ignored
+            #expect(error.serverInfo?.number == 942)
+        }
+
+        try await connection.execute(
+            """
+            CREATE TABLE TestCompressedJson\(unescaped: key) (
+                IntCol number(9) not null,
+                JsonCol json not null
+            )
+            json (JsonCol)
+            store as (compress high)
+            """,
+            logger: .oracleTest
+        )
+        try await connection.execute(
+            """
+            INSERT INTO TestCompressedJson\(unescaped: key) VALUES (
+                1,
+                '{"key": "value", "int": 8, "array": [1, 2, 3], "bool1": true, "bool2": false, "nested": {"float": 1.2, "double": 1.23, "null": null}}'
+            )
+            """
+        )
+
+        await #expect(throws: Never.self, performing: { try await test(connection, "TestCompressedJson\(key)") })
+
+        try await connection.execute(
+            "DROP TABLE TestCompressedJson\(unescaped: key)", logger: .oracleTest
+        )
+    }
+
+    @Test func fetchJSONColumns() async throws {
         let stream = try await connection.execute(
             "SELECT intcol, jsonvarchar, jsonclob, jsonblob FROM testjsoncols")
         for try await (id, varchar, clob, blob) in stream.decode((Int, String, String, String).self) {
-            XCTAssertEqual(id, 1)
-            XCTAssertEqual(varchar, "[1, 2, 3]")
-            XCTAssertEqual(clob, "[4, 5, 6]")
-            XCTAssertEqual(blob, "[7, 8, 9]")
+            #expect(id == 1)
+            #expect(varchar == "[1, 2, 3]")
+            #expect(clob == "[4, 5, 6]")
+            #expect(blob == "[7, 8, 9]")
         }
     }
 
-    func testCompressedJSON() async throws {
-        try XCTSkipIf(!testCompressedJSON)
-        let stream = try await connection.execute("SELECT intcol, jsoncol FROM TestCompressedJson")
-        for try await (id, json) in stream.decode((Int, OracleJSON<MyJSON>).self) {
-            XCTAssertEqual(id, 1)
-            XCTAssertEqual(
-                json.value,
-                MyJSON(
-                    key: "value",
-                    int: 8,
-                    array: [1, 2, 3],
-                    bool1: true,
-                    bool2: false,
-                    nested: .init(float: 1.2, double: 1.23, null: nil)
+    @Test(.enabled(if: Self.testCompressedJSON)) func testCompressedJSON() async throws {
+        try await runPopulatedCompressedJsonTest { connection, tableName in
+            let stream = try await connection.execute("SELECT intcol, jsoncol FROM \(unescaped: tableName)")
+            for try await (id, json) in stream.decode((Int, OracleJSON<MyJSON>).self) {
+                #expect(id == 1)
+                #expect(
+                    json.value == MyJSON(
+                        key: "value",
+                        int: 8,
+                        array: [1, 2, 3],
+                        bool1: true,
+                        bool2: false,
+                        nested: .init(float: 1.2, double: 1.23, null: nil)
+                    )
                 )
-            )
+            }
         }
 
         struct MyJSON: Decodable, Equatable {
@@ -101,73 +151,79 @@ final class JSONTests: XCTIntegrationTest {
         }
     }
 
-    func testScalarValue() async throws {
-        try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(
-            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '"value"')"#)
-        let stream = try await connection.execute(
-            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
-        for try await (id, json) in stream.decode((Int, OracleJSON<String>).self) {
-            XCTAssertEqual(id, 2)
-            XCTAssertEqual(json.value, "value")
+    @Test(.enabled(if: Self.testCompressedJSON)) func scalarValue() async throws {
+        try await runPopulatedCompressedJsonTest { connection, tableName in
+            try await connection.execute(
+                #"INSERT INTO \#(unescaped: tableName) (intcol, jsoncol) VALUES (2, '"value"')"#)
+            let stream = try await connection.execute(
+                "SELECT intcol, jsoncol FROM \(unescaped: tableName) WHERE intcol = 2")
+            for try await (id, json) in stream.decode((Int, OracleJSON<String>).self) {
+                #expect(id == 2)
+                #expect(json.value == "value")
+            }
         }
     }
 
-    func testArrayValue() async throws {
-        try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(
-            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '["value"]')"#)
-        let stream = try await connection.execute(
-            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
-        for try await (id, json) in stream.decode((Int, OracleJSON<[String]>).self) {
-            XCTAssertEqual(id, 2)
-            XCTAssertEqual(json.value, ["value"])
+    @Test(.enabled(if: Self.testCompressedJSON)) func arrayValue() async throws {
+        try await runPopulatedCompressedJsonTest { connection, tableName in
+            try await connection.execute(
+                #"INSERT INTO \#(unescaped: tableName) (intcol, jsoncol) VALUES (2, '["value"]')"#)
+            let stream = try await connection.execute(
+                "SELECT intcol, jsoncol FROM \(unescaped: tableName) WHERE intcol = 2")
+            for try await (id, json) in stream.decode((Int, OracleJSON<[String]>).self) {
+                #expect(id == 2)
+                #expect(json.value == ["value"])
+            }
         }
     }
 
-    func testObjectValue() async throws {
-        try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(
-            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '{"foo": "bar"}')"#)
-        let stream = try await connection.execute(
-            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
-        for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
-            XCTAssertEqual(id, 2)
-            XCTAssertEqual(json.value, Foo(foo: "bar"))
+    @Test(.enabled(if: Self.testCompressedJSON)) func objectValue() async throws {
+        try await runPopulatedCompressedJsonTest { connection, tableName in
+            try await connection.execute(
+                #"INSERT INTO \#(unescaped: tableName) (intcol, jsoncol) VALUES (2, '{"foo": "bar"}')"#)
+            let stream = try await connection.execute(
+                "SELECT intcol, jsoncol FROM \(unescaped: tableName) WHERE intcol = 2")
+            for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
+                #expect(id == 2)
+                #expect(json.value == Foo(foo: "bar"))
+            }
         }
         struct Foo: Codable, Equatable {
             let foo: String
         }
     }
 
-    func testArrayOfObjects() async throws {
-        try XCTSkipIf(!testCompressedJSON)
-        try await connection.execute(
-            #"INSERT INTO TestCompressedJson (intcol, jsoncol) VALUES (2, '[{"foo": "bar1"}, {"foo": "bar2"}]')"#
-        )
-        let stream = try await connection.execute(
-            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
-        for try await (id, json) in stream.decode((Int, OracleJSON<[Foo]>).self) {
-            XCTAssertEqual(id, 2)
-            XCTAssertEqual(json.value, [Foo(foo: "bar1"), Foo(foo: "bar2")])
+    @Test(.enabled(if: Self.testCompressedJSON)) func arrayOfObjects() async throws {
+        try await runPopulatedCompressedJsonTest { connection, tableName in
+            try await connection.execute(
+                #"INSERT INTO \#(unescaped: tableName) (intcol, jsoncol) VALUES (2, '[{"foo": "bar1"}, {"foo": "bar2"}]')"#
+            )
+            let stream = try await connection.execute(
+                "SELECT intcol, jsoncol FROM \(unescaped: tableName) WHERE intcol = 2")
+            for try await (id, json) in stream.decode((Int, OracleJSON<[Foo]>).self) {
+                #expect(id == 2)
+                #expect(json.value == [Foo(foo: "bar1"), Foo(foo: "bar2")])
+            }
         }
         struct Foo: Codable, Equatable {
             let foo: String
         }
     }
 
-    func testInsertion() async throws {
-        try XCTSkipIf(!testCompressedJSON)
+    @Test(.enabled(if: Self.testCompressedJSON)) func insertion() async throws {
         struct Foo: Codable, Equatable {
             let foo: String
         }
-        try await connection.execute(
-            "INSERT INTO TestCompressedJson VALUES (2, \(OracleJSON(Foo(foo: "bar"))))")
-        let stream = try await connection.execute(
-            "SELECT intcol, jsoncol FROM TestCompressedJson WHERE intcol = 2")
-        for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
-            XCTAssertEqual(id, 2)
-            XCTAssertEqual(json.value, Foo(foo: "bar"))
+        try await runPopulatedCompressedJsonTest { connection, tableName in
+            try await connection.execute(
+                "INSERT INTO \(unescaped: tableName) VALUES (2, \(OracleJSON(Foo(foo: "bar"))))")
+            let stream = try await connection.execute(
+                "SELECT intcol, jsoncol FROM \(unescaped: tableName) WHERE intcol = 2")
+            for try await (id, json) in stream.decode((Int, OracleJSON<Foo>).self) {
+                #expect(id == 2)
+                #expect(json.value == Foo(foo: "bar"))
+            }
         }
     }
 }
+#endif

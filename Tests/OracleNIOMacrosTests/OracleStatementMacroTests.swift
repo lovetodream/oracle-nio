@@ -36,9 +36,14 @@ let testMacros: [String: MacroSpec] = [
         conformances: ["OraclePreparedStatement"]
     )
 ]
+
+let macrosAvailable = true
+#else
+let macrosAvailable = false
 #endif
 
-@Suite struct PreparedStatementsOracleNIOTests {
+@Suite(.enabled(if: macrosAvailable, "macros are only supported when running tests for the host platform"))
+struct PreparedStatementsOracleNIOTests {
     @Test func macro() throws {
         #if canImport(OracleNIOMacros)
         assertMacroExpansion(
@@ -87,8 +92,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -136,8 +139,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -189,8 +190,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -242,8 +241,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -285,8 +282,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -328,8 +323,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -361,8 +354,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -418,8 +409,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -475,8 +464,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -513,8 +500,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 
@@ -574,8 +559,6 @@ let testMacros: [String: MacroSpec] = [
                 )
             }
         )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
 }

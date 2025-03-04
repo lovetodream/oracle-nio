@@ -25,7 +25,6 @@ jobs:
   api-breakage:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    container: swift:jammy
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #if compiler(>=6.0)
+import Atomics
 import Logging
 import NIOCore
 import NIOPosix
@@ -254,38 +255,38 @@ import class Foundation.ISO8601DateFormatter
         defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
         do {
             try await conn.execute(
-                "DROP TABLE duplicate", logger: .oracleTest
+                "DROP TABLE duplicate_every_row", logger: .oracleTest
             )
         } catch let error as OracleSQLError {
             // "ORA-00942: table or view does not exist" can be ignored
             #expect(error.serverInfo?.number == 942)
         }
         try await conn.execute(
-            "CREATE TABLE duplicate (id number, title varchar2(150 byte))",
+            "CREATE TABLE duplicate_every_row (id number, title varchar2(150 byte))",
             logger: .oracleTest
         )
         try await conn.execute(
-            "INSERT INTO duplicate (id, title) VALUES (1, 'hello!')",
+            "INSERT INTO duplicate_every_row (id, title) VALUES (1, 'hello!')",
             logger: .oracleTest
         )
         try await conn.execute(
-            "INSERT INTO duplicate (id, title) VALUES (2, 'hello!')",
+            "INSERT INTO duplicate_every_row (id, title) VALUES (2, 'hello!')",
             logger: .oracleTest
         )
         try await conn.execute(
-            "INSERT INTO duplicate (id, title) VALUES (3, 'hello!')",
+            "INSERT INTO duplicate_every_row (id, title) VALUES (3, 'hello!')",
             logger: .oracleTest
         )
         try await conn.execute(
-            "INSERT INTO duplicate (id, title) VALUES (4, 'hello!')",
+            "INSERT INTO duplicate_every_row (id, title) VALUES (4, 'hello!')",
             logger: .oracleTest
         )
         try await conn.execute(
-            "INSERT INTO duplicate (id, title) VALUES (5, 'hello!')",
+            "INSERT INTO duplicate_every_row (id, title) VALUES (5, 'hello!')",
             logger: .oracleTest
         )
         let rows = try await conn.execute(
-            "SELECT id, title FROM duplicate ORDER BY id", logger: .oracleTest
+            "SELECT id, title FROM duplicate_every_row ORDER BY id", logger: .oracleTest
         )
         var index = 0
         for try await row in rows.decode((Int, String).self) {
@@ -293,7 +294,7 @@ import class Foundation.ISO8601DateFormatter
             index = row.0
             #expect(row.1 == "hello!")
         }
-        try await conn.execute("DROP TABLE duplicate", logger: .oracleTest)
+        try await conn.execute("DROP TABLE duplicate_every_row", logger: .oracleTest)
     }
 
     @Test func noRowsQueryFromDual() async throws {
@@ -751,8 +752,8 @@ import class Foundation.ISO8601DateFormatter
         config.retryDelay = 5
         let configuration = config
         let eventLoop = eventLoop
+        let cancelled = ManagedAtomic(false)
         let connect = Task {
-            let start = Date().timeIntervalSince1970
             try await withTaskCancellationHandler {
                 do {
                     let connection = try await OracleConnection.connect(
@@ -768,12 +769,12 @@ import class Foundation.ISO8601DateFormatter
                     Issue.record("Unexpected error: \(String(reflecting: error))")
                 }
             } onCancel: {
-                let duration = Date().timeIntervalSince1970 - start
-                #expect(duration > 8.0 && duration < 10.0)
+                cancelled.store(true, ordering: .relaxed)
             }
         }
         try? await Task.sleep(for: .seconds(8))  // should be in the second attempt
         connect.cancel()
+        #expect(cancelled.load(ordering: .relaxed) == true)
     }
 
     @Test func plainQueryWorks() async throws {

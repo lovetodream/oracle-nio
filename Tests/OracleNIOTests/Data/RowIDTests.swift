@@ -13,19 +13,19 @@
 //===----------------------------------------------------------------------===//
 
 #if compiler(>=6.0)
-import Testing
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-@Suite struct RowIDTests {
-    @Test func description() {
-        let id = RowID(
-            rba: 76402,
-            partitionID: 15,
-            blockNumber: 733,
-            slotNumber: 0
-        )
-        #expect(id.description == "AAASpyAAPAAAALdAAA")
+    @Suite struct RowIDTests {
+        @Test func description() {
+            let id = RowID(
+                rba: 76402,
+                partitionID: 15,
+                blockNumber: 733,
+                slotNumber: 0
+            )
+            #expect(id.description == "AAASpyAAPAAAALdAAA")
+        }
     }
-}
 #endif

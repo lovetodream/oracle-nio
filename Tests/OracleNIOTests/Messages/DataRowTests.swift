@@ -13,18 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 #if compiler(>=6.0)
-import NIOCore
-import Testing
+    import NIOCore
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-@Suite struct DataRowTests {
-    @Test func columnWithNullIndicator() {
-        let buffer = ByteBuffer(bytes: [Constants.TNS_NULL_LENGTH_INDICATOR])
-        let row = DataRow(columnCount: 1, bytes: buffer)
-        for column in row {
-            #expect(column == .none)
+    @Suite struct DataRowTests {
+        @Test func columnWithNullIndicator() {
+            let buffer = ByteBuffer(bytes: [Constants.TNS_NULL_LENGTH_INDICATOR])
+            let row = DataRow(columnCount: 1, bytes: buffer)
+            for column in row {
+                #expect(column == .none)
+            }
         }
     }
-}
 #endif

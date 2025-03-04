@@ -13,28 +13,30 @@
 //===----------------------------------------------------------------------===//
 
 #if compiler(>=6.0)
-import NIOCore
-import NIOPosix
-import Testing
+    import NIOCore
+    import NIOPosix
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-@Suite struct OracleRowStreamTests {
-    @Test func emptyStream() {
-        let stream = OracleRowStream(source: .noRows(.success(())))
+    @Suite struct OracleRowStreamTests {
+        @Test func emptyStream() {
+            let stream = OracleRowStream(source: .noRows(.success(())))
 
-        #expect(throws: Never.self, performing: {
-            let result = try stream.all().wait()
-            #expect(result == [])
-        })
+            #expect(
+                throws: Never.self,
+                performing: {
+                    let result = try stream.all().wait()
+                    #expect(result == [])
+                })
+        }
+
+        @Test func asyncEmptyStream() async throws {
+            let stream = OracleRowStream(source: .noRows(.success(())))
+
+            let rows = try await stream.asyncSequence().collect()
+            #expect(rows == [])
+        }
+
     }
-
-    @Test func asyncEmptyStream() async throws {
-        let stream = OracleRowStream(source: .noRows(.success(())))
-
-        let rows = try await stream.asyncSequence().collect()
-        #expect(rows == [])
-    }
-
-}
 #endif

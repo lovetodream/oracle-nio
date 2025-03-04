@@ -13,126 +13,126 @@
 //===----------------------------------------------------------------------===//
 
 #if compiler(>=6.0)
-import NIOCore
-import Testing
+    import NIOCore
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1")) final class XMLTests: IntegrationTest {
-    let connection: OracleConnection
+    @Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1")) final class XMLTests: IntegrationTest {
+        let connection: OracleConnection
 
-    init() async throws {
-        #expect(isLoggingConfigured)
-        self.connection = try await OracleConnection.test()
-    }
+        init() async throws {
+            #expect(isLoggingConfigured)
+            self.connection = try await OracleConnection.test()
+        }
 
-    deinit {
-        #expect(throws: Never.self, performing: { try self.connection.syncClose() })
-    }
+        deinit {
+            #expect(throws: Never.self, performing: { try self.connection.syncClose() })
+        }
 
-    @Test func xmlType() async throws {
-        _ = try? await connection.execute("DROP TABLE testxml")
-        try await connection.execute(
-            """
-            create table TestXML (
-            IntCol                              number(9) not null,
-            XMLCol                              xmltype not null
+        @Test func xmlType() async throws {
+            _ = try? await connection.execute("DROP TABLE testxml")
+            try await connection.execute(
+                """
+                create table TestXML (
+                IntCol                              number(9) not null,
+                XMLCol                              xmltype not null
+                )
+                """)
+            try await connection.execute(
+                """
+                begin
+                for i in 1..100 loop
+                insert into TestXML
+                values (i, '<?xml version="1.0"?><records>' ||
+                        dbms_random.string('x', 1024) || '</records>');
+                end loop;
+                end;
+                """)
+            let stream = try await connection.execute(
+                "SELECT intcol, xmlcol, extract(xmlcol, '/').getclobval() FROM testxml ORDER BY intcol"
             )
-            """)
-        try await connection.execute(
-            """
-            begin
-            for i in 1..100 loop
-            insert into TestXML
-            values (i, '<?xml version="1.0"?><records>' ||
-                    dbms_random.string('x', 1024) || '</records>');
-            end loop;
-            end;
-            """)
-        let stream = try await connection.execute(
-            "SELECT intcol, xmlcol, extract(xmlcol, '/').getclobval() FROM testxml ORDER BY intcol"
-        )
-        var currentID = 0
-        for try await (id, value, lob) in stream.decode((Int, CustomOracleObject, String).self) {
-            currentID += 1
-            #expect(id == currentID)
-            var buffer = value.data
-            let xml = try OracleXML(from: &buffer)
-            #expect(lob.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
-            #expect(lob.hasSuffix("</records>\n"))
-            switch xml.value {
-            case .string(let value):
-                #expect(value.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
-                #expect(value.hasSuffix("</records>\n"))
+            var currentID = 0
+            for try await (id, value, lob) in stream.decode((Int, CustomOracleObject, String).self) {
+                currentID += 1
+                #expect(id == currentID)
+                var buffer = value.data
+                let xml = try OracleXML(from: &buffer)
+                #expect(lob.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
+                #expect(lob.hasSuffix("</records>\n"))
+                switch xml.value {
+                case .string(let value):
+                    #expect(value.hasPrefix("<?xml version=\"1.0\"?>\n<records>"))
+                    #expect(value.hasSuffix("</records>\n"))
+                }
             }
+            #expect(currentID == 100)
         }
-        #expect(currentID == 100)
-    }
-}
-
-struct OracleXML {
-    enum Value {
-        case string(String)
-    }
-    let value: Value
-
-    init(from buffer: inout ByteBuffer) throws {
-        var decoder = Decoder(buffer: buffer)
-        self = try decoder.decode()
     }
 
-    init(_ value: String) {
-        self.value = .string(value)
-    }
+    struct OracleXML {
+        enum Value {
+            case string(String)
+        }
+        let value: Value
 
-    enum Error: Swift.Error {
-        case unexpectedXMLType(flag: UInt32)
-    }
-
-    struct Decoder {
-        var buffer: ByteBuffer
-
-        mutating func decode() throws -> OracleXML {
-            _ = try readHeader()
-            buffer.moveReaderIndex(forwardBy: 1)  // xml version
-            let xmlFlag = try buffer.throwingReadInteger(as: UInt32.self)
-            if (xmlFlag & Constants.TNS_XML_TYPE_FLAG_SKIP_NEXT_4) != 0 {
-                buffer.moveReaderIndex(forwardBy: 4)
-            }
-            var slice = buffer.slice()
-            if (xmlFlag & Constants.TNS_XML_TYPE_STRING) != 0 {
-                return .init(slice.readString(length: slice.readableBytes)!)
-            } else if (xmlFlag & Constants.TNS_XML_TYPE_LOB) != 0 {
-                assertionFailure("LOB not yet supported")
-            }
-            throw Error.unexpectedXMLType(flag: xmlFlag)
+        init(from buffer: inout ByteBuffer) throws {
+            var decoder = Decoder(buffer: buffer)
+            self = try decoder.decode()
         }
 
-        mutating func readHeader() throws -> (flags: UInt8, version: UInt8) {
-            let flags = try buffer.throwingReadInteger(as: UInt8.self)
-            let version = try buffer.throwingReadInteger(as: UInt8.self)
-            try skipLength()
-            if (flags & Constants.TNS_OBJ_NO_PREFIX_SEG) != 0 {
+        init(_ value: String) {
+            self.value = .string(value)
+        }
+
+        enum Error: Swift.Error {
+            case unexpectedXMLType(flag: UInt32)
+        }
+
+        struct Decoder {
+            var buffer: ByteBuffer
+
+            mutating func decode() throws -> OracleXML {
+                _ = try readHeader()
+                buffer.moveReaderIndex(forwardBy: 1)  // xml version
+                let xmlFlag = try buffer.throwingReadInteger(as: UInt32.self)
+                if (xmlFlag & Constants.TNS_XML_TYPE_FLAG_SKIP_NEXT_4) != 0 {
+                    buffer.moveReaderIndex(forwardBy: 4)
+                }
+                var slice = buffer.slice()
+                if (xmlFlag & Constants.TNS_XML_TYPE_STRING) != 0 {
+                    return .init(slice.readString(length: slice.readableBytes)!)
+                } else if (xmlFlag & Constants.TNS_XML_TYPE_LOB) != 0 {
+                    assertionFailure("LOB not yet supported")
+                }
+                throw Error.unexpectedXMLType(flag: xmlFlag)
+            }
+
+            mutating func readHeader() throws -> (flags: UInt8, version: UInt8) {
+                let flags = try buffer.throwingReadInteger(as: UInt8.self)
+                let version = try buffer.throwingReadInteger(as: UInt8.self)
+                try skipLength()
+                if (flags & Constants.TNS_OBJ_NO_PREFIX_SEG) != 0 {
+                    return (flags, version)
+                }
+                let prefixSegmentLength = try self.readLength()
+                buffer.moveReaderIndex(forwardBy: Int(prefixSegmentLength))
                 return (flags, version)
             }
-            let prefixSegmentLength = try self.readLength()
-            buffer.moveReaderIndex(forwardBy: Int(prefixSegmentLength))
-            return (flags, version)
-        }
 
-        mutating func readLength() throws -> UInt32 {
-            let shortLength = try buffer.throwingReadInteger(as: UInt8.self)
-            if shortLength == Constants.TNS_LONG_LENGTH_INDICATOR {
-                return try buffer.throwingReadInteger()
+            mutating func readLength() throws -> UInt32 {
+                let shortLength = try buffer.throwingReadInteger(as: UInt8.self)
+                if shortLength == Constants.TNS_LONG_LENGTH_INDICATOR {
+                    return try buffer.throwingReadInteger()
+                }
+                return UInt32(shortLength)
             }
-            return UInt32(shortLength)
-        }
 
-        mutating func skipLength() throws {
-            if try buffer.throwingReadInteger(as: UInt8.self) == Constants.TNS_LONG_LENGTH_INDICATOR {
-                buffer.moveReaderIndex(forwardBy: 4)
+            mutating func skipLength() throws {
+                if try buffer.throwingReadInteger(as: UInt8.self) == Constants.TNS_LONG_LENGTH_INDICATOR {
+                    buffer.moveReaderIndex(forwardBy: 4)
+                }
             }
         }
     }
-}
 #endif

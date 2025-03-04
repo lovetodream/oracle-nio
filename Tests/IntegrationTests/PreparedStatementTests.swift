@@ -17,13 +17,13 @@
     import OracleNIOMacros
     import Testing
 
-    @Suite
-    final class PreparedStatementTests {
+    @Suite final class PreparedStatementTests {
         private let client: OracleClient
         private var running: Task<Void, Error>!
 
         init() throws {
-            self.client = try OracleClient(configuration: OracleConnection.testConfig())
+            let client = try OracleClient(configuration: OracleConnection.testConfig())
+            self.client = client
             self.running = Task { await client.run() }
         }
 
@@ -31,8 +31,7 @@
             running.cancel()
         }
 
-        @Test
-        func selectFromDual() async throws {
+        @Test func selectFromDual() async throws {
             try await self.client.withConnection { connection in
                 let stream1 = try await connection.execute(SelectFromDualQuery())
                 var stream1Count = 0

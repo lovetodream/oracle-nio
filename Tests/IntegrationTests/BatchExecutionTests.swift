@@ -16,13 +16,13 @@
     import OracleNIO
     import Testing
 
-    @Suite
-    final class BatchExecutionTests {
+    @Suite final class BatchExecutionTests {
         private let client: OracleClient
         private var running: Task<Void, Error>!
 
         init() throws {
-            self.client = try OracleClient(configuration: OracleConnection.testConfig(), backgroundLogger: .oracleTest)
+            let client = try OracleClient(configuration: OracleConnection.testConfig(), backgroundLogger: .oracleTest)
+            self.client = client
             self.running = Task { await client.run() }
         }
 
@@ -30,8 +30,7 @@
             running.cancel()
         }
 
-        @Test
-        func simpleBatchExecution() async throws {
+        @Test func simpleBatchExecution() async throws {
             try await client.withConnection { connection in
                 do {
                     try await connection.execute("DROP TABLE users_simple_batch_exec", logger: .oracleTest)
@@ -69,8 +68,7 @@
             }
         }
 
-        @Test
-        func preparedStatementBatchExecution() async throws {
+        @Test func preparedStatementBatchExecution() async throws {
             struct InsertUserStatement: OraclePreparedStatement {
                 static let sql: String =
                     "INSERT INTO users_prepared_statement_batch_exec (id, name, age) VALUES (:1, :2, :3)"
@@ -128,8 +126,7 @@
             }
         }
 
-        @Test
-        func batchExecutionWithErrorDiscardsRemaining() async throws {
+        @Test func batchExecutionWithErrorDiscardsRemaining() async throws {
             struct InsertUserStatement: OraclePreparedStatement {
                 static let sql: String =
                     "INSERT INTO users_error_discards_batch_exec (id, name, age) VALUES (:1, :2, :3)"
@@ -193,8 +190,7 @@
             }
         }
 
-        @Test
-        func batchExecutionWithBatchErrorsDoesNotDiscardSuccess() async throws {
+        @Test func batchExecutionWithBatchErrorsDoesNotDiscardSuccess() async throws {
             struct InsertUserStatement: OraclePreparedStatement {
                 static let sql: String =
                     "INSERT INTO users_batch_error_does_not_discard_batch_exec (id, name, age) VALUES (:1, :2, :3)"

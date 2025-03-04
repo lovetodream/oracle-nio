@@ -12,7 +12,7 @@ on:
 jobs:
   test:
     container:
-      image: swift:5.9-jammy
+      image: swift:6.0-jammy
     services:
       oracle:
         image: gvenzl/oracle-xe:21

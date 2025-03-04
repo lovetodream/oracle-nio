@@ -12,101 +12,92 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
-import XCTest
+#if compiler(>=6.0)
+    import NIOCore
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-final class OracleVectorTests: XCTestCase {
-    func testVectorBinary() {
-        let vector1 = OracleVectorBinary()
-        XCTAssertEqual(vector1, [])
-        let vector2: OracleVectorBinary = [1, 2, 3]
-        XCTAssertEqual(vector2.count, 3)
-        var vector3 = OracleVectorBinary([1, 2, 2])
-        XCTAssertNotEqual(vector2, vector3)
-        XCTAssertEqual(vector3[2], 2)
-        vector3[2] = 3
-        XCTAssertEqual(vector2, vector3)
+    @Suite struct OracleVectorTests {
+        @Test func vectorBinary() {
+            let vector1 = OracleVectorBinary()
+            #expect(vector1 == [])
+            let vector2: OracleVectorBinary = [1, 2, 3]
+            #expect(vector2.count == 3)
+            var vector3 = OracleVectorBinary([1, 2, 2])
+            #expect(vector2 != vector3)
+            #expect(vector3[2] == 2)
+            vector3[2] = 3
+            #expect(vector2 == vector3)
+        }
+
+        @Test func vectorInt8() {
+            let vector1 = OracleVectorInt8()
+            #expect(vector1 == [])
+            let vector2: OracleVectorInt8 = [1, 2, 3]
+            #expect(vector2.count == 3)
+            var vector3 = OracleVectorInt8([1, 2, 2])
+            #expect(vector2 != vector3)
+            #expect(vector3[2] == 2)
+            vector3[2] = 3
+            #expect(vector2 == vector3)
+        }
+
+        @Test func vectorFloat32() {
+            let vector1 = OracleVectorFloat32()
+            #expect(vector1 == [])
+            let vector2: OracleVectorFloat32 = [1.1, 2.2, 3.3]
+            #expect(vector2.count == 3)
+            var vector3 = OracleVectorFloat32([1.1, 2.2, 3.2])
+            #expect(vector2 != vector3)
+            #expect(vector3[2] == 3.2)
+            vector3[2] = 3.3
+            #expect(vector2 == vector3)
+        }
+
+        @Test func vectorFloat64() {
+            let vector1 = OracleVectorFloat64()
+            #expect(vector1 == [])
+            let vector2: OracleVectorFloat64 = [1.1, 2.2, 3.3]
+            #expect(vector2.count == 3)
+            var vector3 = OracleVectorFloat64([1.1, 2.2, 3.2])
+            #expect(vector2 != vector3)
+            #expect(vector3[2] == 3.2)
+            vector3[2] = 3.3
+            #expect(vector2 == vector3)
+        }
+
+        @Test func decodingMalformedVectors() {
+            // not a vector
+            var buffer = ByteBuffer(bytes: [0])
+            #expect(
+                throws: OracleDecodingError.Code.typeMismatch,
+                performing: { try OracleVectorInt8(from: &buffer, type: .raw, context: .default) }
+            )
+            #expect(
+                throws: OracleDecodingError.Code.typeMismatch,
+                performing: { try OracleVectorInt8(from: &buffer, type: .vector, context: .default) }
+            )
+
+            // invalid version
+            buffer = ByteBuffer(bytes: [UInt8(Constants.TNS_VECTOR_MAGIC_BYTE), 42])
+            #expect(
+                throws: OracleDecodingError.Code.failure,
+                performing: { try OracleVectorInt8(from: &buffer, type: .vector, context: .default) }
+            )
+
+            // wrong type
+            buffer = ByteBuffer(bytes: [
+                UInt8(Constants.TNS_VECTOR_MAGIC_BYTE),
+                UInt8(Constants.TNS_VECTOR_VERSION_BASE),
+                0, 0,  // flags
+                VectorFormat.float64.rawValue,
+                0, 0, 0, 0,  // elements
+            ])
+            #expect(
+                throws: OracleDecodingError.Code.typeMismatch,
+                performing: { try OracleVectorInt8(from: &buffer, type: .vector, context: .default) }
+            )
+        }
     }
-
-    func testVectorInt8() {
-        let vector1 = OracleVectorInt8()
-        XCTAssertEqual(vector1, [])
-        let vector2: OracleVectorInt8 = [1, 2, 3]
-        XCTAssertEqual(vector2.count, 3)
-        var vector3 = OracleVectorInt8([1, 2, 2])
-        XCTAssertNotEqual(vector2, vector3)
-        XCTAssertEqual(vector3[2], 2)
-        vector3[2] = 3
-        XCTAssertEqual(vector2, vector3)
-    }
-
-    func testVectorFloat32() {
-        let vector1 = OracleVectorFloat32()
-        XCTAssertEqual(vector1, [])
-        let vector2: OracleVectorFloat32 = [1.1, 2.2, 3.3]
-        XCTAssertEqual(vector2.count, 3)
-        var vector3 = OracleVectorFloat32([1.1, 2.2, 3.2])
-        XCTAssertNotEqual(vector2, vector3)
-        XCTAssertEqual(vector3[2], 3.2)
-        vector3[2] = 3.3
-        XCTAssertEqual(vector2, vector3)
-    }
-
-    func testVectorFloat64() {
-        let vector1 = OracleVectorFloat64()
-        XCTAssertEqual(vector1, [])
-        let vector2: OracleVectorFloat64 = [1.1, 2.2, 3.3]
-        XCTAssertEqual(vector2.count, 3)
-        var vector3 = OracleVectorFloat64([1.1, 2.2, 3.2])
-        XCTAssertNotEqual(vector2, vector3)
-        XCTAssertEqual(vector3[2], 3.2)
-        vector3[2] = 3.3
-        XCTAssertEqual(vector2, vector3)
-    }
-
-    func testDecodingMalformedVectors() {
-        // not a vector
-        var buffer = ByteBuffer(bytes: [0])
-        XCTAssertThrowsError(
-            try OracleVectorInt8(from: &buffer, type: .raw, context: .default),
-            expected: OracleDecodingError.Code.typeMismatch
-        )
-        XCTAssertThrowsError(
-            try OracleVectorInt8(from: &buffer, type: .vector, context: .default),
-            expected: OracleDecodingError.Code.typeMismatch
-        )
-
-        // invalid version
-        buffer = ByteBuffer(bytes: [UInt8(Constants.TNS_VECTOR_MAGIC_BYTE), 42])
-        XCTAssertThrowsError(
-            try OracleVectorInt8(from: &buffer, type: .vector, context: .default),
-            expected: OracleDecodingError.Code.failure
-        )
-
-        // wrong type
-        buffer = ByteBuffer(bytes: [
-            UInt8(Constants.TNS_VECTOR_MAGIC_BYTE),
-            UInt8(Constants.TNS_VECTOR_VERSION_BASE),
-            0, 0,  // flags
-            VectorFormat.float64.rawValue,
-            0, 0, 0, 0,  // elements
-        ])
-        XCTAssertThrowsError(
-            try OracleVectorInt8(from: &buffer, type: .vector, context: .default),
-            expected: OracleDecodingError.Code.typeMismatch
-        )
-    }
-}
-
-// swift-format-ignore: AlwaysUseLowerCamelCase
-func XCTAssertThrowsError<T, E: Error & Equatable>(
-    _ expression: @autoclosure () throws -> T,
-    expected: E,
-    file: StaticString = #filePath, line: UInt = #line
-) {
-    XCTAssertThrowsError(try expression(), file: file, line: line) { error in
-        XCTAssertEqual(error as? E, expected, file: file, line: line)
-    }
-}
+#endif

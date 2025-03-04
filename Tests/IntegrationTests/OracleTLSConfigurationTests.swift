@@ -12,39 +12,43 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOSSL
-import OracleNIO
-import XCTest
+#if compiler(>=6.0)
+    import NIOSSL
+    import OracleNIO
+    import Testing
 
-final class OracleTLSConfigurationTests: XCTestCase {
-    func testTLSUtilities() throws {
-        let filePath = try XCTUnwrap(
-            Bundle.module.path(
-                forResource: "ewallet", ofType: "pem"
-            ))
-        let pemConfig = try TLSConfiguration.makeOracleWalletConfiguration(
-            pemFile: filePath, pemPassword: "password"
-        )
-        let pemHasPrivateKey =
-            switch pemConfig.privateKey {
-            case .privateKey: true
-            default: false
-            }
-        XCTAssert(pemHasPrivateKey)
-        XCTAssert(!pemConfig.certificateChain.isEmpty)
+    import class Foundation.Bundle
 
-        let folderPath = filePath.dropLast("ewallet.pem".count)
-        for path in [folderPath, folderPath.dropLast()] {
-            let walletConfig = try TLSConfiguration.makeOracleWalletConfiguration(
-                wallet: .init(path), walletPassword: "password"
+    @Suite final class OracleTLSConfigurationTests {
+        @Test func tlsUtilities() throws {
+            let filePath = try #require(
+                Bundle.module.path(
+                    forResource: "ewallet", ofType: "pem"
+                ))
+            let pemConfig = try TLSConfiguration.makeOracleWalletConfiguration(
+                pemFile: filePath, pemPassword: "password"
             )
-            let walletHasPrivateKey =
-                switch walletConfig.privateKey {
+            let pemHasPrivateKey =
+                switch pemConfig.privateKey {
                 case .privateKey: true
                 default: false
                 }
-            XCTAssert(walletHasPrivateKey)
-            XCTAssert(!walletConfig.certificateChain.isEmpty)
+            #expect(pemHasPrivateKey)
+            #expect(!pemConfig.certificateChain.isEmpty)
+
+            let folderPath = filePath.dropLast("ewallet.pem".count)
+            for path in [folderPath, folderPath.dropLast()] {
+                let walletConfig = try TLSConfiguration.makeOracleWalletConfiguration(
+                    wallet: .init(path), walletPassword: "password"
+                )
+                let walletHasPrivateKey =
+                    switch walletConfig.privateKey {
+                    case .privateKey: true
+                    default: false
+                    }
+                #expect(walletHasPrivateKey)
+                #expect(!walletConfig.certificateChain.isEmpty)
+            }
         }
     }
-}
+#endif

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOConcurrencyHelpers
 import NIOCore
 
 @testable import OracleNIO
@@ -19,13 +20,13 @@ import NIOCore
 struct OracleBackendMessageEncoder: MessageToByteEncoder {
     typealias OutboundIn = OracleBackendMessageDecoder.Container
 
-    final class ProtocolVersion: ExpressibleByIntegerLiteral {
-        var value: Int
+    struct ProtocolVersion: ExpressibleByIntegerLiteral {
+        let value: NIOLockedValueBox<Int>
 
-        init(_ value: Int) { self.value = value }
+        init(_ value: Int) { self.value = .init(value) }
 
         init(integerLiteral value: Int) {
-            self.value = value
+            self.value = .init(value)
         }
     }
     var protocolVersion: ProtocolVersion
@@ -78,9 +79,10 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
         payload: P,
         out: inout ByteBuffer
     ) {
+        let protocolVersion = self.protocolVersion.value.withLockedValue({ $0 })
         let startIndex = out.writerIndex
         // length placeholder
-        if self.protocolVersion.value >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+        if protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             out.writeInteger(0, as: UInt32.self)
         } else {
             out.writeInteger(0, as: UInt16.self)
@@ -99,7 +101,7 @@ struct OracleBackendMessageEncoder: MessageToByteEncoder {
             payload.encode(into: &out)
         }
 
-        if self.protocolVersion.value >= Constants.TNS_VERSION_MIN_LARGE_SDU {
+        if protocolVersion >= Constants.TNS_VERSION_MIN_LARGE_SDU {
             out.setInteger(UInt32(out.readableBytes - startIndex), at: startIndex, as: UInt32.self)
         } else {
             out.setInteger(UInt16(out.readableBytes - startIndex), at: startIndex, as: UInt16.self)

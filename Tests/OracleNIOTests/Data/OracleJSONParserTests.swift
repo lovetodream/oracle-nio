@@ -308,8 +308,7 @@
                 ),
             ]
 
-        @Test(arguments: scalarValueArguments)
-        func scalarValue(
+        @Test(arguments: scalarValueArguments) func scalarValue(
             writer: @Sendable @escaping (inout ByteBuffer) throws -> Void,
             expected: OracleJSONStorage
         ) throws {

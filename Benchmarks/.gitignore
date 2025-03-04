@@ -8,3 +8,4 @@ DerivedData/
 .swiftpm/xcode/
 .netrc
 .vscode/settings.json
+.benchmarkBaselines

@@ -12,167 +12,158 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
-import XCTest
+#if compiler(>=6.0)
+    import NIOCore
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-final class ByteBufferExtensionTests: XCTestCase {
+    @Suite struct ByteBufferExtensionTests {
 
-    let empty = ByteBuffer()
-    let zeroLength = ByteBuffer(bytes: [0])
-    let normalLengthMissingBytes = ByteBuffer(bytes: [5, 0, 0])
-    let normalLength = ByteBuffer(bytes: [3, 0, 0, 0])
-    let longLengthWithoutData = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-    let longLengthWithoutEnoughData: ByteBuffer = {
-        var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-        buffer.writeUB4(300)
-        buffer.writeRepeatingByte(0, count: 260)
-        return buffer
-    }()
-    let longLengthWithoutEnoughDataOnSecondLength: ByteBuffer = {
-        var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-        buffer.writeUB4(300)
-        buffer.writeRepeatingByte(0, count: 300)
-        buffer.writeInteger(UInt8(1))
-        return buffer
-    }()
-    let longLengthWithoutEnoughDataAfterSecondLength: ByteBuffer = {
-        var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-        buffer.writeUB4(300)
-        buffer.writeRepeatingByte(0, count: 300)
-        buffer.writeUB4(2)
-        return buffer
-    }()
-    let longLengthData: ByteBuffer = {
-        var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
-        buffer.writeUB4(300)
-        buffer.writeRepeatingByte(0, count: 300)
-        buffer.writeUB4(0)
-        return buffer
-    }()
+        let empty = ByteBuffer()
+        let zeroLength = ByteBuffer(bytes: [0])
+        let normalLengthMissingBytes = ByteBuffer(bytes: [5, 0, 0])
+        let normalLength = ByteBuffer(bytes: [3, 0, 0, 0])
+        let longLengthWithoutData = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+        let longLengthWithoutEnoughData: ByteBuffer = {
+            var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            buffer.writeUB4(300)
+            buffer.writeRepeatingByte(0, count: 260)
+            return buffer
+        }()
+        let longLengthWithoutEnoughDataOnSecondLength: ByteBuffer = {
+            var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            buffer.writeUB4(300)
+            buffer.writeRepeatingByte(0, count: 300)
+            buffer.writeInteger(UInt8(1))
+            return buffer
+        }()
+        let longLengthWithoutEnoughDataAfterSecondLength: ByteBuffer = {
+            var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            buffer.writeUB4(300)
+            buffer.writeRepeatingByte(0, count: 300)
+            buffer.writeUB4(2)
+            return buffer
+        }()
+        let longLengthData: ByteBuffer = {
+            var buffer = ByteBuffer(integer: Constants.TNS_LONG_LENGTH_INDICATOR)
+            buffer.writeUB4(300)
+            buffer.writeRepeatingByte(0, count: 300)
+            buffer.writeUB4(0)
+            return buffer
+        }()
 
-    func testSkipRawBytesChunked() {
-        var buffer = empty
-        XCTAssertFalse(buffer.skipRawBytesChunked())
-        buffer = normalLengthMissingBytes
-        XCTAssertFalse(buffer.skipRawBytesChunked())
-        buffer = zeroLength
-        XCTAssertTrue(buffer.skipRawBytesChunked())
-        buffer = normalLength
-        XCTAssertTrue(buffer.skipRawBytesChunked())
+        @Test func skipRawBytesChunked() {
+            var buffer = empty
+            #expect(buffer.skipRawBytesChunked() == false)
+            buffer = normalLengthMissingBytes
+            #expect(buffer.skipRawBytesChunked() == false)
+            buffer = zeroLength
+            #expect(buffer.skipRawBytesChunked() == true)
+            buffer = normalLength
+            #expect(buffer.skipRawBytesChunked() == true)
 
-        buffer = longLengthWithoutData
-        XCTAssertFalse(buffer.skipRawBytesChunked())
-        buffer = longLengthWithoutEnoughData
-        XCTAssertFalse(buffer.skipRawBytesChunked())
-        buffer = longLengthWithoutEnoughDataOnSecondLength
-        XCTAssertFalse(buffer.skipRawBytesChunked())
-        buffer = longLengthWithoutEnoughDataAfterSecondLength
-        XCTAssertFalse(buffer.skipRawBytesChunked())
-        buffer = longLengthData
-        XCTAssertTrue(buffer.skipRawBytesChunked())
+            buffer = longLengthWithoutData
+            #expect(buffer.skipRawBytesChunked() == false)
+            buffer = longLengthWithoutEnoughData
+            #expect(buffer.skipRawBytesChunked() == false)
+            buffer = longLengthWithoutEnoughDataOnSecondLength
+            #expect(buffer.skipRawBytesChunked() == false)
+            buffer = longLengthWithoutEnoughDataAfterSecondLength
+            #expect(buffer.skipRawBytesChunked() == false)
+            buffer = longLengthData
+            #expect(buffer.skipRawBytesChunked() == true)
+        }
+
+        @Test func oracleSpecificLengthPrefixedSlice() {
+            var buffer = empty
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() == nil)
+            buffer = normalLengthMissingBytes
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() == nil)
+            buffer = zeroLength
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() != nil)
+            buffer = normalLength
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() != nil)
+
+            buffer = longLengthWithoutData
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() == nil)
+            buffer = longLengthWithoutEnoughData
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() == nil)
+            buffer = longLengthWithoutEnoughDataOnSecondLength
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() == nil)
+            buffer = longLengthWithoutEnoughDataAfterSecondLength
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() == nil)
+            buffer = longLengthData
+            #expect(buffer.readOracleSpecificLengthPrefixedSlice() != nil)
+        }
+
+        @Test func throwingOracleSpecificLengthPrefixedSlice() {
+            var buffer = empty
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(MemoryLayout<UInt8>.size, actual: 0),
+                performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() }
+            )
+            buffer = normalLengthMissingBytes
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(5, actual: 2),
+                performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() }
+            )
+            buffer = zeroLength
+            #expect(throws: Never.self, performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() })
+            buffer = normalLength
+            #expect(throws: Never.self, performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() })
+
+            buffer = longLengthWithoutData
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(MemoryLayout<UInt8>.size, actual: 0),
+                performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() }
+            )
+            buffer = longLengthWithoutEnoughData
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(300, actual: 260),
+                performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() }
+            )
+            buffer = longLengthWithoutEnoughDataOnSecondLength
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(MemoryLayout<UInt8>.size, actual: 0),
+                performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() }
+            )
+            buffer = longLengthWithoutEnoughDataAfterSecondLength
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(2, actual: 0),
+                performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() }
+
+            )
+            buffer = longLengthData
+            #expect(throws: Never.self, performing: { try buffer.throwingReadOracleSpecificLengthPrefixedSlice() })
+        }
+
+        @Test func readOracleSliceReturnsNilOnEmptyBuffer() {
+            var buffer = ByteBuffer()
+            #expect(buffer.readOracleSlice() == nil)
+        }
+
+        @Test func throwingSkipUBShouldThrowOnMissingBytes() {
+            var buffer = ByteBuffer(bytes: [1])
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0),
+                performing: { try buffer.throwingSkipUB4() }
+            )
+        }
+
+        @Test func readOSONFailsAppropriately() {
+            var sliceMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0])
+            #expect((try? sliceMissingBuffer.throwingReadOSON()) == nil)  // TODO: refactor to throw
+            var locatorMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0, 0])
+            #expect((try? locatorMissingBuffer.throwingReadOSON()) == nil)  // TODO: refactor to throw
+        }
+
+        @Test func throwingSkipUBThrowsOnMissingLength() {
+            var buffer = ByteBuffer()
+            #expect(
+                throws: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0),
+                performing: { try buffer.throwingSkipUB4() }
+            )
+        }
     }
-
-    func testOracleSpecificLengthPrefixedSlice() {
-        var buffer = empty
-        XCTAssertNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = normalLengthMissingBytes
-        XCTAssertNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = zeroLength
-        XCTAssertNotNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = normalLength
-        XCTAssertNotNil(buffer.readOracleSpecificLengthPrefixedSlice())
-
-        buffer = longLengthWithoutData
-        XCTAssertNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = longLengthWithoutEnoughData
-        XCTAssertNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = longLengthWithoutEnoughDataOnSecondLength
-        XCTAssertNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = longLengthWithoutEnoughDataAfterSecondLength
-        XCTAssertNil(buffer.readOracleSpecificLengthPrefixedSlice())
-        buffer = longLengthData
-        XCTAssertNotNil(buffer.readOracleSpecificLengthPrefixedSlice())
-    }
-
-    func testThrowingOracleSpecificLengthPrefixedSlice() {
-        var buffer = empty
-        XCTAssertThrowsError(
-            try buffer.throwingReadOracleSpecificLengthPrefixedSlice(),
-            expected:
-                OraclePartialDecodingError
-                .expectedAtLeastNRemainingBytes(MemoryLayout<UInt8>.size, actual: 0)
-        )
-        buffer = normalLengthMissingBytes
-        XCTAssertThrowsError(
-            try buffer.throwingReadOracleSpecificLengthPrefixedSlice(),
-            expected:
-                OraclePartialDecodingError
-                .expectedAtLeastNRemainingBytes(5, actual: 2)
-        )
-        buffer = zeroLength
-        XCTAssertNoThrow(try buffer.throwingReadOracleSpecificLengthPrefixedSlice())
-        buffer = normalLength
-        XCTAssertNoThrow(try buffer.throwingReadOracleSpecificLengthPrefixedSlice())
-
-        buffer = longLengthWithoutData
-        XCTAssertThrowsError(
-            try buffer.throwingReadOracleSpecificLengthPrefixedSlice(),
-            expected:
-                OraclePartialDecodingError
-                .expectedAtLeastNRemainingBytes(MemoryLayout<UInt8>.size, actual: 0)
-        )
-        buffer = longLengthWithoutEnoughData
-        XCTAssertThrowsError(
-            try buffer.throwingReadOracleSpecificLengthPrefixedSlice(),
-            expected:
-                OraclePartialDecodingError
-                .expectedAtLeastNRemainingBytes(300, actual: 260)
-        )
-        buffer = longLengthWithoutEnoughDataOnSecondLength
-        XCTAssertThrowsError(
-            try buffer.throwingReadOracleSpecificLengthPrefixedSlice(),
-            expected:
-                OraclePartialDecodingError
-                .expectedAtLeastNRemainingBytes(MemoryLayout<UInt8>.size, actual: 0)
-        )
-        buffer = longLengthWithoutEnoughDataAfterSecondLength
-        XCTAssertThrowsError(
-            try buffer.throwingReadOracleSpecificLengthPrefixedSlice(),
-            expected:
-                OraclePartialDecodingError
-                .expectedAtLeastNRemainingBytes(2, actual: 0)
-        )
-        buffer = longLengthData
-        XCTAssertNoThrow(try buffer.throwingReadOracleSpecificLengthPrefixedSlice())
-    }
-
-    func testReadOracleSliceReturnsNilOnEmptyBuffer() {
-        var buffer = ByteBuffer()
-        XCTAssertEqual(buffer.readOracleSlice(), nil)
-    }
-
-    func testThrowingSkipUBShouldThrowOnMissingBytes() {
-        var buffer = ByteBuffer(bytes: [1])
-        XCTAssertThrowsError(
-            try buffer.throwingSkipUB4(),
-            expected: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0)
-        )
-    }
-
-    func testReadOSONFailsAppropriately() {
-        var sliceMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0])
-        XCTAssertNil(try? sliceMissingBuffer.throwingReadOSON())
-        var locatorMissingBuffer = ByteBuffer(bytes: [1, 40, 0, 0, 0])
-        XCTAssertNil(try? locatorMissingBuffer.throwingReadOSON())
-    }
-
-    func testThrowingSkipUBThrowsOnMissingLength() {
-        var buffer = ByteBuffer()
-        XCTAssertThrowsError(
-            try buffer.throwingSkipUB4(),
-            expected: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(1, actual: 0)
-        )
-    }
-}
+#endif

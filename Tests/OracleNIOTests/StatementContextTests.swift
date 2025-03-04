@@ -12,28 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
-import XCTest
+#if compiler(>=6.0)
+    import NIOCore
+    import Testing
 
-@testable import OracleNIO
+    @testable import OracleNIO
 
-final class StatementContextTests: XCTestCase {
+    @Suite struct StatementContextTests {
 
-    func testStatementWithSpaceSeparator() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
-                statement: "SELECT any FROM any")
-        )
-        XCTAssertEqual(context?.type.isQuery, true)
-    }
+        @Test func statementWithSpaceSeparator() {
+            let context = StatementContext(statement: "SELECT any FROM any")
+            defer { context.cleanup() }
+            #expect(context.type.isQuery)
+        }
 
-    func testStatementWithNewlineSeparator() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
+        @Test func statementWithNewlineSeparator() {
+            let context = StatementContext(
                 statement: """
                     SELECT
                     any,
@@ -41,30 +35,26 @@ final class StatementContextTests: XCTestCase {
                     any3
                     FROM
                     any
-                    """))
-        XCTAssertEqual(context?.type.isQuery, true)
-    }
+                    """)
+            defer { context.cleanup() }
+            #expect(context.type.isQuery)
+        }
 
-    func testQueryWithSingleLineComments() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
+        @Test func queryWithSingleLineComments() {
+            let context = StatementContext(
                 statement: """
                     -- hello there
                     SELECT any, any2,
                     -- hello again
                     any3 FROM any
                     -- goodby
-                    """))
-        XCTAssertEqual(context?.type.isQuery, true)
-    }
+                    """)
+            defer { context.cleanup() }
+            #expect(context.type.isQuery)
+        }
 
-    func testQueryWithMultiLineComments() {
-        var context: StatementContext?
-        defer { context?.cleanup() }
-        XCTAssertNoThrow(
-            context = StatementContext(
+        @Test func queryWithMultiLineComments() {
+            let context = StatementContext(
                 statement: """
                     /* Hello there */
                     SELECT any, any2,
@@ -74,8 +64,10 @@ final class StatementContextTests: XCTestCase {
                     I'd like to tell you a tale!
                     */
                     any3 FROM any --bye
-                    """))
-        XCTAssertEqual(context?.type.isQuery, true)
-    }
+                    """)
+            defer { context.cleanup() }
+            #expect(context.type.isQuery)
+        }
 
-}
+    }
+#endif

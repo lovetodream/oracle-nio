@@ -20,11 +20,9 @@
 
     @testable import OracleNIO
 
-    @Suite
-    struct OracleConnectionTests {
+    @Suite struct OracleConnectionTests {
 
-        @Test
-        func weDoNotCrashOnUnexpectedChannelEvents() async throws {
+        @Test func weDoNotCrashOnUnexpectedChannelEvents() async throws {
             try await self.useTestConnectionWithAsyncTestingChannel { _, channel in
                 enum MyEvent {
                     case pleaseDoNotCrash
@@ -33,8 +31,7 @@
             }
         }
 
-        @Test
-        func connectionOnClosedChannelFails() async throws {
+        @Test func connectionOnClosedChannelFails() async throws {
             let eventLoop = NIOAsyncTestingEventLoop()
             let channel = NIOAsyncTestingChannel(loop: eventLoop)
             try await channel.connect(to: .makeAddressResolvingHost("localhost", port: 1521))
@@ -61,8 +58,7 @@
             #expect(thrown == OracleSQLError.connectionError(underlying: ChannelError.alreadyClosed))
         }
 
-        @Test
-        func configurationChangesAreReflected() {
+        @Test func configurationChangesAreReflected() {
             var configuration = OracleConnection.Configuration(
                 host: "localhost",
                 port: 1521,
@@ -98,8 +94,7 @@
             }
         }
 
-        @Test
-        func oobCheckWorks() async throws {
+        @Test func oobCheckWorks() async throws {
             func runTest(supportsOOB: Bool) async throws {
                 let eventLoop = NIOAsyncTestingEventLoop()
                 let protocolVersion =
@@ -134,7 +129,7 @@
                     C(messages: [
                         OracleBackendMessage.accept(.init(newCapabilities: .desired(supportsOOB: true)))
                     ]))
-                protocolVersion.value = Int(Constants.TNS_VERSION_DESIRED)
+                protocolVersion.value.withLockedValue({ $0 = Int(Constants.TNS_VERSION_DESIRED) })
 
                 let oob = try await channel.waitForOutboundWrite(as: OracleFrontendMessage.self)
                 #expect(oob == .oob)
@@ -234,7 +229,7 @@
                 C(messages: [
                     OracleBackendMessage.accept(.init(newCapabilities: .desired()))
                 ]))
-            protocolVersion.value = Int(Constants.TNS_VERSION_DESIRED)
+            protocolVersion.value.withLockedValue({ $0 = Int(Constants.TNS_VERSION_DESIRED) })
 
             let fastAuth = try await channel.waitForOutboundWrite(as: OracleFrontendMessage.self)
             #expect(fastAuth == .fastAuth)

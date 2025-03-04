@@ -50,9 +50,9 @@ import Testing
                 JsonVarchar                         varchar2(4000) not null,
                 JsonClob                            clob not null,
                 JsonBlob                            blob not null,
-                constraint TestJsonCols_ck_1 check (JsonVarchar is json),
-                constraint TestJsonCols_ck_2 check (JsonClob is json),
-                constraint TestJsonCols_ck_3 check (JsonBlob is json)
+                constraint TestJsonCols\(unescaped: key)_ck_1 check (JsonVarchar is json),
+                constraint TestJsonCols\(unescaped: key)_ck_2 check (JsonClob is json),
+                constraint TestJsonCols\(unescaped: key)_ck_3 check (JsonBlob is json)
             )
             """,
             logger: .oracleTest
@@ -107,13 +107,15 @@ import Testing
     }
 
     @Test func fetchJSONColumns() async throws {
-        let stream = try await connection.execute(
-            "SELECT intcol, jsonvarchar, jsonclob, jsonblob FROM testjsoncols")
-        for try await (id, varchar, clob, blob) in stream.decode((Int, String, String, String).self) {
-            #expect(id == 1)
-            #expect(varchar == "[1, 2, 3]")
-            #expect(clob == "[4, 5, 6]")
-            #expect(blob == "[7, 8, 9]")
+        try await runPopulatedJsonTest { connection, tableName in
+            let stream = try await connection.execute(
+                "SELECT intcol, jsonvarchar, jsonclob, jsonblob FROM \(unescaped: tableName)")
+            for try await (id, varchar, clob, blob) in stream.decode((Int, String, String, String).self) {
+                #expect(id == 1)
+                #expect(varchar == "[1, 2, 3]")
+                #expect(clob == "[4, 5, 6]")
+                #expect(blob == "[7, 8, 9]")
+            }
         }
     }
 

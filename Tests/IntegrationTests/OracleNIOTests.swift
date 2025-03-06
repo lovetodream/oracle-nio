@@ -1107,6 +1107,30 @@
                 print(id, order)
             }
         }
+
+        @Test func insertAboveCursorLimit() async throws {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
+            do {
+                try await conn.execute(
+                    "DROP TABLE too_many_open_cursers", logger: .oracleTest
+                )
+            } catch let error as OracleSQLError {
+                // "ORA-00942: table or view does not exist" can be ignored
+                #expect(error.serverInfo?.number == 942)
+            }
+            try await conn.execute("CREATE TABLE too_many_open_cursers (id NUMBER)")
+            for i in 1...1000 {
+                try await conn.execute("INSERT INTO too_many_open_cursers (id) VALUES (\(OracleNumber(i)))")
+            }
+            let stream = try await conn.execute("SELECT id FROM too_many_open_cursers")
+            var num = 0
+            for try await id in stream.decode(Int.self) {
+                num += 1
+                #expect(id == num)
+            }
+            #expect(num == 1000)
+        }
     }
 
     let isLoggingConfigured: Bool = {

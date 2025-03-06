@@ -745,6 +745,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 batchErrors: result.batchErrors
             )
             promise.succeed(rows)
+            if let cursorID = result.cursorID, cursorID != 0 {
+                cleanupContext.cursorsToClose.insert(cursorID)
+            }
             self.run(self.state.readyForStatementReceived(), with: context)
         }
 

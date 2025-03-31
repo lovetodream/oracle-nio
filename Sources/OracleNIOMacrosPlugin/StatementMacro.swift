@@ -153,7 +153,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                     columns.append(column)
                     sql.append(.init(StringSegmentSyntax(content: .stringSegment(column.name))))
                     if let alias = column.alias {
-                        sql.append(.init(StringSegmentSyntax(content: .stringSegment(" AS \(alias)"))))
+                        sql.append(.init(StringSegmentSyntax(content: .stringSegment(#" AS \"\#(alias)\""#))))
                     }
                 case .bind(let bind):
                     binds.append(bind)

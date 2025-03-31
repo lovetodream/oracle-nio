@@ -1123,7 +1123,7 @@
             for i in 1...1000 {
                 try await conn.execute("INSERT INTO too_many_open_cursers (id) VALUES (\(OracleNumber(i)))")
             }
-            let stream = try await conn.execute("SELECT id FROM too_many_open_cursers")
+            let stream = try await conn.execute("SELECT id FROM too_many_open_cursers ORDER BY id")
             var num = 0
             for try await id in stream.decode(Int.self) {
                 num += 1

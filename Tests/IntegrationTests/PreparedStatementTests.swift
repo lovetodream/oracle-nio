@@ -55,6 +55,20 @@
                     stream3Count += 1
                 }
                 #expect(stream3Count == 1)
+                let stream4 = try await connection.execute(SelectAliasReservedNameWorksQuery())
+                var stream4Count = 0
+                for try await row in stream4 {
+                    #expect(row.start == 1)
+                    stream4Count += 1
+                }
+                #expect(stream4Count == 1)
+                let stream5 = try await connection.execute(SelectAliasReservedNameMultilineWorksQuery())
+                var stream5Count = 0
+                for try await row in stream5 {
+                    #expect(row.start == 1)
+                    stream5Count += 1
+                }
+                #expect(stream5Count == 1)
             }
         }
     }
@@ -69,4 +83,14 @@
 
     @Statement("SELECT \("NULL", Int?.self, as: "count") FROM dual")
     struct SelectNullFromDualQuery {}
+
+    @Statement("SELECT \("1", Int.self, as: "start") FROM dual")
+    struct SelectAliasReservedNameWorksQuery {}
+
+    @Statement(
+        """
+        SELECT \("1", Int.self, as: "start") 
+        FROM dual
+        """)
+    struct SelectAliasReservedNameMultilineWorksQuery {}
 #endif

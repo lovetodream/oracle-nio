@@ -209,7 +209,7 @@ struct PreparedStatementsOracleNIOTests {
                         var age: Int
                     }
 
-                    static let sql = "SELECT user_id AS userID, name, age FROM users WHERE :1 > age"
+                    static let sql = "SELECT user_id AS \"userID\", name, age FROM users WHERE :1 > age"
 
                     var age: Int
 

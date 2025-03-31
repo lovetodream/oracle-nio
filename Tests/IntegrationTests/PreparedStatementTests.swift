@@ -87,9 +87,10 @@
     @Statement("SELECT \("1", Int.self, as: "start") FROM dual")
     struct SelectAliasReservedNameWorksQuery {}
 
-    @Statement("""
-    SELECT \("1", Int.self, as: "start") 
-    FROM dual
-    """)
+    @Statement(
+        """
+        SELECT \("1", Int.self, as: "start") 
+        FROM dual
+        """)
     struct SelectAliasReservedNameMultilineWorksQuery {}
 #endif

@@ -598,13 +598,11 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeUB4(0)  // al8i4[4]
         self.buffer.writeUB4(0)  // al8i4[5] SCN (part 1)
         self.buffer.writeUB4(0)  // al8i4[6] SCN (part 2)
-        self.buffer.writeUB4(
-            statementContext.type.isQuery ? 1 : 0
-        )  // al8i4[7] is query
+        self.buffer.writeUB4(statementContext.type.isQuery ? 1 : 0)  // al8i4[7] is query
         self.buffer.writeUB4(0)  // al8i4[8]
-        self.buffer.writeUB4(dmlOptions)  // al8i4[9] DML row counts/implicit
-        self.buffer.writeUB4(0)  // al8i4[10]
-        self.buffer.writeUB4(0)  // al8i4[11]
+        self.buffer.writeUB4(dmlOptions)  // al8i4[9] execute flags
+        self.buffer.writeUB4(0)  // al8i4[10] fetch orientation
+        self.buffer.writeUB4(0)  // al8i4[11] fetch position
         self.buffer.writeUB4(0)  // al8i4[12]
         if requiresDefine {
             guard let columns = describeInfo?.columns else {

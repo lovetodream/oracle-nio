@@ -230,5 +230,56 @@
                 }
             }
         }
+
+        @Test(.enabled(if: Self.testCompressedJSON)) func complexJSON() async throws {
+            struct Details: Codable {
+                let name: String
+                let address: Address
+                let email: [String]
+                let phone: [String]
+                let web: [String]
+                let openingHours: [OpeningHour]
+            }
+
+            struct Address: Codable {
+                let city: String
+                let street: String
+                let zip: String
+            }
+
+            struct OpeningHour: Codable {
+                let dayOfWeek: String
+                let opens: String
+                let closes: String
+
+                enum CodingKeys: String, CodingKey {
+                    case dayOfWeek = "day_of_week"
+                    case opens, closes
+                }
+            }
+
+            do {
+                try await connection.execute("DROP TABLE pharmacies", logger: .oracleTest)
+            } catch let error as OracleSQLError {
+                // "ORA-00942: table or view does not exist" can be ignored
+                #expect(error.serverInfo?.number == 942)
+            }
+
+            try await connection.execute("CREATE TABLE pharmacies (details json)", logger: .oracleTest)
+
+            let details = OracleJSON(
+                Details(
+                    name: "String",
+                    address: Address(city: "String", street: "String", zip: "String"),
+                    email: ["String"],
+                    phone: ["String"],
+                    web: ["String"],
+                    openingHours: [OpeningHour(dayOfWeek: "Tuesday", opens: "08:00", closes: "18:00")]
+                )
+            )
+            try await connection.execute("INSERT INTO pharmacies (details) VALUES (\(details))", logger: .oracleTest)
+
+            try await connection.execute("DROP TABLE pharmacies", logger: .oracleTest)
+        }
     }
 #endif

@@ -389,13 +389,7 @@ extension _OracleVectorProtocol {
         )
         self.encode(into: &temp, context: context)
         buffer.writeQLocator(dataLength: UInt64(temp.readableBytes))
-        if temp.readableBytes <= Constants.TNS_OBJ_MAX_SHORT_LENGTH {
-            buffer.writeInteger(UInt8(temp.readableBytes))
-        } else {
-            buffer.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
-            buffer.writeInteger(UInt32(temp.readableBytes))
-        }
-        buffer.writeBuffer(&temp)
+        temp._encodeRaw(into: &buffer, context: context)
     }
 
     @inlinable

@@ -227,5 +227,32 @@
             let result = try OracleJSONParser.parse(from: &buffer)
             #expect(result == .container([key: .string("value")]))
         }
+
+        @Test func encodeObjectWithNestedObjectArray() throws {
+            var buffer = ByteBuffer()
+            var writer = OracleJSONWriter()
+            let json: OracleJSONStorage = .container([
+                "name": .string("String"),
+                "address": .container([
+                    "city": .string("String"),
+                    "street": .string("String"),
+                    "zip": .string("String"),
+                ]),
+                "email": .array([.string("String")]),
+                "phone": .array([.string("String")]),
+                "web": .array([.string("String")]),
+                "openingHours": .array([
+                    .container([
+                        "day_of_week": .string("Tuesday"),
+                        "opens": .string("08:00"),
+                        "closes": .string("18:00"),
+                    ])
+                ]),
+            ])
+
+            try writer.encode(json, into: &buffer, maxFieldNameSize: 65535)
+            let result = try OracleJSONParser.parse(from: &buffer)
+            #expect(result == json)
+        }
     }
 #endif

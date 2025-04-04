@@ -22,7 +22,7 @@ import Testing
     try await withThrowingDiscardingTaskGroup { group in
         group.addTask {
             do {
-                try await OracleMockServer.main()
+                try await OracleMockServer.run()
             } catch is CancellationError {
                 print("cancelled")
             }
@@ -42,11 +42,11 @@ import Testing
     }
 }
 
-@Test(.disabled("Not yet implemented")) func select() async throws {
+@Test func select() async throws {
     try await withThrowingDiscardingTaskGroup { group in
         group.addTask {
             do {
-                try await OracleMockServer.main()
+                try await OracleMockServer.run()
             } catch is CancellationError {
                 print("cancelled")
             }

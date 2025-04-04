@@ -23,10 +23,8 @@ import NIOPosix
 ///
 /// _It only works for very specifc usecases._
 @available(macOS 14.0, *)
-@main
-final class OracleMockServer {
-    static func main() async throws {
-        LoggingSystem.bootstrap { StreamLogHandler.standardOutput(label: $0) }
+public final class OracleMockServer {
+    public static func run() async throws {
         var logger = Logger(label: "OracleMockServer")
         logger.logLevel = .debug
 
@@ -113,26 +111,13 @@ final class OracleMockServer {
                                         state = .authenticated
 
                                     case .authenticated:  // waiting for client instructions
-                                        // TODO: find out if we have a statement or a logoff
                                         switch header.packetType {
-                                        case .data(let flags, let messageID):
+                                        case .data(_, let messageID):
                                             print(messageID)
-                                            let functionCode = buffer.readInteger(as: UInt8.self).flatMap(
-                                                FunctionCode.init)
-                                            guard let functionCode else {
-                                                connectionChannelOutbound.finish()
-                                                return
-                                            }
-                                            switch functionCode {
-                                            case .logoff:
-                                                try await connectionChannelOutbound.write(CloseMessage().serialize())
-                                                state = .closed
-                                            case .execute:
-                                                // TODO: "parse" query and use appropiate response
-                                                fatalError()
-                                            default:
-                                                fatalError("unimplemented: \(functionCode)")
-                                            }
+                                            try await handleData(
+                                                in: &buffer, state: &state,
+                                                connectionChannelOutbound: connectionChannelOutbound)
+
                                         default:
                                             connectionChannelOutbound.finish()
                                             return
@@ -151,6 +136,86 @@ final class OracleMockServer {
                     }
                 }
             }
+        }
+    }
+
+    static func handleData(
+        in buffer: inout ByteBuffer, state: inout State,
+        connectionChannelOutbound: NIOAsyncChannelOutboundWriter<ByteBuffer>
+    ) async throws {
+        let functionCode = buffer.readInteger(as: UInt8.self).flatMap(
+            FunctionCode.init)
+        guard let functionCode else {
+            connectionChannelOutbound.finish()
+            return
+        }
+        switch functionCode {
+        case .logoff:
+            try await connectionChannelOutbound.write(CloseMessage().serialize())
+            state = .closed
+
+        case .execute:
+            // TODO: "parse" query and use appropiate response
+            // since we only support very specific statements, we can check in a lazy way
+
+            // read all bytes until we find SELECT, go back by one byte and grab the length, then cut the select out
+            let select = Array("SELECT".utf8)
+            var matchingBytesCount = 0
+            var statement: String?
+            loop: while let byte = buffer.readInteger(as: UInt8.self) {
+                switch byte {
+                case select[matchingBytesCount]:
+                    matchingBytesCount += 1
+                    if matchingBytesCount == select.count - 1 {
+                        buffer.moveReaderIndex(to: buffer.readerIndex - matchingBytesCount - 1)
+                        let length = buffer.readInteger(as: UInt8.self).unsafelyUnwrapped
+                        statement = buffer.readString(length: Int(length))
+                        break loop
+                    }
+                default:
+                    matchingBytesCount = 0
+                }
+            }
+
+            guard let statement else {
+                // FIXME: fatal for now, handle this in the future
+                fatalError("SELECT not found")
+            }
+
+            // a few predefined statements
+            switch statement {
+            case #"SELECT 'hello' FROM dual"#:
+                try await connectionChannelOutbound.write(SelectOneFromDualMessage().serialize())
+            default:
+                // FIXME: fatal for now, handle this in the future
+                fatalError("SELECT not found")
+            }
+
+        case .closeCursors:
+
+            // skip sequence number
+            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt8>.size)
+
+
+            // skip token number
+            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt8>.size)
+
+            // skip cursor
+            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt8>.size)
+
+            // skip cursors
+            let cursors = buffer.readUB4() ?? 0
+            for _ in 0..<Int(cursors) {
+                _ = buffer.readUB4()
+            }
+
+            // actual message
+            let messageID = buffer.readInteger(as: UInt8.self).flatMap(MessageID.init)
+            assert(messageID == .function)
+            try await handleData(in: &buffer, state: &state, connectionChannelOutbound: connectionChannelOutbound)
+
+        default:
+            fatalError("unimplemented: \(functionCode)")
         }
     }
 
@@ -268,5 +333,34 @@ final class OracleMockServer {
         case sessionGet = 162
         case sessionRelease = 163
         case setSchema = 152
+    }
+}
+
+extension ByteBuffer {
+    mutating func readUBLength() -> UInt8? {
+        guard var length = self.readInteger(as: UInt8.self) else { return nil }
+        if length & 0x80 != 0 {
+            length = length & 0x7f
+        }
+        return length
+    }
+
+    mutating func readUB4() -> UInt32? {
+        guard let length = readUBLength() else { return nil }
+        switch length {
+        case 0:
+            return 0
+        case 1:
+            return self.readInteger(as: UInt8.self).map(UInt32.init(_:))
+        case 2:
+            return self.readInteger(as: UInt16.self).map(UInt32.init(_:))
+        case 3:
+            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
+            return UInt32(bytes[0]) << 16 | UInt32(bytes[1]) << 8 | UInt32(bytes[2])
+        case 4:
+            return self.readInteger(as: UInt32.self)
+        default:
+            preconditionFailure()
+        }
     }
 }

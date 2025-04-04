@@ -11,6 +11,7 @@ let package = Package(
     products: [
         .library(name: "OracleNIO", targets: ["OracleNIO"]),
         .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
+        .library(name: "_OracleMockServer", targets: ["OracleMockServer"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
@@ -67,7 +68,7 @@ let package = Package(
             dependencies: ["OracleNIO", "OracleNIOMacros"],
             resources: [.process("Data")]
         ),
-        .executableTarget(
+        .target(
             name: "OracleMockServer",
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),

@@ -14,6 +14,7 @@
 
 import Benchmark
 import Foundation
+import OracleMockServer
 import OracleNIO
 
 private func env(_ name: String) -> String? {
@@ -28,13 +29,14 @@ extension Benchmark {
         write: @escaping @Sendable (Benchmark, OracleConnection) async throws -> Void
     ) {
         let config = OracleConnection.Configuration(
-            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
-            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
-            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            host: env("ORA_HOSTNAME") ?? "127.0.0.1",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 6666,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "FREEPDB1"),
             username: env("ORA_USERNAME") ?? "my_user",
             password: env("ORA_PASSWORD") ?? "my_passwor"
         )
         var connection: OracleConnection!
+        var server: Task<Void, Error>!
         self.init(name, configuration: configuration) { benchmark in
             for _ in benchmark.scaledIterations {
                 for _ in 0..<25 {
@@ -42,12 +44,16 @@ extension Benchmark {
                 }
             }
         } setup: {
+            server = Task {
+                try await OracleMockServer.run()
+            }
             connection = try await OracleConnection.connect(
                 configuration: config,
                 id: 1
             )
         } teardown: {
             try await connection.close()
+            server.cancel()
         }
     }
 }
@@ -70,13 +76,13 @@ let benchmarks: @Sendable () -> Void = {
         for try await _ in stream.decode(String.self) {}  // consume stream
     }
 
-    Benchmark(
-        name: "SELECT:DUAL:10_000",
-        configuration: .init(warmupIterations: 10)
-    ) { _, connection in
-        let stream = try await connection.execute(
-            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')"
-        )
-        for try await _ in stream.decode(Int.self) {}  // consume stream
-    }
+    //    Benchmark(
+    //        name: "SELECT:DUAL:10_000",
+    //        configuration: .init(warmupIterations: 10)
+    //    ) { _, connection in
+    //        let stream = try await connection.execute(
+    //            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')"
+    //        )
+    //        for try await _ in stream.decode(Int.self) {}  // consume stream
+    //    }
 }

@@ -67,6 +67,20 @@ let package = Package(
             dependencies: ["OracleNIO", "OracleNIOMacros"],
             resources: [.process("Data")]
         ),
+        .executableTarget(
+            name: "OracleMockServer",
+            dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "NIO", package: "swift-nio"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+                .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
+            ]
+        ),
+        .testTarget(
+            name: "OracleMockServerTests",
+            dependencies: ["OracleMockServer", "OracleNIO"]
+        ),
         .target(
             name: "OracleNIOMacros",
             dependencies: ["OracleNIO", "OracleNIOMacrosPlugin"]

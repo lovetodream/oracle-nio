@@ -164,20 +164,6 @@ struct ServerMessageEncoder {
         self.buffer.prepareSend(packetTypeByte: packetType.byte)
     }
 
-    private mutating func writeFunctionCode(
-        messageType: OracleMockServer.MessageID,
-        functionCode: OracleMockServer.FunctionCode
-    ) {
-        self.sequenceNumber &+= 1
-        if self.sequenceNumber == 0 {
-            self.sequenceNumber = 1
-        }
-        self.buffer.writeInteger(messageType.rawValue)
-        self.buffer.writeInteger(functionCode.rawValue)
-        self.buffer.writeInteger(self.sequenceNumber)
-        buffer.writeUB8(0)  // token number
-    }
-
     private func encodeOracleNumberWithLength(_ value: Int, into buffer: inout ByteBuffer) {
         // The length of the parameter value, in bytes (this count does not
         // include itself). Can be zero.

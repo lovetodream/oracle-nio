@@ -155,7 +155,7 @@ struct ServerMessageEncoder {
     mutating func startRequest(packetType: OracleMockServer.PacketType) {
         self.buffer.reserveCapacity(Self.headerSize)
         self.buffer.moveWriterIndex(forwardBy: Self.headerSize)
-        if case let .data(flags, _) = packetType {
+        if case .data(let flags, _) = packetType {
             self.buffer.writeInteger(flags)
         }
     }
@@ -178,7 +178,7 @@ struct ServerMessageEncoder {
         buffer.writeUB8(0)  // token number
     }
 
-    private func encodeOracleNumberWithLength(_ value: Int, into buffer: inout ByteBuffer, ) {
+    private func encodeOracleNumberWithLength(_ value: Int, into buffer: inout ByteBuffer) {
         // The length of the parameter value, in bytes (this count does not
         // include itself). Can be zero.
         let lengthIndex = buffer.writerIndex

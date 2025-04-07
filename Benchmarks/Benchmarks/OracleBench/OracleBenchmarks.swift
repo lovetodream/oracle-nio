@@ -14,6 +14,7 @@
 
 import Benchmark
 import Foundation
+import OracleMockServer
 import OracleNIO
 
 private func env(_ name: String) -> String? {
@@ -28,13 +29,14 @@ extension Benchmark {
         write: @escaping @Sendable (Benchmark, OracleConnection) async throws -> Void
     ) {
         let config = OracleConnection.Configuration(
-            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
-            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
-            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            host: env("ORA_HOSTNAME") ?? "127.0.0.1",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 6666,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "FREEPDB1"),
             username: env("ORA_USERNAME") ?? "my_user",
             password: env("ORA_PASSWORD") ?? "my_passwor"
         )
         var connection: OracleConnection!
+        var server: Task<Void, Error>!
         self.init(name, configuration: configuration) { benchmark in
             for _ in benchmark.scaledIterations {
                 for _ in 0..<25 {
@@ -42,12 +44,16 @@ extension Benchmark {
                 }
             }
         } setup: {
+            server = Task {
+                try await OracleMockServer.run()
+            }
             connection = try await OracleConnection.connect(
                 configuration: config,
                 id: 1
             )
         } teardown: {
             try await connection.close()
+            server.cancel()
         }
     }
 }

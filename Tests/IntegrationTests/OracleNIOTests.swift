@@ -1131,6 +1131,7 @@
             }
             #expect(num == 1000)
         }
+
     }
 
     let isLoggingConfigured: Bool = {

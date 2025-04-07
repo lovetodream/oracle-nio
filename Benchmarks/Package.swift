@@ -14,6 +14,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Benchmark", package: "package-benchmark"),
                 .product(name: "OracleNIO", package: "oracle-nio"),
+                .product(name: "_OracleMockServer", package: "oracle-nio"),
             ],
             path: "Benchmarks/OracleBench",
             plugins: [

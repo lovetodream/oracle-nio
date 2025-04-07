@@ -24,9 +24,8 @@ import NIOPosix
 /// _It only works for very specifc usecases._
 @available(macOS 14.0, *)
 public final class OracleMockServer {
-    public static func run() async throws {
+    public static func run(continuation: CheckedContinuation<Void, Never>? = nil) async throws {
         var logger = Logger(label: "OracleMockServer")
-        logger.logLevel = .debug
 
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let serverChannel = try await ServerBootstrap(group: eventLoopGroup)
@@ -52,6 +51,8 @@ public final class OracleMockServer {
 
         try await withThrowingDiscardingTaskGroup { group in
             try await serverChannel.executeThenClose { serverChannelInbound in
+                continuation?.resume()  // server started
+
                 for try await connectionChannel in serverChannelInbound {
                     group.addTask {
                         do {
@@ -60,6 +61,7 @@ public final class OracleMockServer {
                                 let id = idGenerator.wrappingIncrementThenLoad(ordering: .relaxed)
 
                                 var state: State = .idle
+                                var encoder = ServerMessageEncoder(buffer: .init())
                                 var remainder: (header: Header, buffer: ByteBuffer, length: Int)?
 
                                 for try await var inboundData in connectionChannelInbound {
@@ -112,8 +114,7 @@ public final class OracleMockServer {
 
                                     case .authenticated:  // waiting for client instructions
                                         switch header.packetType {
-                                        case .data(_, let messageID):
-                                            print(messageID)
+                                        case .data:
                                             try await handleData(
                                                 in: &buffer, state: &state,
                                                 connectionChannelOutbound: connectionChannelOutbound)
@@ -123,10 +124,23 @@ public final class OracleMockServer {
                                             return
                                         }
 
+                                    case .executing(let lastRow):
+                                        let hasMore = (lastRow + 50) < 10_000
+                                        encoder.rows(
+                                            data: .init((lastRow + 1)...min((lastRow + 50), 10_000)),
+                                            lastRowCount: lastRow,
+                                            hasMoreRows: hasMore
+                                        )
+                                        try await connectionChannelOutbound.write(encoder.flush())
+                                        if hasMore {
+                                            state = .executing(lastRow: lastRow + 50)
+                                        } else {
+                                            state = .authenticated
+                                        }
+
                                     case .closed:
                                         connectionChannelOutbound.finish()
                                     }
-                                    print(inboundData.oracleHexDump())
                                     logger.debug("State changed: \(state)")
                                 }
                             }
@@ -186,6 +200,9 @@ public final class OracleMockServer {
             switch statement {
             case #"SELECT 'hello' FROM dual"#:
                 try await connectionChannelOutbound.write(SelectOneFromDualMessage().serialize())
+            case #"SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')"#:
+                try await connectionChannelOutbound.write(SelectManyFromDualMessage().serialize())
+                state = .executing(lastRow: 2)
             default:
                 // FIXME: fatal for now, handle this in the future
                 fatalError("SELECT not found")
@@ -280,6 +297,7 @@ public final class OracleMockServer {
         case connecting
         case authenticating
         case authenticated
+        case executing(lastRow: Int)
         case closed
     }
 
@@ -292,6 +310,19 @@ public final class OracleMockServer {
         case marker
         case control
         case redirect
+
+        var byte: UInt8 {
+            switch self {
+            case .connect: 1
+            case .accept: 2
+            case .refuse: 4
+            case .data: 6
+            case .resend: 11
+            case .marker: 12
+            case .control: 14
+            case .redirect: 5
+            }
+        }
     }
 
     enum MessageID: UInt8, Equatable {
@@ -361,6 +392,54 @@ extension ByteBuffer {
             return self.readInteger(as: UInt32.self)
         default:
             preconditionFailure()
+        }
+    }
+
+    mutating func writeUB2(_ integer: UInt16) {
+        switch integer {
+        case 0:
+            self.writeInteger(UInt8(0))
+        case 1...UInt16(UInt8.max):
+            self.writeInteger(UInt8(1))
+            self.writeInteger(UInt8(integer))
+        default:
+            self.writeInteger(UInt8(2))
+            self.writeInteger(integer)
+        }
+    }
+
+    mutating func writeUB4(_ integer: UInt32) {
+        switch integer {
+        case 0:
+            self.writeInteger(UInt8(0))
+        case 1...UInt32(UInt8.max):
+            self.writeInteger(UInt8(1))
+            self.writeInteger(UInt8(integer))
+        case (UInt32(UInt8.max) + 1)...UInt32(UInt16.max):
+            self.writeInteger(UInt8(2))
+            self.writeInteger(UInt16(integer))
+        default:
+            self.writeInteger(UInt8(4))
+            self.writeInteger(integer)
+        }
+    }
+
+    mutating func writeUB8(_ integer: UInt64) {
+        switch integer {
+        case 0:
+            self.writeInteger(UInt8(0))
+        case 1...UInt64(UInt8.max):
+            self.writeInteger(UInt8(1))
+            self.writeInteger(UInt8(integer))
+        case (UInt64(UInt8.max) + 1)...UInt64(UInt16.max):
+            self.writeInteger(UInt8(2))
+            self.writeInteger(UInt16(integer))
+        case (UInt64(UInt16.max) + 1)...UInt64(UInt32.max):
+            self.writeInteger(UInt8(4))
+            self.writeInteger(UInt32(integer))
+        default:
+            self.writeInteger(UInt8(8))
+            self.writeInteger(integer)
         }
     }
 }

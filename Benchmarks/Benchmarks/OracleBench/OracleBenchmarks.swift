@@ -76,13 +76,13 @@ let benchmarks: @Sendable () -> Void = {
         for try await _ in stream.decode(String.self) {}  // consume stream
     }
 
-    //    Benchmark(
-    //        name: "SELECT:DUAL:10_000",
-    //        configuration: .init(warmupIterations: 10)
-    //    ) { _, connection in
-    //        let stream = try await connection.execute(
-    //            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')"
-    //        )
-    //        for try await _ in stream.decode(Int.self) {}  // consume stream
-    //    }
+    Benchmark(
+        name: "SELECT:DUAL:10_000",
+        configuration: .init(warmupIterations: 10)
+    ) { _, connection in
+        let stream = try await connection.execute(
+            "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')"
+        )
+        for try await _ in stream.decode(Int.self) {}  // consume stream
+    }
 }

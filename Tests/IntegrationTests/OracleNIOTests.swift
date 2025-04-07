@@ -1132,12 +1132,6 @@
             #expect(num == 1000)
         }
 
-        @Test func thing() async throws {
-            let conn = try await OracleConnection.test(on: self.eventLoop)
-            defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
-            let stream = try await conn.execute("SELECT 'hello' FROM dual")
-            for try await _ in stream.decode(String.self) {}
-        }
     }
 
     let isLoggingConfigured: Bool = {

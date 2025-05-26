@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import Logging
 import NIOCore
 import NIOSSL
@@ -19,9 +20,9 @@ import OracleNIO
 
 import func Foundation.getenv
 
-extension OracleConnection {
+extension OracleConnection.Configuration {
 
-    static func testConfig() throws -> OracleConnection.Configuration {
+    static func test() throws -> OracleConnection.Configuration {
 
         var config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",
@@ -32,7 +33,7 @@ extension OracleConnection {
         )
 
         if let wallet = env("ORA_TEST_WALLET")?.data(using: .utf8).flatMap(Array.init),
-            let walletPassword = env("ORA_TEST_WALLET_PASSWORD")
+           let walletPassword = env("ORA_TEST_WALLET_PASSWORD")
         {
             let key = try NIOSSLPrivateKey(bytes: wallet, format: .pem) { completion in
                 completion(walletPassword.utf8)
@@ -50,8 +51,8 @@ extension OracleConnection {
         return config
     }
 
-    static func privilegedTestConfig() throws -> OracleConnection.Configuration {
-        var config = try self.testConfig()
+    static func privilegedTest() throws -> OracleConnection.Configuration {
+        var config = try self.test()
         config.authenticationMethod = {
             .init(
                 username: "SYS",
@@ -60,7 +61,9 @@ extension OracleConnection {
         config.mode = .sysDBA
         return config
     }
+}
 
+extension OracleConnection {
     static func test(
         on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
         config: OracleConnection.Configuration? = nil,
@@ -71,7 +74,7 @@ extension OracleConnection {
 
         return try await OracleConnection.connect(
             on: eventLoop,
-            configuration: config ?? self.testConfig(),
+            configuration: config ?? .test(),
             id: 0,
             logger: logger
         )
@@ -99,4 +102,30 @@ extension Logger {
 
 func env(_ name: String) -> String? {
     getenv(name).flatMap { String(cString: $0) }
+}
+
+let connectionIDGenerator = ManagedAtomic(0)
+
+func withOracleConnection<Result>(
+    on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
+    configuration: OracleConnection.Configuration? = nil,
+    _ closure: (OracleConnection) async throws -> Result
+) async throws -> Result {
+    let connectionID = connectionIDGenerator.wrappingIncrementThenLoad(ordering: .relaxed)
+    var logger = Logger(label: "oracle.connection.test")
+    logger.logLevel = Logger.getLogLevel()
+    let connection = try await OracleConnection.connect(
+        on: eventLoop,
+        configuration: configuration ?? .test(),
+        id: connectionID,
+        logger: logger
+    )
+    do {
+        let result = try await closure(connection)
+        try await connection.close()
+        return result
+    } catch {
+        try await connection.close()
+        throw error
+    }
 }

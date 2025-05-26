@@ -21,7 +21,7 @@
         private var running: Task<Void, Error>!
 
         init() throws {
-            let client = try OracleClient(configuration: OracleConnection.testConfig(), backgroundLogger: .oracleTest)
+            let client = try OracleClient(configuration: .test(), backgroundLogger: .oracleTest)
             self.client = client
             self.running = Task { await client.run() }
         }

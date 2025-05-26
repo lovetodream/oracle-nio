@@ -363,7 +363,7 @@
                     index = row.0
                     #expect(row.1 == "hello!")
                 }
-                
+
                 try await withOracleConnection { conn2 in
                     let rowCountOnConn2BeforeCommit = try await conn2.execute(
                         "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
@@ -377,7 +377,7 @@
                     )
                     index = 0
                     for try await row
-                            in rowsFromConn2AfterCommit
+                        in rowsFromConn2AfterCommit
                         .decode((Int, String).self)
                     {
                         #expect(index + 1 == row.0)

@@ -60,9 +60,11 @@
                 logger: .oracleTest
             )
 
-            await #expect(throws: Never.self, performing: {
-                try await test(self.connection, "test_simple_blob_\(key)")
-            })
+            await #expect(
+                throws: Never.self,
+                performing: {
+                    try await test(self.connection, "test_simple_blob_\(key)")
+                })
 
             try await connection.execute(
                 "DROP TABLE test_simple_blob_\(unescaped: key)", logger: .oracleTest

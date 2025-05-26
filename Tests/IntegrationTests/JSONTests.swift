@@ -101,9 +101,11 @@
                 """
             )
 
-            await #expect(throws: Never.self, performing: {
-                try await test(self.connection, "TestCompressedJson\(key)")
-            })
+            await #expect(
+                throws: Never.self,
+                performing: {
+                    try await test(self.connection, "TestCompressedJson\(key)")
+                })
 
             try await connection.execute(
                 "DROP TABLE TestCompressedJson\(unescaped: key)", logger: .oracleTest

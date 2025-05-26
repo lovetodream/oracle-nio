@@ -14,9 +14,9 @@
 
 import Benchmark
 import Foundation
+import NIOCore
 import OracleMockServer
 import OracleNIO
-import NIOCore
 
 let config = OracleConnection.Configuration(
     host: env("ORA_HOSTNAME") ?? "127.0.0.1",

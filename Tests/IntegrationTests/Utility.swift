@@ -33,7 +33,7 @@ extension OracleConnection.Configuration {
         )
 
         if let wallet = env("ORA_TEST_WALLET")?.data(using: .utf8).flatMap(Array.init),
-           let walletPassword = env("ORA_TEST_WALLET_PASSWORD")
+            let walletPassword = env("ORA_TEST_WALLET_PASSWORD")
         {
             let key = try NIOSSLPrivateKey(bytes: wallet, format: .pem) { completion in
                 completion(walletPassword.utf8)

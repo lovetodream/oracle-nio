@@ -337,57 +337,57 @@
         }
 
         @Test func commit() async throws {
-            let conn1 = try await OracleConnection.test(on: self.eventLoop)
-            let conn2 = try await OracleConnection.test(on: self.eventLoop)
-            defer { #expect(throws: Never.self, performing: { try conn1.syncClose() }) }
-            defer { #expect(throws: Never.self, performing: { try conn2.syncClose() }) }
-            do {
+            try await withOracleConnection { conn1 in
+                do {
+                    try await conn1.execute(
+                        "DROP TABLE test_commit", logger: .oracleTest
+                    )
+                } catch let error as OracleSQLError {
+                    // "ORA-00942: table or view does not exist" can be ignored
+                    #expect(error.serverInfo?.number == 942)
+                }
                 try await conn1.execute(
-                    "DROP TABLE test_commit", logger: .oracleTest
+                    "CREATE TABLE test_commit (id number, title varchar2(150 byte))",
+                    logger: .oracleTest
                 )
-            } catch let error as OracleSQLError {
-                // "ORA-00942: table or view does not exist" can be ignored
-                #expect(error.serverInfo?.number == 942)
+                try await conn1.execute(
+                    "INSERT INTO test_commit (id, title) VALUES (1, 'hello!')",
+                    logger: .oracleTest
+                )
+                let rows = try await conn1.execute(
+                    "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
+                )
+                var index = 0
+                for try await row in rows.decode((Int, String).self) {
+                    #expect(index + 1 == row.0)
+                    index = row.0
+                    #expect(row.1 == "hello!")
+                }
+
+                try await withOracleConnection { conn2 in
+                    let rowCountOnConn2BeforeCommit = try await conn2.execute(
+                        "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
+                    ).collect().count
+                    #expect(rowCountOnConn2BeforeCommit == 0)
+
+                    try await conn1.commit()
+
+                    let rowsFromConn2AfterCommit = try await conn2.execute(
+                        "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
+                    )
+                    index = 0
+                    for try await row
+                        in rowsFromConn2AfterCommit
+                        .decode((Int, String).self)
+                    {
+                        #expect(index + 1 == row.0)
+                        index = row.0
+                        #expect(row.1 == "hello!")
+                    }
+                }
+
+                try await conn1.execute("DROP TABLE test_commit", logger: .oracleTest)
             }
-            try await conn1.execute(
-                "CREATE TABLE test_commit (id number, title varchar2(150 byte))",
-                logger: .oracleTest
-            )
-            try await conn1.execute(
-                "INSERT INTO test_commit (id, title) VALUES (1, 'hello!')",
-                logger: .oracleTest
-            )
-            let rows = try await conn1.execute(
-                "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
-            )
-            var index = 0
-            for try await row in rows.decode((Int, String).self) {
-                #expect(index + 1 == row.0)
-                index = row.0
-                #expect(row.1 == "hello!")
-            }
-
-            let rowCountOnConn2BeforeCommit = try await conn2.execute(
-                "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
-            ).collect().count
-            #expect(rowCountOnConn2BeforeCommit == 0)
-
-            try await conn1.commit()
-
-            let rowsFromConn2AfterCommit = try await conn2.execute(
-                "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
-            )
-            index = 0
-            for try await row
-                in rowsFromConn2AfterCommit
-                .decode((Int, String).self)
-            {
-                #expect(index + 1 == row.0)
-                index = row.0
-                #expect(row.1 == "hello!")
-            }
-
-            try await conn1.execute("DROP TABLE test_commit", logger: .oracleTest)
         }
 
         @Test func rollback() async throws {
@@ -891,7 +891,7 @@
 
         @Test(.disabled(if: env("TEST_PRIVILEGED")?.isEmpty != false)) func domainAndAnnotations() async throws {
             let conn = try await OracleConnection.test(
-                on: eventLoop, config: OracleConnection.privilegedTestConfig()
+                on: eventLoop, config: .privilegedTest()
             )
             defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
 

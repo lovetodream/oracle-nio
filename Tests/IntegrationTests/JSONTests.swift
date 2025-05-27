@@ -61,7 +61,7 @@
                 "INSERT INTO TestJsonCols\(unescaped: key) values (1, '[1, 2, 3]', '[4, 5, 6]', '[7, 8, 9]')"
             )
 
-            await #expect(throws: Never.self, performing: { try await test(connection, "TestJsonCols\(key)") })
+            await #expect(throws: Never.self, performing: { try await test(self.connection, "TestJsonCols\(key)") })
 
             try await connection.execute(
                 "DROP TABLE TestJsonCols\(unescaped: key)", logger: .oracleTest
@@ -101,7 +101,11 @@
                 """
             )
 
-            await #expect(throws: Never.self, performing: { try await test(connection, "TestCompressedJson\(key)") })
+            await #expect(
+                throws: Never.self,
+                performing: {
+                    try await test(self.connection, "TestCompressedJson\(key)")
+                })
 
             try await connection.execute(
                 "DROP TABLE TestCompressedJson\(unescaped: key)", logger: .oracleTest

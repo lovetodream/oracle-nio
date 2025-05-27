@@ -20,8 +20,7 @@
 
         @Test(.disabled(if: env("NO_DRCP") != nil, "The testing database does not support DRCP"))
         func pool() async throws {
-            let config = try OracleConnection.testConfig()
-            let client = OracleClient(configuration: config, backgroundLogger: .oracleTest)
+            let client = try OracleClient(configuration: .test(), backgroundLogger: .oracleTest)
             await withThrowingTaskGroup(of: Void.self) { taskGroup in
                 taskGroup.addTask {
                     await client.run()
@@ -53,8 +52,7 @@
         }
 
         @Test func poolWithoutDRCP() async throws {
-            let config = try OracleConnection.testConfig()
-            let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
+            let client = try OracleClient(configuration: .test(), drcp: false, backgroundLogger: .oracleTest)
             await withThrowingTaskGroup(of: Void.self) { taskGroup in
                 taskGroup.addTask {
                     await client.run()
@@ -86,8 +84,7 @@
         }
 
         @Test func transactionSuccess() async throws {
-            let config = try OracleConnection.testConfig()
-            let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
+            let client = try OracleClient(configuration: .test(), drcp: false, backgroundLogger: .oracleTest)
             let runTask = Task {
                 await client.run()
             }
@@ -113,8 +110,7 @@
         }
 
         @Test func transactionFailure() async throws {
-            let config = try OracleConnection.testConfig()
-            let client = OracleClient(configuration: config, drcp: false, backgroundLogger: .oracleTest)
+            let client = try OracleClient(configuration: .test(), drcp: false, backgroundLogger: .oracleTest)
             let runTask = Task {
                 await client.run()
             }
@@ -144,7 +140,7 @@
         @available(macOS 14.0, *)
         @Test func pingPong() async throws {
             let idleTimeout = Duration.seconds(20)
-            let config = try OracleConnection.testConfig()
+            let config = try OracleConnection.Configuration.test()
             var options = OracleClient.Options()
             options.keepAliveBehavior?.frequency = .seconds(10)
             options.connectionIdleTimeout = idleTimeout

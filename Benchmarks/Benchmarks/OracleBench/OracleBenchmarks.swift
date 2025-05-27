@@ -14,8 +14,17 @@
 
 import Benchmark
 import Foundation
+import NIOCore
 import OracleMockServer
 import OracleNIO
+
+let config = OracleConnection.Configuration(
+    host: env("ORA_HOSTNAME") ?? "127.0.0.1",
+    port: env("ORA_PORT").flatMap(Int.init) ?? 6666,
+    service: .serviceName(env("ORA_SERVICE_NAME") ?? "FREEPDB1"),
+    username: env("ORA_USERNAME") ?? "my_user",
+    password: env("ORA_PASSWORD") ?? "my_passwor"
+)
 
 private func env(_ name: String) -> String? {
     getenv(name).flatMap { String(cString: $0) }
@@ -28,13 +37,6 @@ extension Benchmark {
         configuration: Benchmark.Configuration = Benchmark.defaultConfiguration,
         write: @escaping @Sendable (Benchmark, OracleConnection) async throws -> Void
     ) {
-        let config = OracleConnection.Configuration(
-            host: env("ORA_HOSTNAME") ?? "127.0.0.1",
-            port: env("ORA_PORT").flatMap(Int.init) ?? 6666,
-            service: .serviceName(env("ORA_SERVICE_NAME") ?? "FREEPDB1"),
-            username: env("ORA_USERNAME") ?? "my_user",
-            password: env("ORA_PASSWORD") ?? "my_passwor"
-        )
         var connection: OracleConnection!
         var server: Task<Void, Error>!
         self.init(name, configuration: configuration) { benchmark in
@@ -59,6 +61,8 @@ extension Benchmark {
 }
 
 let benchmarks: @Sendable () -> Void = {
+    var server: Task<Void, Error>!
+
     Benchmark.defaultConfiguration = .init(
         metrics: [
             .cpuTotal,
@@ -68,6 +72,7 @@ let benchmarks: @Sendable () -> Void = {
         ],
         warmupIterations: 10
     )
+
     Benchmark(
         name: "SELECT:DUAL:1",
         configuration: .init(warmupIterations: 10)
@@ -84,5 +89,36 @@ let benchmarks: @Sendable () -> Void = {
             "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')"
         )
         for try await _ in stream.decode(Int.self) {}  // consume stream
+    }
+
+    Benchmark(
+        "CONNECT:DISCONNECT",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            let connection = try await OracleConnection.connect(
+                configuration: config,
+                id: 1
+            )
+            try await connection.close()
+        }
+    } setup: {
+        server = Task {
+            try await OracleMockServer.run()
+        }
+    } teardown: {
+        server.cancel()
+    }
+
+    Benchmark(
+        "ENCODING:STRING",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            var buffer = ByteBufferAllocator().buffer(capacity: 1024)
+            while buffer.readableBytes < 1024 {
+                "abcdefghijklmnopqrstuvwxyz"._encodeRaw(into: &buffer, context: .default)
+            }
+        }
     }
 }

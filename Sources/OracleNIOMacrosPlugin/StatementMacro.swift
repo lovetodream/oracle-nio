@@ -95,16 +95,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         guard declaration.is(StructDeclSyntax.self) else {
             return []
         }
-        #if canImport(SwiftSyntax600)
         let protocols = protocols.map { InheritedTypeSyntax(type: $0) }
-        #else
-        let protocols = if protocols.isEmpty {
-            // In tests, the protocol is not added before 600, so we'll add it manually
-            [InheritedTypeSyntax(type: TypeSyntax(stringLiteral: protocolName))]
-        } else {
-            protocols.map { InheritedTypeSyntax(type: $0) }
-        }
-        #endif
         return [
             ExtensionDeclSyntax(
                 extendedType: type,
@@ -125,7 +116,6 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
 
     public static func expansion(of node: AttributeSyntax, providingMembersOf declaration: some DeclGroupSyntax, in context: some MacroExpansionContext) throws -> [DeclSyntax] {
         guard declaration.is(StructDeclSyntax.self) else {
-            #if canImport(SwiftSyntax600)
             context.diagnose(Diagnostic(
                 node: node,
                 message: StatementMacroDiagnosticMessages.invalidDeclaration,
@@ -136,13 +126,6 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                     )
                 ])
             ))
-            #else
-            context.diagnose(
-                Diagnostic(
-                    node: node,
-                    message: StatementMacroDiagnosticMessages.invalidDeclaration
-                ))
-            #endif
             return []
         }
 

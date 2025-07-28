@@ -17,10 +17,6 @@ import NIOConcurrencyHelpers
 struct SendOnceBox<Value>: ~Copyable, @unchecked Sendable {
     let mutex: NIOLockedValueBox<Value?>
 
-    init(_ value: sending Value) {
-        mutex = NIOLockedValueBox(value)
-    }
-
     init() {
         mutex = NIOLockedValueBox(nil)
     }

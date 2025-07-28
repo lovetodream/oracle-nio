@@ -25,7 +25,7 @@ import NIOPosix
 @available(macOS 14.0, *)
 public final class OracleMockServer {
     public static func run(continuation: CheckedContinuation<Void, Never>? = nil) async throws {
-        var logger = Logger(label: "OracleMockServer")
+        let logger = Logger(label: "OracleMockServer")
 
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let serverChannel = try await ServerBootstrap(group: eventLoopGroup)
@@ -55,6 +55,7 @@ public final class OracleMockServer {
 
                 for try await connectionChannel in serverChannelInbound {
                     group.addTask {
+                        var logger = logger
                         do {
                             try await connectionChannel.executeThenClose {
                                 connectionChannelInbound, connectionChannelOutbound in

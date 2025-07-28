@@ -123,8 +123,10 @@
                         binds: Array(1...10).map({ "\($0)" })
                     )
                 }
-            } catch let error as OracleSQLError {
-                #expect(error.serverInfo?.affectedRows == 9)
+            } catch let error as OracleTransactionError {
+                let closureError = try #require(error.closureError as? OracleSQLError)
+                #expect(closureError.serverInfo?.affectedRows == 9)
+                #expect(error.rollbackError == nil)
             }
             try await client.withConnection { connection in
                 let rows =

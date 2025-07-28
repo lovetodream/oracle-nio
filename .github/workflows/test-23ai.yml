@@ -59,7 +59,7 @@ jobs:
 
   test-container:
     container:
-      image: swift:6.0-jammy
+      image: swift:6.1-jammy
     services:
       oracle:
         image: gvenzl/oracle-free:23

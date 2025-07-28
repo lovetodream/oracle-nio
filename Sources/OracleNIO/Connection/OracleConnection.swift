@@ -530,6 +530,50 @@ extension OracleConnection {
             throw error  // rethrow with more metadata
         }
     }
+
+    /// Runs a transaction for the provided `closure`.
+    ///
+    /// The function lends the connection to the user provided closure. The user can modify the database as they wish.
+    /// If the user provided closure returns successfully, the function will attempt to commit the changes by running a
+    /// `COMMIT` query against the database. If the user provided closure throws an error, the function will attempt to
+    /// rollback the changes made within the closure.
+    ///
+    /// - Parameters:
+    ///   - logger: The `Logger` to log into for the transaction.
+    ///   - file: The file, the transaction was started in. Used for better error reporting.
+    ///   - line: The line, the transaction was started in. Used for better error reporting.
+    ///   - closure: The user provided code to modify the database. Use the provided connection to run queries.
+    ///              The connection must stay in the transaction mode. Otherwise this method will throw!
+    /// - Returns: The closure's return value.
+    public func withTransaction<Result>(
+        logger: Logger? = nil,
+        file: String = #file,
+        line: Int = #line,
+        isolation: isolated (any Actor)? = #isolation,
+        _ closure: (OracleConnection) async throws -> sending Result
+    ) async throws(OracleTransactionError) -> sending Result {
+        var closureHasFinished: Bool = false
+        do {
+            let value = try await closure(self)
+            closureHasFinished = true
+            try await self.commit()
+            return value
+        } catch {
+            var transactionError = OracleTransactionError(file: file, line: line)
+            if !closureHasFinished {
+                transactionError.closureError = error
+            } else {
+                transactionError.commitError = error
+            }
+            do {
+                try await self.rollback()
+            } catch {
+                transactionError.rollbackError = error
+            }
+
+            throw transactionError
+        }
+    }
 }
 
 extension OracleConnection {

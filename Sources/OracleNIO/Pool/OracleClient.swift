@@ -175,18 +175,22 @@ public final class OracleClient: Sendable, Service {
     /// - Parameter closure: A closure that uses the passed `OracleConnection`. The closure **must not** capture
     ///                      the provided `OracleConnection`.
     /// - Returns: The closure's return value.
-    public func withConnection<Result>(_ closure: (OracleConnection) async throws -> Result)
-        async throws -> Result
-    {
-        let connection = try await self.leaseConnection()
+    public func withConnection<Result>(
+        isolation: isolated (any Actor)? = #isolation,
+        _ closure: (OracleConnection) async throws -> sending Result
+    ) async throws -> sending Result {
+        let lease = try await self.leaseConnection()
 
-        defer { self.pool.releaseConnection(connection) }
+        defer { lease.release() }
 
-        return try await OracleEncodingContext.$jsonMaximumFieldNameSize.withValue(
-            connection.serverVersion.majorDatabaseReleaseNumber >= 23 ? 65535 : 255
+        let box: SendOnceBox<Result> = .init()
+        try await OracleEncodingContext.$jsonMaximumFieldNameSize.withValue(
+            lease.connection.serverVersion.majorDatabaseReleaseNumber >= 23 ? 65535 : 255
         ) {
-            return try await closure(connection)
+            let value = try await closure(lease.connection)
+            box.set(value)
         }
+        return box.take()
     }
 
     /// Lease a connection in the context of an isolated transaction for the provided `closure`'s lifetime.
@@ -194,22 +198,23 @@ public final class OracleClient: Sendable, Service {
     /// - Note: If the closure does not fail, all changes will be committed via `COMMIT`.
     ///         If the closure throws, a `ROLLBACK` will be issued, the original error rethrows.
     ///
-    /// - Parameter closure: A closure that uses the passed `OracleConnection`. The closure **must not** capture
-    ///                      the provided `OracleConnection`.
+    /// - Parameters:
+    ///   - logger: The `Logger` to log into for the transaction.
+    ///   - file: The file, the transaction was started in. Used for better error reporting.
+    ///   - line: The line, the transaction was started in. Used for better error reporting.
+    ///   - closure: A closure that uses the passed `OracleConnection`. The closure **must not** capture
+    ///              the provided `OracleConnection`.
     /// - Returns: The closure's return value.
     @discardableResult
     public func withTransaction<Result>(
-        _ closure: (OracleConnection) async throws -> Result
-    ) async throws -> Result {
+        logger: Logger? = nil,
+        file: String = #file,
+        line: Int = #line,
+        isolation: isolated (any Actor)? = #isolation,
+        _ closure: (OracleConnection) async throws -> sending Result
+    ) async throws -> sending Result {
         try await self.withConnection { connection in
-            do {
-                let result = try await closure(connection)
-                try await connection.commit()
-                return result
-            } catch {
-                try await connection.rollback()
-                throw error
-            }
+            try await connection.withTransaction(logger: logger, file: file, line: line, closure)
         }
     }
 
@@ -231,7 +236,7 @@ public final class OracleClient: Sendable, Service {
 
     // MARK: - Private Methods -
 
-    private func leaseConnection() async throws -> OracleConnection {
+    private func leaseConnection() async throws -> ConnectionLease<OracleConnection> {
         if !self.runningAtomic.load(ordering: .relaxed) {
             self.backgroundLogger.warning(
                 "Trying to lease connection from `OracleClient`, but `OracleClient.run()` hasn't been called yet."

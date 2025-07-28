@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.1
 // Copyright 2024 Timo Zacherl
 // SPDX-License-Identifier: Apache-2.0
 
@@ -24,7 +24,7 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
         .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
-            "509.0.0-latest"..."601.0.1-latest"),
+            from: "601.0.0-latest"),
     ],
     targets: [
         .target(
@@ -50,10 +50,6 @@ let package = Package(
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 "_ConnectionPoolModule",
-            ],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency=complete"),
-                .enableUpcomingFeature("BareSlashRegexLiterals"),
             ]
         ),
         .testTarget(

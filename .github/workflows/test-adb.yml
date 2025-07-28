@@ -15,7 +15,7 @@ concurrency:
 jobs:
   test-23ai:
     container:
-      image: swift:6.0-jammy
+      image: swift:6.1-jammy
 
     runs-on: ubuntu-latest
 

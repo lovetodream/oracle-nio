@@ -66,7 +66,7 @@ extension OracleBackendMessage {
             try buffer.throwingSkipUB1()  // user cursor options
             try buffer.throwingSkipUB1()  // UDI parameter
             try buffer.throwingSkipUB1()  // warning flag
-            let rowID = try RowID(from: &buffer, type: .rowID, context: .default)
+            let rowID = try RowID(fromWire: &buffer)
             try buffer.throwingSkipUB4()  // OS error
             try buffer.throwingSkipUB1()  // statement number
             try buffer.throwingSkipUB1()  // call number

@@ -1132,6 +1132,25 @@
             #expect(num == 1000)
         }
 
+        @Test(.bug(id: 86)) func rowIDFromInsertedRow() async throws {
+            let conn = try await OracleConnection.test(on: self.eventLoop)
+            defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
+            do {
+                try await conn.execute("DROP TABLE get_row_id_86", logger: .oracleTest)
+            } catch let error as OracleSQLError {
+                #expect(error.serverInfo?.number == 942)
+            }
+            try await conn.execute("CREATE TABLE get_row_id_86 (id NUMBER)")
+            let rowIDRef = OracleRef(dataType: .rowID, isReturnBind: true)
+            let result = try await conn.execute(
+                "INSERT INTO get_row_id_86 (id) VALUES (1) RETURNING rowid INTO \(rowIDRef)")
+            #expect(try await result.affectedRows == 1)
+            let rowID = try rowIDRef.decode(of: RowID.self)
+            let id = try await conn.execute("SELECT id FROM get_row_id_86 WHERE rowid = \(rowID)").collect().first?
+                .decode(Int.self)
+            #expect(id == 1)
+        }
+
     }
 
     let isLoggingConfigured: Bool = {

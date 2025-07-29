@@ -17,6 +17,10 @@ import NIOCore
 public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
     public let description: String
 
+    init(_ value: String) {
+        self.description = value
+    }
+
     init(
         rba: UInt32,
         partitionID: UInt16,
@@ -88,6 +92,21 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
 }
 
 extension RowID: OracleDecodable {
+    /// Since RowID is represented differently when received (either binary or b64 encoded string), we want to unify it here.
+    init(fromWire buffer: inout ByteBuffer) throws {
+        let rba = try buffer.throwingReadUB4()
+        let partitionID = try buffer.throwingReadUB2()
+        buffer.moveReaderIndex(forwardBy: 1)
+        let blockNumber = try buffer.throwingReadUB4()
+        let slotNumber = try buffer.throwingReadUB2()
+        self = RowID(
+            rba: rba,
+            partitionID: partitionID,
+            blockNumber: blockNumber,
+            slotNumber: slotNumber
+        )
+    }
+
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -95,17 +114,10 @@ extension RowID: OracleDecodable {
     ) throws {
         switch type {
         case .rowID:
-            let rba = try buffer.throwingReadUB4()
-            let partitionID = try buffer.throwingReadUB2()
-            buffer.moveReaderIndex(forwardBy: 1)
-            let blockNumber = try buffer.throwingReadUB4()
-            let slotNumber = try buffer.throwingReadUB2()
-            self = RowID(
-                rba: rba,
-                partitionID: partitionID,
-                blockNumber: blockNumber,
-                slotNumber: slotNumber
-            )
+            guard let value = buffer.readString(length: buffer.readableBytes) else {
+                throw OracleDecodingError.Code.missingData
+            }
+            self.description = value
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

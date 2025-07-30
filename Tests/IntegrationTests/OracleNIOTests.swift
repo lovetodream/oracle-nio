@@ -1154,16 +1154,16 @@ import class Foundation.ISO8601DateFormatter
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
         do {
-            try await conn.execute("DROP TABLE get_row_id_86", logger: .oracleTest)
+            try await conn.execute("DROP TABLE get_row_id_86_2", logger: .oracleTest)
         } catch let error as OracleSQLError {
             #expect(error.serverInfo?.number == 942)
         }
-        try await conn.execute("CREATE TABLE get_row_id_86 (id NUMBER)")
+        try await conn.execute("CREATE TABLE get_row_id_86_2 (id NUMBER)")
         let result = try await conn.execute(
-            "INSERT INTO get_row_id_86 (id) VALUES (1)")
+            "INSERT INTO get_row_id_86_2 (id) VALUES (1)")
         #expect(try await result.affectedRows == 1)
         let rowID = try #require(try await result.lastRowID)
-        let id = try await conn.execute("SELECT id FROM get_row_id_86 WHERE rowid = \(rowID)").collect().first?
+        let id = try await conn.execute("SELECT id FROM get_row_id_86_2 WHERE rowid = \(rowID)").collect().first?
             .decode(Int.self)
         #expect(id == 1)
     }
@@ -1172,13 +1172,13 @@ import class Foundation.ISO8601DateFormatter
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
         do {
-            try await conn.execute("DROP TABLE get_row_id_86_2", logger: .oracleTest)
+            try await conn.execute("DROP TABLE get_row_id_86_3", logger: .oracleTest)
         } catch let error as OracleSQLError {
             #expect(error.serverInfo?.number == 942)
         }
-        try await conn.execute("CREATE TABLE get_row_id_86_2 (id NUMBER)")
+        try await conn.execute("CREATE TABLE get_row_id_86_3 (id NUMBER)")
         let result = try await conn.execute(
-            "SELECT id FROM get_row_id_86_2")
+            "SELECT id FROM get_row_id_86_3")
         #expect(try await result.affectedRows == 0)
         #expect(try await result.lastRowID == nil)
     }

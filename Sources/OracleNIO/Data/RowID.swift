@@ -21,18 +21,21 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
         self.description = value
     }
 
-    init(
+    init?(
         rba: UInt32,
         partitionID: UInt16,
         blockNumber: UInt32,
         slotNumber: UInt16
     ) {
-        self.description = Self.makeDescription(
-            rba: rba,
-            partitionID: partitionID,
-            blockNumber: blockNumber,
-            slotNumber: slotNumber
-        )
+        guard
+            let value = Self.makeDescription(
+                rba: rba,
+                partitionID: partitionID,
+                blockNumber: blockNumber,
+                slotNumber: slotNumber
+            )
+        else { return nil }
+        self.description = value
     }
 
     private static func makeDescription(
@@ -40,7 +43,7 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
         partitionID: UInt16,
         blockNumber: UInt32,
         slotNumber: UInt16
-    ) -> String {
+    ) -> String? {
         if rba != 0 || partitionID != 0 || blockNumber != 0 || slotNumber != 0 {
             var bytes = [UInt8](
                 repeating: 0, count: Constants.TNS_MAX_ROWID_LENGTH
@@ -72,7 +75,7 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
             )
             return String(decoding: bytes, as: UTF8.self)
         }
-        return ""
+        return nil
     }
 
     private static func convertBase64(
@@ -93,13 +96,13 @@ public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
 
 extension RowID: OracleDecodable {
     /// Since RowID is represented differently when received (either binary or b64 encoded string), we want to unify it here.
-    init(fromWire buffer: inout ByteBuffer) throws {
+    init?(fromWire buffer: inout ByteBuffer) throws {
         let rba = try buffer.throwingReadUB4()
         let partitionID = try buffer.throwingReadUB2()
         buffer.moveReaderIndex(forwardBy: 1)
         let blockNumber = try buffer.throwingReadUB4()
         let slotNumber = try buffer.throwingReadUB2()
-        self = RowID(
+        self.init(
             rba: rba,
             partitionID: partitionID,
             blockNumber: blockNumber,

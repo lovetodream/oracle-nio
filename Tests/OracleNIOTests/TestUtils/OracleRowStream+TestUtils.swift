@@ -23,6 +23,7 @@ extension OracleRowStream {
         source: Source,
         eventLoop: any EventLoop = EmbeddedEventLoop(),
         affectedRows: Int? = nil,
+        lastRowID: RowID? = nil,
         rowCounts: [Int]? = nil,
         batchErrors: [OracleSQLError.BatchError]? = nil
     ) {
@@ -31,6 +32,7 @@ extension OracleRowStream {
             eventLoop: eventLoop,
             logger: OracleConnection.noopLogger,
             affectedRows: affectedRows,
+            lastRowID: lastRowID,
             rowCounts: rowCounts,
             batchErrors: batchErrors
         )

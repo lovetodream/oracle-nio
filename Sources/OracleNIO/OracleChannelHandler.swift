@@ -414,7 +414,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
         case .forwardRows(let rows):
             self.rowStream!.receive(rows)
-        case .forwardStreamComplete(let buffer, let cursorID, let affectedRows):
+        case .forwardStreamComplete(let buffer, let cursorID, let affectedRows, let lastRowID):
             guard let rowStream else {
                 // if the stream was cancelled we don't have it here anymore.
                 return
@@ -423,7 +423,7 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             if buffer.count > 0 {
                 rowStream.receive(buffer)
             }
-            rowStream.receive(completion: .success(affectedRows))
+            rowStream.receive(completion: .success(.init(affectedRows: affectedRows, lastRowID: lastRowID)))
 
             if cursorID != 0 {
                 self.cleanupContext.cursorsToClose.insert(cursorID)
@@ -729,18 +729,20 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 eventLoop: context.channel.eventLoop,
                 logger: result.logger,
                 affectedRows: nil,
+                lastRowID: nil,
                 rowCounts: result.rowCounts,
                 batchErrors: result.batchErrors
             )
             self.rowStream = rows
             promise.succeed(rows)
 
-        case .noRows(let affectedRows):
+        case .noRows(let affectedRows, let lastRowID):
             rows = OracleRowStream(
                 source: .noRows(.success(())),
                 eventLoop: context.channel.eventLoop,
                 logger: result.logger,
                 affectedRows: affectedRows,
+                lastRowID: lastRowID,
                 rowCounts: result.rowCounts,
                 batchErrors: result.batchErrors
             )

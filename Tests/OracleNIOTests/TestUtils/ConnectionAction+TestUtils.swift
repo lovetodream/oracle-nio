@@ -131,10 +131,11 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
         case (.forwardRows(let lhs), .forwardRows(let rhs)):
             return lhs == rhs
         case (
-            .forwardStreamComplete(let lhsRows, let lhsCursorID, let lhsAffectedRows),
-            .forwardStreamComplete(let rhsRows, let rhsCursorID, let rhsAffectedRows)
+            .forwardStreamComplete(let lhsRows, let lhsCursorID, let lhsAffectedRows, let lhsLastRowID),
+            .forwardStreamComplete(let rhsRows, let rhsCursorID, let rhsAffectedRows, let rhsLastRowID)
         ):
             return lhsRows == rhsRows && lhsCursorID == rhsCursorID && lhsAffectedRows == rhsAffectedRows
+                && lhsLastRowID == rhsLastRowID
         case (
             .forwardStreamError(let lhsError, let lhsRead, let lhsCursorID, let lhsClientCancelled),
             .forwardStreamError(let rhsError, let rhsRead, let rhsCursorID, let rhsClientCancelled)

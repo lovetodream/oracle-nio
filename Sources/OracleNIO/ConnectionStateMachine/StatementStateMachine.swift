@@ -48,7 +48,7 @@ struct StatementStateMachine {
         case evaluateErrorAtConnectionLevel(OracleSQLError)
 
         case forwardRows([DataRow])
-        case forwardStreamComplete([DataRow], cursorID: UInt16, affectedRows: Int)
+        case forwardStreamComplete([DataRow], cursorID: UInt16, affectedRows: Int, lastRowID: RowID?)
         /// Error payload and a optional cursor ID, which should be closed in a future roundtrip.
         case forwardStreamError(
             OracleSQLError,
@@ -319,7 +319,7 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         .init(
-                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0), lastRowID: error.rowID),
                             logger: context.logger,
                             batchErrors: batchErrors,
                             rowCounts: nil,
@@ -343,7 +343,7 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         .init(
-                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0), lastRowID: error.rowID),
                             logger: context.logger,
                             batchErrors: batchErrors,
                             rowCounts: rowCounts,
@@ -361,7 +361,8 @@ struct StatementStateMachine {
                 action = .forwardStreamComplete(
                     rows,
                     cursorID: error.cursorID ?? context.cursorID,
-                    affectedRows: Int(error.rowCount ?? 0)
+                    affectedRows: Int(error.rowCount ?? 0),
+                    lastRowID: error.rowID
                 )
 
             case .modifying:
@@ -445,7 +446,7 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         StatementResult(
-                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0), lastRowID: error.rowID),
                             logger: context.logger,
                             batchErrors: batchErrors,
                             rowCounts: nil,
@@ -466,7 +467,7 @@ struct StatementStateMachine {
                     action = .succeedStatement(
                         promise,
                         StatementResult(
-                            value: .noRows(affectedRows: Int(error.rowCount ?? 0)),
+                            value: .noRows(affectedRows: Int(error.rowCount ?? 0), lastRowID: error.rowID),
                             logger: context.logger,
                             batchErrors: batchErrors,
                             rowCounts: rowCounts,

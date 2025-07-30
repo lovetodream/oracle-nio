@@ -146,9 +146,12 @@ extension OracleBackendMessage {
                         columnValue = ByteBuffer(bytes: [0])  // NULL indicator
                     } else {
                         columnValue = ByteBuffer()
-                        let rowID = try RowID(fromWire: &buffer)
-                        try columnValue.writeLengthPrefixed(as: UInt8.self) {
-                            $0.writeString(rowID.description)
+                        if let rowID = try RowID(fromWire: &buffer) {
+                            try columnValue.writeLengthPrefixed(as: UInt8.self) {
+                                $0.writeString(rowID.description)
+                            }
+                        } else {
+                            columnValue = ByteBuffer(bytes: [0])  // NULL indicator
                         }
                     }
                 }

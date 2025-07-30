@@ -61,6 +61,17 @@ public struct OracleRowSequence: AsyncSequence, Sendable {
         }
     }
 
+    /// Receive the last row ID modified by the statement.
+    ///
+    /// The metric is only available after the query has completed, e.g. after all rows are retrieved from the server.
+    public var lastRowID: RowID? {
+        get async throws {
+            try await withCheckedThrowingContinuation { continuation in
+                listeners.addLastRowIDListener(continuation)
+            }
+        }
+    }
+
     internal var rowCounts: [Int] {
         listeners.rowCounts ?? []
     }

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-import _ConnectionPoolModule
+import _VendoredConnectionPoolModule
 
 final class OracleClientMetrics: ConnectionPoolObservabilityDelegate {
     typealias ConnectionID = OracleConnection.ID

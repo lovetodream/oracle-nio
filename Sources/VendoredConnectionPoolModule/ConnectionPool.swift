@@ -178,7 +178,7 @@ public final class ConnectionPool<
 
     @usableFromInline let stateBox: NIOLockedValueBox<State>
 
-    private let requestIDGenerator = _ConnectionPoolModule.ConnectionIDGenerator()
+    private let requestIDGenerator = _VendoredConnectionPoolModule.ConnectionIDGenerator()
 
     @usableFromInline
     let eventStream: AsyncStream<NewPoolActions>

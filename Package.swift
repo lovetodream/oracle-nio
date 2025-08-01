@@ -28,7 +28,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "_ConnectionPoolModule",
+            name: "_VendoredConnectionPoolModule",
             dependencies: [
                 .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "DequeModule", package: "swift-collections"),
@@ -49,7 +49,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_ConnectionPoolModule",
+                "_VendoredConnectionPoolModule",
             ]
         ),
         .testTarget(

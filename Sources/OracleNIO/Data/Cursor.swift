@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
 import Logging
+import NIOCore
 
 /// A datatype that maps to Oracle's `SYS_REFCURSOR`.
 ///

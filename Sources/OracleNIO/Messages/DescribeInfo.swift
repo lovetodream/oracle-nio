@@ -110,7 +110,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             )
             guard dbType._oracleType != nil else {
                 throw
-                OraclePartialDecodingError
+                    OraclePartialDecodingError
                     .fieldNotDecodable(type: OracleDataType.self)
             }
 
@@ -124,7 +124,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             }
 
             let nullsAllowed =
-            try buffer.throwingReadInteger(as: UInt8.self) != 0
+                try buffer.throwingReadInteger(as: UInt8.self) != 0
 
             buffer.moveReaderIndex(forwardBy: 1)  // v7 length of name
 
@@ -134,13 +134,13 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let name = try buffer.readString()
 
             let typeSchema: String? =
-            if try buffer.throwingReadUB4() > 0 {
-                try buffer.readString()  // current schema name, for intNamed
-            } else { nil }
+                if try buffer.throwingReadUB4() > 0 {
+                    try buffer.readString()  // current schema name, for intNamed
+                } else { nil }
             let typeName: String? =
-            if try buffer.throwingReadUB4() > 0 {
-                try buffer.readString()  // name of intNamed
-            } else { nil }
+                if try buffer.throwingReadUB4() > 0 {
+                    try buffer.readString()  // name of intNamed
+                } else { nil }
 
             buffer.skipUB2()  // column position
             buffer.skipUB4()  // uds flag

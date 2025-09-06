@@ -336,7 +336,7 @@ import class Foundation.ISO8601DateFormatter
     }
 
     @Test func commit() async throws {
-        try await withOracleConnection { conn1 in
+        try await withOracleConnection(on: self.eventLoop) { conn1 in
             do {
                 try await conn1.execute(
                     "DROP TABLE test_commit", logger: .oracleTest
@@ -363,7 +363,7 @@ import class Foundation.ISO8601DateFormatter
                 #expect(row.1 == "hello!")
             }
 
-            try await withOracleConnection { conn2 in
+            try await withOracleConnection(on: self.eventLoop) { conn2 in
                 let rowCountOnConn2BeforeCommit = try await conn2.execute(
                     "SELECT id, title FROM test_commit ORDER BY id", logger: .oracleTest
                 ).collect().count

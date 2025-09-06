@@ -66,7 +66,7 @@ public final class OracleClient: Sendable, Service {
         /// demand. Default to `0`.
         ///
         /// If the open connection count becomes less than ``minimumConnections`` new connections
-        /// are created immidiatly. Must be greater or equal to zero and less than ``maximumConnections``.
+        /// are created immediately. Must be greater or equal to zero and less than ``maximumConnections``.
         ///
         /// Idle connections are kept alive using the ``keepAliveBehavior``.
         public var minimumConnections: Int = 0
@@ -117,41 +117,21 @@ public final class OracleClient: Sendable, Service {
     ///           Defaults to `true`. More information on `DRCP` can be found
     ///           [here](https://www.oracle.com/docs/tech/drcp-technical-brief.pdf).
     ///   - eventLoopGroup: The underlying NIO `EventLoopGroup`. Defaults to ``defaultEventLoopGroup``.
-    public convenience init(
-        configuration: OracleConnection.Configuration,
-        options: Options = .init(),
-        drcp: Bool = true,
-        eventLoopGroup: any EventLoopGroup = OracleClient.defaultEventLoopGroup
-    ) {
-        self.init(
-            configuration: configuration,
-            options: options,
-            drcp: drcp,
-            eventLoopGroup: eventLoopGroup,
-            backgroundLogger: OracleConnection.noopLogger
-        )
-    }
-
-    /// Creates a new ``OracleClient``. Don't forget to run ``run()`` the client in a long running task.
-    /// - Parameters:
-    ///   - configuration: The client's configuration. See ``OracleConnection/Configuration``
-    ///   - options: The pool configuration. See ``Options``
-    ///   - drcp: Whether the database server supports `DRCP` (Database Resident Connection Pooling) or not.
-    ///           Defaults to `true`. More information on `DRCP` can be found
-    ///           [here](https://www.oracle.com/docs/tech/drcp-technical-brief.pdf).
-    ///   - eventLoopGroup: The underlying NIO `EventLoopGroup`. Defaults to ``defaultEventLoopGroup``.
     ///   - backgroundLogger: A `swift-log` `Logger` to log background messages to. A copy of this logger is also
-    ///                       forwarded to the created connections as a background logger.
+    ///                       forwarded to the created connections as a background logger. Defaults to logging disabled
     public init(
         configuration: OracleConnection.Configuration,
         options: Options = .init(),
         drcp: Bool = true,
         eventLoopGroup: any EventLoopGroup = OracleClient.defaultEventLoopGroup,
-        backgroundLogger: Logger
+        backgroundLogger: Logger = OracleConnection.noopLogger
     ) {
         let factory = ConnectionFactory(
-            config: configuration, drcp: drcp, eventLoopGroup: eventLoopGroup,
-            logger: backgroundLogger)
+            config: configuration,
+            drcp: drcp,
+            eventLoopGroup: eventLoopGroup,
+            logger: backgroundLogger
+        )
         self.factory = factory
         self.backgroundLogger = backgroundLogger
 
@@ -199,7 +179,7 @@ public final class OracleClient: Sendable, Service {
     ///         If the closure throws, a `ROLLBACK` will be issued, the original error rethrows.
     ///
     /// - Parameters:
-    ///   - logger: The `Logger` to log into for the transaction.
+    ///   - logger: The `Logger` to log into for the transaction. Defaults to logging disabled
     ///   - file: The file, the transaction was started in. Used for better error reporting.
     ///   - line: The line, the transaction was started in. Used for better error reporting.
     ///   - closure: A closure that uses the passed `OracleConnection`. The closure **must not** capture
@@ -207,7 +187,7 @@ public final class OracleClient: Sendable, Service {
     /// - Returns: The closure's return value.
     @discardableResult
     public func withTransaction<Result>(
-        logger: Logger? = nil,
+        logger: Logger = OracleConnection.noopLogger,
         file: String = #file,
         line: Int = #line,
         isolation: isolated (any Actor)? = #isolation,
@@ -248,7 +228,8 @@ public final class OracleClient: Sendable, Service {
     /// Returns the default `EventLoopGroup` singleton, automatically selecting the best for the platform.
     ///
     /// This will select the concrete `EventLoopGroup` depending which platform this is running on.
-    public static var defaultEventLoopGroup: EventLoopGroup {
+    @usableFromInline
+    static var defaultEventLoopGroup: EventLoopGroup {
         OracleConnection.defaultEventLoopGroup
     }
 }

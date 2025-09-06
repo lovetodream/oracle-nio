@@ -108,7 +108,7 @@ struct Description: Equatable {
 
         // build connect data segment
         var tempParts = [String]()
-        switch self.service {
+        switch self.service.base {
         case .serviceName(let serviceName):
             tempParts.append("(SERVICE_NAME=\(serviceName))")
         case .sid(let sid):

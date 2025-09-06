@@ -35,7 +35,7 @@ final class OracleClientMetrics: ConnectionPoolObservabilityDelegate {
     /// A connection attempt failed with the given error. After some period of
     /// time ``startedConnecting(id:)`` may be called again.
     func connectFailed(id: OracleConnection.ID, error: Error) {
-        self.logger.debug(
+        self.logger.info(
             "Connection creation failed",
             metadata: [
                 .connectionID: "\(id)",

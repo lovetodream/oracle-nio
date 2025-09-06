@@ -27,7 +27,7 @@ public struct OracleRow: Sendable {
     @usableFromInline
     let data: DataRow
     @usableFromInline
-    let columns: [OracleColumn]
+    let columns: [DescribeInfo.Column]
 }
 
 extension OracleRow: Equatable {
@@ -44,8 +44,8 @@ extension OracleRow: Sequence {
     public struct Iterator: IteratorProtocol {
         public typealias Element = OracleCell
 
-        private(set) var columnIndex: Array<OracleColumn>.Index
-        private(set) var columnIterator: Array<OracleColumn>.Iterator
+        private(set) var columnIndex: Array<DescribeInfo.Column>.Index
+        private(set) var columnIterator: Array<DescribeInfo.Column>.Iterator
         private(set) var dataIterator: DataRow.Iterator
 
         init(_ row: OracleRow) {
@@ -130,7 +130,7 @@ extension OracleRow {
 ///
 /// All subsequent cell access are O(1).
 public struct OracleRandomAccessRow {
-    let columns: [OracleColumn]
+    let columns: [DescribeInfo.Column]
     let cells: [ByteBuffer?]
     let lookupTable: [String: Int]
 

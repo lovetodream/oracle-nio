@@ -60,9 +60,8 @@ public final class OracleConnection: Sendable {
     let channel: Channel
     let logger: Logger
 
-    public var closeFuture: EventLoopFuture<Void> {
-        channel.closeFuture
-    }
+    var closeFuture: EventLoopFuture<Void> { self.channel.closeFuture }
+    var eventLoop: EventLoop { self.channel.eventLoop }
 
     public var isClosed: Bool {
         !self.channel.isActive
@@ -70,14 +69,13 @@ public final class OracleConnection: Sendable {
 
     public let id: ID
 
-    public var eventLoop: EventLoop { channel.eventLoop }
-
     /// The connection's session ID (SID).
     public let sessionID: Int
     let serialNumber: Int
     /// The version of the Oracle server, the connection is established to.
     public let serverVersion: OracleVersion
 
+    @usableFromInline
     static let noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
         SwiftLogNoOpLogHandler()
     }
@@ -350,35 +348,14 @@ extension OracleConnection {
     ///   - eventLoop: The `EventLoop` the connection shall be created on.
     ///   - configuration: A ``Configuration`` that shall be used for the connection.
     ///   - connectionID: An `Int` id, used for metadata logging.
-    /// - Returns: An established ``OracleConnection`` asynchronously that can be used to run
-    ///            queries.
-    public static func connect(
-        on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
-        configuration: OracleConnection.Configuration,
-        id connectionID: ID
-    ) async throws -> OracleConnection {
-        try await self.connect(
-            on: eventLoop,
-            configuration: configuration,
-            id: connectionID,
-            logger: self.noopLogger
-        )
-    }
-
-    /// Creates a new connection to an Oracle server.
-    ///
-    /// - Parameters:
-    ///   - eventLoop: The `EventLoop` the connection shall be created on.
-    ///   - configuration: A ``Configuration`` that shall be used for the connection.
-    ///   - connectionID: An `Int` id, used for metadata logging.
-    ///   - logger: A logger to log background events into.
+    ///   - logger: A logger to log background events into. Defaults to logging disabled
     /// - Returns: An established ``OracleConnection`` asynchronously that can be used to run
     ///            queries.
     public static func connect(
         on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
         configuration: OracleConnection.Configuration,
         id connectionID: ID,
-        logger: Logger
+        logger: Logger = OracleConnection.noopLogger
     ) async throws -> OracleConnection {
         var attempts = configuration.retryCount
         while attempts > 0 {
@@ -443,10 +420,10 @@ extension OracleConnection {
     public func execute(
         _ statement: OracleStatement,
         options: StatementOptions = .init(),
-        logger: Logger? = nil,
+        logger: Logger = OracleConnection.noopLogger,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
-        var logger = logger ?? Self.noopLogger
+        var logger = logger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
         logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
 
@@ -488,7 +465,7 @@ extension OracleConnection {
     public func execute<Statement: OraclePreparedStatement, Row>(
         _ statement: Statement,
         options: StatementOptions = .init(),
-        logger: Logger? = nil,
+        logger: Logger = OracleConnection.noopLogger,
         file: String = #fileID, line: Int = #line
     ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row {
         let sendableStatement = try OracleStatement(
@@ -501,10 +478,10 @@ extension OracleConnection {
     func execute(
         cursor: Cursor,
         options: StatementOptions = .init(),
-        logger: Logger? = nil,
+        logger: Logger,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleRowSequence {
-        var logger = logger ?? Self.noopLogger
+        var logger = logger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
         logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
 
@@ -539,14 +516,14 @@ extension OracleConnection {
     /// rollback the changes made within the closure.
     ///
     /// - Parameters:
-    ///   - logger: The `Logger` to log into for the transaction.
+    ///   - logger: The `Logger` to log into for the transaction. Defaults to logging disabled.
     ///   - file: The file, the transaction was started in. Used for better error reporting.
     ///   - line: The line, the transaction was started in. Used for better error reporting.
     ///   - closure: The user provided code to modify the database. Use the provided connection to run queries.
     ///              The connection must stay in the transaction mode. Otherwise this method will throw!
     /// - Returns: The closure's return value.
     public func withTransaction<Result>(
-        logger: Logger? = nil,
+        logger: Logger = OracleConnection.noopLogger,
         file: String = #file,
         line: Int = #line,
         isolation: isolated (any Actor)? = #isolation,
@@ -581,7 +558,8 @@ extension OracleConnection {
     /// platform.
     ///
     /// This will select the concrete `EventLoopGroup` depending on which platform this is running on.
-    public static var defaultEventLoopGroup: EventLoopGroup {
+    @usableFromInline
+    static var defaultEventLoopGroup: EventLoopGroup {
         #if canImport(Network)
             if #available(OSX 10.14, iOS 12.0, tvOS 12.0, watchOS 6.0, *) {
                 return NIOTSEventLoopGroup.singleton

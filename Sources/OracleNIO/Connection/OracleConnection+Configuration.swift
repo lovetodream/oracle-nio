@@ -399,21 +399,29 @@ private func sanitize(value: String) -> String {
         .replacingOccurrences(of: "=", with: "?")
 }
 
-public enum OracleAccessToken: Equatable {
-    /// Specifies an Azure AD OAuth2 token used for Open Authorization (OAuth 2.0) token
-    /// based authentication.
-    case oAuth2(String)
+public struct OracleAccessToken: Sendable, Equatable {
+    let base: Base
+
+    enum Base: Sendable, Equatable {
+        case oAuth2(String)
+        case tokenAndPrivateKey(token: String, key: String)
+    }
+
+    /// Allows to use OAuth 2.0 tokens managed in a Microsoft Entry ID service.
+    public static func oAuth2(with token: String) -> OracleAccessToken {
+        self.init(base: .oAuth2(token))
+    }
     /// Specifies the token and private key strings used for Oracle Cloud Infrastructure (OCI)
     /// Identity and Access Management (IAM) token based authentication.
-    case tokenAndPrivateKey(token: String, key: String)
+    public static func tokenAndPrivateKey(token: String, key: String) -> OracleAccessToken {
+        self.init(base: .tokenAndPrivateKey(token: token, key: key))
+    }
 }
 
-public struct OracleAuthenticationMethod:
-    Equatable, CustomDebugStringConvertible
-{
-    var base: Base
+public struct OracleAuthenticationMethod: Sendable, Equatable, CustomDebugStringConvertible {
+    let base: Base
 
-    enum Base: Equatable {
+    enum Base: Sendable, Equatable {
         case usernamePassword(String, String, String?)
         case token(OracleAccessToken)
     }
@@ -440,22 +448,34 @@ public struct OracleAuthenticationMethod:
         switch self.base {
         case .usernamePassword(let username, _, let newPassword):
             return """
-                OracleAuthenticationVariant(username: \(String(reflecting: username)), \
+                OracleAuthenticationMethod(username: \(String(reflecting: username)), \
                 password: ********, \
                 newPassword: \(newPassword != nil ? "********" : "nil"))
                 """
         case .token:
-            return "OracleAuthenticationVariant(token: ********)"
+            return "OracleAuthenticationMethod(token: ********)"
         }
     }
 
 }
 
-public enum OracleServiceMethod: Sendable, Equatable {
+public struct OracleServiceMethod: Sendable, Equatable {
+    let base: Base
+
+    enum Base: Sendable, Equatable {
+        case serviceName(String)
+        case sid(String)
+    }
+
     /// The service name of the database.
-    case serviceName(String)
+    public static func serviceName(_ value: String) -> OracleServiceMethod {
+        self.init(base: .serviceName(value))
+    }
+
     /// The system identifier (SID) of the database.
     ///
     /// - Note: Using a ``serviceName(_:)`` instead is recommended by Oracle.
-    case sid(String)
+    public static func sid(_ value: String) -> OracleServiceMethod {
+        self.init(base: .sid(value))
+    }
 }

@@ -27,18 +27,22 @@ public struct OracleRowSequence: AsyncSequence, Sendable {
 
     let backing: BackingSequence
     let lookupTable: [String: Int]
-    let columns: [OracleColumn]
+    let _columns: [DescribeInfo.Column]
     let listeners: OracleRowStream.MetadataListeners
+
+    public var columns: OracleColumns {
+        OracleColumns(underlying: _columns)
+    }
 
     init(
         _ backing: BackingSequence,
         lookupTable: [String: Int],
-        columns: [OracleColumn],
+        columns: [DescribeInfo.Column],
         listeners: OracleRowStream.MetadataListeners
     ) {
         self.backing = backing
         self.lookupTable = lookupTable
-        self.columns = columns
+        self._columns = columns
         self.listeners = listeners
     }
 
@@ -46,7 +50,7 @@ public struct OracleRowSequence: AsyncSequence, Sendable {
         AsyncIterator(
             backing: self.backing.makeAsyncIterator(),
             lookupTable: self.lookupTable,
-            columns: self.columns
+            columns: self._columns
         )
     }
 
@@ -88,7 +92,7 @@ extension OracleRowSequence {
         let backing: BackingSequence.AsyncIterator
 
         let lookupTable: [String: Int]
-        let columns: [OracleColumn]
+        let columns: [DescribeInfo.Column]
 
         public mutating func next() async throws -> OracleRow? {
             guard let dataRow = try await self.backing.next() else {

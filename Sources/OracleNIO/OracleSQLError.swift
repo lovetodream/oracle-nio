@@ -231,9 +231,9 @@ public struct OracleSQLError: Sendable, Error {
         /// The amount of rows affected by the operation.
         ///
         /// In most cases, this is `0`, although it is posslbe that a statement
-        /// (e.g. ``OracleConnection/executeBatch(_:binds:encodingContext:options:logger:file:line:)``
+        /// (e.g. ``OracleConnection/execute(_:binds:encodingContext:options:logger:file:line:)``
         /// executes some if its statements successfully, while others might have failed. In this case, `affectedRows` shows
-        /// how many operations have been succesful.
+        /// how many operations have been successful.
         ///
         ///
         /// Defaults to `0`.

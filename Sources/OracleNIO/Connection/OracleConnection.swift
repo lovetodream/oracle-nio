@@ -34,18 +34,18 @@ import class Foundation.ProcessInfo
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "configuration")
 ///
-/// You can now use your configuration to establish a connection using ``OracleConnection/connect(on:configuration:id:)``.
+/// You can now use your configuration to establish a connection using ``OracleConnection/connect(on:configuration:id:logger:)``.
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "connect")
 ///
 /// ## Usage
 ///
 /// Now you can use the connection to run queries on your database using
-/// ``OracleConnection/execute(_:options:logger:file:line:)-vguo``.
+/// ``OracleConnection/execute(_:options:logger:file:line:)->OracleRowSequence``.
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "use")
 ///
-/// After you're done, close the connection with ``OracleConnection/close()-4ny0f``.
+/// After you're done, close the connection with ``OracleConnection/close()``.
 ///
 /// @Snippet(path: "oracle-nio/Snippets/OracleConnection", slice: "close")
 ///
@@ -527,11 +527,12 @@ extension OracleConnection {
         file: String = #file,
         line: Int = #line,
         isolation: isolated (any Actor)? = #isolation,
-        _ closure: (OracleConnection) async throws -> sending Result
+        _ closure: (inout sending OracleTransactionConnection) async throws -> sending Result
     ) async throws(OracleTransactionError) -> sending Result {
         var closureHasFinished: Bool = false
         do {
-            let value = try await closure(self)
+            var conn = OracleTransactionConnection(self)
+            let value = try await closure(&conn)
             closureHasFinished = true
             try await self.commit()
             return value

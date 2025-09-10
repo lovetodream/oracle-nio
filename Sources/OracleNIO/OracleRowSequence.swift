@@ -117,6 +117,16 @@ extension OracleRowSequence {
     }
 }
 
+extension AsyncThrowingMapSequence where Base == OracleRowSequence {
+    public func collect() async throws -> [Transformed] {
+        var result = [Transformed]()
+        for try await row in self {
+            result.append(row)
+        }
+        return result
+    }
+}
+
 struct AdaptiveRowBuffer: NIOAsyncSequenceProducerBackPressureStrategy {
     static let defaultBufferTarget = 256
     static let defaultBufferMinimum = 1

@@ -590,8 +590,4 @@ protocol OracleRowsDataSource {
     func cancel(for stream: OracleRowStream)
 }
 
-#if swift(>=5.10)
-    extension OracleRowStream.MetadataListeners: Sendable {}
-#else
-    extension OracleRowStream.MetadataListeners: @unchecked Sendable {}
-#endif
+extension OracleRowStream.MetadataListeners: Sendable {}

@@ -14,7 +14,92 @@
 
 import Logging
 
-extension OracleConnection {
+/// A special kind of ``OracleConnection`` that can only be obtained and used during the lifetime of a transaction.
+///
+/// See ``OracleConnection/withTransaction(logger:file:line:isolation:_:)``.
+public struct OracleTransactionConnection {
+    /// A Oracle connection ID, used exclusively for logging.
+    public typealias ID = OracleConnection.ID
+
+    private let underlying: OracleConnection
+
+    init(_ underlying: OracleConnection) {
+        self.underlying = underlying
+    }
+
+    public var id: ID {
+        self.underlying.id
+    }
+
+    /// The connection's session ID (SID).
+    public var sessionID: Int {
+        self.underlying.sessionID
+    }
+
+    /// The version of the Oracle server, the connection is established to.
+    public var serverVersion: OracleVersion {
+        self.underlying.serverVersion
+    }
+
+    /// Sends a ping to the database server.
+    public func ping() async throws {
+        try await self.underlying.ping()
+    }
+
+    /// Run a statement on the Oracle server the connection is connected to.
+    ///
+    /// - Parameters:
+    ///   - statement: The ``OracleStatement`` to run.
+    ///   - options: A bunch of parameters to optimize the statement in different ways.
+    ///              Normally this can be ignored, but feel free to experiment based on your needs.
+    ///              Every option and its impact is documented.
+    ///   - logger: The `Logger` to log statement related background events into. Defaults to logging disabled.
+    ///   - file: The file, the statement was started in. Used for better error reporting.
+    ///   - line: The line, the statement was started in. Used for better error reporting.
+    /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the statement
+    ///            result. The result sequence can be discarded if the statement has no result.
+    @discardableResult
+    public func execute(
+        _ statement: OracleStatement,
+        options: StatementOptions = .init(),
+        logger: Logger = OracleConnection.noopLogger,
+        file: String = #fileID, line: Int = #line
+    ) async throws -> OracleRowSequence {
+        try await self.underlying.execute(
+            statement,
+            options: options,
+            logger: logger,
+            file: file,
+            line: line
+        )
+    }
+
+    /// Execute a prepared statement.
+    /// - Parameters:
+    ///   - statement: The statement to be executed.
+    ///   - options: A bunch of parameters to optimize the statement in different ways.
+    ///              Normally this can be ignored, but feel free to experiment based on your needs.
+    ///              Every option and its impact is documented.
+    ///   - logger: The `Logger` to log statement related background events into. Defaults to logging disabled.
+    ///   - file: The file, the statement was started in. Used for better error reporting.
+    ///   - line: The line, the statement was started in. Used for better error reporting.
+    /// - Returns: An async sequence of `Row`s. The result sequence can be discarded if the statement has no result.
+    @discardableResult
+    public func execute<Statement: OraclePreparedStatement, Row>(
+        _ statement: Statement,
+        options: StatementOptions = .init(),
+        logger: Logger = OracleConnection.noopLogger,
+        file: String = #fileID, line: Int = #line
+    ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row {
+        try await self.underlying.execute(
+            statement,
+            options: options,
+            logger: logger,
+            file: file,
+            line: line
+        )
+    }
+
     /// Executes the statement multiple times using the specified bind collections without requiring multiple roundtrips to the database.
     /// - Parameters:
     ///   - statement: The raw SQL statement.
@@ -53,18 +138,10 @@ extension OracleConnection {
         logger: Logger = OracleConnection.noopLogger,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleBatchExecutionResult {
-        var logger = logger
-        logger[oracleMetadataKey: .connectionID] = "\(self.id)"
-        logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
-
-        var collection = OracleBindingsCollection()
-        for row in binds {
-            try collection.appendRow(repeat each row, context: encodingContext)
-        }
-
-        return try await _executeBatch(
-            statement: statement,
-            collection: collection,
+        try await self.underlying.execute(
+            statement,
+            binds: binds,
+            encodingContext: encodingContext,
             options: options,
             logger: logger,
             file: file,
@@ -102,106 +179,15 @@ extension OracleConnection {
         logger: Logger = OracleConnection.noopLogger,
         file: String = #fileID, line: Int = #line
     ) async throws -> OracleBatchExecutionResult {
-        if statements.isEmpty {
-            throw OracleSQLError.missingStatement
-        }
-
-        var logger = logger
-        logger[oracleMetadataKey: .connectionID] = "\(self.id)"
-        logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
-
-        var collection = OracleBindingsCollection()
-        for statement in statements {
-            try collection.appendRow(statement.makeBindings())
-        }
-        return try await _executeBatch(
-            statement: Statement.sql,
-            collection: collection,
+        try await self.underlying.execute(
+            statements,
             options: options,
             logger: logger,
             file: file,
             line: line
         )
     }
-
-    private func _executeBatch(
-        statement: String,
-        collection: OracleBindingsCollection,
-        options: StatementOptions,
-        logger: Logger,
-        file: String,
-        line: Int
-    ) async throws -> OracleBatchExecutionResult {
-        let promise = self.channel.eventLoop.makePromise(
-            of: OracleRowStream.self
-        )
-        let context = StatementContext(
-            statement: statement,
-            bindCollection: collection,
-            options: options,
-            logger: logger,
-            promise: promise
-        )
-
-        self.channel.write(OracleTask.statement(context), promise: nil)
-
-        do {
-            let stream = try await promise.futureResult
-                .map({ $0.asyncSequence() })
-                .get()
-            let affectedRows = try await stream.affectedRows
-            let affectedRowsPerStatement = options.arrayDMLRowCounts ? stream.rowCounts : nil
-            let batchErrors = options.batchErrors ? stream.batchErrors : nil
-            let result = OracleBatchExecutionResult(
-                affectedRows: affectedRows,
-                affectedRowsPerStatement: affectedRowsPerStatement
-            )
-            if let batchErrors {
-                throw OracleBatchExecutionError(
-                    result: result,
-                    errors: batchErrors,
-                    statement: statement,
-                    file: file,
-                    line: line
-                )
-            }
-            return result
-        } catch var error as OracleSQLError {
-            error.file = file
-            error.line = line
-            error.statement = .init(unsafeSQL: statement)
-            throw error  // rethrow with more metadata
-        }
-    }
 }
 
-/// The result of a batch execution.
-public struct OracleBatchExecutionResult: Sendable {
-    /// The total amount of affected rows.
-    public let affectedRows: Int
-    /// The amount of affected rows per statement.
-    ///
-    /// - Note: Only available if ``StatementOptions/arrayDMLRowCounts`` is set to `true`.
-    ///
-    /// For example, if five single row `INSERT` statements are executed and the fifth one fails, the following array would be returned.
-    /// ```swift
-    /// [1, 1, 1, 1, 0]
-    /// ```
-    public let affectedRowsPerStatement: [Int]?
-}
-
-/// An error that is thrown when a batch execution contains both successful and failed statements.
-///
-/// - Note: This error is only thrown when ``StatementOptions/batchErrors`` is set to `true`.
-///         Otherwise ``OracleSQLError`` will be thrown as usual. Be aware that all the statements
-///         executed before the error is thrown won't be reverted regardless of this setting.
-///         They can still be reverted using a ``OracleConnection/rollback()``.
-public struct OracleBatchExecutionError: Error, Sendable {
-    /// The result of the partially finished batch execution.
-    public let result: OracleBatchExecutionResult
-    /// A collection of errors thrown by statements in the batch execution.
-    public let errors: [OracleSQLError.BatchError]
-    public let statement: String
-    public let file: String
-    public let line: Int
-}
+@available(*, unavailable)
+extension OracleTransactionConnection: Sendable {}

@@ -91,7 +91,7 @@
             try await client.withTransaction { connection in
                 _ = try? await connection.execute("DROP TABLE test_pool_transaction_success")
                 try await connection.execute("CREATE TABLE test_pool_transaction_success (id NUMBER)")
-                let affectedRows = try await connection.executeBatch(
+                let affectedRows = try await connection.execute(
                     "INSERT INTO test_pool_transaction_success (id) VALUES (:1)",
                     binds: Array(1...10)
                 ).affectedRows
@@ -118,7 +118,7 @@
                 try await client.withTransaction { connection in
                     _ = try? await connection.execute("DROP TABLE test_pool_transaction_failure")
                     try await connection.execute("CREATE TABLE test_pool_transaction_failure (id VARCHAR2(1 byte))")
-                    try await connection.executeBatch(
+                    try await connection.execute(
                         "INSERT INTO test_pool_transaction_failure (id) VALUES (:1)",
                         binds: Array(1...10).map({ "\($0)" })
                     )

@@ -47,7 +47,7 @@
                     (4, "Jill", 50),
                     (5, "Pete", nil),
                 ]
-                let batchResult = try await connection.executeBatch(
+                let batchResult = try await connection.execute(
                     "INSERT INTO users_simple_batch_exec (id, name, age) VALUES (:1, :2, :3)", binds: binds)
                 #expect(batchResult.affectedRows == binds.count)
                 let stream = try await connection.execute(
@@ -106,7 +106,7 @@
                     InsertUserStatement(id: 4, name: "Jill", age: 50),
                     InsertUserStatement(id: 5, name: "Pete", age: 60),
                 ]
-                let batchResult = try await connection.executeBatch(binds)
+                let batchResult = try await connection.execute(binds)
                 #expect(batchResult.affectedRows == binds.count)
                 let stream = try await connection.execute(
                     "SELECT id, name, age FROM users_prepared_statement_batch_exec ORDER BY id ASC")
@@ -166,7 +166,7 @@
                     InsertUserStatement(id: 5, name: "Pete", age: 60),
                 ]
                 do {
-                    try await connection.executeBatch(binds)
+                    try await connection.execute(binds)
                 } catch let error as OracleSQLError {
                     // expect a value too long for column error here
                     guard error.serverInfo?.number == 12899 else { throw error }
@@ -235,7 +235,7 @@
                 options.batchErrors = true
                 options.arrayDMLRowCounts = true
                 do {
-                    try await connection.executeBatch(binds, options: options)
+                    try await connection.execute(binds, options: options)
                 } catch let error as OracleBatchExecutionError {
                     #expect(error.result.affectedRows == 4)
                     #expect(error.result.affectedRowsPerStatement == [1, 1, 0, 1, 1])

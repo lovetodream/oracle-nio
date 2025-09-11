@@ -27,7 +27,8 @@ jobs:
         exit $(git status --porcelain | wc -l)
 
   api-breakage:
-    if: github.event_name == 'pull_request'
+    # broken in gh actions?
+    if: github.event_name == 'pull_requesta' 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -23,7 +23,8 @@ import struct Foundation.Calendar
 import struct Foundation.Date
 import class Foundation.ISO8601DateFormatter
 
-@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1", "running only smoke test suite")) final class OracleNIOTests {
+@Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1", "running only smoke test suite"), .timeLimit(.minutes(5)))
+final class OracleNIOTests {
 
     private let group: EventLoopGroup
 
@@ -31,11 +32,7 @@ import class Foundation.ISO8601DateFormatter
 
     init() async throws {
         #expect(isLoggingConfigured)
-        self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-    }
-
-    deinit {
-        #expect(throws: Never.self, performing: { try self.group.syncShutdownGracefully() })
+        self.group = NIOSingletons.posixEventLoopGroup
     }
 
     // MARK: Tests

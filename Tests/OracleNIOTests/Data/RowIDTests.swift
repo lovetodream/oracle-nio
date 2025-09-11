@@ -16,7 +16,7 @@ import Testing
 
 @testable import OracleNIO
 
-@Suite struct RowIDTests {
+@Suite(.timeLimit(.minutes(5))) struct RowIDTests {
     @Test func description() {
         let id = RowID(
             rba: 76402,

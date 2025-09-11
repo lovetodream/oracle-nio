@@ -18,7 +18,7 @@ import Testing
 
 @testable import OracleNIO
 
-@Suite struct StatementStateMachineTests {
+@Suite(.timeLimit(.minutes(5))) struct StatementStateMachineTests {
     @Test func queryWithoutDataRowsHappyPath() throws {
         let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
         promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.

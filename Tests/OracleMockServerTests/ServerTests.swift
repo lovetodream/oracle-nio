@@ -17,7 +17,7 @@ import Testing
 
 @testable import OracleMockServer
 
-@Suite(.serialized) struct ServerTests {
+@Suite(.serialized, .timeLimit(.minutes(5))) struct ServerTests {
     @available(macOS 14.0, *)
     func runWithServer(_ body: (OracleConnection) async throws -> Void) async throws {
         var server: Task<Void, Error>!

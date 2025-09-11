@@ -42,7 +42,7 @@ let macrosAvailable = true
 let macrosAvailable = false
 #endif
 
-@Suite(.enabled(if: macrosAvailable, "macros are only supported when running tests for the host platform"))
+@Suite(.enabled(if: macrosAvailable, "macros are only supported when running tests for the host platform"), .timeLimit(.minutes(5)))
 struct PreparedStatementsOracleNIOTests {
     @Test func macro() throws {
         #if canImport(OracleNIOMacros)

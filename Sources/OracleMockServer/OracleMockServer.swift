@@ -27,7 +27,7 @@ public final class OracleMockServer {
     public static func run(continuation: CheckedContinuation<Void, Never>? = nil) async throws {
         let logger = Logger(label: "OracleMockServer")
 
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let eventLoopGroup = NIOSingletons.posixEventLoopGroup
         let serverChannel = try await ServerBootstrap(group: eventLoopGroup)
             .serverChannelOption(.backlog, value: 256)
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)

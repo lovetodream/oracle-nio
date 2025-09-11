@@ -21,7 +21,7 @@ import Testing
 
 @testable import OracleNIO
 
-@Suite struct OracleRowSequenceTests {
+@Suite(.timeLimit(.minutes(5))) struct OracleRowSequenceTests {
     let logger = Logger(label: "OracleRowSequenceTests")
 
     let testColumn = DescribeInfo.Column(

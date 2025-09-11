@@ -126,9 +126,9 @@ public final class OracleRef: Sendable, Hashable {
     /// This method uses the ``OracleDecodable/init(from:type:context:)`` to decode
     /// the value internally.
     ///
-    /// - Parameter of: The type of the returned value.
+    /// - Parameter as: The type of the returned value.
     /// - Returns: A value of the specified type.
-    public func decode<V: OracleDecodable>(of: V.Type = V.self) throws -> V {
+    public func decode<V: OracleDecodable>(as: V.Type = V.self) throws -> V {
         var buffer: ByteBuffer?
         self.storage.withLockedValue { storage in
             let length = Int(storage?.getInteger(at: 0, as: UInt8.self) ?? 0)

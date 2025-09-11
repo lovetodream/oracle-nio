@@ -155,7 +155,7 @@
                     "INSERT INTO \(unescaped: tableName) (id, content) VALUES (1, empty_blob()) RETURNING content INTO \(lobRef)",
                     options: .init(fetchLOBs: true)
                 )
-                let lob = try lobRef.decode(of: LOB.self)
+                let lob = try lobRef.decode(as: LOB.self)
                 var offset = 1
                 let chunkSize = 65536
                 while buffer.readableBytes > 0,
@@ -185,7 +185,7 @@
                     "INSERT INTO \(unescaped: tableName) (id, content) VALUES (1, empty_blob()) RETURNING content INTO \(lobRef)",
                     options: .init(fetchLOBs: true)
                 )
-                let lob = try lobRef.decode(of: LOB.self)
+                let lob = try lobRef.decode(as: LOB.self)
                 var offset = 1
                 let chunkSize = 65536
                 try await lob.open(on: connection)

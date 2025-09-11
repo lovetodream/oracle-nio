@@ -646,7 +646,7 @@ import class Foundation.ISO8601DateFormatter
             END IF;
             END;
             """)
-        let result = try bind.decode(of: Int?.self)
+        let result = try bind.decode(as: Int?.self)
         #expect(result == nil)
     }
 
@@ -670,7 +670,7 @@ import class Foundation.ISO8601DateFormatter
             try await conn.execute(
                 "INSERT INTO my_non_existing_table(id) VALUES (1) RETURNING id INTO \(bind)",
                 logger: .oracleTest)
-            _ = try bind.decode(of: Int?.self)
+            _ = try bind.decode(as: Int?.self)
             Issue.record("Query on non existing table did not return an error, but it should have")
         } catch let error as OracleSQLError {
             #expect(error.serverInfo?.number == 942)  // Table or view doesn't exist
@@ -730,7 +730,7 @@ import class Foundation.ISO8601DateFormatter
             try await conn.execute(
                 "INSERT INTO my_constrained_table(title, my_type) VALUES ('hello', 2) RETURNING id INTO \(bind)",
                 logger: logger)
-            _ = try bind.decode(of: Int?.self)
+            _ = try bind.decode(as: Int?.self)
             Issue.record("Query with invalid constraint did not return an error, but it should have")
         } catch let error as OracleSQLError {
             #expect(error.serverInfo?.number == 2291)  // Constraint error
@@ -858,7 +858,7 @@ import class Foundation.ISO8601DateFormatter
                 get_length(\(myValue), \(myCountBind));
             END;
             """)
-        let myCount = try myCountBind.decode(of: Int.self)
+        let myCount = try myCountBind.decode(as: Int.self)
         print(myCount)  // 13
         #expect(myCount == 13)
     }
@@ -884,7 +884,7 @@ import class Foundation.ISO8601DateFormatter
                 GET_RANDOM_RECORD_TEST3(\(myNameBind));
             END;
             """)
-        let myName = try myNameBind.decode(of: String.self)
+        let myName = try myNameBind.decode(as: String.self)
         #expect(myName == "DummyName")
     }
 
@@ -972,7 +972,7 @@ import class Foundation.ISO8601DateFormatter
             """)
         let cursorRef = OracleRef(dataType: .cursor)
         try await conn.execute("BEGIN testreport77(50, \(cursorRef)); END;")
-        let cursor = try cursorRef.decode(of: Cursor.self)
+        let cursor = try cursorRef.decode(as: Cursor.self)
         #expect(
             cursor.columns.map(\.name) == [
                 "INPUT_VALUE", "DOUBLED_VALUE_STR", "ALPHABETS", "DOUBLED_VALUE", "INCREASED_VALUE",
@@ -1144,7 +1144,7 @@ import class Foundation.ISO8601DateFormatter
         let result = try await conn.execute(
             "INSERT INTO get_row_id_86 (id) VALUES (1) RETURNING rowid INTO \(rowIDRef)")
         #expect(try await result.affectedRows == 1)
-        let rowID = try rowIDRef.decode(of: RowID.self)
+        let rowID = try rowIDRef.decode(as: RowID.self)
         let id = try await conn.execute("SELECT id FROM get_row_id_86 WHERE rowid = \(rowID)").collect().first?
             .decode(Int.self)
         #expect(id == 1)
@@ -1181,6 +1181,22 @@ import class Foundation.ISO8601DateFormatter
             "SELECT id FROM get_row_id_86_3")
         #expect(try await result.affectedRows == 0)
         #expect(try await result.lastRowID == nil)
+    }
+
+    @Test func binaryIntegerConversion() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
+        let ref = OracleRef(dataType: .binaryInteger)
+        try await conn.execute(
+            """
+            declare
+            p1 PLS_INTEGER := 40;
+            begin
+            \(ref) := p1;
+            end;
+            """, logger: .oracleTest)
+        let result = try ref.decode(as: OracleNumber.self)
+        #expect(result == 40)
     }
 
 }

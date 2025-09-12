@@ -14,7 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.Data
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension Data: OracleEncodable {
     public static var defaultOracleType: OracleDataType { .raw }

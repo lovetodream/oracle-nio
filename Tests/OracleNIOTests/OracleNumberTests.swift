@@ -14,9 +14,14 @@
 
 import Testing
 
-import struct Foundation.Decimal
-
 @testable import OracleNIO
+
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 
 @Suite struct OracleNumberTests {
     @Test func description() {

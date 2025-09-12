@@ -14,7 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.UUID
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension OracleBackendMessage {
     struct Accept: PayloadDecodable, Hashable {

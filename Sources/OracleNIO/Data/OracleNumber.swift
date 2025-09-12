@@ -14,8 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.Decimal
-import class Foundation.NSDecimalNumber
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 /// A primitive type used to encode numeric values to Oracle's `NUMBER` datatype.
 ///

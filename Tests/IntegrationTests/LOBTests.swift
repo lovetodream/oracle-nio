@@ -18,9 +18,11 @@ import NIOCore
 import OracleNIO
 import Testing
 
-import class Foundation.Bundle
-import struct Foundation.Data
-import struct Foundation.URL
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 @Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1"), .timeLimit(.minutes(5))) final class LOBTests {
     let fileURL: URL!

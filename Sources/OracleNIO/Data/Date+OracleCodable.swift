@@ -14,11 +14,19 @@
 
 import NIOCore
 
-import struct Foundation.Calendar
-import struct Foundation.Date
-import struct Foundation.DateComponents
-import struct Foundation.TimeZone
-import func Foundation.pow
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
+#endif
+
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension Date: OracleEncodable {
     public static var defaultOracleType: OracleDataType { .timestampTZ }

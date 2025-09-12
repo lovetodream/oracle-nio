@@ -16,10 +16,11 @@ import Atomics
 import Crypto
 import NIOCore
 
-import struct Foundation.Date
-import class Foundation.DateFormatter
-import struct Foundation.Locale
-import struct Foundation.TimeZone
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 struct OracleFrontendMessageEncoder {
     static let headerSize = 8

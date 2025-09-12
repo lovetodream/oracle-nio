@@ -14,8 +14,6 @@
 
 import NIOCore
 
-import class Foundation.NSDictionary
-
 extension OracleBackendMessage {
     struct Parameter: PayloadDecodable, ExpressibleByDictionaryLiteral, Hashable {
 

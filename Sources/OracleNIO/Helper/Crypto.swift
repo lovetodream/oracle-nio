@@ -16,7 +16,11 @@ import Crypto
 import RegexBuilder
 import _CryptoExtras
 
-import struct Foundation.Data
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 func decryptCBC(_ key: [UInt8], _ encryptedText: [UInt8]) throws -> [UInt8] {
     let iv = [UInt8](repeating: 0, count: 16)

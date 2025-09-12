@@ -14,10 +14,14 @@
 
 import Testing
 
-import struct Foundation.Date
-import struct Foundation.TimeZone
-
 @testable import OracleNIO
+
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 
 @Suite(.timeLimit(.minutes(5))) struct OracleFrontendMessageEncoderTests {
     @Test func alterTimezone() {

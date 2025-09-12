@@ -13,9 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-import NIOFoundationCompat
 
-import struct Foundation.UUID
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension UUID: OracleDecodable {
     public init(
@@ -41,5 +44,45 @@ extension UUID: OracleDecodable {
         default:
             throw OracleDecodingError.Code.typeMismatch
         }
+    }
+
+    private static func getUUIDBytes(at index: Int, from buffer: inout ByteBuffer) -> UUID? {
+        guard let chunk1 = buffer.getInteger(at: index, as: UInt64.self),
+            let chunk2 = buffer.getInteger(at: index + 8, as: UInt64.self)
+        else {
+            return nil
+        }
+
+        let uuidBytes = (
+            UInt8(truncatingIfNeeded: chunk1 >> 56),
+            UInt8(truncatingIfNeeded: chunk1 >> 48),
+            UInt8(truncatingIfNeeded: chunk1 >> 40),
+            UInt8(truncatingIfNeeded: chunk1 >> 32),
+            UInt8(truncatingIfNeeded: chunk1 >> 24),
+            UInt8(truncatingIfNeeded: chunk1 >> 16),
+            UInt8(truncatingIfNeeded: chunk1 >> 8),
+            UInt8(truncatingIfNeeded: chunk1),
+            UInt8(truncatingIfNeeded: chunk2 >> 56),
+            UInt8(truncatingIfNeeded: chunk2 >> 48),
+            UInt8(truncatingIfNeeded: chunk2 >> 40),
+            UInt8(truncatingIfNeeded: chunk2 >> 32),
+            UInt8(truncatingIfNeeded: chunk2 >> 24),
+            UInt8(truncatingIfNeeded: chunk2 >> 16),
+            UInt8(truncatingIfNeeded: chunk2 >> 8),
+            UInt8(truncatingIfNeeded: chunk2)
+        )
+
+        return UUID(uuid: uuidBytes)
+    }
+
+    /// Read a `UUID` from the first 16 bytes in the buffer. Advances the reader index.
+    ///
+    /// - Returns: The `UUID` or `nil` if the buffer did not contain enough bytes.
+    private static func readUUIDBytes(from buffer: inout ByteBuffer) -> UUID? {
+        guard let uuid = buffer.getUUIDBytes(at: buffer.readerIndex) else {
+            return nil
+        }
+        buffer.moveReaderIndex(forwardBy: MemoryLayout<uuid_t>.size)
+        return uuid
     }
 }

@@ -18,7 +18,11 @@ import NIOCore
 import NIOSSL
 import OracleNIO
 
-import func Foundation.getenv
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension OracleConnection.Configuration {
 

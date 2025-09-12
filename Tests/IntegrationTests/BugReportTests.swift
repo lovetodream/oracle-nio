@@ -17,10 +17,25 @@ import NIOPosix
 import OracleNIO
 import Testing
 
-import struct Foundation.Calendar
-import struct Foundation.Date
-import struct Foundation.DateComponents
-import struct Foundation.UUID
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
+#endif
+
+#if canImport(FoundationEssentials)
+    import struct FoundationEssentials.Calendar
+    import struct FoundationEssentials.Date
+    import struct FoundationEssentials.DateComponents
+    import struct FoundationEssentials.UUID
+#else
+    import struct Foundation.Calendar
+    import struct Foundation.Date
+    import struct Foundation.DateComponents
+    import struct Foundation.UUID
+#endif
 
 @Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1"), .timeLimit(.minutes(5)))
 final class BugReportTests: IntegrationTest {

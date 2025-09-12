@@ -19,7 +19,11 @@ import NIOCore
 import NIOPosix
 import NIOSSL
 
-import class Foundation.ProcessInfo
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 #if canImport(Network)
     import NIOTransportServices

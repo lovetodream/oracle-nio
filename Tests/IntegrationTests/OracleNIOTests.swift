@@ -19,9 +19,11 @@ import NIOPosix
 import OracleNIO
 import Testing
 
-import struct Foundation.Calendar
-import struct Foundation.Date
-import class Foundation.ISO8601DateFormatter
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 @Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1", "running only smoke test suite"), .timeLimit(.minutes(5)))
 final class OracleNIOTests {

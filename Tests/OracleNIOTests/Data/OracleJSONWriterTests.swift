@@ -15,9 +15,14 @@
 import NIOCore
 import Testing
 
-import struct Foundation.Date
-
 @testable import OracleNIO
+
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 
 @Suite(.timeLimit(.minutes(5))) struct OracleJSONWriterTests {
     @Test func encodeNull() throws {

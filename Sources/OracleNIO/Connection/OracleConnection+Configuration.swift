@@ -16,10 +16,11 @@ import NIOCore
 import NIOPosix
 import NIOSSL
 
-import struct Foundation.Data
-import class Foundation.ProcessInfo
-import struct Foundation.TimeZone
-import struct Foundation.URL
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension OracleConnection {
     /// A configuration object for a connection.

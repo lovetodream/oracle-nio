@@ -12,7 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import protocol Foundation.DataProtocol
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 let charA = UInt8(UnicodeScalar("a").value)
 let char0 = UInt8(UnicodeScalar("0").value)

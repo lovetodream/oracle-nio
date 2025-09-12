@@ -14,7 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.Date
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 struct OracleJSONParser {
     var flags: UInt16 = 0

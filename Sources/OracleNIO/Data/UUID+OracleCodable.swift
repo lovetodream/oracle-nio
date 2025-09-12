@@ -28,7 +28,7 @@ extension UUID: OracleDecodable {
     ) throws {
         switch type {
         case .raw, .longRAW:
-            guard let uuid = buffer.readUUIDBytes() else {
+            guard let uuid = Self.readUUIDBytes(from: &buffer) else {
                 throw OracleDecodingError.Code.failure
             }
             self = uuid

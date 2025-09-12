@@ -79,9 +79,11 @@ public struct OracleNumber:
         self.init(value, ascii: value.ascii)
     }
 
-    public init(decimal: Decimal) {
-        self.init((decimal as NSDecimalNumber).doubleValue, ascii: decimal.description.ascii)
-    }
+    #if false  // currently unsupported: https://github.com/swiftlang/swift-foundation/issues/1285
+        public init(decimal: Decimal) {
+            self.init((decimal as NSDecimalNumber).doubleValue, ascii: decimal.description.ascii)
+        }
+    #endif
 
     internal init(_ numeric: Double, ascii: [UInt8]) {
         var buffer = ByteBuffer()

@@ -18,7 +18,7 @@ extension OracleClient {
     /// A managed version of ``OracleConnection`` that can only be obtained from an ``OracleClient``.
     ///
     /// It cannot be captured nor closed manually.
-    public struct PooledConnection {
+    public struct PooledConnection: OracleConnectionProtocol {
         /// A Oracle connection ID, used exclusively for logging.
         public typealias ID = OracleConnection.ID
 

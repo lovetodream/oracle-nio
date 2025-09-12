@@ -127,6 +127,7 @@ func withOracleConnection<Result>(
         id: connectionID,
         logger: logger
     )
+
     do {
         let result = try await closure(connection)
         try await connection.close()

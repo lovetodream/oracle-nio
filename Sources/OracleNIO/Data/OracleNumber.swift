@@ -15,18 +15,19 @@
 import NIOCore
 
 import struct Foundation.Decimal
+import class Foundation.NSDecimalNumber
 
 /// A primitive type used to encode numeric values to Oracle's `NUMBER` datatype.
 ///
 /// If you want to send `NUMBER` values to your database, you need to wrap your numerics
-/// (Int, Float, Double) in this type. Otherwise they will be sent as their corresponding Oracle datatype.
+/// (Float, Double) in this type. Otherwise they will be sent as their corresponding Oracle datatype.
 ///
 ///
 /// ## Numeric type conversions
 ///
 /// | Swift type | Oracle type |
 /// | --- | --- |
-/// | `Int` | `BINARY_INTEGER` |
+/// | `Int` | `NUMBER` |
 /// | `Float` | `BINARY_FLOAT` |
 /// | `Double` | `BINARY_DOUBLE` |
 /// | `OracleNumber` | `NUMBER` |
@@ -34,69 +35,64 @@ import struct Foundation.Decimal
 /// > Note: It's possible to decode `OracleNumber` to any numeric Swift type.
 public struct OracleNumber:
     CustomStringConvertible, CustomDebugStringConvertible,
-    ExpressibleByStringLiteral, ExpressibleByIntegerLiteral,
-    ExpressibleByFloatLiteral, Equatable, Hashable, Sendable
+    ExpressibleByIntegerLiteral, ExpressibleByFloatLiteral,
+    LosslessStringConvertible, Equatable, Hashable, Sendable
 {
-    internal var value: ByteBuffer
-
-    public var double: Double? {
-        try? requireDouble()
-    }
-
-    func requireDouble() throws -> Double {
-        var value = value
-        value.moveReaderIndex(to: 0)
-        return try OracleNumeric.parseFloat(from: &value)
-    }
+    internal let value: ByteBuffer
+    public let doubleValue: Double
 
     public var description: String {
-        if let double = self.double {
-            return "\(double)"
-        }
-        return "<invalid_number>"
+        self.doubleValue.description
     }
 
     public var debugDescription: String {
         String(describing: value)
     }
 
-    public init<T: Numeric>(_ value: T) where T: LosslessStringConvertible {
-        self.init(ascii: value.ascii)
+    public init?(_ description: String) {
+        guard let value = Double(description) else {
+            return nil
+        }
+        self.init(value, ascii: value.ascii)
     }
 
-    public init(stringLiteral value: String) {
-        self.init(ascii: value.ascii)
+    public init<T: FixedWidthInteger>(_ value: T) {
+        self.init(.init(value), ascii: value.ascii)
+    }
+
+    public init(_ value: Float) {
+        self.init(.init(value), ascii: value.ascii)
+    }
+
+    public init(_ value: Double) {
+        self.init(.init(value), ascii: value.ascii)
     }
 
     public init(integerLiteral value: Int) {
-        self.init(ascii: value.ascii)
+        self.init(.init(value), ascii: value.ascii)
     }
 
     public init(floatLiteral value: Double) {
-        self.init(ascii: value.ascii)
+        self.init(value, ascii: value.ascii)
     }
 
     public init(decimal: Decimal) {
-        self.init(ascii: decimal.description.ascii)
+        self.init((decimal as NSDecimalNumber).doubleValue, ascii: decimal.description.ascii)
     }
 
-
-    internal init(value: ByteBuffer) {
-        self.value = value
-    }
-
-    internal init(ascii: [UInt8]) {
+    internal init(_ numeric: Double, ascii: [UInt8]) {
         var buffer = ByteBuffer()
         OracleNumeric.encodeNumeric(ascii, into: &buffer)
-        self.init(value: buffer)
+        self.value = buffer
+        self.doubleValue = numeric
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.double == rhs.double
+        lhs.doubleValue == rhs.doubleValue
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.double)
+        hasher.combine(self.doubleValue)
     }
 }
 
@@ -106,6 +102,8 @@ extension OracleNumber: OracleDecodable {
         type: OracleDataType,
         context: OracleDecodingContext
     ) throws {
+        self.doubleValue = try OracleNumeric.parseFloat(from: &buffer)
+        buffer.moveReaderIndex(to: 0)
         self.value = buffer
     }
 }

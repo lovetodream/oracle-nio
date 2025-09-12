@@ -340,7 +340,7 @@ public final class OracleConnection: Sendable {
 
 // MARK: Async/Await Interface
 
-extension OracleConnection {
+extension OracleConnection: OracleConnectionProtocol {
 
     /// Creates a new connection to an Oracle server.
     ///

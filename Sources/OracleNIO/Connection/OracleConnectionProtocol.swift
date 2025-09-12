@@ -14,37 +14,17 @@
 
 import Logging
 
-/// A special kind of ``OracleConnection`` that can only be obtained and used during the lifetime of a transaction.
-///
-/// See ``OracleConnection/withTransaction(logger:file:line:isolation:_:)``.
-public struct OracleTransactionConnection: OracleConnectionProtocol {
+public protocol OracleConnectionProtocol {
     /// A Oracle connection ID, used exclusively for logging.
-    public typealias ID = OracleConnection.ID
+    associatedtype ID
 
-    private let underlying: OracleConnection
-
-    init(_ underlying: OracleConnection) {
-        self.underlying = underlying
-    }
-
-    public var id: ID {
-        self.underlying.id
-    }
+    var id: ID { get }
 
     /// The connection's session ID (SID).
-    public var sessionID: Int {
-        self.underlying.sessionID
-    }
+    var sessionID: Int { get }
 
     /// The version of the Oracle server, the connection is established to.
-    public var serverVersion: OracleVersion {
-        self.underlying.serverVersion
-    }
-
-    /// Sends a ping to the database server.
-    public func ping() async throws {
-        try await self.underlying.ping()
-    }
+    var serverVersion: OracleVersion { get }
 
     /// Run a statement on the Oracle server the connection is connected to.
     ///
@@ -59,20 +39,12 @@ public struct OracleTransactionConnection: OracleConnectionProtocol {
     /// - Returns: A ``OracleRowSequence`` containing the rows the server sent as the statement
     ///            result. The result sequence can be discarded if the statement has no result.
     @discardableResult
-    public func execute(
+    func execute(
         _ statement: OracleStatement,
-        options: StatementOptions = .init(),
-        logger: Logger = OracleConnection.noopLogger,
-        file: String = #fileID, line: Int = #line
-    ) async throws -> OracleRowSequence {
-        try await self.underlying.execute(
-            statement,
-            options: options,
-            logger: logger,
-            file: file,
-            line: line
-        )
-    }
+        options: StatementOptions,
+        logger: Logger,
+        file: String, line: Int
+    ) async throws -> OracleRowSequence
 
     /// Execute a prepared statement.
     /// - Parameters:
@@ -85,20 +57,12 @@ public struct OracleTransactionConnection: OracleConnectionProtocol {
     ///   - line: The line, the statement was started in. Used for better error reporting.
     /// - Returns: An async sequence of `Row`s. The result sequence can be discarded if the statement has no result.
     @discardableResult
-    public func execute<Statement: OraclePreparedStatement, Row>(
+    func execute<Statement: OraclePreparedStatement, Row>(
         _ statement: Statement,
-        options: StatementOptions = .init(),
-        logger: Logger = OracleConnection.noopLogger,
-        file: String = #fileID, line: Int = #line
-    ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row {
-        try await self.underlying.execute(
-            statement,
-            options: options,
-            logger: logger,
-            file: file,
-            line: line
-        )
-    }
+        options: StatementOptions,
+        logger: Logger,
+        file: String, line: Int
+    ) async throws -> AsyncThrowingMapSequence<OracleRowSequence, Row> where Row == Statement.Row
 
     /// Executes the statement multiple times using the specified bind collections without requiring multiple roundtrips to the database.
     /// - Parameters:
@@ -130,24 +94,14 @@ public struct OracleTransactionConnection: OracleConnectionProtocol {
     /// )
     /// ```
     @discardableResult
-    public func execute<each Bind: OracleThrowingDynamicTypeEncodable>(
+    func execute<each Bind: OracleThrowingDynamicTypeEncodable>(
         _ statement: String,
         binds: [(repeat (each Bind)?)],
-        encodingContext: OracleEncodingContext = .default,
-        options: StatementOptions = .init(),
-        logger: Logger = OracleConnection.noopLogger,
-        file: String = #fileID, line: Int = #line
-    ) async throws -> OracleBatchExecutionResult {
-        try await self.underlying.execute(
-            statement,
-            binds: binds,
-            encodingContext: encodingContext,
-            options: options,
-            logger: logger,
-            file: file,
-            line: line
-        )
-    }
+        encodingContext: OracleEncodingContext,
+        options: StatementOptions,
+        logger: Logger,
+        file: String, line: Int
+    ) async throws -> OracleBatchExecutionResult
 
     /// Executes the prepared statements without requiring multiple roundtrips to the database.
     /// - Parameters:
@@ -173,21 +127,10 @@ public struct OracleTransactionConnection: OracleConnectionProtocol {
     /// ])
     /// ```
     @discardableResult
-    public func execute<Statement: OraclePreparedStatement>(
+    func execute<Statement: OraclePreparedStatement>(
         _ statements: [Statement],
-        options: StatementOptions = .init(),
-        logger: Logger = OracleConnection.noopLogger,
-        file: String = #fileID, line: Int = #line
-    ) async throws -> OracleBatchExecutionResult {
-        try await self.underlying.execute(
-            statements,
-            options: options,
-            logger: logger,
-            file: file,
-            line: line
-        )
-    }
+        options: StatementOptions,
+        logger: Logger,
+        file: String, line: Int
+    ) async throws -> OracleBatchExecutionResult
 }
-
-@available(*, unavailable)
-extension OracleTransactionConnection: Sendable {}

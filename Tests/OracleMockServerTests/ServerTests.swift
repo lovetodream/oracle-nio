@@ -12,20 +12,25 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import OracleNIO
 import Testing
 
 @testable import OracleMockServer
 
-@Suite(.serialized, .timeLimit(.minutes(5))) struct ServerTests {
+@Suite(.timeLimit(.minutes(5))) struct ServerTests {
+    static let port: ManagedAtomic<Int> = .init(6666)
+
     @available(macOS 14.0, *)
     func runWithServer(_ body: (OracleConnection) async throws -> Void) async throws {
         var server: Task<Void, Error>!
 
-        let _: Void = await withCheckedContinuation { continuation in
+        let port = Self.port.loadThenWrappingIncrement(ordering: .relaxed)
+
+        let _: Void = try await withCheckedThrowingContinuation { continuation in
             server = Task {
                 do {
-                    try await OracleMockServer.run(continuation: continuation)
+                    try await OracleMockServer.run(port: port, continuation: continuation)
                 } catch {
                     print(error)
                 }
@@ -35,7 +40,7 @@ import Testing
         let connection = try await OracleConnection.connect(
             configuration: .init(
                 host: "127.0.0.1",
-                port: 6666,
+                port: port,
                 service: .serviceName("FREEPDB1"),
                 username: "my_user",
                 password: "my_passwor"

@@ -300,7 +300,7 @@ struct OracleJSONParser {
             return try .double(
                 OracleNumber(
                     from: &bytes, type: .number, context: .default
-                ).requireDouble())
+                ).doubleValue)
         }
 
         // handle integer with length stored inside the node itself
@@ -310,7 +310,7 @@ struct OracleJSONParser {
             return try .double(
                 OracleNumber(
                     from: &bytes, type: .number, context: .default
-                ).requireDouble())
+                ).doubleValue)
         }
 
         // handle string with length stored inside the node itself

@@ -31,6 +31,7 @@ Oracle Database 12.1 or later.
 
 - ``OracleConnection``
 - ``OracleTransactionConnection``
+- ``OracleConnectionProtocol``
 - ``OracleClient``
 - ``OracleAuthenticationMethod``
 - ``AuthenticationMode``

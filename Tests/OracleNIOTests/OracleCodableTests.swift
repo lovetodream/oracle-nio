@@ -112,9 +112,9 @@ import struct Foundation.Date
         )
 
         let result = try row.decode((OracleNumber?, OracleNumber?, OracleNumber?).self, context: .default)
-        #expect(result.0?.double == 42)
-        #expect(result.1?.double == -24.42)
-        #expect(result.2?.double == 420.08150042)
+        #expect(result.0?.doubleValue == 42)
+        #expect(result.1?.doubleValue == -24.42)
+        #expect(result.2?.doubleValue == 420.08150042)
     }
 
     @Test func decodeDateFromARow() throws {

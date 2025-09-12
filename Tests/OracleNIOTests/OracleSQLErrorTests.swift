@@ -12,29 +12,27 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=6.0)
-    import Testing
+import Testing
 
-    @testable import OracleNIO
+@testable import OracleNIO
 
-    @Suite struct OracleSQLErrorTests {
-        @Test func serverInfoDescription() {
-            let errorWithMessage = OracleSQLError.ServerInfo(
-                .init(
-                    number: 1017,
-                    isWarning: false,
-                    message: "ORA-01017: invalid credential or not authorized; logon denied\n",
-                    batchErrors: []
-                ))
-            #expect(
-                String(describing: errorWithMessage) == "ORA-01017: invalid credential or not authorized; logon denied")
-            let errorWithoutMessage = OracleSQLError.ServerInfo(
-                .init(
-                    number: 1017,
-                    isWarning: false,
-                    batchErrors: []
-                ))
-            #expect(String(describing: errorWithoutMessage) == "ORA-1017")
-        }
+@Suite(.timeLimit(.minutes(5))) struct OracleSQLErrorTests {
+    @Test func serverInfoDescription() {
+        let errorWithMessage = OracleSQLError.ServerInfo(
+            .init(
+                number: 1017,
+                isWarning: false,
+                message: "ORA-01017: invalid credential or not authorized; logon denied\n",
+                batchErrors: []
+            ))
+        #expect(
+            String(describing: errorWithMessage) == "ORA-01017: invalid credential or not authorized; logon denied")
+        let errorWithoutMessage = OracleSQLError.ServerInfo(
+            .init(
+                number: 1017,
+                isWarning: false,
+                batchErrors: []
+            ))
+        #expect(String(describing: errorWithoutMessage) == "ORA-1017")
     }
-#endif
+}

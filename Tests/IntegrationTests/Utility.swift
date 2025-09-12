@@ -65,15 +65,22 @@ extension OracleConnection.Configuration {
 
 extension OracleConnection {
     static func test(
-        on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
+        on eventLoop: EventLoop? = nil,
         config: OracleConnection.Configuration? = nil,
         logLevel: Logger.Level = Logger.getLogLevel()
     ) async throws -> OracleConnection {
         var logger = Logger(label: "oracle.connection.test")
         logger.logLevel = logLevel
 
+        if let eventLoop {
+            return try await OracleConnection.connect(
+                on: eventLoop,
+                configuration: config ?? .test(),
+                id: 0,
+                logger: logger
+            )
+        }
         return try await OracleConnection.connect(
-            on: eventLoop,
             configuration: config ?? .test(),
             id: 0,
             logger: logger
@@ -107,7 +114,7 @@ func env(_ name: String) -> String? {
 let connectionIDGenerator = ManagedAtomic(0)
 
 func withOracleConnection<Result>(
-    on eventLoop: EventLoop = OracleConnection.defaultEventLoopGroup.any(),
+    on eventLoop: EventLoop,
     configuration: OracleConnection.Configuration? = nil,
     _ closure: (OracleConnection) async throws -> Result
 ) async throws -> Result {

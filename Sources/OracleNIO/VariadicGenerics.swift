@@ -89,7 +89,7 @@ extension OracleRow {
     static func decodeNextColumn<Column: OracleDecodable>(
         _ columnType: Column.Type,
         cellIterator: inout IndexingIterator<DataRow>,
-        columnIterator: inout IndexingIterator<[OracleColumn]>,
+        columnIterator: inout IndexingIterator<[DescribeInfo.Column]>,
         columnIndex: inout Int,
         context: OracleDecodingContext,
         file: String,

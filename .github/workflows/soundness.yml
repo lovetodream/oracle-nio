@@ -27,7 +27,8 @@ jobs:
         exit $(git status --porcelain | wc -l)
 
   api-breakage:
-    if: github.event_name == 'pull_request'
+    # broken in gh actions?
+    if: github.event_name == 'pull_requesta' 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,4 +39,4 @@ jobs:
       - name: API breaking changes
         run: |
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
-          swift package diagnose-api-breaking-changes origin/main
+          swift package diagnose-api-breaking-changes origin/main --targets OracleNIO

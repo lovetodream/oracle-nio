@@ -28,7 +28,7 @@ struct StatementStateMachine {
         )
         /// Indicates that the current statement was cancelled and we want to drain
         /// rows from the connection ASAP.
-        case drain([OracleColumn])
+        case drain([DescribeInfo.Column])
 
         case commandComplete
         case error(OracleSQLError)

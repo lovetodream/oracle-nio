@@ -12,84 +12,82 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=6.0)
-    import Testing
+import Testing
 
-    @testable import OracleNIO
+@testable import OracleNIO
 
-    @Suite struct AuthenticationStateMachineTests {
-        @Test func fastAuthHappyPath() {
-            var capabilities = Capabilities()
-            capabilities.supportsFastAuth = true
-            capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
-            let accept = OracleBackendMessage.Accept(newCapabilities: capabilities)
-            let description = Description(
-                connectionID: "1",
-                addressLists: [],
-                service: .serviceName("service_name"),
-                sslServerDnMatch: false,
-                purity: .default
-            )
-            let authContext = AuthContext(
-                method: .init(username: "test", password: "pasword123"),
-                service: .serviceName("service_name"),
-                terminalName: "",
-                programName: "",
-                machineName: "",
-                pid: 1,
-                processUsername: "",
-                mode: .default,
-                description: description
-            )
+@Suite(.timeLimit(.minutes(5))) struct AuthenticationStateMachineTests {
+    @Test func fastAuthHappyPath() {
+        var capabilities = Capabilities()
+        capabilities.supportsFastAuth = true
+        capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
+        let accept = OracleBackendMessage.Accept(newCapabilities: capabilities)
+        let description = Description(
+            connectionID: "1",
+            addressLists: [],
+            service: .serviceName("service_name"),
+            sslServerDnMatch: false,
+            purity: .default
+        )
+        let authContext = AuthContext(
+            method: .init(username: "test", password: "pasword123"),
+            service: .serviceName("service_name"),
+            terminalName: "",
+            programName: "",
+            machineName: "",
+            pid: 1,
+            processUsername: "",
+            mode: .default,
+            description: description
+        )
 
-            var state = ConnectionStateMachine()
+        var state = ConnectionStateMachine()
 
-            #expect(state.connected() == .sendConnect)
-            #expect(state.acceptReceived(accept, description: description) == .provideAuthenticationContext(.allowed))
-            #expect(state.provideAuthenticationContext(authContext, fastAuth: .allowed) == .sendFastAuth(authContext))
-            #expect(state.protocolReceived() == .wait)
-            #expect(state.dataTypesReceived() == .wait)
-            #expect(
-                state.parameterReceived(parameters: .init([:])) == .sendAuthenticationPhaseTwo(authContext, .init([:])))
-            #expect(state.parameterReceived(parameters: [:]) == .authenticated([:]))
-        }
-
-        @Test func authHappyPath() {
-            var capabilities = Capabilities()
-            capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
-            let accept = OracleBackendMessage.Accept(newCapabilities: capabilities)
-            let description = Description(
-                connectionID: "1",
-                addressLists: [],
-                service: .serviceName("service_name"),
-                sslServerDnMatch: false,
-                purity: .default
-            )
-            let authContext = AuthContext(
-                method: .init(username: "test", password: "pasword123"),
-                service: .serviceName("service_name"),
-                terminalName: "",
-                programName: "",
-                machineName: "",
-                pid: 1,
-                processUsername: "",
-                mode: .default,
-                description: description
-            )
-
-            var state = ConnectionStateMachine()
-
-            #expect(state.connected() == .sendConnect)
-            #expect(state.acceptReceived(accept, description: description) == .sendProtocol)
-            #expect(state.protocolReceived() == .sendDataTypes)
-            #expect(state.dataTypesReceived() == .provideAuthenticationContext(.denied))
-            #expect(
-                state.provideAuthenticationContext(authContext, fastAuth: .denied)
-                    == .sendAuthenticationPhaseOne(authContext)
-            )
-            #expect(
-                state.parameterReceived(parameters: .init([:])) == .sendAuthenticationPhaseTwo(authContext, .init([:])))
-            #expect(state.parameterReceived(parameters: [:]) == .authenticated([:]))
-        }
+        #expect(state.connected() == .sendConnect)
+        #expect(state.acceptReceived(accept, description: description) == .provideAuthenticationContext(.allowed))
+        #expect(state.provideAuthenticationContext(authContext, fastAuth: .allowed) == .sendFastAuth(authContext))
+        #expect(state.protocolReceived() == .wait)
+        #expect(state.dataTypesReceived() == .wait)
+        #expect(
+            state.parameterReceived(parameters: .init([:])) == .sendAuthenticationPhaseTwo(authContext, .init([:])))
+        #expect(state.parameterReceived(parameters: [:]) == .authenticated([:]))
     }
-#endif
+
+    @Test func authHappyPath() {
+        var capabilities = Capabilities()
+        capabilities.protocolVersion = Constants.TNS_VERSION_DESIRED
+        let accept = OracleBackendMessage.Accept(newCapabilities: capabilities)
+        let description = Description(
+            connectionID: "1",
+            addressLists: [],
+            service: .serviceName("service_name"),
+            sslServerDnMatch: false,
+            purity: .default
+        )
+        let authContext = AuthContext(
+            method: .init(username: "test", password: "pasword123"),
+            service: .serviceName("service_name"),
+            terminalName: "",
+            programName: "",
+            machineName: "",
+            pid: 1,
+            processUsername: "",
+            mode: .default,
+            description: description
+        )
+
+        var state = ConnectionStateMachine()
+
+        #expect(state.connected() == .sendConnect)
+        #expect(state.acceptReceived(accept, description: description) == .sendProtocol)
+        #expect(state.protocolReceived() == .sendDataTypes)
+        #expect(state.dataTypesReceived() == .provideAuthenticationContext(.denied))
+        #expect(
+            state.provideAuthenticationContext(authContext, fastAuth: .denied)
+                == .sendAuthenticationPhaseOne(authContext)
+        )
+        #expect(
+            state.parameterReceived(parameters: .init([:])) == .sendAuthenticationPhaseTwo(authContext, .init([:])))
+        #expect(state.parameterReceived(parameters: [:]) == .authenticated([:]))
+    }
+}

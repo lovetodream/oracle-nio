@@ -19,7 +19,7 @@ import NIOCore
 struct StatementResult {
     enum Value: Equatable {
         case noRows(affectedRows: Int, lastRowID: RowID?)
-        case describeInfo([OracleColumn])
+        case describeInfo([DescribeInfo.Column])
     }
 
     var value: Value
@@ -36,7 +36,7 @@ final class OracleRowStream: @unchecked Sendable {
     >.Source
 
     enum Source {
-        case stream([OracleColumn], OracleRowsDataSource)
+        case stream([DescribeInfo.Column], OracleRowsDataSource)
         case noRows(Result<Void, Error>)
     }
 
@@ -152,7 +152,7 @@ final class OracleRowStream: @unchecked Sendable {
         }
     }
 
-    private let rowDescription: [OracleColumn]
+    private let rowDescription: [DescribeInfo.Column]
     private let lookupTable: [String: Int]
     private let listeners: MetadataListeners
     private var downstreamState: DownstreamState
@@ -590,8 +590,4 @@ protocol OracleRowsDataSource {
     func cancel(for stream: OracleRowStream)
 }
 
-#if swift(>=5.10)
-    extension OracleRowStream.MetadataListeners: Sendable {}
-#else
-    extension OracleRowStream.MetadataListeners: @unchecked Sendable {}
-#endif
+extension OracleRowStream.MetadataListeners: Sendable {}

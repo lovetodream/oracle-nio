@@ -24,133 +24,151 @@ import NIOPosix
 /// _It only works for very specifc usecases._
 @available(macOS 14.0, *)
 public final class OracleMockServer {
-    public static func run(continuation: CheckedContinuation<Void, Never>? = nil) async throws {
+    public static func run(port: Int, continuation: CheckedContinuation<Void, Error>? = nil) async throws {
         let logger = Logger(label: "OracleMockServer")
 
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        let serverChannel = try await ServerBootstrap(group: eventLoopGroup)
-            .serverChannelOption(.backlog, value: 256)
-            .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
-            .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
-            .childChannelOption(.maxMessagesPerRead, value: 16)
-            .childChannelOption(.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
-            .bind(
-                host: "127.0.0.1",
-                port: 6666
-            ) { childChannel in
-                // This closure is called for every inbound connection
-                childChannel.eventLoop.makeCompletedFuture {
-                    try childChannel.pipeline.syncOperations.addHandler(BackPressureHandler())
-                    return try NIOAsyncChannel<ByteBuffer, ByteBuffer>(
-                        wrappingChannelSynchronously: childChannel
-                    )
+        var didStart = false
+
+        do {
+            let serverChannel = try await ServerBootstrap(group: NIOSingletons.posixEventLoopGroup)
+                .serverChannelOption(.backlog, value: 256)
+                .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
+                .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
+                .childChannelOption(.maxMessagesPerRead, value: 16)
+                .childChannelOption(.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
+                .bind(host: "127.0.0.1", port: port) { childChannel in
+                    // This closure is called for every inbound connection
+                    childChannel.eventLoop.makeCompletedFuture {
+                        try childChannel.pipeline.syncOperations.addHandler(BackPressureHandler())
+                        return try NIOAsyncChannel<ByteBuffer, ByteBuffer>(
+                            wrappingChannelSynchronously: childChannel
+                        )
+                    }
                 }
-            }
 
-        let idGenerator = ManagedAtomic(0)
+            let idGenerator = ManagedAtomic(0)
 
-        try await withThrowingDiscardingTaskGroup { group in
-            try await serverChannel.executeThenClose { serverChannelInbound in
-                continuation?.resume()  // server started
+            try await withThrowingDiscardingTaskGroup { group in
+                try await serverChannel.executeThenClose { serverChannelInbound in
+                    continuation?.resume()  // server started
+                    didStart = true
 
-                for try await connectionChannel in serverChannelInbound {
-                    group.addTask {
-                        var logger = logger
-                        do {
-                            try await connectionChannel.executeThenClose {
-                                connectionChannelInbound, connectionChannelOutbound in
-                                let id = idGenerator.wrappingIncrementThenLoad(ordering: .relaxed)
-
-                                var state: State = .idle
-                                var encoder = ServerMessageEncoder(buffer: .init())
-                                var remainder: (header: Header, buffer: ByteBuffer, length: Int)?
-
-                                for try await var inboundData in connectionChannelInbound {
-                                    let inboundDataLength = inboundData.readableBytes
-
-                                    logger[metadataKey: "connection_id"] = .stringConvertible(id)
-
-                                    let header: Header
-                                    var buffer: ByteBuffer
-                                    if let pending = remainder {
-                                        remainder?.length = pending.length - inboundDataLength
-                                        remainder?.buffer.writeBuffer(&inboundData)
-                                        if remainder?.length == 0 {
-                                            header = pending.header
-                                            buffer = pending.buffer
-                                            remainder = nil
-                                        } else {
-                                            continue
-                                        }
-                                    } else {
-                                        // we need to read the header in order to consume the complete message
-                                        guard let newHeader = Header(from: &inboundData, in: state) else {
-                                            connectionChannelOutbound.finish()  // close connection
-                                            return
-                                        }
-
-                                        logger.debug("Received header: \(newHeader)")
-
-                                        if newHeader.length > inboundDataLength {
-                                            remainder = (newHeader, inboundData, newHeader.length - inboundDataLength)
-                                            continue
-                                        } else {
-                                            header = newHeader
-                                            buffer = inboundData
-                                            remainder = nil
-                                        }
-                                    }
-
-                                    switch state {
-                                    case .idle:  // client sent connect
-                                        try await connectionChannelOutbound.write(ConnectMessage().serialize())
-                                        state = .connecting
-                                    case .connecting:  // client sent auth request (phase 1)
-                                        try await connectionChannelOutbound.write(
-                                            AuthenticationChallengeMessage().serialize())
-                                        state = .authenticating
-                                    case .authenticating:  // client sent auth data (phase 2)
-                                        try await connectionChannelOutbound.write(AuthenticatedMessage().serialize())
-                                        state = .authenticated
-
-                                    case .authenticated:  // waiting for client instructions
-                                        switch header.packetType {
-                                        case .data:
-                                            try await handleData(
-                                                in: &buffer, state: &state,
-                                                connectionChannelOutbound: connectionChannelOutbound)
-
-                                        default:
-                                            connectionChannelOutbound.finish()
-                                            return
-                                        }
-
-                                    case .executing(let lastRow):
-                                        let hasMore = (lastRow + 50) < 10_000
-                                        encoder.rows(
-                                            data: .init((lastRow + 1)...min((lastRow + 50), 10_000)),
-                                            lastRowCount: lastRow,
-                                            hasMoreRows: hasMore
-                                        )
-                                        try await connectionChannelOutbound.write(encoder.flush())
-                                        if hasMore {
-                                            state = .executing(lastRow: lastRow + 50)
-                                        } else {
-                                            state = .authenticated
-                                        }
-
-                                    case .closed:
-                                        connectionChannelOutbound.finish()
-                                    }
-                                    logger.debug("State changed: \(state)")
-                                }
-                            }
-                        } catch {
-                            // Handle errors
+                    for try await connectionChannel in serverChannelInbound {
+                        group.addTask {
+                            await singleConnection(
+                                logger: logger,
+                                idGenerator: idGenerator,
+                                connectionChannel: connectionChannel
+                            )
                         }
                     }
                 }
             }
+        } catch {
+            if didStart == false {
+                continuation?.resume(throwing: error)
+            }
+            throw error
+        }
+    }
+
+    static func singleConnection(
+        logger: Logger,
+        idGenerator: ManagedAtomic<Int>,
+        connectionChannel: NIOAsyncChannel<ByteBuffer, ByteBuffer>
+    ) async {
+        var logger = logger
+        do {
+            try await connectionChannel.executeThenClose {
+                connectionChannelInbound, connectionChannelOutbound in
+                let id = idGenerator.wrappingIncrementThenLoad(ordering: .relaxed)
+
+                var state: State = .idle
+                var encoder = ServerMessageEncoder(buffer: .init())
+                var remainder: (header: Header, buffer: ByteBuffer, length: Int)?
+
+                for try await var inboundData in connectionChannelInbound {
+                    let inboundDataLength = inboundData.readableBytes
+
+                    logger[metadataKey: "connection_id"] = .stringConvertible(id)
+
+                    let header: Header
+                    var buffer: ByteBuffer
+                    if let pending = remainder {
+                        remainder?.length = pending.length - inboundDataLength
+                        remainder?.buffer.writeBuffer(&inboundData)
+                        if remainder?.length == 0 {
+                            header = pending.header
+                            buffer = pending.buffer
+                            remainder = nil
+                        } else {
+                            continue
+                        }
+                    } else {
+                        // we need to read the header in order to consume the complete message
+                        guard let newHeader = Header(from: &inboundData, in: state) else {
+                            connectionChannelOutbound.finish()  // close connection
+                            return
+                        }
+
+                        logger.debug("Received header: \(newHeader)")
+
+                        if newHeader.length > inboundDataLength {
+                            remainder = (newHeader, inboundData, newHeader.length - inboundDataLength)
+                            continue
+                        } else {
+                            header = newHeader
+                            buffer = inboundData
+                            remainder = nil
+                        }
+                    }
+
+                    switch state {
+                    case .idle:  // client sent connect
+                        try await connectionChannelOutbound.write(ConnectMessage().serialize())
+                        state = .connecting
+                    case .connecting:  // client sent auth request (phase 1)
+                        try await connectionChannelOutbound.write(
+                            AuthenticationChallengeMessage().serialize())
+                        state = .authenticating
+                    case .authenticating:  // client sent auth data (phase 2)
+                        try await connectionChannelOutbound.write(AuthenticatedMessage().serialize())
+                        state = .authenticated
+
+                    case .authenticated:  // waiting for client instructions
+                        switch header.packetType {
+                        case .data:
+                            try await handleData(
+                                in: &buffer, state: &state,
+                                connectionChannelOutbound: connectionChannelOutbound)
+
+                        default:
+                            connectionChannelOutbound.finish()
+                            return
+                        }
+
+                    case .executing(let lastRow):
+                        let hasMore = (lastRow + 50) < 10_000
+                        encoder.rows(
+                            data: .init((lastRow + 1)...min((lastRow + 50), 10_000)),
+                            lastRowCount: lastRow,
+                            hasMoreRows: hasMore
+                        )
+                        try await connectionChannelOutbound.write(encoder.flush())
+                        if hasMore {
+                            state = .executing(lastRow: lastRow + 50)
+                        } else {
+                            state = .authenticated
+                        }
+
+                    case .closed:
+                        connectionChannelOutbound.finish()
+                    }
+                    logger.debug("State changed: \(state)")
+                }
+            }
+        } catch {
+            // Handle errors
         }
     }
 

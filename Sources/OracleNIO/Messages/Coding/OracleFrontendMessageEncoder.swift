@@ -298,7 +298,7 @@ struct OracleFrontendMessageEncoder {
             numberOfPairs += 1
             verifier11g = false  // ignored
 
-            switch token {
+            switch token.base {
             case .oAuth2: break
             case .tokenAndPrivateKey: numberOfPairs += 2
             }
@@ -352,7 +352,7 @@ struct OracleFrontendMessageEncoder {
 
         switch authContext.method.base {
         case .token(let token):
-            switch token {
+            switch token.base {
             case .oAuth2(let token):
                 self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
             case .tokenAndPrivateKey(let token, let key):
@@ -363,7 +363,7 @@ struct OracleFrontendMessageEncoder {
                     \(authContext.peerAddress?.port ?? 0)
                     """
                 guard
-                    case .serviceName(let serviceName) = authContext.service
+                    case .serviceName(let serviceName) = authContext.service.base
                 else {
                     throw OracleSQLError.sidNotSupported
                 }
@@ -1264,7 +1264,7 @@ private protocol ColumnMetadata {
 
 extension OracleBindings.Metadata: ColumnMetadata {}
 
-extension OracleColumn: ColumnMetadata {
+extension DescribeInfo.Column: ColumnMetadata {
     var isArray: Bool { false }
     var maxArraySize: Int { 0 }
 }

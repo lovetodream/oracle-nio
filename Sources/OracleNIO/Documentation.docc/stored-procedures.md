@@ -1,6 +1,6 @@
 # PL/SQL Stored Procedures
 
-You can call PL/SQL stored procedures, functions and anonymous blocks from OracleNIO using ``OracleConnection/execute(_:options:logger:file:line:)-vguo``.
+You can call PL/SQL stored procedures, functions and anonymous blocks from OracleNIO using ``OracleConnection/execute(_:options:logger:file:line:)->OracleRowSequence``.
 
 ## Overview
 

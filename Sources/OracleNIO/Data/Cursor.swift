@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
 import NIOCore
 
 /// A datatype that maps to Oracle's `SYS_REFCURSOR`.
@@ -20,7 +21,9 @@ import NIOCore
 /// The cursor can be executed once to receive it's results.
 public struct Cursor {
     public let id: UInt16
-    public var columns: [OracleColumn] { self.describeInfo.columns }
+    public var columns: OracleColumns {
+        OracleColumns(underlying: self.describeInfo.columns)
+    }
 
     let isQuery: Bool
     let describeInfo: DescribeInfo
@@ -30,9 +33,10 @@ public struct Cursor {
     /// - Note: The cursor has to be executed on the connection it was created on.
     ///         It cannot be executed more than once.
     public func execute(
-        on connection: OracleConnection
+        on connection: OracleConnection,
+        logger: Logger = OracleConnection.noopLogger
     ) async throws -> OracleRowSequence {
-        try await connection.execute(cursor: self)
+        try await connection.execute(cursor: self, logger: logger)
     }
 }
 

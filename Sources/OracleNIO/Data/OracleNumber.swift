@@ -40,16 +40,12 @@ public struct OracleNumber:
     internal var value: ByteBuffer
 
     public var double: Double? {
-        var value = self.value.getSlice(
-            at: 1, length: self.value.readableBytes - 1
-        )!  // skip length
-        return try? OracleNumeric.parseFloat(from: &value)
+        try? requireDouble()
     }
 
     func requireDouble() throws -> Double {
-        var value = self.value.getSlice(
-            at: 1, length: self.value.readableBytes - 1
-        )!  // skip length
+        var value = value
+        value.moveReaderIndex(to: 0)
         return try OracleNumeric.parseFloat(from: &value)
     }
 
@@ -110,9 +106,7 @@ extension OracleNumber: OracleDecodable {
         type: OracleDataType,
         context: OracleDecodingContext
     ) throws {
-        var bufferWithLength = ByteBuffer(bytes: [UInt8(buffer.readableBytes)])
-        bufferWithLength.writeBuffer(&buffer)
-        self.value = bufferWithLength
+        self.value = buffer
     }
 }
 

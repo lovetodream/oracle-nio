@@ -19,7 +19,7 @@
 
     import struct Foundation.Date
 
-    @Suite struct OracleJSONEncoderTests {
+    @Suite(.timeLimit(.minutes(5))) struct OracleJSONEncoderTests {
         @Test func emptyObject() throws {
             let value = try _OracleJSONEncoder().encode([String: String]())
             #expect(value == .container([:]))
@@ -202,7 +202,7 @@
 
         // MARK: Keyed Decoding Container
 
-        @Suite struct KeyedEncodingContainerTests {
+        @Suite(.timeLimit(.minutes(5))) struct KeyedEncodingContainerTests {
             @Test func encodeNull() throws {
                 let encoder = _OracleJSONEncoder()
                 enum CodingKeys: CodingKey {
@@ -544,7 +544,7 @@
 
         // MARK: Keyed Decoding Container
 
-        @Suite struct UnkeyedEncodingContainerTests {
+        @Suite(.timeLimit(.minutes(5))) struct UnkeyedEncodingContainerTests {
             @Test func encodeNull() throws {
                 let encoder = _OracleJSONEncoder()
                 var container = encoder.unkeyedContainer()

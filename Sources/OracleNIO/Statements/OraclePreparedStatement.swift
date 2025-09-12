@@ -37,9 +37,9 @@
 /// }
 /// ```
 ///
-/// Conformance to this protocol can also be implemented with the ``Statement(_:)`` macro.
+/// Conformance to this protocol can also be implemented with the `Statement(_:)` macro from the `OracleNIOMacros` target.
 ///
-/// Structs conforming to this protocol can be used with ``OracleConnection/execute(_:options:logger:file:line:)-9uyvp``.
+/// Structs conforming to this protocol can be used with ``OracleConnection/execute(_:options:logger:file:line:)->AsyncThrowingMapSequence<OracleRowSequence,Row>``.
 public protocol OraclePreparedStatement: Sendable {
     /// The prepared statements name.
     ///

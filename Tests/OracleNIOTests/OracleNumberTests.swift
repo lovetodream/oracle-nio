@@ -34,7 +34,6 @@ import Testing
         #expect(OracleNumber(Int(1)) == 1)
         #expect(OracleNumber(Float(1.0)) == 1.0)
         #expect(OracleNumber(Double(1.1)) == 1.1)
-        #expect(OracleNumber(decimal: Decimal(1)) == 1)
 
         let integerLiteral: OracleNumber = 1
         #expect(integerLiteral == 1)

@@ -79,7 +79,7 @@ extension UUID: OracleDecodable {
     ///
     /// - Returns: The `UUID` or `nil` if the buffer did not contain enough bytes.
     private static func readUUIDBytes(from buffer: inout ByteBuffer) -> UUID? {
-        guard let uuid = buffer.getUUIDBytes(at: buffer.readerIndex) else {
+        guard let uuid = getUUIDBytes(at: buffer.readerIndex, from: &buffer) else {
             return nil
         }
         buffer.moveReaderIndex(forwardBy: MemoryLayout<uuid_t>.size)

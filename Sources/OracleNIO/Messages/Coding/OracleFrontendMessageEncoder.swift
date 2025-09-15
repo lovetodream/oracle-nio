@@ -358,7 +358,7 @@ struct OracleFrontendMessageEncoder {
                 self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
             case .tokenAndPrivateKey(let token, let key):
                 self.writeKeyValuePair(key: "AUTH_TOKEN", value: token)
-                let now = authHeaderDateFormatter.string(from: .now)
+                let now = authHeaderDate(for: .now)
                 let hostInfo = """
                     \(authContext.peerAddress?.ipAddress ?? ""):\
                     \(authContext.peerAddress?.port ?? 0)
@@ -1276,12 +1276,3 @@ enum OracleFrontendMessageID: UInt8 {
     case onewayFN = 26
     case fastAuth = 34
 }
-
-private let authHeaderDateFormatter: DateFormatter = {
-    let format = "E, dd MMM yyyy HH:mm:ss 'GMT'"
-    let formatter = DateFormatter()
-    formatter.dateFormat = format
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.timeZone = TimeZone(abbreviation: "GMT")
-    return formatter
-}()

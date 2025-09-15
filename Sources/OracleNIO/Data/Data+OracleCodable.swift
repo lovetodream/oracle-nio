@@ -36,9 +36,17 @@ extension Data: OracleEncodable {
     ) {
         var length = self.count
         var position = 0
+
+        buffer.reserveCapacity(minimumWritableBytes: MemoryLayout<UInt8>.size + length)
         if length <= Constants.TNS_MAX_SHORT_LENGTH {
             buffer.writeInteger(UInt8(length))
-            buffer.writeData(self)
+
+            var index = buffer.readerIndex
+            for region in self.regions {
+                region.withUnsafeBytes { bufferPointer in
+                    index += buffer.setBytes(bufferPointer, at: index)
+                }
+            }
         } else {
             buffer.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
             while length > 0 {
@@ -66,7 +74,14 @@ extension Data: OracleDecodable {
     ) throws {
         switch type {
         case .raw, .longRAW:
-            self = buffer.readData(length: buffer.readableBytes) ?? .init()
+            self = buffer.withUnsafeReadableBytesWithStorageManagement { ptr, storageRef in
+                let storage = storageRef.takeUnretainedValue()
+                return Data(
+                    bytesNoCopy: UnsafeMutableRawPointer(mutating: ptr.baseAddress!),
+                    count: buffer.readableBytes,
+                    deallocator: .custom { _, _ in withExtendedLifetime(storage) {} }
+                )
+            }
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

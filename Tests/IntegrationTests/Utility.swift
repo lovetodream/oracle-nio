@@ -13,16 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
+import Foundation
 import Logging
 import NIOCore
 import NIOSSL
 import OracleNIO
-
-#if canImport(FoundationEssentials)
-    import FoundationEssentials
-#else
-    import Foundation
-#endif
 
 extension OracleConnection.Configuration {
 

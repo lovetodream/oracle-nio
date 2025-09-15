@@ -12,15 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import NIOSSL
 import OracleNIO
 import Testing
-
-#if canImport(FoundationEssentials)
-    import FoundationEssentials
-#else
-    import Foundation
-#endif
 
 @Suite(.timeLimit(.minutes(5))) final class OracleTLSConfigurationTests {
     @Test func tlsUtilities() throws {

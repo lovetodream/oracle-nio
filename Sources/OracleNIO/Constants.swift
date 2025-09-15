@@ -38,6 +38,7 @@ enum Constants {
     static let TNS_MARKER_TYPE_INTERRUPT = 3
 
     // MARK: Charset forms
+    @usableFromInline
     static let TNS_CS_IMPLICIT = 1
     static let TNS_CS_NCHAR = 2
 

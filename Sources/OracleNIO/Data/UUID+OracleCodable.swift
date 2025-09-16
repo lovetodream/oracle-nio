@@ -28,10 +28,30 @@ extension UUID: OracleDecodable {
     ) throws {
         switch type {
         case .raw, .longRAW:
-            guard let uuid = Self.readUUIDBytes(from: &buffer) else {
-                throw OracleDecodingError.Code.failure
+            guard let (chunk1, chunk2) = buffer.readMultipleIntegers(as: (UInt64, UInt64).self) else {
+                throw OracleDecodingError.Code.missingData
             }
-            self = uuid
+
+            let uuidBytes = (
+                UInt8(truncatingIfNeeded: chunk1 >> 56),
+                UInt8(truncatingIfNeeded: chunk1 >> 48),
+                UInt8(truncatingIfNeeded: chunk1 >> 40),
+                UInt8(truncatingIfNeeded: chunk1 >> 32),
+                UInt8(truncatingIfNeeded: chunk1 >> 24),
+                UInt8(truncatingIfNeeded: chunk1 >> 16),
+                UInt8(truncatingIfNeeded: chunk1 >> 8),
+                UInt8(truncatingIfNeeded: chunk1),
+                UInt8(truncatingIfNeeded: chunk2 >> 56),
+                UInt8(truncatingIfNeeded: chunk2 >> 48),
+                UInt8(truncatingIfNeeded: chunk2 >> 40),
+                UInt8(truncatingIfNeeded: chunk2 >> 32),
+                UInt8(truncatingIfNeeded: chunk2 >> 24),
+                UInt8(truncatingIfNeeded: chunk2 >> 16),
+                UInt8(truncatingIfNeeded: chunk2 >> 8),
+                UInt8(truncatingIfNeeded: chunk2)
+            )
+
+            self = UUID(uuid: uuidBytes)
         case .varchar, .long:
             guard buffer.readableBytes == 36 else {
                 throw OracleDecodingError.Code.failure
@@ -44,45 +64,5 @@ extension UUID: OracleDecodable {
         default:
             throw OracleDecodingError.Code.typeMismatch
         }
-    }
-
-    private static func getUUIDBytes(at index: Int, from buffer: inout ByteBuffer) -> UUID? {
-        guard let chunk1 = buffer.getInteger(at: index, as: UInt64.self),
-            let chunk2 = buffer.getInteger(at: index + 8, as: UInt64.self)
-        else {
-            return nil
-        }
-
-        let uuidBytes = (
-            UInt8(truncatingIfNeeded: chunk1 >> 56),
-            UInt8(truncatingIfNeeded: chunk1 >> 48),
-            UInt8(truncatingIfNeeded: chunk1 >> 40),
-            UInt8(truncatingIfNeeded: chunk1 >> 32),
-            UInt8(truncatingIfNeeded: chunk1 >> 24),
-            UInt8(truncatingIfNeeded: chunk1 >> 16),
-            UInt8(truncatingIfNeeded: chunk1 >> 8),
-            UInt8(truncatingIfNeeded: chunk1),
-            UInt8(truncatingIfNeeded: chunk2 >> 56),
-            UInt8(truncatingIfNeeded: chunk2 >> 48),
-            UInt8(truncatingIfNeeded: chunk2 >> 40),
-            UInt8(truncatingIfNeeded: chunk2 >> 32),
-            UInt8(truncatingIfNeeded: chunk2 >> 24),
-            UInt8(truncatingIfNeeded: chunk2 >> 16),
-            UInt8(truncatingIfNeeded: chunk2 >> 8),
-            UInt8(truncatingIfNeeded: chunk2)
-        )
-
-        return UUID(uuid: uuidBytes)
-    }
-
-    /// Read a `UUID` from the first 16 bytes in the buffer. Advances the reader index.
-    ///
-    /// - Returns: The `UUID` or `nil` if the buffer did not contain enough bytes.
-    private static func readUUIDBytes(from buffer: inout ByteBuffer) -> UUID? {
-        guard let uuid = getUUIDBytes(at: buffer.readerIndex, from: &buffer) else {
-            return nil
-        }
-        buffer.moveReaderIndex(forwardBy: MemoryLayout<uuid_t>.size)
-        return uuid
     }
 }

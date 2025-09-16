@@ -1197,6 +1197,17 @@ final class OracleNIOTests {
         #expect(result == 40)
     }
 
+    @Test func uuidRaw() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
+        let stream = try await conn.execute("SELECT sys_guid() FROM dual", logger: .oracleTest)
+        for try await uuid in stream.decode(UUID.self) {
+            _ = uuid
+        }
+        let rowCount = try await stream.affectedRows
+        #expect(rowCount == 1)
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

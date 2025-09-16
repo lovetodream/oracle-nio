@@ -89,6 +89,34 @@ import Testing
         }
     }
 
+    @Test func longBinaryLOBViaData() async throws {
+        var data = Data()
+        let range = UInt8.min..<UInt8.max
+        for _ in UInt16.min..<UInt16.max {
+            let first = range.randomElement().unsafelyUnwrapped
+            let second = range.randomElement().unsafelyUnwrapped
+            data.append(contentsOf: range[min(first, second)...max(first, second)])
+        }
+
+        try await runPopulatedTest { connection, tableName in
+            try await connection.execute(
+                "INSERT INTO \(unescaped: tableName) (id, content) VALUES (1, \(data))",
+                logger: .oracleTest
+            )
+            let rows = try await connection.execute(
+                "SELECT id, content FROM \(unescaped: tableName) ORDER BY id",
+                logger: .oracleTest
+            )
+            var index = 0
+            for try await row in rows.decode((Int, Data).self) {
+                #expect(index + 1 == row.0)
+                index = row.0
+                #expect(row.1 == data)
+            }
+            #expect(index == 1)
+        }
+    }
+
     @Test func simpleBinaryLOBViaByteBuffer() async throws {
         let data = try Data(contentsOf: fileURL)
         let buffer = ByteBuffer(bytes: Array(data))

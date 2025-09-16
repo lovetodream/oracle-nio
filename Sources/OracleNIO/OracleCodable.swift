@@ -14,8 +14,11 @@
 
 import NIOCore
 
-import class Foundation.JSONDecoder
-import class Foundation.JSONEncoder
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 /// A type that can encode itself to a Oracle wire binary representation.
 ///

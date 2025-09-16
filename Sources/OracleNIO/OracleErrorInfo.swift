@@ -12,7 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import protocol Foundation.LocalizedError
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 struct OracleErrorInfo: Error {
     var number: UInt32

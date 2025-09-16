@@ -17,8 +17,11 @@ import Logging
 import NIOConcurrencyHelpers
 import NIOCore
 
-import struct Foundation.Data
-import struct Foundation.UUID
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 final class ConnectionFactory: Sendable {
 

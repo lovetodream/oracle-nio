@@ -13,12 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
+import Foundation
 import Logging
 import NIOCore
 import NIOSSL
 import OracleNIO
-
-import func Foundation.getenv
 
 extension OracleConnection.Configuration {
 

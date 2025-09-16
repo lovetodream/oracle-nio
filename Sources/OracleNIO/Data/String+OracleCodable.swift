@@ -14,6 +14,12 @@
 
 import NIOCore
 
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 extension String: OracleEncodable {
     public func encode(
         into buffer: inout ByteBuffer,
@@ -65,9 +71,16 @@ extension String: OracleDecodable {
             if type.csfrm == Constants.TNS_CS_IMPLICIT || type.csfrm == 0 {
                 self = buffer.readString(length: buffer.readableBytes)!
             } else {
-                self = buffer.readString(
-                    length: buffer.readableBytes, encoding: .utf16
-                )!
+                let bytes = buffer.readBytes(length: buffer.readableBytes).unsafelyUnwrapped
+                guard bytes.count % 2 == 0 else {
+                    throw OracleDecodingError.Code.failure
+                }
+                var utf16: [Unicode.UTF16.CodeUnit] = []
+                for index in stride(from: 0, to: bytes.count, by: 2) {
+                    let value = (UInt16(bytes[index + 1]) << 8) | UInt16(bytes[index])
+                    utf16.append(value)
+                }
+                self = String(decoding: utf16, as: UTF16.self)
             }
         case .rowID:
             self = try RowID(from: &buffer, type: type, context: context)

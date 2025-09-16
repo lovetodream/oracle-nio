@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
+import Foundation
 import Logging
 import NIOCore
 import NIOPosix

@@ -12,7 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Date
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 enum OracleJSONStorage: Sendable, Equatable {
     /// Containers

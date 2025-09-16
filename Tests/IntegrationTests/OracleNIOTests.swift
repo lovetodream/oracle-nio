@@ -19,9 +19,11 @@ import NIOPosix
 import OracleNIO
 import Testing
 
-import struct Foundation.Calendar
-import struct Foundation.Date
-import class Foundation.ISO8601DateFormatter
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 @Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1", "running only smoke test suite"), .timeLimit(.minutes(5)))
 final class OracleNIOTests {
@@ -583,7 +585,6 @@ final class OracleNIOTests {
     }
 
     @Test func datesOrCorrectlyCoded() async throws {
-        let formatter = ISO8601DateFormatter()
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
         let date = Date(timeIntervalSince1970: 1705920378.71279)
@@ -604,7 +605,7 @@ final class OracleNIOTests {
             Calendar.current.compare(datesBerlin.0, to: datesBerlin.1, toGranularity: .second) == .orderedSame)
         #expect(
             Calendar.current.compare(
-                date, to: try #require(formatter.date(from: datesBerlin.2)), toGranularity: .second
+                date, to: try Date(datesBerlin.2, strategy: .iso8601), toGranularity: .second
             ) == .orderedSame)
 
         try await conn.execute("ALTER SESSION SET TIME_ZONE = '+00:00'")  // UTC/GMT
@@ -616,7 +617,7 @@ final class OracleNIOTests {
             Calendar.current.compare(datesUTC.0, to: datesUTC.1, toGranularity: .second) == .orderedSame)
         #expect(
             Calendar.current.compare(
-                date, to: try #require(formatter.date(from: datesUTC.2)), toGranularity: .second) == .orderedSame)
+                date, to: try Date(datesUTC.2, strategy: .iso8601), toGranularity: .second) == .orderedSame)
 
         try await conn.execute("ALTER SESSION SET TIME_ZONE = '-10:00'")  // Hawaii
         let datesHawaii = try await conn.execute(dateQuery).collect().first!.decode(
@@ -627,7 +628,7 @@ final class OracleNIOTests {
             Calendar.current.compare(datesHawaii.0, to: datesHawaii.1, toGranularity: .second) == .orderedSame)
         #expect(
             Calendar.current.compare(
-                date, to: try #require(formatter.date(from: datesHawaii.2)), toGranularity: .second
+                date, to: try Date(datesHawaii.2, strategy: .iso8601), toGranularity: .second
             ) == .orderedSame)
     }
 
@@ -1194,6 +1195,17 @@ final class OracleNIOTests {
             """, logger: .oracleTest)
         let result = try ref.decode(as: OracleNumber.self)
         #expect(result == 40)
+    }
+
+    @Test func uuidRaw() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
+        let stream = try await conn.execute("SELECT sys_guid() FROM dual", logger: .oracleTest)
+        for try await uuid in stream.decode(UUID.self) {
+            _ = uuid
+        }
+        let rowCount = try await stream.affectedRows
+        #expect(rowCount == 1)
     }
 
 }

@@ -13,7 +13,14 @@
 //===----------------------------------------------------------------------===//
 
 // swift-format-ignore-file
-import Foundation
+
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#endif
 
 @usableFromInline
 enum Constants {
@@ -31,6 +38,7 @@ enum Constants {
     static let TNS_MARKER_TYPE_INTERRUPT = 3
 
     // MARK: Charset forms
+    @usableFromInline
     static let TNS_CS_IMPLICIT = 1
     static let TNS_CS_NCHAR = 2
 
@@ -460,7 +468,7 @@ extension Constants {
 
     // MARK: AQ dequeue wait modes
     static let DEQ_NO_WAIT = 0
-    static let DEQ_WAIT_FOREVER = pow(2, 32) - 1
+    static let DEQ_WAIT_FOREVER = pow(2.0, 32.0) - 1.0
 
     // MARK: AQ enqueue visibility modes
     static let ENQ_IMMEDIATE = 1

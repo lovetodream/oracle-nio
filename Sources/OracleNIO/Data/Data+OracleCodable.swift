@@ -14,7 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.Data
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension Data: OracleEncodable {
     public static var defaultOracleType: OracleDataType { .raw }
@@ -32,9 +36,18 @@ extension Data: OracleEncodable {
     ) {
         var length = self.count
         var position = 0
+
+        buffer.reserveCapacity(minimumWritableBytes: MemoryLayout<UInt8>.size + length)
         if length <= Constants.TNS_MAX_SHORT_LENGTH {
             buffer.writeInteger(UInt8(length))
-            buffer.writeData(self)
+
+            var index = buffer.writerIndex
+            for region in self.regions {
+                region.withUnsafeBytes { bufferPointer in
+                    index += buffer.setBytes(bufferPointer, at: index)
+                }
+            }
+            buffer.moveWriterIndex(to: index)
         } else {
             buffer.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
             while length > 0 {
@@ -62,7 +75,14 @@ extension Data: OracleDecodable {
     ) throws {
         switch type {
         case .raw, .longRAW:
-            self = buffer.readData(length: buffer.readableBytes) ?? .init()
+            self = buffer.withUnsafeReadableBytesWithStorageManagement { ptr, storageRef in
+                let storage = storageRef.takeUnretainedValue()
+                return Data(
+                    bytesNoCopy: UnsafeMutableRawPointer(mutating: ptr.baseAddress!),
+                    count: buffer.readableBytes,
+                    deallocator: .custom { _, _ in withExtendedLifetime(storage) {} }
+                )
+            }
         default:
             throw OracleDecodingError.Code.typeMismatch
         }

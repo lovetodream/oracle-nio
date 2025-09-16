@@ -14,9 +14,14 @@
 
 import Testing
 
-import struct Foundation.Decimal
-
 @testable import OracleNIO
+
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 
 @Suite struct OracleNumberTests {
     @Test func description() {
@@ -29,7 +34,6 @@ import struct Foundation.Decimal
         #expect(OracleNumber(Int(1)) == 1)
         #expect(OracleNumber(Float(1.0)) == 1.0)
         #expect(OracleNumber(Double(1.1)) == 1.1)
-        #expect(OracleNumber(decimal: Decimal(1)) == 1)
 
         let integerLiteral: OracleNumber = 1
         #expect(integerLiteral == 1)

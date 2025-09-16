@@ -14,7 +14,13 @@
 
 import NIOCore
 
-import func Foundation.pow
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
+#endif
 
 private let numberMaxDigits = 40
 private let numberAsSingleChars = 172

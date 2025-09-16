@@ -13,14 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
+import Foundation
 import Logging
 import NIOCore
 import OracleNIO
 import Testing
-
-import class Foundation.Bundle
-import struct Foundation.Data
-import struct Foundation.URL
 
 @Suite(.disabled(if: env("SMOKE_TEST_ONLY") == "1"), .timeLimit(.minutes(5))) final class LOBTests {
     let fileURL: URL!
@@ -92,9 +89,59 @@ import struct Foundation.URL
         }
     }
 
+    @Test func shortBinaryLOBViaData() async throws {
+        let data = Data((UInt8(0)..<200))
+
+        try await runPopulatedTest { connection, tableName in
+            try await connection.execute(
+                "INSERT INTO \(unescaped: tableName) (id, content) VALUES (1, \(data))",
+                logger: .oracleTest
+            )
+            let rows = try await connection.execute(
+                "SELECT id, content FROM \(unescaped: tableName) ORDER BY id",
+                logger: .oracleTest
+            )
+            var index = 0
+            for try await row in rows.decode((Int, Data).self) {
+                #expect(index + 1 == row.0)
+                index = row.0
+                #expect(row.1 == data)
+            }
+            #expect(index == 1)
+        }
+    }
+
+    @Test func longBinaryLOBViaData() async throws {
+        var data = Data()
+        let range = UInt8.min..<UInt8.max
+        for _ in UInt16.min..<UInt16.max {
+            let first = range.randomElement().unsafelyUnwrapped
+            let second = range.randomElement().unsafelyUnwrapped
+            data.append(contentsOf: range[min(first, second)...max(first, second)])
+        }
+
+        try await runPopulatedTest { connection, tableName in
+            try await connection.execute(
+                "INSERT INTO \(unescaped: tableName) (id, content) VALUES (1, \(data))",
+                logger: .oracleTest
+            )
+            let rows = try await connection.execute(
+                "SELECT id, content FROM \(unescaped: tableName) ORDER BY id",
+                logger: .oracleTest
+            )
+            var index = 0
+            for try await row in rows.decode((Int, Data).self) {
+                #expect(index + 1 == row.0)
+                index = row.0
+                #expect(row.1 == data)
+            }
+            #expect(index == 1)
+        }
+    }
+
     @Test func simpleBinaryLOBViaByteBuffer() async throws {
         let data = try Data(contentsOf: fileURL)
-        let buffer = ByteBuffer(data: data)
+        let buffer = ByteBuffer(bytes: Array(data))
 
         try await runPopulatedTest { connection, tableName in
             try await connection.execute(
@@ -107,7 +154,7 @@ import struct Foundation.URL
 
     @Test func simpleBinaryLOBViaLOB() async throws {
         let data = try Data(contentsOf: fileURL)
-        let buffer = ByteBuffer(data: data)
+        let buffer = ByteBuffer(bytes: Array(data))
 
         try await runPopulatedTest { connection, tableName in
             try await connection.execute(
@@ -146,7 +193,7 @@ import struct Foundation.URL
 
     @Test func writeLOBStream() async throws {
         let data = try Data(contentsOf: fileURL)
-        var buffer = ByteBuffer(data: data)
+        var buffer = ByteBuffer(bytes: Array(data))
         let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
 
         try await runPopulatedTest { connection, tableName in
@@ -176,7 +223,7 @@ import struct Foundation.URL
 
     @Test func writeLOBStreamWithExplicitOpenAndClose() async throws {
         let data = try Data(contentsOf: fileURL)
-        var buffer = ByteBuffer(data: data)
+        var buffer = ByteBuffer(bytes: Array(data))
         let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
 
         try await runPopulatedTest { connection, tableName in
@@ -237,7 +284,7 @@ import struct Foundation.URL
 
     @Test func trimLOB() async throws {
         let data = try Data(contentsOf: fileURL)
-        let buffer = ByteBuffer(data: data)
+        let buffer = ByteBuffer(bytes: Array(data))
 
         try await runPopulatedTest { connection, tableName in
             try await connection.execute(
@@ -262,7 +309,7 @@ import struct Foundation.URL
 
     @Test func simpleBinaryLOBConcurrently5Times() async throws {
         let data = try Data(contentsOf: fileURL)
-        let buffer = ByteBuffer(data: data)
+        let buffer = ByteBuffer(bytes: Array(data))
 
         try await runPopulatedTest { connection, tableName in
             try await connection.execute(

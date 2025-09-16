@@ -14,7 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.TimeZone
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 struct ConnectionStateMachine {
     enum State {

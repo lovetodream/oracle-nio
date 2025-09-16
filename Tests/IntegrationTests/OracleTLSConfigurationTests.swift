@@ -12,11 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import NIOSSL
 import OracleNIO
 import Testing
-
-import class Foundation.Bundle
 
 @Suite(.timeLimit(.minutes(5))) final class OracleTLSConfigurationTests {
     @Test func tlsUtilities() throws {

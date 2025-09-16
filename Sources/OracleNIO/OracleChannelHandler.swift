@@ -17,7 +17,11 @@ import NIOCore
 import NIOSSL
 import NIOTLS
 
-import class Foundation.ProcessInfo
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 final class OracleChannelHandler: ChannelDuplexHandler {
     typealias OutboundIn = OracleTask

@@ -13,9 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-import NIOFoundationCompat
 
-import struct Foundation.UUID
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension UUID: OracleDecodable {
     public init(
@@ -25,10 +28,30 @@ extension UUID: OracleDecodable {
     ) throws {
         switch type {
         case .raw, .longRAW:
-            guard let uuid = buffer.readUUIDBytes() else {
-                throw OracleDecodingError.Code.failure
+            guard let (chunk1, chunk2) = buffer.readMultipleIntegers(as: (UInt64, UInt64).self) else {
+                throw OracleDecodingError.Code.missingData
             }
-            self = uuid
+
+            let uuidBytes = (
+                UInt8(truncatingIfNeeded: chunk1 >> 56),
+                UInt8(truncatingIfNeeded: chunk1 >> 48),
+                UInt8(truncatingIfNeeded: chunk1 >> 40),
+                UInt8(truncatingIfNeeded: chunk1 >> 32),
+                UInt8(truncatingIfNeeded: chunk1 >> 24),
+                UInt8(truncatingIfNeeded: chunk1 >> 16),
+                UInt8(truncatingIfNeeded: chunk1 >> 8),
+                UInt8(truncatingIfNeeded: chunk1),
+                UInt8(truncatingIfNeeded: chunk2 >> 56),
+                UInt8(truncatingIfNeeded: chunk2 >> 48),
+                UInt8(truncatingIfNeeded: chunk2 >> 40),
+                UInt8(truncatingIfNeeded: chunk2 >> 32),
+                UInt8(truncatingIfNeeded: chunk2 >> 24),
+                UInt8(truncatingIfNeeded: chunk2 >> 16),
+                UInt8(truncatingIfNeeded: chunk2 >> 8),
+                UInt8(truncatingIfNeeded: chunk2)
+            )
+
+            self = UUID(uuid: uuidBytes)
         case .varchar, .long:
             guard buffer.readableBytes == 36 else {
                 throw OracleDecodingError.Code.failure

@@ -14,7 +14,11 @@
 
 import NIOCore
 
-import struct Foundation.Date
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
 
 extension OracleJSON: Encodable where Value: Encodable {
     public func encode(to encoder: any Encoder) throws {

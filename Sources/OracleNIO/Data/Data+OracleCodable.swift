@@ -41,12 +41,13 @@ extension Data: OracleEncodable {
         if length <= Constants.TNS_MAX_SHORT_LENGTH {
             buffer.writeInteger(UInt8(length))
 
-            var index = buffer.readerIndex
+            var index = buffer.writerIndex
             for region in self.regions {
                 region.withUnsafeBytes { bufferPointer in
                     index += buffer.setBytes(bufferPointer, at: index)
                 }
             }
+            buffer.moveWriterIndex(to: index)
         } else {
             buffer.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
             while length > 0 {

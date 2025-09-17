@@ -21,10 +21,10 @@ import Testing
     @Test func decodeUTF16() throws {
         var buffer: ByteBuffer? = ByteBuffer(
             bytes: [
-                72, 0, 101, 0, 108, 0, 108, 0, 111, 0,
-                44, 0, 32, 0, 119, 0, 111, 0, 114, 0,
-                108, 0, 100, 0, 33, 0, 32, 0, 60, 216,
-                13, 223, 61, 216, 75, 220,
+                0, 72, 0, 101, 0, 108, 0, 108, 0, 111,
+                0, 44, 0, 32, 0, 119, 0, 111, 0, 114,
+                0, 108, 0, 100, 0, 33, 0, 32, 216, 60,
+                223, 13, 216, 61, 220, 75,
             ]
         )
         let value = try String._decodeRaw(from: &buffer, type: .nVarchar, context: .default)

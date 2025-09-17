@@ -77,7 +77,7 @@ extension String: OracleDecodable {
                 }
                 var utf16: [Unicode.UTF16.CodeUnit] = []
                 for index in stride(from: 0, to: bytes.count, by: 2) {
-                    let value = (UInt16(bytes[index + 1]) << 8) | UInt16(bytes[index])
+                    let value = (UInt16(bytes[index]) << 8) | UInt16(bytes[index + 1])
                     utf16.append(value)
                 }
                 self = String(decoding: utf16, as: UTF16.self)

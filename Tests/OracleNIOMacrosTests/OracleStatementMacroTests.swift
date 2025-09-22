@@ -14,18 +14,12 @@
 
 // swift-format-ignore-file
 
-#if compiler(>=6.0)
-import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacroExpansion
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosGenericTestSupport
 import Testing
 
-// We only test for Swift 6 SwiftSyntax here.
-// The Postgres version tests for older SwiftSyntax versions too.
-// Both use the same macro implementation.
-#if canImport(SwiftSyntax600)
 // Macro implementations build for the host, so the corresponding module is not available when cross-compiling. Cross-compiled tests may still make use of the macro itself in end-to-end tests.
 #if canImport(OracleNIOMacros)
 import OracleNIOMacrosPlugin
@@ -561,6 +555,70 @@ struct PreparedStatementsOracleNIOTests {
         )
         #endif
     }
+
+    @Test func encodableArrayMacro() throws {
+        #if canImport(PostgresNIOMacrosPlugin)
+        assertMacroExpansion(
+            #"""
+            @Statement("""
+            SELECT \("names", [String].self), \("memberOf", [Int]?.self)
+            WHERE names = \(bind: "names", [String].self) OR memberOf = \(bind: "memberOf", [Int]?.self)
+            FROM groups
+            """)
+            struct MyStatement {}
+            """#,
+            expandedSource: #"""
+            struct MyStatement {
+            
+                struct Row {
+                    var names: [String]
+                    var memberOf: [Int]?
+                }
+            
+                static let sql = """
+                SELECT names, memberOf
+                WHERE names = :1 OR memberOf = :2
+                FROM groups
+                """
+            
+                var names: [String]
+            
+                var memberOf: [Int]?
+            
+                func makeBindings() throws -> OracleBindings {
+                    var bindings = OracleBindings(capacity: 2)
+                    bindings.append(names)
+                    if let memberOf {
+                        bindings.append(memberOf)
+                    } else {
+                        bindings.appendNull()
+                    }
+                    return bindings
+                }
+            
+                func decodeRow(_ row: OracleRow) throws -> Row {
+                    let (names, memberOf) = try row.decode(([String], [Int]?).self)
+                    return Row(names: names, memberOf: memberOf)
+                }
+            }
+            
+            extension MyStatement: OraclePreparedStatement {
+            }
+            """#,
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
+        )
+        #endif
+    }
+
 }
-#endif
-#endif

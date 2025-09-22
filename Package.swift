@@ -24,7 +24,7 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
         .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
-            from: "601.0.0-latest"),
+            "601.0.0-latest"..."602.0.0-latest"),
     ],
     targets: [
         .target(

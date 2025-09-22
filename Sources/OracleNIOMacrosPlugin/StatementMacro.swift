@@ -22,7 +22,6 @@ import SwiftSyntaxMacros
 
 // db driver specifics
 private let domain = "OracleNIO"
-private let protocolName = "OraclePreparedStatement"
 private let row = "OracleRow"
 private let bindings = "OracleBindings"
 private let bindPrefix = ":"
@@ -82,8 +81,8 @@ private enum StatementMacroError: Error, DiagnosticMessage {
 }
 
 public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
-    private typealias Column = (name: String, type: TokenSyntax, isOptional: Bool, alias: String?)
-    private typealias Bind = (name: String, type: TokenSyntax, isOptional: Bool)
+    private typealias Column = (name: String, type: TypeAnnotationSyntax, expression: LabeledExprSyntax, alias: String?)
+    private typealias Bind = (name: String, type: TypeAnnotationSyntax, isOptional: Bool)
 
     public static func expansion(
         of node: AttributeSyntax,
@@ -188,7 +187,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                     itemsBuilder: {
                         PatternBindingSyntax(
                             pattern: IdentifierPatternSyntax(identifier: .identifier(name)),
-                            typeAnnotation: makeTypeSyntax(type, optional: isOptional)
+                            typeAnnotation: type
                         )
                     }
                 )
@@ -220,39 +219,72 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
         let identifier = iterator.next()! as LabeledExprSyntax // works as tuple contains at least two elements
                                                                // Type can be force-unwrapped as the compiler ensures it is there.
         let rawType = iterator.next()!.expression.as(MemberAccessExprSyntax.self)!.base!
-        #if canImport(SwiftSyntax600)
         let label = identifier.label?.identifier?.name
-        #else
-        let label = identifier.label?.text
-        #endif
-        let type: TokenSyntax
-        let isOptional: Bool
-        if let nonOptional = rawType.as(DeclReferenceExprSyntax.self)?.baseName {
-            type = nonOptional
-            isOptional = false
-        } else if let optional = rawType.as(OptionalChainingExprSyntax.self)?.expression.as(
-            DeclReferenceExprSyntax.self)?.baseName
+        let isBind = label == "bind"
+
+        let type: TypeAnnotationSyntax
+        enum Metadata {
+            case bind(isOptional: Bool)
+            case column(LabeledExprSyntax)
+        }
+        let metadata: Metadata
+
+        if let nonOptionalExpression = rawType.as(DeclReferenceExprSyntax.self) {
+            type = TypeAnnotationSyntax(type: IdentifierTypeSyntax(name: nonOptionalExpression.baseName))
+            if isBind {
+                metadata = .bind(isOptional: false)
+            } else {
+                metadata = .column(LabeledExprSyntax(expression: nonOptionalExpression))
+            }
+        } else if
+            let optionalExpression = rawType.as(OptionalChainingExprSyntax.self),
+            let optional = optionalExpression.expression.as(DeclReferenceExprSyntax.self)?.baseName
         {
-            type = optional
-            isOptional = true
-        } else {
+            type = TypeAnnotationSyntax(type: OptionalTypeSyntax(wrappedType: IdentifierTypeSyntax(name: optional)))
+            if isBind {
+                metadata = .bind(isOptional: true)
+            } else {
+                metadata = .column(LabeledExprSyntax(expression: optionalExpression))
+            }
+        } else if
+            let array = rawType.as(ArrayExprSyntax.self),
+            let arrayElement = array.elements.first?.expression.as(DeclReferenceExprSyntax.self)?.baseName
+        {
+            type = TypeAnnotationSyntax(type: ArrayTypeSyntax(element: IdentifierTypeSyntax(name: arrayElement)))
+            if isBind {
+                metadata = .bind(isOptional: false)
+            } else {
+                metadata = .column(LabeledExprSyntax(expression: array))
+            }
+        } else if
+            let optionalArray = rawType.as(OptionalChainingExprSyntax.self),
+            let optionalArrayExpression = optionalArray.expression.as(ArrayExprSyntax.self),
+            let arrayElement = optionalArrayExpression.elements.first?.expression.as(DeclReferenceExprSyntax.self)?.baseName
+        {
+            type = TypeAnnotationSyntax(type: OptionalTypeSyntax(wrappedType: ArrayTypeSyntax(element: IdentifierTypeSyntax(name: arrayElement))))
+            if isBind {
+                metadata = .bind(isOptional: true)
+            } else {
+                metadata = .column(LabeledExprSyntax(expression: optionalArray))
+            }
+        }
+        else {
             throw StatementMacroError.unprocessableInterpolation(
                 name: identifier.expression.as(StringLiteralExprSyntax.self)?.segments.first?.as(
                     StringSegmentSyntax.self)?.content.text ?? "<invalid>",
-                isBind: label == "bind"
+                isBind: isBind
             )
         }
         // Same thing as with type.
         let name = identifier.expression.as(StringLiteralExprSyntax.self)!
             .segments.first!.as(StringSegmentSyntax.self)!.content.text
-        switch label {
-        case "bind":
+        switch metadata {
+        case .bind(let isOptional):
             return .bind((name: name, type: type, isOptional: isOptional))
-        default:
+        case .column(let expression):
             let alias = iterator.next()?.expression.as(StringLiteralExprSyntax.self)?
                 .segments.first?.as(StringSegmentSyntax.self)?.content.text
-
-            return .column((name: name, type: type, isOptional: isOptional, alias: alias))
+            return .column((name: name, type: type, expression: expression, alias: alias))
         }
     }
 
@@ -261,7 +293,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             structKeyword: .keyword(.struct, trailingTrivia: .space),
             name: .identifier("Row", trailingTrivia: .space),
             memberBlockBuilder: {
-                for (name, type, isOptional, alias) in columns {
+                for (name, type, _, alias) in columns {
                     MemberBlockItemSyntax(
                         decl: VariableDeclSyntax(
                             bindingSpecifier: .keyword(.var, trailingTrivia: .space),
@@ -269,7 +301,7 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                                 itemsBuilder: {
                                     PatternBindingSyntax(
                                         pattern: IdentifierPatternSyntax(identifier: .identifier(alias ?? name)),
-                                        typeAnnotation: makeTypeSyntax(type, optional: isOptional)
+                                        typeAnnotation: type
                                     )
                                 }
                             )
@@ -385,20 +417,12 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
     }
 
     private static func bindingsFunctionSignature() -> FunctionSignatureSyntax {
-        #if canImport(SwiftSyntax600)
         FunctionSignatureSyntax(
             parameterClause: .init(parameters: []),
             effectSpecifiers: FunctionEffectSpecifiersSyntax(
                 throwsClause: ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))),
             returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: bindings))
         )
-        #else
-        FunctionSignatureSyntax(
-            parameterClause: .init(parameters: []),
-            effectSpecifiers: FunctionEffectSpecifiersSyntax(throwsSpecifier: .keyword(.throws)),
-            returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: bindings))
-        )
-        #endif
     }
 
     private static func decodeRow(from columns: [Column]) -> FunctionDeclSyntax {
@@ -429,8 +453,8 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
                                                 argumentsBuilder: {
                                                     LabeledExprSyntax(expression: MemberAccessExprSyntax(
                                                         base: TupleExprSyntax(elementsBuilder: {
-                                                            for (_, column, isOptional, _) in columns {
-                                                                makeTypeExpressionSyntax(for: column, optional: isOptional)
+                                                            for (_, _, column, _) in columns {
+                                                                column
                                                             }
                                                         }),
                                                         declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
@@ -462,7 +486,6 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
     }
 
     private static func decodeRowFunctionSignature() -> FunctionSignatureSyntax {
-        #if canImport(SwiftSyntax600)
         FunctionSignatureSyntax(
             parameterClause: .init(parameters: [
                 FunctionParameterSyntax(
@@ -476,36 +499,5 @@ public struct OracleStatementMacro: ExtensionMacro, MemberMacro {
             ),
             returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "Row"))
         )
-        #else
-        FunctionSignatureSyntax(
-            parameterClause: .init(parameters: [
-                FunctionParameterSyntax(
-                    firstName: .wildcardToken(),
-                    secondName: .identifier("row"),
-                    type: TypeSyntax(stringLiteral: row)
-                )
-            ]),
-            effectSpecifiers: FunctionEffectSpecifiersSyntax(
-                throwsSpecifier: .keyword(.throws)
-            ),
-            returnClause: ReturnClauseSyntax(type: TypeSyntax(stringLiteral: "Row"))
-        )
-        #endif
-    }
-
-    private static func makeTypeExpressionSyntax(for type: TokenSyntax, optional: Bool) -> LabeledExprSyntax {
-        if optional {
-            LabeledExprSyntax(expression: OptionalChainingExprSyntax(expression: DeclReferenceExprSyntax(baseName: type)))
-        } else {
-            LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: type))
-        }
-    }
-
-    private static func makeTypeSyntax(_ type: TokenSyntax, optional: Bool) -> TypeAnnotationSyntax {
-        if optional {
-            TypeAnnotationSyntax(type: OptionalTypeSyntax(wrappedType: IdentifierTypeSyntax(name: type)))
-        } else {
-            TypeAnnotationSyntax(type: IdentifierTypeSyntax(name: type))
-        }
     }
 }

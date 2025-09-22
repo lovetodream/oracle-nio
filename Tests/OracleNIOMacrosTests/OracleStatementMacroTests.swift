@@ -555,4 +555,70 @@ struct PreparedStatementsOracleNIOTests {
         )
         #endif
     }
+
+    @Test func encodableArrayMacro() throws {
+        #if canImport(PostgresNIOMacrosPlugin)
+        assertMacroExpansion(
+            #"""
+            @Statement("""
+            SELECT \("names", [String].self), \("memberOf", [Int]?.self)
+            WHERE names = \(bind: "names", [String].self) OR memberOf = \(bind: "memberOf", [Int]?.self)
+            FROM groups
+            """)
+            struct MyStatement {}
+            """#,
+            expandedSource: #"""
+            struct MyStatement {
+            
+                struct Row {
+                    var names: [String]
+                    var memberOf: [Int]?
+                }
+            
+                static let sql = """
+                SELECT names, memberOf
+                WHERE names = :1 OR memberOf = :2
+                FROM groups
+                """
+            
+                var names: [String]
+            
+                var memberOf: [Int]?
+            
+                func makeBindings() throws -> OracleBindings {
+                    var bindings = OracleBindings(capacity: 2)
+                    bindings.append(names)
+                    if let memberOf {
+                        bindings.append(memberOf)
+                    } else {
+                        bindings.appendNull()
+                    }
+                    return bindings
+                }
+            
+                func decodeRow(_ row: OracleRow) throws -> Row {
+                    let (names, memberOf) = try row.decode(([String], [Int]?).self)
+                    return Row(names: names, memberOf: memberOf)
+                }
+            }
+            
+            extension MyStatement: OraclePreparedStatement {
+            }
+            """#,
+            macroSpecs: testMacros,
+            failureHandler: {
+                Issue.record(
+                    "\($0.message)",
+                    sourceLocation: .init(
+                        fileID: $0.location.fileID,
+                        filePath: $0.location.filePath,
+                        line: $0.location.line,
+                        column: $0.location.column
+                    )
+                )
+            }
+        )
+        #endif
+    }
+
 }

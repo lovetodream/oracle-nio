@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-all:
+    strategy:
+      fail-fast: false
+      matrix:
+        swift-image:
+          - swift:6.1-noble
+          - swift:6.2-noble
+          - swiftlang/swift:nightly-main-noble
+        oracle-image:
+          - gvenzl/oracle-free:23
+          - gvenzl/oracle-xe:21
+    container: ${{ matrix.swift-image }}
+    runs-on: ubuntu-latest
+    services:
+      oracle:
+        image: gvenzl/oracle-free:23
+        env:
+          ORACLE_PASSWORD: my_very_secure_password
+          APP_USER: my_user
+          APP_USER_PASSWORD: my_password
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd healthcheck.sh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+    - name: Display OS and Swift versions
+      shell: bash
+      run: |
+        [[ -z "${SWIFT_PLATFORM}" ]] && SWIFT_PLATFORM="$(. /etc/os-release && echo "${ID}${VERSION_ID}")"
+        [[ -z "${SWIFT_VERSION}" ]] && SWIFT_VERSION="$(cat /.swift_tag 2>/dev/null || true)"
+        printf 'OS:  %s\nTag: %s\nVersion:\n' "${SWIFT_PLATFORM}-${RUNNER_ARCH}" "${SWIFT_VERSION}"
+        swift --version
+    - uses: actions/checkout@v4
+    - name: Set DEBUG specific environment variables
+      if: runner.debug == '1'
+      run: |
+        echo "LOG_LEVEL=trace" >> "$GITHUB_ENV"
+    - name: Install zstd
+      run: |
+        apt-get update -y
+        apt-get install -y zstd
+    - name: Restore .build
+      id: "restore-build"
+      uses: actions/cache/restore@v4
+      with:
+        path: .build
+        key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+        restore-keys: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-"
+    - name: Build
+      run: swift build --build-tests --enable-code-coverage
+    - name: Cache .build
+      if: steps.restore-build.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .build
+        key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+    - name: Set environment
+      if: matrix.oracle-image != 'gvenzl/oracle-xe:21'
+      run: |
+        echo "TEST_VECTORS=true" >> "$GITHUB_ENV"
+        echo "TEST_PRIVILEGED=true" >> "$GITHUB_ENV"
+        echo "TEST_COMPRESSED_JSON=true" >> "$GITHUB_ENV"
+    - name: Run tests
+      run: swift test --skip-build --enable-code-coverage
+      env:
+        ORA_HOSTNAME: 127.0.0.1
+        ORA_PORT: 1521
+        ORA_SERVICE_NAME: FREEPDB1
+        ORA_USERNAME: my_user
+        ORA_PASSWORD: my_password
+    - name: Prepare Code Coverage
+      run: |
+        "$(dirname "$(realpath "$(which swift)")")/llvm-cov" export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: info.lcov

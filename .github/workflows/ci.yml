@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       oracle:
-        image: gvenzl/oracle-free:23
+        image: ${{ matrix.oracle-image }}
         env:
           ORACLE_PASSWORD: my_very_secure_password
           APP_USER: my_user
@@ -149,13 +149,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: info.lcov
 
-  macos-all:
+  macos-adb:
     strategy:
       fail-fast: false
       matrix:
-        oracle-image:
-          # Only test one version on macOS, let Linux do the rest
-          - gvenzl/oracle-free:23
         macos-version:
           - macos-14
           - macos-15
@@ -165,65 +162,51 @@ jobs:
           - macos-version: macos-15
             xcode-version: latest-stable
     runs-on: ${{ matrix.macos-version }}
-    services:
-      oracle:
-        image: gvenzl/oracle-free:23
-        env:
-          ORACLE_PASSWORD: my_very_secure_password
-          APP_USER: my_user
-          APP_USER_PASSWORD: my_password
-        ports:
-          - 1521:1521
-        options: >-
-          --health-cmd healthcheck.sh
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     steps:
-      - name: Select latest available Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: ${{ matrix.xcode-version }}
-      - uses: actions/checkout@v5
-      - name: Set DEBUG specific environment variables
-        if: runner.debug == '1'
-        run: |
-          echo "LOG_LEVEL=trace" >> "$GITHUB_ENV"
-      - name: Install zstd
-        run: |
-          apt-get update -y
-          apt-get install -y zstd
-      - name: Restore .build
-        id: "restore-build"
-        uses: actions/cache/restore@v4
-        with:
-          path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
-          restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
-      - name: Build
-        run: swift build --build-tests --enable-code-coverage
-      - name: Cache .build
-        if: steps.restore-build.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
-      - name: Run tests
-        run: swift test --skip-build --enable-code-coverage
-        env:
-          ORA_HOSTNAME: oracle
-          ORA_PORT: 1521
-          ORA_SERVICE_NAME: FREEPDB1
-          ORA_USERNAME: my_user
-          ORA_PASSWORD: my_password
-          TEST_VECTORS: true
-          TEST_PRIVILEGED: true
-          TEST_COMPRESSED_JSON: true
-      - name: Prepare Code Coverage
-        run: |
-          "$(dirname "$(realpath "$(which swift)")")/llvm-cov" export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: info.lcov
+    - name: Select latest available Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ matrix.xcode-version }}
+    - uses: actions/checkout@v5
+    - name: Set DEBUG specific environment variables
+      if: runner.debug == '1'
+      run: |
+        echo "LOG_LEVEL=trace" >> "$GITHUB_ENV"
+    - name: Install zstd
+      run: brew install zstd
+    - name: Restore .build
+      id: "restore-build"
+      uses: actions/cache/restore@v4
+      with:
+        path: .build
+        key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+        restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
+    - name: Build
+      run: swift build --build-tests --enable-code-coverage
+    - name: Cache .build
+      if: steps.restore-build.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .build
+        key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+    - name: Run tests
+      run: swift test --skip-build --enable-code-coverage
+      env:
+        ORA_HOSTNAME: ${{ secrets.ORA_HOSTNAME_CLOUD_23 }}
+        ORA_PORT: ${{ secrets.ORA_PORT_CLOUD_23 }}
+        ORA_SERVICE_NAME: ${{ secrets.ORA_SERVICE_NAME_CLOUD_23 }}
+        ORA_USERNAME: ${{ secrets.ORA_USERNAME_CLOUD_23 }}
+        ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD_23 }}
+        ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD_23 }}
+        ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD_23 }}
+        SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
+        TEST_VECTORS: true
+        TEST_COMPRESSED_JSON: true
+    - name: Prepare Code Coverage
+      run: |
+        "$(dirname "$(realpath "$(which swift)")")/llvm-cov" export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: info.lcov

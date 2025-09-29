@@ -18,6 +18,7 @@ extension Optional {
     /// - Parameter error: The error to throw if the optional is `nil`.
     /// - Returns: The value contained in the optional.
     /// - Throws: The error passed in if the optional is `nil`.
+    @inlinable
     func value(or error: Error) throws -> Wrapped {
         switch self {
         case .some(let value): return value

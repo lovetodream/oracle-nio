@@ -71,6 +71,7 @@ Oracle Database 12.1 or later.
 - ``RowID``
 - ``IntervalDS``
 - ``OracleJSON``
+- ``OracleXML``
 - ``OracleVectorProtocol``
 - ``OracleVectorBinary``
 - ``OracleVectorInt8``

@@ -19,6 +19,7 @@ extension ByteBuffer {
         try self.throwingMoveReaderIndex(forwardBy: 1, file: file, line: line)
     }
 
+    @inlinable
     mutating func skipUB2() {
         skipUB(2)
     }
@@ -52,6 +53,7 @@ extension ByteBuffer {
         )
     }
 
+    @inlinable
     mutating func readUB4() -> UInt32? {
         guard let length = readUBLength() else { return nil }
         switch length {
@@ -71,6 +73,7 @@ extension ByteBuffer {
         }
     }
 
+    @inlinable
     mutating func throwingReadUB4(
         file: String = #fileID, line: Int = #line
     ) throws -> UInt32 {
@@ -130,6 +133,7 @@ extension ByteBuffer {
         try throwingSkipUB(8, file: file, line: line)
     }
 
+    @inlinable
     mutating func readUBLength() -> UInt8? {
         guard var length = self.readInteger(as: UInt8.self) else { return nil }
         if length & 0x80 != 0 {
@@ -187,7 +191,8 @@ extension ByteBuffer {
     }
 
     @inline(__always)
-    private mutating func skipUB(_ maxLength: Int) {
+    @inlinable
+    mutating func skipUB(_ maxLength: Int) {
         guard let length = readUBLength() else { return }
         guard length <= maxLength else { preconditionFailure() }
         self.moveReaderIndex(forwardBy: Int(length))

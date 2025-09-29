@@ -137,7 +137,7 @@ final class CustomTypeTests: IntegrationTest {
             """)
         var iterator =
             stream
-            .decode((Int, CustomOracleObject, CustomOracleObject).self)
+            .decode((Int, OracleObject, OracleObject).self)
             .makeAsyncIterator()
         var id = 0
         while let row = try await iterator.next() {
@@ -145,67 +145,5 @@ final class CustomTypeTests: IntegrationTest {
             #expect(row.0 == id)
         }
         #expect(id == 3)
-    }
-}
-
-struct CustomOracleObject: OracleDecodable {
-    let typeOID: ByteBuffer
-    let oid: ByteBuffer
-    let snapshot: ByteBuffer
-    let data: ByteBuffer
-
-    init(
-        typeOID: ByteBuffer,
-        oid: ByteBuffer,
-        snapshot: ByteBuffer,
-        data: ByteBuffer
-    ) {
-        self.typeOID = typeOID
-        self.oid = oid
-        self.snapshot = snapshot
-        self.data = data
-    }
-
-    static func _decodeRaw(
-        from buffer: inout ByteBuffer?,
-        type: OracleDataType,
-        context: OracleDecodingContext
-    ) throws -> CustomOracleObject {
-        guard var buffer else {
-            throw OracleDecodingError.Code.missingData
-        }
-        return try self.init(from: &buffer, type: type, context: context)
-    }
-
-    init(
-        from buffer: inout ByteBuffer,
-        type: OracleDataType,
-        context: OracleDecodingContext
-    ) throws {
-        switch type {
-        case .object:
-            let typeOID =
-                if try buffer.throwingReadUB4() > 0 {
-                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-                } else { ByteBuffer() }
-            let oid =
-                if try buffer.throwingReadUB4() > 0 {
-                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-                } else { ByteBuffer() }
-            let snapshot =
-                if try buffer.throwingReadUB4() > 0 {
-                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-                } else { ByteBuffer() }
-            buffer.skipUB2()  // version
-            let dataLength = try buffer.throwingReadUB4()
-            buffer.skipUB2()  // flags
-            let data =
-                if dataLength > 0 {
-                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-                } else { ByteBuffer() }
-            self.init(typeOID: typeOID, oid: oid, snapshot: snapshot, data: data)
-        default:
-            throw OracleDecodingError.Code.typeMismatch
-        }
     }
 }

@@ -15,12 +15,14 @@
 import NIOCore
 
 extension ByteBuffer {
-    private enum LengthOrBuffer {
+    @usableFromInline
+    enum LengthOrBuffer {
         case length(Int)
         case buffer(ByteBuffer)
     }
 
-    private mutating func _readOracleSpecificLengthPrefixedSlice(
+    @inlinable
+    mutating func _readOracleSpecificLengthPrefixedSlice(
         file: String = #fileID, line: Int = #line
     ) -> LengthOrBuffer {
         guard let length = self.readInteger(as: UInt8.self).map(Int.init) else {
@@ -64,6 +66,7 @@ extension ByteBuffer {
         }
     }
 
+    @inlinable
     mutating func throwingReadOracleSpecificLengthPrefixedSlice(
         file: String = #fileID, line: Int = #line
     ) throws -> ByteBuffer {

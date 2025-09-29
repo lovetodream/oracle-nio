@@ -12,8 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+@usableFromInline
 struct OraclePartialDecodingError: Error {
-    enum Category {
+    @usableFromInline
+    enum Category: Sendable {
         case expectedAtLeastNRemainingBytes
         case fieldNotDecodable
         case unsupportedDataType
@@ -21,17 +23,30 @@ struct OraclePartialDecodingError: Error {
         case unknownControlType
     }
 
+    @usableFromInline
     let category: Category
 
     /// A textual description of the error.
+    @usableFromInline
     let description: String
 
     /// The file this error was thrown in.
+    @usableFromInline
     let file: String
 
     /// The line in ``file`` this error was thrown in.
+    @usableFromInline
     let line: Int
 
+    @inlinable
+    init(category: Category, description: String, file: String, line: Int) {
+        self.category = category
+        self.description = description
+        self.file = file
+        self.line = line
+    }
+
+    @inlinable
     static func expectedAtLeastNRemainingBytes(
         _ expected: Int, actual: Int,
         file: String = #fileID, line: Int = #line

@@ -15,6 +15,7 @@
 import NIOCore
 
 extension ByteBuffer {
+    @inlinable
     mutating func throwingReadInteger<T: FixedWidthInteger>(
         endianness: Endianness = .big,
         as: T.Type = T.self,

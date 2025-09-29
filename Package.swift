@@ -28,12 +28,12 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "_VendoredConnectionPoolModule",
+            name: "_OracleConnectionPoolModule",
             dependencies: [
                 .product(name: "Atomics", package: "swift-atomics"),
                 .product(name: "DequeModule", package: "swift-collections"),
             ],
-            path: "Sources/VendoredConnectionPoolModule",
+            path: "Sources/OracleConnectionPoolModule",
             exclude: ["LICENSE"]
         ),
         .target(
@@ -49,7 +49,7 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
-                "_VendoredConnectionPoolModule",
+                "_OracleConnectionPoolModule",
             ]
         ),
         .testTarget(

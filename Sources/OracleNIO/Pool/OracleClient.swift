@@ -16,7 +16,7 @@ import Atomics
 import Logging
 import NIOCore
 import ServiceLifecycle
-import _VendoredConnectionPoolModule
+import _OracleConnectionPoolModule
 
 /// A Oracle client that is backed by an underlying connection pool. Use ``Options`` to change the
 /// client's behavior and ``OracleConnection/Configuration`` to configure its connections.

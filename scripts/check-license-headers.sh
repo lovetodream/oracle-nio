@@ -73,7 +73,7 @@ read -ra PATHS_TO_CHECK_FOR_LICENSE <<< "$( \
   ":(exclude)**/*.pb.swift" \
   ":(exclude)**/*.proto" \
   ":(exclude)Tests/IntegrationTests/Data/*" \
-  ":(exclude)Sources/VendoredConnectionPoolModule/*" \
+  ":(exclude)Sources/OracleConnectionPoolModule/*" \
   | xargs -0 \
 )"
 

@@ -162,6 +162,7 @@ A type must implement the `OracleDecodable` protocol in order to be decoded from
 - `OracleNumber`
 - `OracleVectorBinary`, `OracleVectorInt8`, `OracleVectorFloat32`, `OracleVectorFloat64`
 - `OracleJSON`
+- `OracleXML`
 - `RowID`
 
 ### Statements with parameters

@@ -201,7 +201,7 @@ jobs:
         TEST_COMPRESSED_JSON: true
     - name: Prepare Code Coverage
       run: |
-        "$(dirname "$(realpath "$(which swift)")")/llvm-cov" export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
+        llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       with:

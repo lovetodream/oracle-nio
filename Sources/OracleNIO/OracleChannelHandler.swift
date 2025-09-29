@@ -763,10 +763,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         _ cleanup: ConnectionStateMachine.ConnectionAction.CleanUpContext,
         context: ChannelHandlerContext
     ) {
-        self.logger.debug(
-            "Cleaning up and closing connection.",
-            metadata: [.error: "\(String(reflecting: cleanup.error))"]
-        )
+        if cleanup.error.code == .clientClosedConnection {
+            self.logger.debug("Cleaning up and closing connection.")
+        } else {
+            self.logger.debug(
+                "Cleaning up and closing connection.",
+                metadata: [.error: "\(String(reflecting: cleanup.error))"]
+            )
+        }
 
         // 1. fail all tasks
         for task in cleanup.tasks {

@@ -22,13 +22,13 @@ public struct ConnectionRequest<Connection: PooledConnection>: ConnectionRequest
 }
 
 @usableFromInline
-let requestIDGenerator = _VendoredConnectionPoolModule.ConnectionIDGenerator()
+let requestIDGenerator = _OracleConnectionPoolModule.ConnectionIDGenerator()
 
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
 extension ConnectionPool where Request == ConnectionRequest<Connection> {
     public convenience init(
         configuration: ConnectionPoolConfiguration,
-        idGenerator: ConnectionIDGenerator = _VendoredConnectionPoolModule.ConnectionIDGenerator(),
+        idGenerator: ConnectionIDGenerator = _OracleConnectionPoolModule.ConnectionIDGenerator(),
         keepAliveBehavior: KeepAliveBehavior,
         observabilityDelegate: ObservabilityDelegate,
         clock: Clock = ContinuousClock(),

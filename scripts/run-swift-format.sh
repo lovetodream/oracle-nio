@@ -34,7 +34,7 @@ SWIFTFORMAT_BIN=${SWIFTFORMAT_BIN:-$(command -v swift)} || fatal "❌ SWIFTFORMA
 git -C "${REPO_ROOT}" ls-files -z '*.swift' \
     | grep -z -v -e 'Tests/LoggingLoki/Resources' \
     -e 'Sources/LoggingLoki/Documentation.docc' \
-    -e 'Sources/VendoredConnectionPoolModule' \
+    -e 'Sources/OracleConnectionPoolModule' \
     -e 'Proto' \
   | xargs -0 "${SWIFTFORMAT_BIN}" "${FORMAT_COMMAND[@]}" --parallel \
   && SWIFT_FORMAT_RC=$? || SWIFT_FORMAT_RC=$?

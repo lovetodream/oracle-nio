@@ -130,10 +130,10 @@ jobs:
     - name: Run tests
       run: swift test --enable-code-coverage
       env:
-        ORA_HOSTNAME: ${{ secrets.ORA_HOSTNAME_CLOUD_23 }}
-        ORA_PORT: ${{ secrets.ORA_PORT_CLOUD_23 }}
+        ORA_HOSTNAME: adb.eu-frankfurt-1.oraclecloud.com
+        ORA_PORT: 1522
         ORA_SERVICE_NAME: ${{ secrets.ORA_SERVICE_NAME_CLOUD_23 }}
-        ORA_USERNAME: ${{ secrets.ORA_USERNAME_CLOUD_23 }}
+        ORA_USERNAME: ci_user
         ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD_23 }}
         ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD_23 }}
         ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD_23 }}
@@ -189,12 +189,12 @@ jobs:
     - name: Run tests
       run: swift test --skip-build --enable-code-coverage
       env:
-        ORA_HOSTNAME: ${{ secrets.ORA_HOSTNAME_CLOUD_23 }}
-        ORA_PORT: ${{ secrets.ORA_PORT_CLOUD_23 }}
-        ORA_SERVICE_NAME: ${{ secrets.ORA_SERVICE_NAME_CLOUD_23 }}
-        ORA_USERNAME: ${{ secrets.ORA_USERNAME_CLOUD_23 }}
-        ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD_23 }}
-        ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD_23 }}
+        ORA_HOSTNAME: adb.eu-frankfurt-1.oraclecloud.com
+        ORA_PORT: 1522
+        ORA_SERVICE_NAME: ${{ secrets.ORA_SERVICE_NAME_CLOUD_MACOS_1 }}
+        ORA_USERNAME: ci_user
+        ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD_MACOS_1 }}
+        ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD_MACOS_1 }}
         ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD_23 }}
         SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
         TEST_VECTORS: true

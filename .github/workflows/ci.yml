@@ -68,7 +68,7 @@ jobs:
     - name: Build
       run: swift build --build-tests --enable-code-coverage
     - name: Cache .build
-      if: steps.restore-build.outputs.cache-hit != 'true'
+      # if: steps.restore-build.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: .build
@@ -122,7 +122,7 @@ jobs:
     - name: Build
       run: swift build --build-tests --enable-code-coverage
     - name: Cache .build
-      if: steps.restore-build.outputs.cache-hit != 'true'
+      # if: steps.restore-build.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: .build
@@ -181,7 +181,7 @@ jobs:
     - name: Build
       run: swift build --build-tests --enable-code-coverage
     - name: Cache .build
-      if: steps.restore-build.outputs.cache-hit != 'true'
+      # if: steps.restore-build.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: .build

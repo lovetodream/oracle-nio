@@ -154,11 +154,8 @@ jobs:
       fail-fast: false
       matrix:
         macos-version:
-          - macos-14
           - macos-15
         include:
-          - macos-version: macos-14
-            xcode-version: latest-stable
           - macos-version: macos-15
             xcode-version: latest-stable
     runs-on: ${{ matrix.macos-version }}

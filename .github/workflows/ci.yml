@@ -195,7 +195,7 @@ jobs:
         ORA_USERNAME: ci_user
         ORA_PASSWORD: ${{ secrets.ORA_PASSWORD_CLOUD_MACOS_1 }}
         ORA_TEST_WALLET: ${{ secrets.ORA_TEST_WALLET_CLOUD_MACOS_1 }}
-        ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD_23 }}
+        ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD_MACOS_1 }}
         SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
         TEST_VECTORS: true
         TEST_COMPRESSED_JSON: true

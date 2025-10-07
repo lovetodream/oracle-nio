@@ -37,6 +37,7 @@ public struct OracleSQLError: Sendable, Error {
             case missingParameter
             case unsupportedDataType
             case missingStatement
+            case malformedStatement
         }
 
         internal var base: Base
@@ -65,6 +66,7 @@ public struct OracleSQLError: Sendable, Error {
         public static let missingParameter = Self(.missingParameter)
         public static let unsupportedDataType = Self(.unsupportedDataType)
         public static let missingStatement = Self(.missingStatement)
+        public static let malformedStatement = Self(.malformedStatement)
 
         public var description: String {
             switch self.base {
@@ -100,6 +102,8 @@ public struct OracleSQLError: Sendable, Error {
                 return "unsupportedDataType"
             case .missingStatement:
                 return "missingStatement"
+            case .malformedStatement:
+                return "malformedStatement"
             }
         }
     }
@@ -347,6 +351,12 @@ public struct OracleSQLError: Sendable, Error {
     static let unsupportedDataType = OracleSQLError(code: .unsupportedDataType)
 
     static let missingStatement = OracleSQLError(code: .missingStatement)
+
+    static func malformedStatement(reason: MalformedStatementError) -> OracleSQLError {
+        var error = OracleSQLError(code: .missingStatement)
+        error.underlying = reason
+        return error
+    }
 }
 
 extension OracleSQLError: CustomStringConvertible {
@@ -445,6 +455,11 @@ extension OracleSQLError {
     struct MissingParameterError: Error {
         var expectedKey: String
         var actualParameters: OracleBackendMessage.Parameter
+    }
+
+    enum MalformedStatementError: Error {
+        case missingEndingSingleQuote
+        case missingEndingDoubleQuote
     }
 
 }

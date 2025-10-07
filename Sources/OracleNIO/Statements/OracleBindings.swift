@@ -58,14 +58,12 @@ struct OracleBindingsCollection {
                 OracleBindings.Metadata(
                     value: bind,
                     protected: true,
-                    isReturnBind: false,
                     bindName: "\(index)"
                 )
             } else {
                 OracleBindings.Metadata(
                     dataType: T.defaultOracleType,
                     protected: false,
-                    isReturnBind: false,
                     size: 1,
                     isArray: false,
                     arrayCount: nil,
@@ -110,8 +108,6 @@ public struct OracleBindings: Sendable, Hashable {
         @usableFromInline
         var protected: Bool
         @usableFromInline
-        var isReturnBind: Bool
-        @usableFromInline
         var size: UInt32
         @usableFromInline
         var bufferSize: UInt32
@@ -132,7 +128,6 @@ public struct OracleBindings: Sendable, Hashable {
         init(
             dataType: OracleDataType,
             protected: Bool,
-            isReturnBind: Bool,
             size: UInt32 = 0,
             isArray: Bool,
             arrayCount: Int?,
@@ -141,7 +136,6 @@ public struct OracleBindings: Sendable, Hashable {
         ) {
             self.dataType = dataType
             self.protected = protected
-            self.isReturnBind = isReturnBind
             let size =
                 if size == 0 {
                     UInt32(self.dataType.defaultSize)
@@ -164,13 +158,11 @@ public struct OracleBindings: Sendable, Hashable {
         init<Value: OracleThrowingDynamicTypeEncodable>(
             value: Value,
             protected: Bool,
-            isReturnBind: Bool,
             bindName: String?
         ) {
             self.init(
                 dataType: value.oracleType,
                 protected: protected,
-                isReturnBind: isReturnBind,
                 size: value.size,
                 isArray: Value.isArray,
                 arrayCount: value.arrayCount,
@@ -228,7 +220,6 @@ public struct OracleBindings: Sendable, Hashable {
             .init(
                 dataType: dataType,
                 protected: false,
-                isReturnBind: false,
                 size: 1,
                 isArray: false,
                 arrayCount: nil,
@@ -248,7 +239,6 @@ public struct OracleBindings: Sendable, Hashable {
         let metadata = Metadata(
             value: value,
             protected: true,
-            isReturnBind: false,
             bindName: bindName
         )
         if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
@@ -273,7 +263,6 @@ public struct OracleBindings: Sendable, Hashable {
         let metadata = Metadata(
             value: value,
             protected: true,
-            isReturnBind: false,
             bindName: bindName
         )
         if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
@@ -291,7 +280,7 @@ public struct OracleBindings: Sendable, Hashable {
 
     @inlinable
     public mutating func append<Value: OracleRef>(
-        _ value: Value, bindName: String
+        _ value: Value, bindName: String, isReturning: Bool
     ) {
         value.metadata.withLockedValue { valueMetadata in
             valueMetadata.bindName = bindName
@@ -305,7 +294,7 @@ public struct OracleBindings: Sendable, Hashable {
                     } else {
                         self.bytes.writeBuffer(&bytes)
                     }
-                } else if !metadata.isReturnBind {  // return binds do not send null
+                } else if !isReturning {  // return binds do not send null
                     self.bytes.writeInteger(UInt8(0))  // null
                 }
             }
@@ -314,11 +303,11 @@ public struct OracleBindings: Sendable, Hashable {
     }
 
     @inlinable
-    public mutating func append(_ value: some OracleRef) {
+    public mutating func append(_ value: some OracleRef, isReturning: Bool) {
         if let name = contains(ref: value) {
-            self.append(value, bindName: name)
+            self.append(value, bindName: name, isReturning: isReturning)
         } else {
-            self.append(value, bindName: "\(count + 1)")
+            self.append(value, bindName: "\(count + 1)", isReturning: isReturning)
         }
     }
 
@@ -331,7 +320,6 @@ public struct OracleBindings: Sendable, Hashable {
         let metadata = Metadata(
             value: value,
             protected: false,
-            isReturnBind: false,
             bindName: bindName
         )
         if metadata.bufferSize >= Constants.TNS_MIN_LONG_LENGTH {
@@ -351,7 +339,6 @@ public struct OracleBindings: Sendable, Hashable {
         let metadata = Metadata(
             value: value,
             protected: false,
-            isReturnBind: false,
             bindName: bindName
         )
         if metadata.bufferSize >= Constants.TNS_LONG_LENGTH_INDICATOR {

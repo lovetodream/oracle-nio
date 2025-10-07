@@ -171,7 +171,7 @@ private typealias RowData = OracleBackendMessage.RowData
         let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
         promise.fail(StatementContext.TestComplete())
         var statement: OracleStatement = ""
-        statement.binds.append(.init(dataType: .boolean), bindName: "1")
+        statement.binds.append(.init(dataType: .boolean), bindName: "1", isReturning: false)
         context.statementContext = .init(statement: statement)
         let result = try RowData.decode(from: &buffer, context: context)
         #expect(result == .init(columns: [.data(ByteBuffer(bytes: [0]))]))

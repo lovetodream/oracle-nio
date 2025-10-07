@@ -23,7 +23,7 @@ import Testing
         let null: Int? = nil
         let id: Int? = 1
         let buffer = ByteBuffer(repeating: 150, count: 300)  //  > 255
-        let idReturnBind = OracleRef(dataType: .number, isReturnBind: true)
+        let idReturnBind = OracleRef(dataType: .number)
 
         let query: OracleStatement = """
             INSERT INTO foo (id, title, something, data) SET (\(id), \(string), \(null), \(buffer)) RETURNING id INTO \(idReturnBind)
@@ -129,6 +129,41 @@ import Testing
         let statement2: OracleStatement = "SELECT id FROM table WHERE id IN (\(list: [1, 2, 3, 4, 5]))"
         #expect(statement2.sql == "SELECT id FROM table WHERE id IN (:0, :1, :2, :3, :4)")
         #expect(statement2.binds.bytes.readableBytes > 0)
+    }
+
+    @Test func extractTableNames() {
+        let statement1: OracleStatement = "SELECT * FROM wuser_table WHERE username = ?"
+        #expect(statement1.summary == "SELECT wuser_table")
+
+        let statement2: OracleStatement = """
+            SELECT *
+            FROM   songs,
+            artists
+            WHERE  songs.artist_id == artists.id
+            """
+        #expect(statement2.summary == "SELECT songs artists")
+
+        let statement3: OracleStatement = """
+            SELECT order_date
+            FROM   (SELECT *
+            FROM   orders o
+               JOIN customers c
+                 ON o.customer_id = c.customer_id)
+            """
+        #expect(statement3.summary == "SELECT SELECT orders customers")
+
+        let statement4: OracleStatement = #"SELECT * FROM "song list", 'artists'"#
+        #expect(statement4.summary == #"SELECT "song list" 'artists'"#)
+
+        let statement5: OracleStatement = "SELECT * FROM po.orders"
+        #expect(statement5.summary == "SELECT po.orders")
+
+        let statement6: OracleStatement = "SELECT * FROM 1_users"
+        #expect(statement6.summary == "SELECT 1_users")
+
+        let statement7: OracleStatement = "SELECT * FROM _private"
+        #expect(statement7.summary == "SELECT _private")
+
     }
 }
 

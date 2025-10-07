@@ -1059,7 +1059,7 @@ extension ConnectionStateMachine {
             .uncleanShutdown,
             .unsupportedDataType:
             return true
-        case .statementCancelled, .nationalCharsetNotSupported, .missingStatement:
+        case .statementCancelled, .nationalCharsetNotSupported, .missingStatement, .malformedStatement:
             return false
         case .server:
             switch error.serverInfo?.number {

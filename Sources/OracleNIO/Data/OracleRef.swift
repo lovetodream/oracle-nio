@@ -80,16 +80,12 @@ public final class OracleRef: Sendable, Hashable {
     /// after completing the statement (using ``decode(of:)``).
     ///
     /// - Parameter dataType: The desired datatype within the Oracle database.
-    /// - Parameter isReturnBind: Set this to `true` if the bind is used as part of a DML
-    ///                           statement in the `RETURNING ... INTO binds` where
-    ///                           binds are x `OracleRef`'s.
-    public init(dataType: OracleDataType, isReturnBind: Bool = false) {
+    public init(dataType: OracleDataType) {
         self.storage = NIOLockedValueBox(nil)
         self.metadata = NIOLockedValueBox(
             .init(
                 dataType: dataType,
                 protected: false,
-                isReturnBind: isReturnBind,
                 isArray: false,
                 arrayCount: nil,
                 maxArraySize: nil,
@@ -103,10 +99,7 @@ public final class OracleRef: Sendable, Hashable {
         var storage = ByteBuffer()
         try value._encodeRaw(into: &storage, context: .default)
         self.storage = NIOLockedValueBox(storage)
-        self.metadata = NIOLockedValueBox(
-            .init(
-                value: value, protected: true, isReturnBind: false, bindName: nil
-            ))
+        self.metadata = NIOLockedValueBox(.init(value: value, protected: true, bindName: nil))
     }
 
     /// Use this initializer to create a IN/OUT bind.
@@ -115,10 +108,7 @@ public final class OracleRef: Sendable, Hashable {
         var storage = ByteBuffer()
         value._encodeRaw(into: &storage, context: .default)
         self.storage = NIOLockedValueBox(storage)
-        self.metadata = NIOLockedValueBox(
-            .init(
-                value: value, protected: true, isReturnBind: false, bindName: nil
-            ))
+        self.metadata = NIOLockedValueBox(.init(value: value, protected: true, bindName: nil))
     }
 
     /// Decodes a value of the given type from the bind.

@@ -23,6 +23,10 @@ public struct OracleStatement: Sendable, Hashable {
     /// The statement's binds.
     public var binds: OracleBindings
 
+    var keyword: String
+    var isReturning: Bool
+    var summary: String
+
     /// Creates an OracleStatement from a static SQL string and it's corresponding binds.
     /// - Parameters:
     ///   - sql: A static SQL string.
@@ -43,6 +47,11 @@ public struct OracleStatement: Sendable, Hashable {
     ) {
         self.sql = sql
         self.binds = binds
+        var parser = Parser(currentSQL: sql)
+        try? parser.continueParsing(with: sql)
+        self.keyword = parser.keyword
+        self.isReturning = parser.isReturning
+        self.summary = parser.summary.joined(separator: " ")
     }
 }
 
@@ -50,6 +59,9 @@ extension OracleStatement: ExpressibleByStringInterpolation {
     public init(stringInterpolation: StringInterpolation) {
         self.sql = stringInterpolation.sql
         self.binds = stringInterpolation.binds
+        self.keyword = stringInterpolation.parser.keyword
+        self.isReturning = stringInterpolation.parser.isReturning
+        self.summary = stringInterpolation.parser.summary.joined(separator: " ")
     }
 
     /// Creates a SQL statement from a _raw string_ without binds.
@@ -99,6 +111,11 @@ extension OracleStatement: ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
         self.sql = value
         self.binds = OracleBindings()
+        var parser = Parser(currentSQL: sql)
+        try? parser.continueParsing(with: sql)
+        self.keyword = parser.keyword
+        self.isReturning = parser.isReturning
+        self.summary = parser.summary.joined(separator: " ")
     }
 }
 
@@ -107,13 +124,20 @@ extension OracleStatement {
         public typealias StringLiteralType = String
 
         @usableFromInline
-        var sql: String
+        var sql: String {
+            mutating didSet {
+                try? self.parser.continueParsing(with: self.sql)
+            }
+        }
         @usableFromInline
         var binds: OracleBindings
+
+        var parser: Parser
 
         public init(literalCapacity: Int, interpolationCount: Int) {
             self.sql = ""
             self.binds = OracleBindings(capacity: interpolationCount)
+            self.parser = Parser(currentSQL: "")
         }
 
         public mutating func appendLiteral(_ literal: String) {
@@ -178,7 +202,7 @@ extension OracleStatement {
                 self.sql.append(contentsOf: ":\(bindName)")
             } else {
                 let bindName = "\(self.binds.count)"
-                self.binds.append(value, bindName: bindName)
+                self.binds.append(value, bindName: bindName, isReturning: parser.isReturning)
                 self.sql.append(contentsOf: ":\(bindName)")
             }
         }
@@ -236,5 +260,316 @@ extension OracleStatement: CustomStringConvertible {
 extension OracleStatement: CustomDebugStringConvertible {
     public var debugDescription: String {
         "OracleStatement(sql: \(String(describing: self.sql)), binds: \(String(reflecting: self.binds))"
+    }
+}
+
+extension OracleStatement {
+    struct Parser {
+        private var sql: String
+
+        var isReturning = false
+        var keyword = ""
+        var summary: [Substring] = []
+
+        private var isDDL = false
+        private var isDML = false
+
+        private var position: String.Index
+        private var lookaheadPosition: String.Index
+
+        private var lastWasLetter = false
+        private var letterStartPosition: String.Index
+        private var currentKeyword: Substring = ""
+        private var letterStartChar: Character = "_"
+        private var lastChar: Character = "_"
+        private var initialKeywordFound = false
+        private var returningKeywordFound = false
+        private var lastWasString = false
+
+        private var tableNameFollowing = false
+        private var lastWasTableName = false
+
+        init(currentSQL: String) {
+            self.sql = currentSQL
+            self.position = sql.startIndex
+            self.lookaheadPosition = sql.startIndex
+            self.letterStartPosition = sql.startIndex
+        }
+
+        mutating func continueParsing(with newSQL: String) throws(OracleSQLError) {
+            if newSQL.starts(with: self.sql) {
+                self.sql = newSQL
+
+                if self.isDDL { return }
+            } else {
+                self = .init(currentSQL: newSQL)
+            }
+
+            while self.position < self.sql.endIndex {
+                self.lookaheadPosition = self.position
+                let char = self.sql[self.lookaheadPosition]
+
+                // look for certain keywords (initial keyword and the ones for
+                // detecting DML returning statements
+                let isLetter =
+                    char.isLetter || (self.tableNameFollowing && (char == "_" || char == "." || char.isNumber))
+                if isLetter && !self.lastWasLetter {
+                    self.letterStartPosition = self.position
+                    self.letterStartChar = char
+                } else if !isLetter && lastWasLetter {
+                    self.currentKeyword = self.sql[letterStartPosition..<self.position]
+                    if !self.initialKeywordFound {
+                        self.keyword = currentKeyword.uppercased()
+                        self.initialKeywordFound = true
+                        switch self.keyword {
+                        case "INSERT", "UPDATE", "DELETE", "MERGE":
+                            self.isDDL = false
+                            self.isDML = true
+                        case "CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "ANALYZE", "AUDIT", "COMMENT", "TRUNCATE":
+                            self.isDDL = true
+                            self.isDML = false
+                            return
+                        default:
+                            self.isDDL = false
+                            self.isDML = false
+                        }
+                        self.summary.append(self.keyword[...])
+                    } else if self.isDML && !self.returningKeywordFound && self.currentKeyword.count == 9
+                        && (self.letterStartChar == "R" || self.letterStartChar == "r")
+                    {
+                        if self.currentKeyword.uppercased() == "RETURNING" {
+                            self.returningKeywordFound = true
+                        }
+                    } else if self.returningKeywordFound && self.currentKeyword.count == 4
+                        && (self.letterStartChar == "I" || self.letterStartChar == "i")
+                    {
+                        if self.currentKeyword.uppercased() == "INTO" {
+                            self.isReturning = true
+                        }
+                    } else if self.tableNameFollowing {
+                        self.tableNameFollowing = false
+                        self.lastWasTableName = true
+                        self.summary.append(self.currentKeyword)
+                    } else {
+                        switch currentKeyword.uppercased() {
+                        case "FROM", "INTO", "UPDATE", "TABLE", "JOIN":
+                            self.tableNameFollowing = true
+                        default:
+                            self.tableNameFollowing = false
+                        }
+                    }
+                }
+
+                if char == "," && self.lastWasTableName {
+                    self.tableNameFollowing = true
+                    self.lastWasTableName = false
+                }
+
+                // need to keep track of whether the last token parsed was a string
+                // (exluding whitespace) as if the last token parsed was a string
+                // a following colon is not a bind variable but a part of the JSON
+                // constant syntax
+                if char == "'" {
+                    self.lastWasString = true
+                    if self.lastChar == "q" || self.lastChar == "Q" {
+                        try self.parseQString()
+                    } else {
+                        self.lookaheadPosition = self.sql.index(after: self.position)
+                        let qualifier = try self.parseQuotedString(quoteType: char)
+                        if self.tableNameFollowing {
+                            self.tableNameFollowing = false
+                            self.lastWasTableName = true
+                            self.summary.append(qualifier)
+                        }
+                        self.sql.formIndex(before: &self.position)
+                    }
+                } else if !char.isWhitespace {
+                    switch char {
+                    case "-":
+                        self.parseSingleLineComment()
+                    case "/":
+                        self.parseMultipleLineComment()
+                    case "\"":
+                        self.lookaheadPosition = self.sql.index(after: self.position)
+                        let qualifier = try self.parseQuotedString(quoteType: char)
+                        if self.tableNameFollowing {
+                            self.tableNameFollowing = false
+                            self.lastWasTableName = true
+                            self.summary.append(qualifier)
+                        }
+                        self.sql.formIndex(before: &self.position)
+                    case ":" where !self.lastWasString:
+                        _ = self.parseBindName()
+                    default:
+                        break
+                    }
+                    self.lastWasString = false
+                }
+
+                // advance to next character and track previous character
+                _ = self.sql.formIndex(&self.position, offsetBy: 1, limitedBy: self.sql.endIndex)
+                self.lastWasLetter = isLetter
+                self.lastChar = char
+            }  // end while
+
+            if self.tableNameFollowing && (self.lastChar.isLetter || self.lastChar.isNumber) {
+                self.summary.append(self.sql[self.letterStartPosition..<self.sql.endIndex])
+            }
+        }
+
+        mutating func parseQString() throws(OracleSQLError) {
+            var sep: Character = "_"
+            var inQString = false
+            var exitingQString = false
+
+            self.sql.formIndex(after: &self.lookaheadPosition)
+            while self.lookaheadPosition < self.sql.endIndex {
+                let char = self.sql[self.lookaheadPosition]
+                if !inQString {
+                    switch char {
+                    case "[":
+                        sep = "]"
+                    case "{":
+                        sep = "}"
+                    case "<":
+                        sep = ">"
+                    case "(":
+                        sep = ")"
+                    default:
+                        sep = char
+                    }
+                    inQString = true
+                } else if !exitingQString && char == sep {
+                    exitingQString = true
+                } else if exitingQString {
+                    if char == "'" {
+                        self.position = self.lookaheadPosition
+                        return
+                    } else if char != sep {
+                        exitingQString = false
+                    }
+                }
+                self.sql.formIndex(after: &self.lookaheadPosition)
+            }
+
+            throw OracleSQLError.malformedStatement(reason: .missingEndingSingleQuote)
+        }
+
+        mutating func parseQuotedString(quoteType: Character) throws(OracleSQLError) -> Substring {
+            var char: Character
+
+            while self.lookaheadPosition < self.sql.endIndex {
+                char = self.sql[self.lookaheadPosition]
+                self.sql.formIndex(after: &self.lookaheadPosition)
+                if char == quoteType {
+                    defer { self.position = self.lookaheadPosition }
+                    return self.sql[self.position..<self.lookaheadPosition]
+                }
+            }
+
+            if quoteType == "'" {
+                throw OracleSQLError.malformedStatement(reason: .missingEndingSingleQuote)
+            } else {
+                throw OracleSQLError.malformedStatement(reason: .missingEndingDoubleQuote)
+            }
+        }
+
+        mutating func parseSingleLineComment() {
+            var char: Character
+            var inComment = false
+
+            self.sql.formIndex(after: &self.lookaheadPosition)
+            while self.lookaheadPosition < self.sql.endIndex {
+                char = self.sql[self.lookaheadPosition]
+                if !inComment {
+                    if char != "-" {
+                        return
+                    }
+                    inComment = true
+                } else if char.isNewline {
+                    break
+                }
+                self.sql.formIndex(after: &self.lookaheadPosition)
+            }
+            self.position = self.lookaheadPosition
+        }
+
+        mutating func parseMultipleLineComment() {
+            var inComment = false
+            var exitingComment = false
+
+            self.lookaheadPosition = self.sql.index(after: self.position)
+            while self.lookaheadPosition < self.sql.endIndex {
+                let char = self.sql[self.lookaheadPosition]
+                if !inComment {
+                    if char != "*" {
+                        break
+                    }
+                    inComment = true
+                } else if char == "*" {
+                    exitingComment = true
+                } else if exitingComment {
+                    if char == "/" {
+                        self.position = self.lookaheadPosition
+                        return
+                    }
+                    exitingComment = false
+                }
+                self.sql.formIndex(after: &self.lookaheadPosition)
+            }
+        }
+
+        mutating func parseBindName() -> String? {
+            var inBind = false
+            var quotedName = false
+            var digitsOnly = false
+            var startPosition: String.Index = self.lookaheadPosition
+
+            self.lookaheadPosition = self.sql.index(after: self.position)
+            while self.lookaheadPosition < self.sql.endIndex {
+                let char = self.sql[self.lookaheadPosition]
+                if !inBind {
+                    if char.isWhitespace {
+                        self.sql.formIndex(after: &self.lookaheadPosition)
+                        continue
+                    } else if char == "\"" {
+                        quotedName = true
+                    } else if char.isNumber {
+                        digitsOnly = true
+                    } else if !char.isLetter {
+                        break
+                    }
+                    inBind = true
+                    startPosition = self.lookaheadPosition
+                } else if digitsOnly && !char.isNumber {
+                    self.position = self.sql.index(before: self.lookaheadPosition)
+                    break
+                } else if quotedName && char == "\"" {
+                    self.position = self.lookaheadPosition
+                    break
+                } else if !digitsOnly && !quotedName && !char.isLetter && !char.isNumber && char != "_" && char != "$"
+                    && char != "#"
+                {
+                    self.position = self.sql.index(before: self.lookaheadPosition)
+                    break
+                }
+                self.sql.formIndex(after: &self.lookaheadPosition)
+            }
+
+            let bindName: String?
+            if inBind {
+                if quotedName {
+                    self.sql.formIndex(after: &startPosition)
+                    bindName = String(self.sql[startPosition..<self.lookaheadPosition])
+                } else if digitsOnly {
+                    bindName = String(self.sql[startPosition..<self.lookaheadPosition])
+                } else {
+                    bindName = self.sql[startPosition..<self.lookaheadPosition].uppercased()
+                }
+            } else {
+                bindName = nil
+            }
+            return bindName
+        }
     }
 }

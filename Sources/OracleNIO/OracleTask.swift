@@ -173,6 +173,7 @@ final class StatementContext: Sendable {
     }
 
     let type: StatementType
+    let keyword: String
     let sql: String
     let binds: Binds
     let options: StatementOptions
@@ -189,7 +190,7 @@ final class StatementContext: Sendable {
         options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
-    ) {
+    ) throws(OracleSQLError) {
         self.logger = logger
         self.sql = statement.sql
         self.binds = .one(statement.binds)
@@ -197,25 +198,20 @@ final class StatementContext: Sendable {
         self.sqlLength = .init(statement.sql.data(using: .utf8)?.count ?? 0)
         self.cursorID = 0
         self.executionCount = 1
-
-        // strip single/multiline comments and and strings from the sql
-        var sql = statement.sql
-        sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
-        sql = sql.replacing(/\--.*(\n|$)/, with: "")
-        sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
-
-        self.isReturning = statement.binds.metadata.first(where: \.isReturnBind) != nil
-        let type = Self.determineStatementType(minifiedSQL: sql, promise: promise)
-        self.type = type
+        self.type = Self.determineType(for: statement.keyword, promise: promise)
+        self.isReturning = statement.isReturning
+        self.keyword = statement.keyword
     }
 
     init(
         statement: String,
+        keyword: String,
+        isReturning: Bool,
         bindCollection: OracleBindingsCollection,
         options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
-    ) {
+    ) throws(OracleSQLError) {
         self.logger = logger
         self.sql = statement
         self.binds = .many(bindCollection)
@@ -223,17 +219,9 @@ final class StatementContext: Sendable {
         self.sqlLength = UInt32(statement.utf8.count)
         self.cursorID = 0
         self.executionCount = UInt32(bindCollection.bindings.count)
-
-        // strip single/multiline comments and and strings from the sql
-        var sql = statement
-        sql = sql.replacing(/\/\*[\S\n ]+?\*\//, with: "")
-        sql = sql.replacing(/\--.*(\n|$)/, with: "")
-        sql = sql.replacing(/'[^']*'(?=(?:[^']*[^']*')*[^']*$)/, with: "")
-
-        self.isReturning =
-            bindCollection.metadata.first(where: \.isReturnBind) != nil
-        let type = Self.determineStatementType(minifiedSQL: sql, promise: promise)
-        self.type = type
+        self.type = Self.determineType(for: keyword, promise: promise)
+        self.isReturning = isReturning
+        self.keyword = keyword
     }
 
     init(
@@ -251,29 +239,21 @@ final class StatementContext: Sendable {
         self.isReturning = false
         self.executionCount = 1
         self.type = .cursor(cursor, promise)
+        self.keyword = "CURSOR"
     }
 
-    private static func determineStatementType(
-        minifiedSQL sql: String,
+    private static func determineType(
+        for keyword: String,
         promise: EventLoopPromise<OracleRowStream>
     ) -> StatementType {
-        var fragment = sql.trimmingCharacters(in: .whitespacesAndNewlines)
-        if fragment.first == "(" {
-            fragment.removeFirst()
-        }
-        let tokens = fragment.prefix(10)
-            .components(separatedBy: .whitespacesAndNewlines)
-        guard let sqlKeyword = tokens.first?.uppercased() else {
-            return .plain(promise)
-        }
-        switch sqlKeyword {
+        switch keyword {
         case "DECLARE", "BEGIN", "CALL":
             return .plsql(promise)
         case "SELECT", "WITH":
             return .query(promise)
         case "INSERT", "UPDATE", "DELETE", "MERGE":
             return .dml(promise)
-        case "CREATE", "ALTER", "DROP", "TRUNCATE":
+        case "CREATE", "ALTER", "DROP", "GRANT", "REVOKE", "ANALYZE", "AUDIT", "COMMENT", "TRUNCATE":
             return .ddl(promise)
         default:
             return .plain(promise)

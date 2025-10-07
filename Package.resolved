@@ -1,5 +1,5 @@
 {
-  "originHash" : "30d31d3dbdbdfd1cfb451e3c2c45e1563cd0707640f10cfea872b744db02ebc7",
+  "originHash" : "a0f8c9811ca2775dadbd522219e91812402d58a0696476cafb978fdf5bac0c4a",
   "pins" : [
     {
       "identity" : "swift-asn1",
@@ -47,6 +47,15 @@
       }
     },
     {
+      "identity" : "swift-distributed-tracing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-distributed-tracing.git",
+      "state" : {
+        "revision" : "6600888f4cb5bbf1bcac51000f60b2cbd224c91b",
+        "version" : "1.3.0"
+      }
+    },
+    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
@@ -80,6 +89,15 @@
       "state" : {
         "revision" : "e645014baea2ec1c2db564410c51a656cf47c923",
         "version" : "1.25.1"
+      }
+    },
+    {
+      "identity" : "swift-service-context",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-service-context.git",
+      "state" : {
+        "revision" : "1983448fefc717a2bc2ebde5490fe99873c5b8a6",
+        "version" : "1.2.1"
       }
     },
     {

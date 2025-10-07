@@ -47,24 +47,24 @@ struct OracleObject: OracleDecodable {
         switch type {
         case .object:
             let typeOID =
-            if try buffer.throwingReadUB4() > 0 {
-                try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-            } else { ByteBuffer() }
+                if try buffer.throwingReadUB4() > 0 {
+                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
+                } else { ByteBuffer() }
             let oid =
-            if try buffer.throwingReadUB4() > 0 {
-                try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-            } else { ByteBuffer() }
+                if try buffer.throwingReadUB4() > 0 {
+                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
+                } else { ByteBuffer() }
             let snapshot =
-            if try buffer.throwingReadUB4() > 0 {
-                try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-            } else { ByteBuffer() }
+                if try buffer.throwingReadUB4() > 0 {
+                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
+                } else { ByteBuffer() }
             buffer.skipUB2()  // version
             let dataLength = try buffer.throwingReadUB4()
             buffer.skipUB2()  // flags
             let data =
-            if dataLength > 0 {
-                try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
-            } else { ByteBuffer() }
+                if dataLength > 0 {
+                    try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
+                } else { ByteBuffer() }
             self.init(typeOID: typeOID, oid: oid, snapshot: snapshot, data: data)
         default:
             throw OracleDecodingError.Code.typeMismatch

@@ -118,8 +118,34 @@ public final class OracleRef: Sendable, Hashable {
     ///
     /// - Parameter as: The type of the returned value.
     /// - Returns: A value of the specified type.
+    @inlinable
     public func decode<V: OracleDecodable>(as: V.Type = V.self) throws -> V {
         var buffer: ByteBuffer?
+        self.readStorage(&buffer)
+        return try self.metadata.withLockedValue { metadata in
+            try V._decodeRaw(
+                from: &buffer, type: metadata.dataType, context: .default
+            )
+        }
+    }
+
+    /// Decodes a value of the given type from the bind.
+    ///
+    /// This method uses the ``OracleNonCopyableDecodable/init(from:type:context:)`` to decode
+    /// the value internally.
+    ///
+    /// - Parameter as: The type of the returned value.
+    /// - Returns: A value of the specified type.
+    @inlinable
+    public func decode<V: OracleNonCopyableDecodable & ~Copyable>(as: V.Type = V.self) throws -> V {
+        var buffer: ByteBuffer?
+        self.readStorage(&buffer)
+        let dataType = self.metadata.withLockedValue { metadata in metadata.dataType }
+        return try V._decodeRaw(from: &buffer, type: dataType, context: .default)
+    }
+
+    @inlinable
+    func readStorage(_ buffer: inout ByteBuffer?) {
         self.storage.withLockedValue { storage in
             let length = Int(storage?.getInteger(at: 0, as: UInt8.self) ?? 0)
 
@@ -142,11 +168,6 @@ public final class OracleRef: Sendable, Hashable {
                     at: MemoryLayout<UInt8>.size, length: length
                 )!
             }
-        }
-        return try self.metadata.withLockedValue { metadata in
-            try V._decodeRaw(
-                from: &buffer, type: metadata.dataType, context: .default
-            )
         }
     }
 }

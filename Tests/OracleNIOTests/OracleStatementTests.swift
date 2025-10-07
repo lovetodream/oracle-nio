@@ -131,6 +131,29 @@ import Testing
         #expect(statement2.binds.bytes.readableBytes > 0)
     }
 
+    @Test func parserTests() throws {
+        var parser = OracleStatement.Parser(currentSQL: "")
+        try parser.continueParsing(with: "SELECT q'[123]' FROM dual")
+        try parser.continueParsing(with: "SELECT q'{123}' FROM dual")
+        try parser.continueParsing(with: "SELECT q'<123>' FROM dual")
+        try parser.continueParsing(with: "SELECT q'(123)' FROM dual")
+        try parser.continueParsing(with: #"SELECT q'"123"' FROM dual"#)
+        #expect(throws: OracleSQLError.malformedStatement(reason: .missingEndingSingleQuote)) {
+            try parser.continueParsing(with: "SELECT q'[123 FROM dual")
+        }
+        #expect(throws: OracleSQLError.malformedStatement(reason: .missingEndingSingleQuote)) {
+            try parser.continueParsing(with: "SELECT '123 FROM dual")
+        }
+        #expect(throws: OracleSQLError.malformedStatement(reason: .missingEndingDoubleQuote)) {
+            try parser.continueParsing(with: "SELECT \"123 FROM dual")
+        }
+        try parser.continueParsing(with: #"-SELECT 1 FROM dual"#)
+        try parser.continueParsing(with: #"/*SELECT 1 FROM dual*"#)
+        try parser.continueParsing(with: "SELECT : 3 FROM dual")
+        try parser.continueParsing(with: #"SELECT :"3" FROM dual"#)
+        try parser.continueParsing(with: #"SELECT :abc FROM dual"#)
+    }
+
     @Test func extractTableNames() {
         let statement1: OracleStatement = "SELECT * FROM wuser_table WHERE username = ?"
         #expect(statement1.summary == "SELECT wuser_table")

@@ -43,7 +43,7 @@ extension StatementContext {
             .plsql(let promise),
             .dml(let promise),
             .ddl(let promise),
-            .cursor(_, let promise),
+            .cursor(_, _, let promise),
             .plain(let promise):
             promise.fail(TestComplete())
         }

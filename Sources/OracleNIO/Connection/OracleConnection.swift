@@ -508,7 +508,7 @@ extension OracleConnection: OracleConnectionProtocol {
     }
 
     func execute(
-        cursor: Cursor,
+        cursor: consuming Cursor,
         options: StatementOptions = .init(),
         logger: Logger,
         file: String = #fileID, line: Int = #line

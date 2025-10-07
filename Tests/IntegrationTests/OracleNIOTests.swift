@@ -889,18 +889,6 @@ final class OracleNIOTests {
             received += 1
         }
         #expect(received == 50)
-
-        // Cannot be executed again
-        var secondSucceeded = true
-        do {
-            _ = try await cursor.execute(on: conn)
-        } catch {
-            secondSucceeded = false
-            let error = try #require(error as? OracleSQLError)
-            #expect(error.code == .server)
-            #expect(error.serverInfo?.number == 1001)  // unknown cursor id
-        }
-        #expect(secondSucceeded == false)
     }
 
     @Test func rowID() async throws {

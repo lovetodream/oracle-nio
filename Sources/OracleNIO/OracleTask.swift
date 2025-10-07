@@ -33,7 +33,7 @@ enum OracleTask: Sendable {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
-                .cursor(_, let promise),
+                .cursor(_, _, let promise),
                 .plain(let promise):
                 promise.fail(error)
             }
@@ -96,15 +96,15 @@ final class StatementContext: Sendable {
         case plsql(EventLoopPromise<OracleRowStream>)
         case dml(EventLoopPromise<OracleRowStream>)
         case ddl(EventLoopPromise<OracleRowStream>)
-        case cursor(Cursor, EventLoopPromise<OracleRowStream>)
+        case cursor(DescribeInfo, isQuery: Bool, EventLoopPromise<OracleRowStream>)
         case plain(EventLoopPromise<OracleRowStream>)
 
         var isQuery: Bool {
             switch self {
             case .query:
                 return true
-            case .cursor(let cursor, _):
-                return cursor.isQuery
+            case .cursor(_, let isQuery, _):
+                return isQuery
             default:
                 return false
             }
@@ -225,7 +225,7 @@ final class StatementContext: Sendable {
     }
 
     init(
-        cursor: Cursor,
+        cursor: consuming Cursor,
         options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
@@ -238,7 +238,7 @@ final class StatementContext: Sendable {
         self.options = options
         self.isReturning = false
         self.executionCount = 1
-        self.type = .cursor(cursor, promise)
+        self.type = .cursor(cursor.describeInfo, isQuery: cursor.isQuery, promise)
         self.keyword = "CURSOR"
     }
 

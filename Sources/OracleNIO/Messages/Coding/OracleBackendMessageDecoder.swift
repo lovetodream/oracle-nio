@@ -44,9 +44,9 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
             set {
                 self._statementContext = newValue
                 switch newValue?.type {
-                case .cursor(let cursor, _):
-                    if cursor.describeInfo != self.describeInfo {
-                        self.describeInfo = cursor.describeInfo
+                case .cursor(let describeInfo, _, _):
+                    if describeInfo != self.describeInfo {
+                        self.describeInfo = describeInfo
                     }
                 default: break
                 }

@@ -312,7 +312,7 @@ struct ConnectionStateMachine {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
-                .cursor(_, let promise),
+                .cursor(_, _, let promise),
                 .plain(let promise):
                 return .failStatement(
                     promise, with: oracleError, cleanupContext: nil

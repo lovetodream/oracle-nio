@@ -156,7 +156,7 @@ extension OracleConnection {
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
-        let context = try StatementContext(
+        let context = StatementContext(
             statement: statement,
             keyword: statementParser.keyword,
             isReturning: statementParser.isReturning,

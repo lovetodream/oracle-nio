@@ -453,7 +453,7 @@ extension OracleConnection: OracleConnectionProtocol {
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
-        let context = try StatementContext(
+        let context = StatementContext(
             statement: statement,
             options: options,
             logger: logger,

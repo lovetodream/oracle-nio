@@ -190,7 +190,7 @@ final class StatementContext: Sendable {
         options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
-    ) throws(OracleSQLError) {
+    ) {
         self.logger = logger
         self.sql = statement.sql
         self.binds = .one(statement.binds)
@@ -211,7 +211,7 @@ final class StatementContext: Sendable {
         options: StatementOptions,
         logger: Logger,
         promise: EventLoopPromise<OracleRowStream>
-    ) throws(OracleSQLError) {
+    ) {
         self.logger = logger
         self.sql = statement
         self.binds = .many(bindCollection)

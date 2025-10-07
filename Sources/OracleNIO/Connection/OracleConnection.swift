@@ -29,6 +29,10 @@ import NIOSSL
     import NIOTransportServices
 #endif
 
+#if DistributedTracingSupport
+    import Tracing
+#endif
+
 /// An Oracle connection. Use it to run queries against an Oracle server.
 ///
 /// ## Creating a connection
@@ -84,6 +88,10 @@ public final class OracleConnection: Sendable {
         SwiftLogNoOpLogHandler()
     }
 
+    #if DistributedTracingSupport
+        let tracer: (any Tracer)?
+    #endif
+
     private init(
         configuration: OracleConnection.Configuration,
         channel: Channel,
@@ -100,6 +108,9 @@ public final class OracleConnection: Sendable {
         self.sessionID = sessionID
         self.serialNumber = serialNumber
         self.serverVersion = serverVersion
+        #if DistributedTracingSupport
+            self.tracer = configuration.tracing.tracer
+        #endif
     }
     deinit {
         assert(isClosed, "OracleConnection deinitialized before being closed.")
@@ -431,6 +442,14 @@ extension OracleConnection: OracleConnectionProtocol {
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
         logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
 
+        #if DistributedTracingSupport
+            let span = self.tracer?.startSpan(statement.keyword, ofKind: .client)
+            span?.updateAttributes { attributes in
+                self.applyCommonAttributes(to: &attributes, querySummary: statement.summary, queryText: statement.sql)
+            }
+            defer { span?.end() }
+        #endif
+
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
@@ -451,6 +470,15 @@ extension OracleConnection: OracleConnectionProtocol {
             error.file = file
             error.line = line
             error.statement = statement
+            #if DistributedTracingSupport
+                span?.recordError(error)
+                span?.setStatus(SpanStatus(code: .error))
+                span?.attributes[self.configuration.tracing.attributeNames.errorType] = error.code.description
+                if let number = error.serverInfo?.number {
+                    span?.attributes[self.configuration.tracing.attributeNames.databaseResponseStatusCode] =
+                        "ORA-\(String(number, padding: 5))"
+                }
+            #endif
             throw error  // rethrow with more metadata
         }
     }
@@ -480,7 +508,7 @@ extension OracleConnection: OracleConnectionProtocol {
     }
 
     func execute(
-        cursor: Cursor,
+        cursor: consuming Cursor,
         options: StatementOptions = .init(),
         logger: Logger,
         file: String = #fileID, line: Int = #line
@@ -488,6 +516,18 @@ extension OracleConnection: OracleConnectionProtocol {
         var logger = logger
         logger[oracleMetadataKey: .connectionID] = "\(self.id)"
         logger[oracleMetadataKey: .sessionID] = "\(self.sessionID)"
+
+        #if DistributedTracingSupport
+            let span = self.tracer?.startSpan("CURSOR", ofKind: .client)
+            span?.updateAttributes { attributes in
+                self.applyCommonAttributes(
+                    to: &attributes,
+                    querySummary: "CURSOR",
+                    queryText: "CURSOR \(cursor.describeInfo.columns.map(\.name).joined(separator: ", "))"
+                )
+            }
+            defer { span?.end() }
+        #endif
 
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
@@ -508,6 +548,15 @@ extension OracleConnection: OracleConnectionProtocol {
         } catch var error as OracleSQLError {
             error.file = file
             error.line = line
+            #if DistributedTracingSupport
+                span?.recordError(error)
+                span?.setStatus(SpanStatus(code: .error))
+                span?.attributes[self.configuration.tracing.attributeNames.errorType] = error.code.description
+                if let number = error.serverInfo?.number {
+                    span?.attributes[self.configuration.tracing.attributeNames.databaseResponseStatusCode] =
+                        "ORA-\(String(number, padding: 5))"
+                }
+            #endif
             throw error  // rethrow with more metadata
         }
     }
@@ -576,3 +625,22 @@ extension OracleConnection {
         #endif
     }
 }
+
+#if DistributedTracingSupport
+    extension OracleConnection {
+        @usableFromInline
+        func applyCommonAttributes(
+            to attributes: inout SpanAttributes,
+            querySummary: String,
+            queryText: String
+        ) {
+            // TODO: check if we can get |database_name and |instance_name without roundtrip, maybe via config?
+            attributes[self.configuration.tracing.attributeNames.databaseNamespace] =
+                "\(configuration.service.serviceName)"
+            attributes[self.configuration.tracing.attributeNames.databaseQuerySummary] = querySummary
+            attributes[self.configuration.tracing.attributeNames.databaseQueryText] = queryText
+            attributes[self.configuration.tracing.attributeNames.serverAddress] = configuration.host
+            attributes[self.configuration.tracing.attributeNames.serverPort] = configuration.port
+        }
+    }
+#endif

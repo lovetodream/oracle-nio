@@ -22,6 +22,10 @@ import NIOSSL
     import Foundation
 #endif
 
+#if DistributedTracingSupport
+    import Tracing
+#endif
+
 extension OracleConnection {
     /// A configuration object for a connection.
     public struct Configuration: Sendable {
@@ -273,6 +277,13 @@ extension OracleConnection {
         }
         internal let _terminalName = "unknown"
 
+        #if DistributedTracingSupport
+            /// The distributed tracing configuration to use for this connection.
+            /// Defaults to using the globally bootstrapped tracer with OpenTelementry
+            /// semantic conventions.
+            public var tracing: OracleTracingConfiguration = .init()
+        #endif
+
 
         // MARK: - Connection Pooling
         internal var purity: Purity = .default
@@ -479,4 +490,52 @@ public struct OracleServiceMethod: Sendable, Equatable {
     public static func sid(_ value: String) -> OracleServiceMethod {
         self.init(base: .sid(value))
     }
+
+    #if DistributedTracingSupport
+        var serviceName: String {
+            switch base {
+            case .serviceName(let string):
+                return string
+            case .sid(let string):
+                return string
+            }
+        }
+    #endif
 }
+
+#if DistributedTracingSupport
+    /// A configuration object that defines distributed tracing behavior of an Oracle connection.
+    public struct OracleTracingConfiguration: Sendable {
+        /// The tracer to use, or `nil` to disable tracing.
+        /// Defaults to the globally bootstrapped tracer.
+        public var tracer: (any Tracer)? = InstrumentationSystem.tracer
+
+        /// The attribute names used in spans created by OracleNIO. Defaults to OpenTelemetry semantics.
+        public var attributeNames: AttributeNames = .init()
+
+        /// The static attribute values used in spans created by OracleNIO.
+        public var attributeValues: AttributeValues = .init()
+
+        /// Attribute names used in spans created by OracleNIO.
+        public struct AttributeNames: Sendable {
+            public var databaseNamespace: String = "db.namespace"
+            public var databaseResponseStatusCode: String = "db.response.status_code"
+            public var errorType: String = "error.type"
+            public var serverPort: String = "server.port"
+            public var databaseCollectionName: String = "db.collection.name"
+            public var databaseOperationBatchSize: String = "db.operation.batch.size"
+            public var databaseOperationName: String = "db.operation.name"
+            public var databaseQuerySummary: String = "db.query.summary"
+            public var databaseQueryText: String = "db.query.text"
+            public var databaseStoredProcedureName: String = "db.stored_procedure.name"
+            public var serverAddress: String = "server.address"
+            public var databaseQueryParameterPrefix: String = "db.query.parameter."
+            public var databaseResponseReturnedRows: String = "db.response.returned_rows"
+        }
+
+        /// Static attribute values used in spans created by OracleNIO.
+        public struct AttributeValues: Sendable {
+            public var databaseSystem: String = "oracle.db"
+        }
+    }
+#endif

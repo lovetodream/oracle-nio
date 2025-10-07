@@ -35,8 +35,8 @@ extension OracleBackendMessage {
 
             let describeInfo =
                 switch context.statementContext?.type {
-                case .cursor(let cursor, _):
-                    cursor.describeInfo
+                case .cursor(let describeInfo, _, _):
+                    describeInfo
                 default:
                     context.describeInfo
                 }

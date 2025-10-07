@@ -13,6 +13,10 @@ let package = Package(
         .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
         .library(name: "_OracleMockServer", targets: ["OracleMockServer"]),
     ],
+    traits: [
+        .trait(name: "DistributedTracingSupport"),
+        .default(enabledTraits: ["DistributedTracingSupport"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
@@ -21,6 +25,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-crypto.git", "3.9.0"..<"5.0.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
+        .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.3.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
         .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
@@ -48,6 +53,11 @@ let package = Package(
                 .product(name: "NIOTLS", package: "swift-nio"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "_CryptoExtras", package: "swift-crypto"),
+                .product(
+                    name: "Tracing",
+                    package: "swift-distributed-tracing",
+                    condition: .when(traits: ["DistributedTracingSupport"])
+                ),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 "_OracleConnectionPoolModule",
             ]
@@ -61,7 +71,14 @@ let package = Package(
         ),
         .testTarget(
             name: "IntegrationTests",
-            dependencies: ["OracleNIO", "OracleNIOMacros"],
+            dependencies: [
+                .product(
+                    name: "InMemoryTracing",
+                    package: "swift-distributed-tracing",
+                    condition: .when(traits: ["DistributedTracingSupport"])
+                ),
+                "OracleNIO", "OracleNIOMacros",
+            ],
             resources: [.process("Data")]
         ),
         .target(

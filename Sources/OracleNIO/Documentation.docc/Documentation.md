@@ -61,6 +61,7 @@ Oracle Database 12.1 or later.
 - ``OracleEncodable``
 - ``OracleEncodingContext``
 - ``OracleDecodable``
+- ``OracleNonCopyableDecodable``
 - ``OracleDecodingContext``
 - ``OracleCodable``
 - ``OracleDataType``

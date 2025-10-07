@@ -388,7 +388,7 @@ final class OracleNIOTests {
         // table creation errors can be ignored
         _ = try? await conn.execute("CREATE TABLE test_out (value number)", logger: .oracleTest)
 
-        let out = OracleRef(dataType: .number, isReturnBind: true)
+        let out = OracleRef(dataType: .number)
         try await conn.execute(
             """
             INSERT INTO test_out VALUES (\(OracleNumber(1)))
@@ -571,7 +571,7 @@ final class OracleNIOTests {
         do {
             let conn = try await OracleConnection.test(on: self.eventLoop)
             defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
-            let bind = OracleRef(dataType: .number, isReturnBind: true)
+            let bind = OracleRef(dataType: .number)
             try await conn.execute(
                 "INSERT INTO my_non_existing_table(id) VALUES (1) RETURNING id INTO \(bind)",
                 logger: .oracleTest)
@@ -631,7 +631,7 @@ final class OracleNIOTests {
             var logger = Logger(label: "test")
             logger.logLevel = .trace
             // execute non-working query
-            let bind = OracleRef(dataType: .number, isReturnBind: true)
+            let bind = OracleRef(dataType: .number)
             try await conn.execute(
                 "INSERT INTO my_constrained_table(title, my_type) VALUES ('hello', 2) RETURNING id INTO \(bind)",
                 logger: logger)
@@ -889,18 +889,6 @@ final class OracleNIOTests {
             received += 1
         }
         #expect(received == 50)
-
-        // Cannot be executed again
-        var secondSucceeded = true
-        do {
-            _ = try await cursor.execute(on: conn)
-        } catch {
-            secondSucceeded = false
-            let error = try #require(error as? OracleSQLError)
-            #expect(error.code == .server)
-            #expect(error.serverInfo?.number == 1001)  // unknown cursor id
-        }
-        #expect(secondSucceeded == false)
     }
 
     @Test func rowID() async throws {
@@ -1045,7 +1033,7 @@ final class OracleNIOTests {
             #expect(error.serverInfo?.number == 942)
         }
         try await conn.execute("CREATE TABLE get_row_id_86 (id NUMBER)")
-        let rowIDRef = OracleRef(dataType: .rowID, isReturnBind: true)
+        let rowIDRef = OracleRef(dataType: .rowID)
         let result = try await conn.execute(
             "INSERT INTO get_row_id_86 (id) VALUES (1) RETURNING rowid INTO \(rowIDRef)")
         #expect(try await result.affectedRows == 1)

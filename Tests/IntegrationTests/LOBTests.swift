@@ -194,7 +194,7 @@ import Testing
     @Test func writeLOBStream() async throws {
         let data = try Data(contentsOf: fileURL)
         var buffer = ByteBuffer(bytes: Array(data))
-        let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
+        let lobRef = OracleRef(dataType: .blob)
 
         try await runPopulatedTest { connection, tableName in
             try await connection.execute(
@@ -224,7 +224,7 @@ import Testing
     @Test func writeLOBStreamWithExplicitOpenAndClose() async throws {
         let data = try Data(contentsOf: fileURL)
         var buffer = ByteBuffer(bytes: Array(data))
-        let lobRef = OracleRef(dataType: .blob, isReturnBind: true)
+        let lobRef = OracleRef(dataType: .blob)
 
         try await runPopulatedTest { connection, tableName in
             try await connection.execute(

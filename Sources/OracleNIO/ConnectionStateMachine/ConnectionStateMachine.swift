@@ -312,7 +312,7 @@ struct ConnectionStateMachine {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
-                .cursor(_, let promise),
+                .cursor(_, _, let promise),
                 .plain(let promise):
                 return .failStatement(
                     promise, with: oracleError, cleanupContext: nil
@@ -1059,7 +1059,7 @@ extension ConnectionStateMachine {
             .uncleanShutdown,
             .unsupportedDataType:
             return true
-        case .statementCancelled, .nationalCharsetNotSupported, .missingStatement:
+        case .statementCancelled, .nationalCharsetNotSupported, .missingStatement, .malformedStatement:
             return false
         case .server:
             switch error.serverInfo?.number {

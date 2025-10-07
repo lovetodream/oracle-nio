@@ -30,7 +30,7 @@ extension StatementContext {
             promise = EmbeddedEventLoop().makePromise()
             promise.fail(TestComplete())  // we don't care
         }
-        self.init(
+        try! self.init(
             statement: statement, options: .init(),
             logger: OracleConnection.noopLogger,
             promise: promise
@@ -43,7 +43,7 @@ extension StatementContext {
             .plsql(let promise),
             .dml(let promise),
             .ddl(let promise),
-            .cursor(_, let promise),
+            .cursor(_, _, let promise),
             .plain(let promise):
             promise.fail(TestComplete())
         }

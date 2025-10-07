@@ -77,8 +77,8 @@ struct StatementStateMachine {
             )
         }
 
-        if case .cursor(let cursor, _) = statementContext.type {
-            self.state = .describeInfoReceived(statementContext, cursor.describeInfo)
+        if case .cursor(let describeInfo, _, _) = statementContext.type {
+            self.state = .describeInfoReceived(statementContext, describeInfo)
         }
 
         return .sendExecute(
@@ -108,7 +108,7 @@ struct StatementStateMachine {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
-                .cursor(_, let promise),
+                .cursor(_, _, let promise),
                 .plain(let promise):
                 return .failStatement(promise, with: .statementCancelled)
             }
@@ -163,7 +163,7 @@ struct StatementStateMachine {
                 .dml(let promise),
                 .plsql(let promise),
                 .query(let promise),
-                .cursor(_, let promise),
+                .cursor(_, _, let promise),
                 .plain(let promise):
                 return .succeedStatement(
                     promise,
@@ -314,7 +314,7 @@ struct StatementStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     action = .succeedStatement(
                         promise,
@@ -338,7 +338,7 @@ struct StatementStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     action = .succeedStatement(
                         promise,
@@ -381,7 +381,7 @@ struct StatementStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     action = .failStatement(promise, with: .server(error))
                 }
@@ -405,7 +405,7 @@ struct StatementStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     action = .failStatement(promise, with: .server(error))
                 }
@@ -441,7 +441,7 @@ struct StatementStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     action = .succeedStatement(
                         promise,
@@ -462,7 +462,7 @@ struct StatementStateMachine {
                     .plsql(let promise),
                     .dml(let promise),
                     .ddl(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     action = .succeedStatement(
                         promise,
@@ -534,7 +534,7 @@ struct StatementStateMachine {
                         .plsql(let promise),
                         .dml(let promise),
                         .ddl(let promise),
-                        .cursor(_, let promise),
+                        .cursor(_, _, let promise),
                         .plain(let promise):
                         action = .failStatement(promise, with: .server(error))
                     }
@@ -759,7 +759,7 @@ struct StatementStateMachine {
                     .dml(let promise),
                     .plsql(let promise),
                     .query(let promise),
-                    .cursor(_, let promise),
+                    .cursor(_, _, let promise),
                     .plain(let promise):
                     self.state = .error(error)
                     return .failStatement(promise, with: error)

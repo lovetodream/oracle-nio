@@ -14,6 +14,10 @@
 
 import Logging
 
+#if DistributedTracingSupport
+    import Tracing
+#endif
+
 extension OracleConnection {
     /// Executes the statement multiple times using the specified bind collections without requiring multiple roundtrips to the database.
     /// - Parameters:
@@ -132,11 +136,30 @@ extension OracleConnection {
         file: String,
         line: Int
     ) async throws -> OracleBatchExecutionResult {
+        var statementParser = OracleStatement.Parser(currentSQL: statement)
+        try? statementParser.continueParsing(with: statement)
+
+        #if DistributedTracingSupport
+            let span = self.tracer?.startSpan(statementParser.keyword, ofKind: .client)
+            span?.updateAttributes { attributes in
+                self.applyCommonAttributes(
+                    to: &attributes,
+                    querySummary: statementParser.summary.joined(separator: " "),
+                    queryText: statement
+                )
+                attributes[self.configuration.tracing.attributeNames.databaseOperationBatchSize] =
+                    collection.bindings.count
+            }
+            defer { span?.end() }
+        #endif
+
         let promise = self.channel.eventLoop.makePromise(
             of: OracleRowStream.self
         )
         let context = StatementContext(
             statement: statement,
+            keyword: statementParser.keyword,
+            isReturning: statementParser.isReturning,
             bindCollection: collection,
             options: options,
             logger: logger,
@@ -170,6 +193,15 @@ extension OracleConnection {
             error.file = file
             error.line = line
             error.statement = .init(unsafeSQL: statement)
+            #if DistributedTracingSupport
+                span?.recordError(error)
+                span?.setStatus(SpanStatus(code: .error))
+                span?.attributes[self.configuration.tracing.attributeNames.errorType] = error.code.description
+                if let number = error.serverInfo?.number {
+                    span?.attributes[self.configuration.tracing.attributeNames.databaseResponseStatusCode] =
+                        "ORA-\(String(number, padding: 5))"
+                }
+            #endif
             throw error  // rethrow with more metadata
         }
     }

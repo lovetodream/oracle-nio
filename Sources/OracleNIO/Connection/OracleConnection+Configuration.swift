@@ -404,11 +404,7 @@ extension String {
 }
 
 private func sanitize(value: String) -> String {
-    return
-        value
-        .replacingOccurrences(of: "(", with: "?")
-        .replacingOccurrences(of: ")", with: "?")
-        .replacingOccurrences(of: "=", with: "?")
+    return value.replacing(/\(|\)|\=/, with: "?")
 }
 
 public struct OracleAccessToken: Sendable, Equatable {

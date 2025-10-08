@@ -65,7 +65,7 @@ import Testing
             bytes: Array(
                 hexString:
                     "00 20 00 00 02 00 00 00 01 3a 04 01 20 00 20 00 01 00 00 00 00 20 c5 00 00 00 00 00 00 00 00 00"
-                    .replacingOccurrences(of: " ", with: "")
+                    .replacing(" ", with: "")
             ))
         #expect(
             throws: OracleSQLError.serverVersionNotSupported,

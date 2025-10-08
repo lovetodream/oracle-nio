@@ -490,17 +490,6 @@ public struct OracleServiceMethod: Sendable, Equatable {
     public static func sid(_ value: String) -> OracleServiceMethod {
         self.init(base: .sid(value))
     }
-
-    #if DistributedTracingSupport
-        var serviceName: String {
-            switch base {
-            case .serviceName(let string):
-                return string
-            case .sid(let string):
-                return string
-            }
-        }
-    #endif
 }
 
 #if DistributedTracingSupport

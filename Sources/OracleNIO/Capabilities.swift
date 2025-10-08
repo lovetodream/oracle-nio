@@ -40,7 +40,7 @@ struct Capabilities: Sendable, Hashable {
             Constants.TNS_CCAP_O5LOGON | Constants.TNS_CCAP_O5LOGON_NP | Constants.TNS_CCAP_O7LOGON
             | Constants.TNS_CCAP_O8LOGON_LONG_IDENTIFIER | Constants.TNS_CCAP_O9LOGON_LONG_PASSWORD
         self.compileCapabilities[Constants.TNS_CCAP_FEATURE_BACKPORT] =
-            Constants.TNS_CCAP_CTB_IMPLICIT_POOL
+            Constants.TNS_CCAP_CTB_IMPLICIT_POOL | Constants.TNS_CCAP_CTB_OAUTH_MSG_ON_ERR
         self.compileCapabilities[Constants.TNS_CCAP_FIELD_VERSION] = self.ttcFieldVersion
         self.compileCapabilities[Constants.TNS_CCAP_SERVER_DEFINE_CONV] = 1
         self.compileCapabilities[Constants.TNS_CCAP_TTC1] =

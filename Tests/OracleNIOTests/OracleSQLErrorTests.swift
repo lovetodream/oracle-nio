@@ -33,6 +33,6 @@ import Testing
                 isWarning: false,
                 batchErrors: []
             ))
-        #expect(String(describing: errorWithoutMessage) == "ORA-1017")
+        #expect(String(describing: errorWithoutMessage) == "ORA-01017")
     }
 }

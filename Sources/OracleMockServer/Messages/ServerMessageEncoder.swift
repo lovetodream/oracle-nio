@@ -14,7 +14,7 @@
 
 import NIOCore
 
-@available(macOS 14.0, *)
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 struct ServerMessageEncoder {
     static let headerSize = 8
 

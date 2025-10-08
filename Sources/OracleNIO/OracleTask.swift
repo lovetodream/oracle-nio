@@ -195,7 +195,7 @@ final class StatementContext: Sendable {
         self.sql = statement.sql
         self.binds = .one(statement.binds)
         self.options = options
-        self.sqlLength = .init(statement.sql.data(using: .utf8)?.count ?? 0)
+        self.sqlLength = numericCast(statement.sql.utf8.count)
         self.cursorID = 0
         self.executionCount = 1
         self.type = Self.determineType(for: statement.keyword, promise: promise)

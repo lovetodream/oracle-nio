@@ -30,7 +30,7 @@ extension StatementContext {
             promise = EmbeddedEventLoop().makePromise()
             promise.fail(TestComplete())  // we don't care
         }
-        try! self.init(
+        self.init(
             statement: statement, options: .init(),
             logger: OracleConnection.noopLogger,
             promise: promise

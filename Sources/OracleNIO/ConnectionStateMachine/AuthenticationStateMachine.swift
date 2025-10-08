@@ -40,6 +40,7 @@ struct AuthenticationStateMachine {
 
     let authContext: AuthContext
     let useFastAuth: Bool
+    var comboKey: [UInt8]?
     var state: State
 
     init(authContext: AuthContext, useFastAuth: Bool) {
@@ -86,6 +87,31 @@ struct AuthenticationStateMachine {
             self.state = .authenticationPhaseTwoSent
             return .sendAuthenticationPhaseTwo(self.authContext, parameters)
         case .authenticationPhaseTwoSent:
+            if let comboKey {
+                let value = parameters["AUTH_SVR_RESPONSE"]
+                let validatingPart: ArraySlice<UInt8>?
+
+                if let value, let encodedResponse = try? Array(_hexString: value.value) {
+                    let response = try? decryptCBC(comboKey, encodedResponse)
+                    if let response, response.count >= 31 {
+                        validatingPart = response[16..<32]
+                    } else {
+                        validatingPart = nil
+                    }
+                } else {
+                    validatingPart = nil
+                }
+                guard validatingPart == ArraySlice("SERVER_TO_CLIENT".utf8) else {
+                    #if OracleBenchmarksEnabled
+                        self.state = .authenticated
+                        return .authenticated(parameters)
+                    #else
+                        return self.errorHappened(
+                            .connectionError(underlying: OracleSQLError.ConnectionError.invalidServerResponse))
+                    #endif
+                }
+            }
+
             self.state = .authenticated
             return .authenticated(parameters)
         }

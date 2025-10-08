@@ -631,9 +631,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         context: ChannelHandlerContext
     ) {
         do {
-            try self.encoder.authenticationPhaseTwo(
+            let comboKey = try self.encoder.authenticationPhaseTwo(
                 authContext: authContext, parameters: parameters
             )
+            self.setComboKey(comboKey)
             context.writeAndFlush(
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
@@ -642,20 +643,19 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         }
     }
 
+    /// used for unit testing
+    @inlinable
+    func setComboKey(_ comboKey: [UInt8]?) {
+        self.state.setComboKey(comboKey)
+    }
+
     private func authenticated(
         parameters: OracleBackendMessage.Parameter,
         context: ChannelHandlerContext
     ) {
         // Did finish starting and authenticating
-        let (
-            version, sessionID, serialNumber
-        ) = getVersionInfo(from: parameters)
-        context.fireUserInboundEventTriggered(
-            OracleSQLEvent.startupDone(
-                version: version,
-                sessionID: sessionID,
-                serialNumber: serialNumber
-            ))
+        let serverContext = self.getServerContext(from: parameters)
+        context.fireUserInboundEventTriggered(OracleSQLEvent.startupDone(serverContext))
         context.fireUserInboundEventTriggered(OracleSQLEvent.readyForStatement)
     }
 
@@ -800,9 +800,9 @@ final class OracleChannelHandler: ChannelDuplexHandler {
 
     // MARK: - Utility
 
-    private func getVersionInfo(
+    private func getServerContext(
         from parameters: OracleBackendMessage.Parameter
-    ) -> (OracleVersion, Int, Int) {
+    ) -> OracleSQLEvent.StartupContext {
         let version = getVersion(from: parameters)
         guard
             let sessionID = (parameters["AUTH_SESSION_ID"]?.value)
@@ -812,7 +812,14 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         else {
             preconditionFailure()
         }
-        return (version, sessionID, serialNumber)
+        return OracleSQLEvent.StartupContext(
+            version: version,
+            sessionID: sessionID,
+            serialNumber: serialNumber,
+            serviceName: parameters["AUTH_SC_SERVICE_NAME"]?.value,
+            databaseName: parameters["AUTH_DBNAME"]?.value,
+            instanceName: parameters["AUTH_INSTANCENAME"]?.value
+        )
     }
 
     /// Returns the 5-tuple for the database version. Note that the format changed with Oracle Database 18.

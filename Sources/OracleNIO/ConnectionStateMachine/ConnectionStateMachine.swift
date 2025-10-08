@@ -1115,6 +1115,14 @@ extension ConnectionStateMachine {
             closePromise: forwardedPromise
         )
     }
+
+    mutating func setComboKey(_ comboKey: [UInt8]?) {
+        guard case .authenticating(var authState) = self.state else {
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+        authState.comboKey = comboKey
+        self.state = .authenticating(authState)
+    }
 }
 
 extension ConnectionStateMachine {

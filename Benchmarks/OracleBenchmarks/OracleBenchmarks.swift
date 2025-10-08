@@ -18,9 +18,11 @@ import NIOCore
 import OracleMockServer
 import OracleNIO
 
+let port = env("ORA_PORT").flatMap(Int.init) ?? 6666
+
 let config = OracleConnection.Configuration(
     host: env("ORA_HOSTNAME") ?? "127.0.0.1",
-    port: env("ORA_PORT").flatMap(Int.init) ?? 6666,
+    port: port,
     service: .serviceName(env("ORA_SERVICE_NAME") ?? "FREEPDB1"),
     username: env("ORA_USERNAME") ?? "my_user",
     password: env("ORA_PASSWORD") ?? "my_passwor"
@@ -47,7 +49,7 @@ extension Benchmark {
             }
         } setup: {
             server = Task {
-                try await OracleMockServer.run()
+                try await OracleMockServer.run(port: port)
             }
             connection = try await OracleConnection.connect(
                 configuration: config,
@@ -104,7 +106,7 @@ let benchmarks: @Sendable () -> Void = {
         }
     } setup: {
         server = Task {
-            try await OracleMockServer.run()
+            try await OracleMockServer.run(port: port)
         }
     } teardown: {
         server.cancel()

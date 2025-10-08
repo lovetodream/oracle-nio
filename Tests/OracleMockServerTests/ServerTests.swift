@@ -12,74 +12,76 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Atomics
-import OracleNIO
-import Testing
+#if OracleBenchmarksEnabled
+    import Atomics
+    import OracleNIO
+    import Testing
 
-@testable import OracleMockServer
+    @testable import OracleMockServer
 
-@Suite(.timeLimit(.minutes(5))) struct ServerTests {
-    static let port: ManagedAtomic<Int> = .init(6666)
+    @Suite(.timeLimit(.minutes(5))) struct ServerTests {
+        static let port: ManagedAtomic<Int> = .init(6666)
 
-    @available(macOS 14.0, *)
-    func runWithServer(_ body: (OracleConnection) async throws -> Void) async throws {
-        var server: Task<Void, Error>!
+        @available(macOS 14.0, *)
+        func runWithServer(_ body: (OracleConnection) async throws -> Void) async throws {
+            var server: Task<Void, Error>!
 
-        let port = Self.port.loadThenWrappingIncrement(ordering: .relaxed)
+            let port = Self.port.loadThenWrappingIncrement(ordering: .relaxed)
 
-        let _: Void = try await withCheckedThrowingContinuation { continuation in
-            server = Task {
-                do {
-                    try await OracleMockServer.run(port: port, continuation: continuation)
-                } catch {
-                    print(error)
+            let _: Void = try await withCheckedThrowingContinuation { continuation in
+                server = Task {
+                    do {
+                        try await OracleMockServer.run(port: port, continuation: continuation)
+                    } catch {
+                        print(error)
+                    }
                 }
             }
+
+            let connection = try await OracleConnection.connect(
+                configuration: .init(
+                    host: "127.0.0.1",
+                    port: port,
+                    service: .serviceName("FREEPDB1"),
+                    username: "my_user",
+                    password: "my_passwor"
+                ), id: 1)
+            try await body(connection)
+            try await connection.close()
+
+            server.cancel()
         }
 
-        let connection = try await OracleConnection.connect(
-            configuration: .init(
-                host: "127.0.0.1",
-                port: port,
-                service: .serviceName("FREEPDB1"),
-                username: "my_user",
-                password: "my_passwor"
-            ), id: 1)
-        try await body(connection)
-        try await connection.close()
+        @available(macOS 14.0, *)
+        @Test func connect() async throws {
+            try await runWithServer { _ in }
+        }
 
-        server.cancel()
-    }
-
-    @available(macOS 14.0, *)
-    @Test func connect() async throws {
-        try await runWithServer { _ in }
-    }
-
-    @available(macOS 14.0, *)
-    @Test func selectOne() async throws {
-        try await runWithServer { connection in
-            let stream = try await connection.execute("SELECT 'hello' FROM dual")
-            var rows = 0
-            for try await value in stream.decode(String.self) {
-                rows += 1
-                #expect(value == "hello")
+        @available(macOS 14.0, *)
+        @Test func selectOne() async throws {
+            try await runWithServer { connection in
+                let stream = try await connection.execute("SELECT 'hello' FROM dual")
+                var rows = 0
+                for try await value in stream.decode(String.self) {
+                    rows += 1
+                    #expect(value == "hello")
+                }
+                #expect(rows == 1)
             }
-            #expect(rows == 1)
         }
-    }
 
-    @available(macOS 14.0, *)
-    @Test func selectMany() async throws {
-        try await runWithServer { connection in
-            let stream = try await connection.execute(
-                "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')")
-            var current = 0
-            for try await value in stream.decode(Int.self) {
-                current += 1
-                #expect(current == value)
+        @available(macOS 14.0, *)
+        @Test func selectMany() async throws {
+            try await runWithServer { connection in
+                let stream = try await connection.execute(
+                    "SELECT to_number(column_value) AS id FROM xmltable ('1 to 10000')")
+                var current = 0
+                for try await value in stream.decode(Int.self) {
+                    current += 1
+                    #expect(current == value)
+                }
+                #expect(current == 10_000)
             }
-            #expect(current == 10_000)
         }
     }
-}
+#endif

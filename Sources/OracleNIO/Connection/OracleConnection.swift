@@ -67,6 +67,7 @@ public final class OracleConnection: Sendable {
     let configuration: Configuration
     let channel: Channel
     let logger: Logger
+    let context: OracleSQLEvent.StartupContext
 
     var closeFuture: EventLoopFuture<Void> { self.channel.closeFuture }
     var eventLoop: EventLoop { self.channel.eventLoop }
@@ -78,10 +79,10 @@ public final class OracleConnection: Sendable {
     public let id: ID
 
     /// The connection's session ID (SID).
-    public let sessionID: Int
-    let serialNumber: Int
+    public var sessionID: Int { self.context.sessionID }
+    var serialNumber: Int { self.context.serialNumber }
     /// The version of the Oracle server, the connection is established to.
-    public let serverVersion: OracleVersion
+    public var serverVersion: OracleVersion { self.context.version }
 
     @usableFromInline
     static let noopLogger = Logger(label: "oracle-nio.noop-logger") { _ in
@@ -90,6 +91,26 @@ public final class OracleConnection: Sendable {
 
     #if DistributedTracingSupport
         let tracer: (any Tracer)?
+
+        var databaseNamespace: String {
+            var namespace = ""
+            if let serviceName = self.context.serviceName {
+                namespace += serviceName
+            }
+            if let databaseName = self.context.databaseName {
+                if !namespace.isEmpty {
+                    namespace += "|"
+                }
+                namespace += databaseName
+            }
+            if let instanceName = self.context.instanceName {
+                if !namespace.isEmpty {
+                    namespace += "|"
+                }
+                namespace += instanceName
+            }
+            return namespace
+        }
     #endif
 
     private init(
@@ -97,17 +118,13 @@ public final class OracleConnection: Sendable {
         channel: Channel,
         connectionID: ID,
         logger: Logger,
-        sessionID: Int,
-        serialNumber: Int,
-        serverVersion: OracleVersion
+        context: OracleSQLEvent.StartupContext
     ) {
         self.id = connectionID
         self.configuration = configuration
         self.logger = logger
         self.channel = channel
-        self.sessionID = sessionID
-        self.serialNumber = serialNumber
-        self.serverVersion = serverVersion
+        self.context = context
         #if DistributedTracingSupport
             self.tracer = configuration.tracing.tracer
         #endif
@@ -189,9 +206,7 @@ public final class OracleConnection: Sendable {
                     channel: channel,
                     connectionID: connectionID,
                     logger: logger,
-                    sessionID: context.sessionID,
-                    serialNumber: context.serialNumber,
-                    serverVersion: context.version
+                    context: context
                 )
             }
     }
@@ -634,9 +649,7 @@ extension OracleConnection {
             querySummary: String,
             queryText: String
         ) {
-            // TODO: check if we can get |database_name and |instance_name without roundtrip, maybe via config?
-            attributes[self.configuration.tracing.attributeNames.databaseNamespace] =
-                "\(configuration.service.serviceName)"
+            attributes[self.configuration.tracing.attributeNames.databaseNamespace] = self.databaseNamespace
             attributes[self.configuration.tracing.attributeNames.databaseQuerySummary] = querySummary
             attributes[self.configuration.tracing.attributeNames.databaseQueryText] = queryText
             attributes[self.configuration.tracing.attributeNames.serverAddress] = configuration.host

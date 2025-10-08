@@ -14,6 +14,12 @@
 
 import NIOCore
 
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 extension OracleBackendMessage {
     struct BackendError: PayloadDecodable, Hashable {
         var number: UInt32

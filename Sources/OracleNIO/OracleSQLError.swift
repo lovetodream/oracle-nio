@@ -256,7 +256,7 @@ public struct OracleSQLError: Sendable, Error {
         }
 
         public var description: String {
-            self.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "ORA-\(String(self.number, padding: 5))"
+            self.message ?? "ORA-\(String(self.number, padding: 5))"
         }
     }
 

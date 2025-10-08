@@ -109,9 +109,7 @@ struct OracleFrontendMessageEncoder {
             serviceOptions |= Constants.TNS_GSO_CAN_RECV_ATTENTION
             connectFlags2 |= Constants.TNS_CHECK_OOB
         }
-        let connectStringByteLength =
-            connectString
-            .lengthOfBytes(using: .utf8)
+        let connectStringByteLength = connectString.utf8.count
 
         self.startRequest(packetType: .connect)
 
@@ -1243,8 +1241,8 @@ extension OracleFrontendMessageEncoder {
         let tzMinute = (abs(offset) % 3600) / 60
         let sign = offset >= 0 ? "+" : "-"
         let tzRepresentation = """
-            \(sign)\(String(format: "%02d", tzHour))\
-            :\(String(format: "%02d", tzMinute))
+            \(sign)\(String(tzHour, padding: 2))\
+            :\(String(tzMinute, padding: 2))
             """
         return "ALTER SESSION SET TIME_ZONE='\(tzRepresentation)'\0"
     }

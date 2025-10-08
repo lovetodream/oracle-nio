@@ -352,6 +352,7 @@ enum Constants {
     static let TNS_CCAP_O8LOGON_LONG_IDENTIFIER: UInt8 = 64
     static let TNS_CCAP_O9LOGON_LONG_PASSWORD: UInt8 = 0x80
     static let TNS_CCAP_CTB_IMPLICIT_POOL: UInt8 = 0x08
+    static let TNS_CCAP_CTB_OAUTH_MSG_ON_ERR: UInt8 = 0x10
     static let TNS_CCAP_END_OF_CALL_STATUS: UInt8 = 0x01
     static let TNS_CCAP_IND_RCD: UInt8 = 0x08
     static let TNS_CCAP_FAST_BVEC: UInt8 = 0x20

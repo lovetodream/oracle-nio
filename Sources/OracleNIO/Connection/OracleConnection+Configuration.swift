@@ -404,11 +404,7 @@ extension String {
 }
 
 private func sanitize(value: String) -> String {
-    return
-        value
-        .replacingOccurrences(of: "(", with: "?")
-        .replacingOccurrences(of: ")", with: "?")
-        .replacingOccurrences(of: "=", with: "?")
+    return value.replacing(/\(|\)|\=/, with: "?")
 }
 
 public struct OracleAccessToken: Sendable, Equatable {
@@ -490,17 +486,6 @@ public struct OracleServiceMethod: Sendable, Equatable {
     public static func sid(_ value: String) -> OracleServiceMethod {
         self.init(base: .sid(value))
     }
-
-    #if DistributedTracingSupport
-        var serviceName: String {
-            switch base {
-            case .serviceName(let string):
-                return string
-            case .sid(let string):
-                return string
-            }
-        }
-    #endif
 }
 
 #if DistributedTracingSupport

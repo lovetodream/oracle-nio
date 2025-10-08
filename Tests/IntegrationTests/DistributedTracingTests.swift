@@ -39,8 +39,9 @@
         }
 
         @Test func testExecuteSpan() async throws {
-            try await client.withConnection { connection in
-                _ = try await connection.execute("SELECT 1 FROM dual")
+            let namespace = try await client.withConnection { connection in
+                try await connection.execute("SELECT 1 FROM dual")
+                return connection.databaseNamespace
             }
             #expect(tracer.finishedSpans.count == 1)
             let span = try #require(tracer.finishedSpans.first)
@@ -52,19 +53,20 @@
                     "server.port": .int64(Int64(self.config.port)),
                     "db.query.summary": "SELECT dual",
                     "db.query.text": "SELECT 1 FROM dual",
-                    "db.namespace": .string(self.config.service.serviceName),
+                    "db.namespace": .string(namespace),
                 ])
             #expect(span.errors.isEmpty)
             #expect(span.status == nil)
         }
 
         @Test func testExecuteErrorSpan() async throws {
-            do {
-                try await client.withConnection { connection in
+            let namespace = try await client.withConnection { connection in
+                do {
                     _ = try await connection.execute("SELECT FROM dual")
+                } catch let error as OracleSQLError {
+                    #expect(error.code == .server)
                 }
-            } catch let error as OracleSQLError {
-                #expect(error.code == .server)
+                return connection.databaseNamespace
             }
             #expect(tracer.finishedSpans.count == 1)
             let span = try #require(tracer.finishedSpans.first)
@@ -76,7 +78,7 @@
                     "server.port": .int64(Int64(self.config.port)),
                     "db.query.summary": "SELECT dual",
                     "db.query.text": "SELECT FROM dual",
-                    "db.namespace": .string(self.config.service.serviceName),
+                    "db.namespace": .string(namespace),
                     "error.type": "server",
                     "db.response.status_code": "ORA-00936",
                 ])

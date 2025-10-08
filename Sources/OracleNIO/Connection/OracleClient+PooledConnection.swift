@@ -42,6 +42,12 @@ extension OracleClient {
             self.underlying.serverVersion
         }
 
+        #if DistributedTracingSupport
+            var databaseNamespace: String {
+                self.underlying.databaseNamespace
+            }
+        #endif
+
         /// Sends a ping to the database server.
         public func ping() async throws {
             try await self.underlying.ping()

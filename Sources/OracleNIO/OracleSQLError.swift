@@ -14,6 +14,12 @@
 
 import NIOCore
 
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 /// An error that is thrown from the OracleClient.
 ///
 /// - Warning: These errors should not be forwareded to the end user, as they may leak sensitive information.
@@ -250,7 +256,7 @@ public struct OracleSQLError: Sendable, Error {
         }
 
         public var description: String {
-            message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "ORA-\(number)"
+            self.message ?? "ORA-\(String(self.number, padding: 5))"
         }
     }
 
@@ -460,6 +466,10 @@ extension OracleSQLError {
     enum MalformedStatementError: Error {
         case missingEndingSingleQuote
         case missingEndingDoubleQuote
+    }
+
+    enum ConnectionError: Error {
+        case invalidServerResponse
     }
 
 }

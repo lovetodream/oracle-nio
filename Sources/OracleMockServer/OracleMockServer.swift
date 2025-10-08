@@ -22,7 +22,7 @@ import NIOPosix
 /// The server sends a series of predefined messages. It's goal is to respond as quickly as possible, without aiming for correctness.
 ///
 /// _It only works for very specifc usecases._
-@available(macOS 14.0, *)
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public final class OracleMockServer {
     public static func run(port: Int, continuation: CheckedContinuation<Void, Error>? = nil) async throws {
         let logger = Logger(label: "OracleMockServer")

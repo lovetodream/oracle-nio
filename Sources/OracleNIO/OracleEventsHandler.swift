@@ -19,26 +19,29 @@ enum OracleSQLEvent {
     /// The event that is used to inform upstream handlers that ``OracleChannelHandler`` has
     /// established a connection successfully.
     case startupDone(
-        version: OracleVersion,
-        sessionID: Int,
-        serialNumber: Int
+        StartupContext
     )
     /// The event that is used to inform upstream handlers that ``OracleChannelHandler`` is
     /// currently idle.
     case readyForStatement
     /// The event that is used to inform state about an ongoing TLS renegotiation.
     case renegotiateTLS
+
+    struct StartupContext {
+        let version: OracleVersion
+        let sessionID: Int
+        let serialNumber: Int
+        let serviceName: String?
+        let databaseName: String?
+        let instanceName: String?
+    }
 }
 
 final class OracleEventsHandler: ChannelInboundHandler {
     typealias InboundIn = Never
 
-    typealias StartupContext = (
-        version: OracleVersion, sessionID: Int, serialNumber: Int
-    )
-
     let logger: Logger
-    var startupDoneFuture: EventLoopFuture<StartupContext>! {
+    var startupDoneFuture: EventLoopFuture<OracleSQLEvent.StartupContext>! {
         self.startupDonePromise!.futureResult
     }
 
@@ -49,7 +52,7 @@ final class OracleEventsHandler: ChannelInboundHandler {
         case authenticated
     }
 
-    private var startupDonePromise: EventLoopPromise<StartupContext>!
+    private var startupDonePromise: EventLoopPromise<OracleSQLEvent.StartupContext>!
     private var state: State = .initialized
 
     init(logger: Logger) {
@@ -58,14 +61,12 @@ final class OracleEventsHandler: ChannelInboundHandler {
 
     func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
         switch event {
-        case OracleSQLEvent.startupDone(
-            let version, let sessionID, let serialNumber
-        ):
+        case OracleSQLEvent.startupDone(let context):
             guard case .connected = self.state else {
                 preconditionFailure()
             }
             self.state = .readyForStartup
-            self.startupDonePromise.succeed((version, sessionID, serialNumber))
+            self.startupDonePromise.succeed(context)
         case OracleSQLEvent.readyForStatement:
             switch self.state {
             case .initialized, .connected:

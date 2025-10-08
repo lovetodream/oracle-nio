@@ -56,6 +56,6 @@ import Testing
             )
         )
         var encoder = OracleFrontendMessageEncoder(buffer: .init(), capabilities: .init())
-        try encoder.authenticationPhaseTwo(authContext: context, parameters: .init([:]))
+        _ = try encoder.authenticationPhaseTwo(authContext: context, parameters: .init([:]))
     }
 }

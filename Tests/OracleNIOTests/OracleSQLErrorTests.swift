@@ -22,7 +22,7 @@ import Testing
             .init(
                 number: 1017,
                 isWarning: false,
-                message: "ORA-01017: invalid credential or not authorized; logon denied\n",
+                message: "ORA-01017: invalid credential or not authorized; logon denied",
                 batchErrors: []
             ))
         #expect(
@@ -33,6 +33,6 @@ import Testing
                 isWarning: false,
                 batchErrors: []
             ))
-        #expect(String(describing: errorWithoutMessage) == "ORA-1017")
+        #expect(String(describing: errorWithoutMessage) == "ORA-01017")
     }
 }

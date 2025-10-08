@@ -14,6 +14,12 @@
 
 import NIOCore
 
+#if canImport(FoundationEssentials)
+    import FoundationEssentials
+#else
+    import Foundation
+#endif
+
 extension OracleBackendMessage {
     struct BackendError: PayloadDecodable, Hashable {
         var number: UInt32
@@ -36,7 +42,7 @@ extension OracleBackendMessage {
             try buffer.throwingMoveReaderIndex(forwardBy: 2)  // skip flags
             let errorMessage: String? =
                 if number != 0 && length > 0 {
-                    try buffer.throwingReadString(length: Int(length))
+                    try buffer.throwingReadString(length: Int(length)).replacing(/(^\s+|\s+$)/, with: "")
                 } else {
                     nil
                 }
@@ -119,7 +125,7 @@ extension OracleBackendMessage {
                     let errorMessage =
                         try buffer
                         .readString()
-                        .trimmingCharacters(in: .whitespaces)
+                        .replacing(/(^\s+|\s+$)/, with: "")
                     batch[Int(i)].message = errorMessage
                     try buffer.throwingMoveReaderIndex(forwardBy: 2)  // ignore end marker
                 }
@@ -136,7 +142,7 @@ extension OracleBackendMessage {
 
             let errorMessage: String? =
                 if number != 0 {
-                    try buffer.readString().trimmingCharacters(in: .whitespaces)
+                    try buffer.readString().replacing(/(^\s+|\s+$)/, with: "")
                 } else {
                     nil
                 }

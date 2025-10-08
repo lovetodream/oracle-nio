@@ -5,13 +5,16 @@
 import CompilerPluginSupport
 import PackageDescription
 
+let swiftSettings: [SwiftSetting] = [
+    .enableUpcomingFeature("MemberImportVisibility")
+]
+
 let package = Package(
     name: "oracle-nio",
     platforms: [.macOS(.v13), .iOS(.v16), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
     products: [
         .library(name: "OracleNIO", targets: ["OracleNIO"]),
         .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
-        .library(name: "_OracleMockServer", targets: ["OracleMockServer"]),
     ],
     traits: [
         .trait(name: "DistributedTracingSupport"),
@@ -60,7 +63,8 @@ let package = Package(
                 ),
                 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
                 "_OracleConnectionPoolModule",
-            ]
+            ],
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "OracleNIOTests",
@@ -89,7 +93,8 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
-            ]
+            ],
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "OracleMockServerTests",
@@ -97,14 +102,16 @@ let package = Package(
         ),
         .target(
             name: "OracleNIOMacros",
-            dependencies: ["OracleNIO", "OracleNIOMacrosPlugin"]
+            dependencies: ["OracleNIO", "OracleNIOMacrosPlugin"],
+            swiftSettings: swiftSettings
         ),
         .macro(
             name: "OracleNIOMacrosPlugin",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
+            ],
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "OracleNIOMacrosTests",
@@ -115,3 +122,28 @@ let package = Package(
         ),
     ]
 )
+
+if Context.environment["ENABLE_ORACLE_BENCHMARKS"] != nil {
+    package.platforms = [.macOS(.v14)]
+    package.traits = [
+        .trait(name: "DistributedTracingSupport"),
+        .trait(name: "OracleBenchmarksEnabled"),
+        .default(enabledTraits: ["DistributedTracingSupport", "OracleBenchmarksEnabled"]),
+    ]
+    package.dependencies.append(
+        .package(url: "https://github.com/ordo-one/package-benchmark", from: "1.0.0")
+    )
+    package.targets.append(
+        .executableTarget(
+            name: "OracleBenchmarks",
+            dependencies: [
+                .product(name: "Benchmark", package: "package-benchmark"),
+                "OracleMockServer", "OracleNIO",
+            ],
+            path: "Benchmarks/OracleBenchmarks",
+            plugins: [
+                .plugin(name: "BenchmarkPlugin", package: "package-benchmark")
+            ]
+        )
+    )
+}

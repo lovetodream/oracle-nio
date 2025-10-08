@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import NIOCore
 
 #if DistributedTracingSupport
     import Tracing

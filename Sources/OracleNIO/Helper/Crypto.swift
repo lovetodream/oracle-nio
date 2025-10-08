@@ -50,7 +50,7 @@ func encryptCBC(_ key: [UInt8], _ plainText: [UInt8], zeros: Bool = false) throw
         ))
 }
 
-func getDerivedKey(key: Data, salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
+func getDerivedKey(key: some DataProtocol, salt: [UInt8], length: Int, iterations: Int) throws -> [UInt8] {
     try KDF.Insecure.PBKDF2.deriveKey(
         from: key,
         salt: salt,

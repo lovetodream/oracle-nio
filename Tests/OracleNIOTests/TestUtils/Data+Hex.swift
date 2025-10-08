@@ -62,5 +62,4 @@ extension Array where Element == UInt8 {
             try self.append(htoi(char1) << 4 + htoi(char2))
         }
     }
-
 }

@@ -136,10 +136,10 @@ jobs:
         if: runner.debug == '1'
         run: |
           echo "LOG_LEVEL=trace" >> "$GITHUB_ENV"
-      - name: Install zstd
+      - name: Install zstd and jemalloc
         run: |
           apt-get update -y
-          apt-get install -y zstd
+          apt-get install -y zstd libjemalloc-dev
       - name: Restore .build
         id: "restore-build"
         uses: actions/cache/restore@v4

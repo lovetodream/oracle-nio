@@ -51,6 +51,7 @@ public struct OracleVectorBinary: _OracleVectorProtocol, OracleVectorProtocol {
         self.base = .init(collection)
     }
 
+    @inlinable
     init(underlying: TinySequence<Element>) {
         self.base = underlying
     }
@@ -88,6 +89,7 @@ public struct OracleVectorBinary: _OracleVectorProtocol, OracleVectorProtocol {
         return .init(underlying: values)
     }
 
+    @inlinable
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if encoder is _OracleJSONEncoder {
@@ -97,6 +99,7 @@ public struct OracleVectorBinary: _OracleVectorProtocol, OracleVectorProtocol {
         }
     }
 
+    @inlinable
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.base = .init(try container.decode([Element].self))
@@ -126,6 +129,7 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
         self.base = .init(collection)
     }
 
+    @inlinable
     init(underlying: TinySequence<Element>) {
         self.base = underlying
     }
@@ -163,6 +167,7 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
         return .init(underlying: values)
     }
 
+    @inlinable
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if encoder is _OracleJSONEncoder {
@@ -172,6 +177,7 @@ public struct OracleVectorInt8: _OracleVectorProtocol, OracleVectorProtocol {
         }
     }
 
+    @inlinable
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.base = .init(try container.decode([Element].self))
@@ -200,6 +206,7 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
         self.base = .init(collection)
     }
 
+    @inlinable
     init(underlying: TinySequence<Element>) {
         self.base = underlying
     }
@@ -237,6 +244,7 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
         return .init(underlying: values)
     }
 
+    @inlinable
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if encoder is _OracleJSONEncoder {
@@ -246,6 +254,7 @@ public struct OracleVectorFloat32: _OracleVectorProtocol, OracleVectorProtocol {
         }
     }
 
+    @inlinable
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.base = .init(try container.decode([Element].self))
@@ -275,6 +284,7 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
         self.base = .init(collection)
     }
 
+    @inlinable
     init(underlying: TinySequence<Element>) {
         self.base = underlying
     }
@@ -312,6 +322,7 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
         return .init(underlying: values)
     }
 
+    @inlinable
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if encoder is _OracleJSONEncoder {
@@ -321,6 +332,7 @@ public struct OracleVectorFloat64: _OracleVectorProtocol, OracleVectorProtocol {
         }
     }
 
+    @inlinable
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.base = .init(try container.decode([Element].self))

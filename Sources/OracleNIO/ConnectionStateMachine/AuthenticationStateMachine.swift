@@ -117,7 +117,7 @@ struct AuthenticationStateMachine {
         }
     }
 
-    mutating func errorReceived(_ message: OracleBackendMessage.BackendError) -> Action {
+    mutating func errorReceived(_ message: BackendError) -> Action {
         return self.setAndFireError(.server(message))
     }
 

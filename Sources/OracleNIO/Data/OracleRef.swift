@@ -57,6 +57,7 @@ import NIOCore
 /// ```
 ///
 public final class OracleRef: Sendable, Hashable {
+    @inlinable
     public static func == (lhs: OracleRef, rhs: OracleRef) -> Bool {
         lhs.storage.withLockedValue { lhs in
             rhs.storage.withLockedValue { rhs in
@@ -65,6 +66,7 @@ public final class OracleRef: Sendable, Hashable {
         }
     }
 
+    @inlinable
     public func hash(into hasher: inout Hasher) {
         self.storage.withLockedValue { hasher.combine($0) }
     }
@@ -80,6 +82,7 @@ public final class OracleRef: Sendable, Hashable {
     /// after completing the statement (using ``decode(of:)``).
     ///
     /// - Parameter dataType: The desired datatype within the Oracle database.
+    @inlinable
     public init(dataType: OracleDataType) {
         self.storage = NIOLockedValueBox(nil)
         self.metadata = NIOLockedValueBox(
@@ -95,6 +98,7 @@ public final class OracleRef: Sendable, Hashable {
 
     /// Use this initializer to create an IN/OUT bind.
     /// - Parameter value: The initial value of the bind.
+    @inlinable
     public init<V: OracleThrowingDynamicTypeEncodable>(_ value: V) throws {
         var storage = ByteBuffer()
         try value._encodeRaw(into: &storage, context: .default)
@@ -104,6 +108,7 @@ public final class OracleRef: Sendable, Hashable {
 
     /// Use this initializer to create a IN/OUT bind.
     /// - Parameter value: The initial value of the bind.
+    @inlinable
     public init<V: OracleEncodable>(_ value: V) {
         var storage = ByteBuffer()
         value._encodeRaw(into: &storage, context: .default)

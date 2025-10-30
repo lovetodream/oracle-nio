@@ -21,16 +21,11 @@ import NIOCore
 #endif
 
 extension Data: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .raw }
 
+    @inlinable
     public func encode(
-        into buffer: inout ByteBuffer,
-        context: OracleEncodingContext
-    ) {
-        preconditionFailure("This should not be called")
-    }
-
-    public func _encodeRaw(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
@@ -63,11 +58,21 @@ extension Data: OracleEncodable {
             buffer.writeUB4(0)
         }
     }
+
+    @inlinable
+    public func _encodeRaw(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext
+    ) {
+        self.encode(into: &buffer, context: context)
+    }
 }
 
 extension Data: OracleDecodable {
+    @inlinable
     public var size: UInt32 { UInt32(self.count) }
 
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

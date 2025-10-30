@@ -32,6 +32,7 @@ extension ByteBuffer {
         return result
     }
 
+    @inlinable
     func throwingGetInteger<T: FixedWidthInteger>(
         at index: Int,
         endianness: Endianness = .big,

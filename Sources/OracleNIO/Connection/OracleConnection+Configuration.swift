@@ -36,16 +36,19 @@ extension OracleConnection {
         public struct TLS: Sendable {
 
             /// Do not try to create a TLS connection to the server.
-            public static var disable: Self { .init(base: .disable) }
+            @inlinable
+            public static var disable: Self { .init(.disable) }
 
             /// Try to create a TLS connection to the server.
             ///
             /// If the server supports TLS, create a TLS connection. If the server does not support TLS,
             /// fail the connection creation.
+            @inlinable
             public static func require(_ sslContext: NIOSSLContext) -> Self {
-                self.init(base: .require(sslContext))
+                self.init(.require(sslContext))
             }
 
+            @inlinable
             public var sslContext: NIOSSLContext? {
                 switch self.base {
                 case .disable: return nil
@@ -53,12 +56,16 @@ extension OracleConnection {
                 }
             }
 
-            enum Base {
+            @usableFromInline
+            enum Base: Sendable {
                 case disable
                 case require(NIOSSLContext)
             }
+            @usableFromInline
             let base: Base
-            private init(base: Base) { self.base = base }
+
+            @usableFromInline
+            init(_ base: Base) { self.base = base }
         }
 
         // MARK: - Underlying connection options

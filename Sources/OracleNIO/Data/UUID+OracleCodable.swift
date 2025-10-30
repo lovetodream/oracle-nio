@@ -21,6 +21,7 @@ import NIOCore
 #endif
 
 extension UUID: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

@@ -28,6 +28,7 @@ extension ByteBuffer {
         try throwingSkipUB(4, file: file, line: line)
     }
 
+    @inlinable
     mutating func readUB2() -> UInt16? {
         guard let length = readUBLength() else { return nil }
         switch length {
@@ -42,6 +43,7 @@ extension ByteBuffer {
         }
     }
 
+    @inlinable
     mutating func throwingReadUB2(
         file: String = #fileID, line: Int = #line
     ) throws -> UInt16 {
@@ -155,6 +157,7 @@ extension ByteBuffer {
         }
     }
 
+    @inlinable
     mutating func writeUB4(_ integer: UInt32) {
         switch integer {
         case 0:

@@ -28,8 +28,8 @@ extension OracleBackendMessage.RowData {
     }
 }
 
-extension OracleBackendMessage.BackendError {
-    static let noData = OracleBackendMessage.BackendError(
+extension BackendError {
+    static let noData = BackendError(
         number: 1403,
         cursorID: 1,
         position: 20,
@@ -40,7 +40,7 @@ extension OracleBackendMessage.BackendError {
         batchErrors: []
     )
 
-    static let sendFetch = OracleBackendMessage.BackendError(
+    static let sendFetch = BackendError(
         number: 0,
         cursorID: 3,
         position: 0,

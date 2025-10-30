@@ -96,9 +96,7 @@ import Testing
             destinationLOB: nil, destinationOffset: 0,
             operation: .read, sendAmount: false, amount: 0, promise: promise
         )
-        let error =
-            OracleBackendMessage
-            .BackendError(number: 1, isWarning: false, batchErrors: [])
+        let error = BackendError(number: 1, rowCount: 0, isWarning: false, batchErrors: [])
 
         #expect(state.enqueue(task: .lobOperation(context)) == .sendLOBOperation(context))
         #expect(state.backendErrorReceived(error) == .failLOBOperation(promise, with: .server(error)))
@@ -113,9 +111,7 @@ import Testing
             destinationLOB: nil, destinationOffset: 0,
             operation: .read, sendAmount: false, amount: 0, promise: promise
         )
-        let error =
-            OracleBackendMessage
-            .BackendError(number: 1, isWarning: false, batchErrors: [])
+        let error = BackendError(number: 1, rowCount: 0, isWarning: false, batchErrors: [])
 
         #expect(state.enqueue(task: .lobOperation(context)) == .failLOBOperation(promise, with: .server(error)))
     }

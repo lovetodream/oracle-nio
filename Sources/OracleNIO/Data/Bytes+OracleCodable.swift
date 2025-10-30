@@ -15,16 +15,14 @@
 import NIOCore
 
 extension OracleEncodable where Self: Collection, Self.Element == UInt8 {
+    @inlinable
+    public static var defaultOracleType: OracleDataType { .raw }
+
+    @inlinable
     public var oracleType: OracleDataType { .raw }
 
+    @inlinable
     public func encode(
-        into buffer: inout ByteBuffer,
-        context: OracleEncodingContext
-    ) {
-        preconditionFailure("This should not be called")
-    }
-
-    public func _encodeRaw(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
@@ -47,5 +45,13 @@ extension OracleEncodable where Self: Collection, Self.Element == UInt8 {
             }
             buffer.writeUB4(0)
         }
+    }
+
+    @inlinable
+    public func _encodeRaw(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext
+    ) {
+        self.encode(into: &buffer, context: context)
     }
 }

@@ -20,6 +20,7 @@ import NIOCore
     import Foundation
 #endif
 
+@usableFromInline
 struct OracleJSONParser {
     var flags: UInt16 = 0
     var fieldIDLength = 0
@@ -29,6 +30,7 @@ struct OracleJSONParser {
 
     private init() {}
 
+    @usableFromInline
     static func parse(from buffer: inout ByteBuffer) throws -> OracleJSONStorage {
         var parser = OracleJSONParser()
         return try parser.decode(from: &buffer)

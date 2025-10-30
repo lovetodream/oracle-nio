@@ -21,6 +21,7 @@ enum DatabaseNumericType: Int {
 
 /// A numeric value used to identify a oracle data type.
 public struct OracleDataTypeNumber: Sendable, Hashable {
+    @usableFromInline
     internal enum Backing: Int, Sendable {
         case bFile = 2020
         case binaryDouble = 2008
@@ -54,42 +55,103 @@ public struct OracleDataTypeNumber: Sendable, Hashable {
         case vector = 2033
     }
 
+    @usableFromInline
     internal let backing: Backing
 
+    @inlinable
     internal init(_ backing: Backing) {
         self.backing = backing
     }
 
-    public static let bFile: Self = .init(.bFile)
-    public static let binaryDouble: Self = .init(.binaryDouble)
-    public static let binaryFloat: Self = .init(.binaryFloat)
-    public static let binaryInteger: Self = .init(.binaryInteger)
-    public static let blob: Self = .init(.blob)
-    public static let boolean: Self = .init(.boolean)
-    public static let char: Self = .init(.char)
-    public static let clob: Self = .init(.clob)
-    public static let cursor: Self = .init(.cursor)
-    public static let date: Self = .init(.date)
-    public static let intervalDS: Self = .init(.intervalDS)
-    public static let intervalYM: Self = .init(.intervalYM)
-    public static let json: Self = .init(.json)
-    public static let longNVarchar: Self = .init(.longNVarchar)
-    public static let longRAW: Self = .init(.longRAW)
-    public static let longVarchar: Self = .init(.longVarchar)
-    public static let nChar: Self = .init(.nChar)
-    public static let nCLOB: Self = .init(.nCLOB)
-    public static let number: Self = .init(.number)
-    public static let nVarchar: Self = .init(.nVarchar)
-    public static let object: Self = .init(.object)
-    public static let raw: Self = .init(.raw)
-    public static let rowID: Self = .init(.rowID)
-    public static let timestamp: Self = .init(.timestamp)
-    public static let timestampLTZ: Self = .init(.timestampLTZ)
-    public static let timestampTZ: Self = .init(.timestampTZ)
-    public static let unknown: Self = .init(.unknown)
-    public static let uRowID: Self = .init(.uRowID)
-    public static let varchar: Self = .init(.varchar)
-    public static let vector: Self = .init(.vector)
+    @inlinable
+    public static var bFile: Self { .init(.bFile) }
+
+    @inlinable
+    public static var binaryDouble: Self { .init(.binaryDouble) }
+
+    @inlinable
+    public static var binaryFloat: Self { .init(.binaryFloat) }
+
+    @inlinable
+    public static var binaryInteger: Self { .init(.binaryInteger) }
+
+    @inlinable
+    public static var blob: Self { .init(.blob) }
+
+    @inlinable
+    public static var boolean: Self { .init(.boolean) }
+
+    @inlinable
+    public static var char: Self { .init(.char) }
+
+    @inlinable
+    public static var clob: Self { .init(.clob) }
+
+    @inlinable
+    public static var cursor: Self { .init(.cursor) }
+
+    @inlinable
+    public static var date: Self { .init(.date) }
+
+    @inlinable
+    public static var intervalDS: Self { .init(.intervalDS) }
+
+    @inlinable
+    public static var intervalYM: Self { .init(.intervalYM) }
+
+    @inlinable
+    public static var json: Self { .init(.json) }
+
+    @inlinable
+    public static var longNVarchar: Self { .init(.longNVarchar) }
+
+    @inlinable
+    public static var longRAW: Self { .init(.longRAW) }
+
+    @inlinable
+    public static var longVarchar: Self { .init(.longVarchar) }
+
+    @inlinable
+    public static var nChar: Self { .init(.nChar) }
+
+    @inlinable
+    public static var nCLOB: Self { .init(.nCLOB) }
+
+    @inlinable
+    public static var number: Self { .init(.number) }
+
+    @inlinable
+    public static var nVarchar: Self { .init(.nVarchar) }
+
+    @inlinable
+    public static var object: Self { .init(.object) }
+
+    @inlinable
+    public static var raw: Self { .init(.raw) }
+
+    @inlinable
+    public static var rowID: Self { .init(.rowID) }
+
+    @inlinable
+    public static var timestamp: Self { .init(.timestamp) }
+
+    @inlinable
+    public static var timestampLTZ: Self { .init(.timestampLTZ) }
+
+    @inlinable
+    public static var timestampTZ: Self { .init(.timestampTZ) }
+
+    @inlinable
+    public static var unknown: Self { .init(.unknown) }
+
+    @inlinable
+    public static var uRowID: Self { .init(.uRowID) }
+
+    @inlinable
+    public static var varchar: Self { .init(.varchar) }
+
+    @inlinable
+    public static var vector: Self { .init(.vector) }
 }
 
 /// A data type used by the Oracle Wire Protocol (TNS) and the database.
@@ -113,6 +175,7 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
     @usableFromInline
     var bufferSizeFactor: Int = 0
 
+    @inlinable
     public init(
         number: OracleDataTypeNumber,
         name: String,
@@ -143,221 +206,340 @@ public struct OracleDataType: Sendable, Equatable, Hashable {
         return dbType
     }
 
-    public static let bFile = OracleDataType(
-        number: .bFile,
-        name: "DB_TYPE_BFILE",
-        oracleName: "BFILE",
-        oracleType: .init(rawValue: 114)!
-    )
-    public static let binaryDouble = OracleDataType(
-        number: .binaryDouble,
-        name: "DB_TYPE_BINARY_DOUBLE",
-        oracleName: "BINARY_DOUBLE",
-        oracleType: .init(rawValue: 101)!,
-        bufferSizeFactor: 8
-    )
-    public static let binaryFloat = OracleDataType(
-        number: .binaryFloat,
-        name: "DB_TYPE_BINARY_FLOAT",
-        oracleName: "BINARY_FLOAT",
-        oracleType: .init(rawValue: 100)!,
-        bufferSizeFactor: 4
-    )
-    public static let binaryInteger = OracleDataType(
-        number: .binaryInteger,
-        name: "DB_TYPE_BINARY_INTEGER",
-        oracleName: "BINARY_INTEGER",
-        oracleType: .init(rawValue: 3)!,
-        bufferSizeFactor: 22
-    )
-    public static let blob = OracleDataType(
-        number: .blob,
-        name: "DB_TYPE_BLOB",
-        oracleName: "BLOB",
-        oracleType: .init(rawValue: 113)!,
-        bufferSizeFactor: 112
-    )
-    public static let boolean = OracleDataType(
-        number: .boolean,
-        name: "DB_TYPE_BOOLEAN",
-        oracleName: "BOOLEAN",
-        oracleType: .init(rawValue: 252)!,
-        bufferSizeFactor: 4
-    )
-    public static let char = OracleDataType(
-        number: .char,
-        name: "DB_TYPE_CHAR",
-        oracleName: "CHAR",
-        oracleType: .init(rawValue: 96)!,
-        defaultSize: 2000,
-        csfrm: 1,
-        bufferSizeFactor: 4
-    )
-    public static let clob = OracleDataType(
-        number: .clob,
-        name: "DB_TYPE_CLOB",
-        oracleName: "CLOB",
-        oracleType: .init(rawValue: 112)!,
-        csfrm: 1,
-        bufferSizeFactor: 112
-    )
-    public static let cursor = OracleDataType(
-        number: .cursor,
-        name: "DB_TYPE_CURSOR",
-        oracleName: "CURSOR",
-        oracleType: .init(rawValue: 102)!,
-        bufferSizeFactor: 4
-    )
-    public static let date = OracleDataType(
-        number: .date,
-        name: "DB_TYPE_DATE",
-        oracleName: "DATE",
-        oracleType: .init(rawValue: 12)!,
-        bufferSizeFactor: 7
-    )
-    public static let intervalDS = OracleDataType(
-        number: .intervalDS,
-        name: "DB_TYPE_INTERVAL_DS",
-        oracleName: "INTERVAL DAY TO SECOND",
-        oracleType: .init(rawValue: 183)!,
-        bufferSizeFactor: 11
-    )
-    public static let intervalYM = OracleDataType(
-        number: .intervalYM,
-        name: "DB_TYPE_INTERVAL_YM",
-        oracleName: "INTERVAL YEAR TO MONTH",
-        oracleType: .init(rawValue: 182)!
-    )
-    public static let json = OracleDataType(
-        number: .json,
-        name: "DB_TYPE_JSON",
-        oracleName: "JSON",
-        oracleType: .init(rawValue: 119)!
-    )
-    public static let long = OracleDataType(
-        number: .longVarchar,
-        name: "DB_TYPE_LONG",
-        oracleName: "LONG",
-        oracleType: .init(rawValue: 8)!,
-        csfrm: 1,
-        bufferSizeFactor: 2_147_483_647
-    )
-    public static let longNVarchar = OracleDataType(
-        number: .longNVarchar,
-        name: "DB_TYPE_LONG_NVARCHAR",
-        oracleName: "LONG NVARCHAR",
-        oracleType: .init(rawValue: 8)!,
-        csfrm: 2,
-        bufferSizeFactor: 2_147_483_647
-    )
-    public static let longRAW = OracleDataType(
-        number: .longRAW,
-        name: "DB_TYPE_LONG_RAW",
-        oracleName: "LONG RAW",
-        oracleType: .init(rawValue: 24)!,
-        bufferSizeFactor: 2_147_483_647
-    )
-    public static let nChar = OracleDataType(
-        number: .nChar,
-        name: "DB_TYPE_NCHAR",
-        oracleName: "NCHAR",
-        oracleType: .init(rawValue: 96)!,
-        defaultSize: 2000,
-        csfrm: 2,
-        bufferSizeFactor: 4
-    )
-    public static let nCLOB = OracleDataType(
-        number: .nCLOB,
-        name: "DB_TYPE_NCLOB",
-        oracleName: "NCLOB",
-        oracleType: .init(rawValue: 112)!,
-        csfrm: 2,
-        bufferSizeFactor: 112
-    )
-    public static let number = OracleDataType(
-        number: .number,
-        name: "DB_TYPE_NUMBER",
-        oracleName: "NUMBER",
-        oracleType: .init(rawValue: 2)!,
-        bufferSizeFactor: 22
-    )
-    public static let nVarchar = OracleDataType(
-        number: .nVarchar,
-        name: "DB_TYPE_NVARCHAR",
-        oracleName: "NVARCHAR2",
-        oracleType: .init(rawValue: 1)!,
-        defaultSize: 4000,
-        csfrm: 2,
-        bufferSizeFactor: 4
-    )
-    public static let object = OracleDataType(
-        number: .object,
-        name: "DB_TYPE_OBJECT",
-        oracleName: "OBJECT",
-        oracleType: .init(rawValue: 109)!
-    )
-    public static let raw = OracleDataType(
-        number: .raw,
-        name: "DB_TYPE_RAW",
-        oracleName: "RAW",
-        oracleType: .init(rawValue: 23)!,
-        defaultSize: 4000,
-        bufferSizeFactor: 1
-    )
-    public static let rowID = OracleDataType(
-        number: .rowID,
-        name: "DB_TYPE_ROWID",
-        oracleName: "ROWID",
-        oracleType: .init(rawValue: 11)!,
-        bufferSizeFactor: 18
-    )
-    public static let timestamp = OracleDataType(
-        number: .timestamp,
-        name: "DB_TYPE_TIMESTAMP",
-        oracleName: "TIMESTAMP",
-        oracleType: .init(rawValue: 180)!,
-        bufferSizeFactor: 11
-    )
-    public static let timestampLTZ = OracleDataType(
-        number: .timestampLTZ,
-        name: "DB_TYPE_TIMESTAMP_LTZ",
-        oracleName: "TIMESTAMP WITH LOCAL TZ",
-        oracleType: .init(rawValue: 231)!,
-        bufferSizeFactor: 11
-    )
-    public static let timestampTZ = OracleDataType(
-        number: .timestampTZ,
-        name: "DB_TYPE_TIMESTAMP_TZ",
-        oracleName: "TIMESTAMP WITH TZ",
-        oracleType: .init(rawValue: 181)!,
-        bufferSizeFactor: 13
-    )
-    public static let unknown = OracleDataType(
-        number: .unknown,
-        name: "DB_TYPE_UNKNOWN",
-        oracleName: "UNKNOWN"
-    )
-    public static let uRowID = OracleDataType(
-        number: .uRowID,
-        name: "DB_TYPE_UROWID",
-        oracleName: "UROWID",
-        oracleType: .init(rawValue: 208)!
-    )
-    public static let varchar = OracleDataType(
-        number: .varchar,
-        name: "DB_TYPE_VARCHAR",
-        oracleName: "VARCHAR2",
-        oracleType: .init(rawValue: 1)!,
-        defaultSize: 4000,
-        csfrm: 1,
-        bufferSizeFactor: 4
-    )
-    public static let vector = OracleDataType(
-        number: .vector,
-        name: "DB_TYPE_VECTOR",
-        oracleName: "VECTOR",
-        oracleType: .init(rawValue: 127)
-    )
+    @inlinable
+    public static var bFile: OracleDataType {
+        OracleDataType(
+            number: .bFile,
+            name: "DB_TYPE_BFILE",
+            oracleName: "BFILE",
+            oracleType: .init(rawValue: 114).unsafelyUnwrapped
+        )
+    }
+
+    @inlinable
+    public static var binaryDouble: OracleDataType {
+        OracleDataType(
+            number: .binaryDouble,
+            name: "DB_TYPE_BINARY_DOUBLE",
+            oracleName: "BINARY_DOUBLE",
+            oracleType: .init(rawValue: 101).unsafelyUnwrapped,
+            bufferSizeFactor: 8
+        )
+    }
+
+    @inlinable
+    public static var binaryFloat: OracleDataType {
+        OracleDataType(
+            number: .binaryFloat,
+            name: "DB_TYPE_BINARY_FLOAT",
+            oracleName: "BINARY_FLOAT",
+            oracleType: .init(rawValue: 100).unsafelyUnwrapped,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var binaryInteger: OracleDataType {
+        OracleDataType(
+            number: .binaryInteger,
+            name: "DB_TYPE_BINARY_INTEGER",
+            oracleName: "BINARY_INTEGER",
+            oracleType: .init(rawValue: 3).unsafelyUnwrapped,
+            bufferSizeFactor: 22
+        )
+    }
+
+    @inlinable
+    public static var blob: OracleDataType {
+        OracleDataType(
+            number: .blob,
+            name: "DB_TYPE_BLOB",
+            oracleName: "BLOB",
+            oracleType: .init(rawValue: 113).unsafelyUnwrapped,
+            bufferSizeFactor: 112
+        )
+    }
+
+    @inlinable
+    public static var boolean: OracleDataType {
+        OracleDataType(
+            number: .boolean,
+            name: "DB_TYPE_BOOLEAN",
+            oracleName: "BOOLEAN",
+            oracleType: .init(rawValue: 252).unsafelyUnwrapped,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var char: OracleDataType {
+        OracleDataType(
+            number: .char,
+            name: "DB_TYPE_CHAR",
+            oracleName: "CHAR",
+            oracleType: .init(rawValue: 96).unsafelyUnwrapped,
+            defaultSize: 2000,
+            csfrm: 1,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var clob: OracleDataType {
+        OracleDataType(
+            number: .clob,
+            name: "DB_TYPE_CLOB",
+            oracleName: "CLOB",
+            oracleType: .init(rawValue: 112).unsafelyUnwrapped,
+            csfrm: 1,
+            bufferSizeFactor: 112
+        )
+    }
+
+    @inlinable
+    public static var cursor: OracleDataType {
+        OracleDataType(
+            number: .cursor,
+            name: "DB_TYPE_CURSOR",
+            oracleName: "CURSOR",
+            oracleType: .init(rawValue: 102).unsafelyUnwrapped,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var date: OracleDataType {
+        OracleDataType(
+            number: .date,
+            name: "DB_TYPE_DATE",
+            oracleName: "DATE",
+            oracleType: .init(rawValue: 12).unsafelyUnwrapped,
+            bufferSizeFactor: 7
+        )
+    }
+
+    @inlinable
+    public static var intervalDS: OracleDataType {
+        OracleDataType(
+            number: .intervalDS,
+            name: "DB_TYPE_INTERVAL_DS",
+            oracleName: "INTERVAL DAY TO SECOND",
+            oracleType: .init(rawValue: 183).unsafelyUnwrapped,
+            bufferSizeFactor: 11
+        )
+    }
+
+    @inlinable
+    public static var intervalYM: OracleDataType {
+        OracleDataType(
+            number: .intervalYM,
+            name: "DB_TYPE_INTERVAL_YM",
+            oracleName: "INTERVAL YEAR TO MONTH",
+            oracleType: .init(rawValue: 182).unsafelyUnwrapped
+        )
+    }
+
+    @inlinable
+    public static var json: OracleDataType {
+        OracleDataType(
+            number: .json,
+            name: "DB_TYPE_JSON",
+            oracleName: "JSON",
+            oracleType: .init(rawValue: 119).unsafelyUnwrapped
+        )
+    }
+
+    @inlinable
+    public static var long: OracleDataType {
+        OracleDataType(
+            number: .longVarchar,
+            name: "DB_TYPE_LONG",
+            oracleName: "LONG",
+            oracleType: .init(rawValue: 8).unsafelyUnwrapped,
+            csfrm: 1,
+            bufferSizeFactor: 2_147_483_647
+        )
+    }
+
+    @inlinable
+    public static var longNVarchar: OracleDataType {
+        OracleDataType(
+            number: .longNVarchar,
+            name: "DB_TYPE_LONG_NVARCHAR",
+            oracleName: "LONG NVARCHAR",
+            oracleType: .init(rawValue: 8).unsafelyUnwrapped,
+            csfrm: 2,
+            bufferSizeFactor: 2_147_483_647
+        )
+    }
+
+    @inlinable
+    public static var longRAW: OracleDataType {
+        OracleDataType(
+            number: .longRAW,
+            name: "DB_TYPE_LONG_RAW",
+            oracleName: "LONG RAW",
+            oracleType: .init(rawValue: 24).unsafelyUnwrapped,
+            bufferSizeFactor: 2_147_483_647
+        )
+    }
+
+    @inlinable
+    public static var nChar: OracleDataType {
+        OracleDataType(
+            number: .nChar,
+            name: "DB_TYPE_NCHAR",
+            oracleName: "NCHAR",
+            oracleType: .init(rawValue: 96).unsafelyUnwrapped,
+            defaultSize: 2000,
+            csfrm: 2,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var nCLOB: OracleDataType {
+        OracleDataType(
+            number: .nCLOB,
+            name: "DB_TYPE_NCLOB",
+            oracleName: "NCLOB",
+            oracleType: .init(rawValue: 112).unsafelyUnwrapped,
+            csfrm: 2,
+            bufferSizeFactor: 112
+        )
+    }
+
+    @inlinable
+    public static var number: OracleDataType {
+        OracleDataType(
+            number: .number,
+            name: "DB_TYPE_NUMBER",
+            oracleName: "NUMBER",
+            oracleType: .init(rawValue: 2).unsafelyUnwrapped,
+            bufferSizeFactor: 22
+        )
+    }
+
+    @inlinable
+    public static var nVarchar: OracleDataType {
+        OracleDataType(
+            number: .nVarchar,
+            name: "DB_TYPE_NVARCHAR",
+            oracleName: "NVARCHAR2",
+            oracleType: .init(rawValue: 1).unsafelyUnwrapped,
+            defaultSize: 4000,
+            csfrm: 2,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var object: OracleDataType {
+        OracleDataType(
+            number: .object,
+            name: "DB_TYPE_OBJECT",
+            oracleName: "OBJECT",
+            oracleType: .init(rawValue: 109).unsafelyUnwrapped
+        )
+    }
+
+    @inlinable
+    public static var raw: OracleDataType {
+        OracleDataType(
+            number: .raw,
+            name: "DB_TYPE_RAW",
+            oracleName: "RAW",
+            oracleType: .init(rawValue: 23).unsafelyUnwrapped,
+            defaultSize: 4000,
+            bufferSizeFactor: 1
+        )
+    }
+
+    @inlinable
+    public static var rowID: OracleDataType {
+        OracleDataType(
+            number: .rowID,
+            name: "DB_TYPE_ROWID",
+            oracleName: "ROWID",
+            oracleType: .init(rawValue: 11).unsafelyUnwrapped,
+            bufferSizeFactor: 18
+        )
+    }
+
+    @inlinable
+    public static var timestamp: OracleDataType {
+        OracleDataType(
+            number: .timestamp,
+            name: "DB_TYPE_TIMESTAMP",
+            oracleName: "TIMESTAMP",
+            oracleType: .init(rawValue: 180).unsafelyUnwrapped,
+            bufferSizeFactor: 11
+        )
+    }
+
+    @inlinable
+    public static var timestampLTZ: OracleDataType {
+        OracleDataType(
+            number: .timestampLTZ,
+            name: "DB_TYPE_TIMESTAMP_LTZ",
+            oracleName: "TIMESTAMP WITH LOCAL TZ",
+            oracleType: .init(rawValue: 231).unsafelyUnwrapped,
+            bufferSizeFactor: 11
+        )
+    }
+
+    @inlinable
+    public static var timestampTZ: OracleDataType {
+        OracleDataType(
+            number: .timestampTZ,
+            name: "DB_TYPE_TIMESTAMP_TZ",
+            oracleName: "TIMESTAMP WITH TZ",
+            oracleType: .init(rawValue: 181).unsafelyUnwrapped,
+            bufferSizeFactor: 13
+        )
+    }
+
+    @inlinable
+    public static var unknown: OracleDataType {
+        OracleDataType(
+            number: .unknown,
+            name: "DB_TYPE_UNKNOWN",
+            oracleName: "UNKNOWN"
+        )
+    }
+
+    @inlinable
+    public static var uRowID: OracleDataType {
+        OracleDataType(
+            number: .uRowID,
+            name: "DB_TYPE_UROWID",
+            oracleName: "UROWID",
+            oracleType: .init(rawValue: 208).unsafelyUnwrapped
+        )
+    }
+
+    @inlinable
+    public static var varchar: OracleDataType {
+        OracleDataType(
+            number: .varchar,
+            name: "DB_TYPE_VARCHAR",
+            oracleName: "VARCHAR2",
+            oracleType: .init(rawValue: 1).unsafelyUnwrapped,
+            defaultSize: 4000,
+            csfrm: 1,
+            bufferSizeFactor: 4
+        )
+    }
+
+    @inlinable
+    public static var vector: OracleDataType {
+        OracleDataType(
+            number: .vector,
+            name: "DB_TYPE_VECTOR",
+            oracleName: "VECTOR",
+            oracleType: .init(rawValue: 127).unsafelyUnwrapped
+        )
+    }
 
     @usableFromInline
     static let supported: [OracleDataType] = [

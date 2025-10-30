@@ -18,23 +18,17 @@
     import Foundation
 #endif
 
-struct OracleErrorInfo: Error {
-    var number: UInt32
-    var cursorID: UInt16?
-    var position: UInt16?
-    var rowCount: UInt64?
-    var isWarning: Bool
-    var message: String?
-    var rowID: RowID?
-    var batchErrors: [OracleError]
-}
-
+@usableFromInline
 struct OracleError: Error, Hashable {
+    @usableFromInline
     var code: Int
+    @usableFromInline
     var offset: Int
-    var message: String?
+    @usableFromInline
+    var message: String
 
-    init(message: String? = nil, code: Int = 0, offset: Int = 0) {
+    @inlinable
+    init(message: String = "", code: Int = 0, offset: Int = 0) {
         self.code = code
         self.offset = offset
         self.message = message

@@ -17,6 +17,7 @@ import NIOCore
 // MARK: UInt8
 
 extension UInt8: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -42,6 +43,7 @@ extension UInt8: OracleDecodable {
 // MARK: Int8
 
 extension Int8: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -59,6 +61,7 @@ extension Int8: OracleDecodable {
 // MARK: UInt16
 
 extension UInt16: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -76,6 +79,7 @@ extension UInt16: OracleDecodable {
 // MARK: Int16
 
 extension Int16: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -93,6 +97,7 @@ extension Int16: OracleDecodable {
 // MARK: UInt32
 
 extension UInt32: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -110,6 +115,7 @@ extension UInt32: OracleDecodable {
 // MARK: Int32
 
 extension Int32: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -127,6 +133,7 @@ extension Int32: OracleDecodable {
 // MARK: UInt64
 
 extension UInt64: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -144,6 +151,7 @@ extension UInt64: OracleDecodable {
 // MARK: Int64
 
 extension Int64: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -161,6 +169,7 @@ extension Int64: OracleDecodable {
 // MARK: UInt
 
 extension UInt: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -178,8 +187,10 @@ extension UInt: OracleDecodable {
 // MARK: Int
 
 extension Int: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .number }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -189,6 +200,7 @@ extension Int: OracleEncodable {
 }
 
 extension Int: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

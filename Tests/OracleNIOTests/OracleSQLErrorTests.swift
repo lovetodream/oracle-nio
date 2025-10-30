@@ -21,6 +21,7 @@ import Testing
         let errorWithMessage = OracleSQLError.ServerInfo(
             .init(
                 number: 1017,
+                rowCount: 0,
                 isWarning: false,
                 message: "ORA-01017: invalid credential or not authorized; logon denied",
                 batchErrors: []
@@ -30,6 +31,7 @@ import Testing
         let errorWithoutMessage = OracleSQLError.ServerInfo(
             .init(
                 number: 1017,
+                rowCount: 0,
                 isWarning: false,
                 batchErrors: []
             ))

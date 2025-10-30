@@ -26,6 +26,7 @@ import NIOCore
 public struct OracleSQLError: Sendable, Error {
 
     public struct Code: Sendable, Hashable, CustomStringConvertible {
+        @usableFromInline
         enum Base: Sendable, Hashable {
             case clientClosesConnection
             case clientClosedConnection
@@ -46,34 +47,100 @@ public struct OracleSQLError: Sendable, Error {
             case malformedStatement
         }
 
+        @usableFromInline
         internal var base: Base
 
-        private init(_ base: Base) {
+        @inlinable
+        init(_ base: Base) {
             self.base = base
         }
 
-        public static let clientClosesConnection = Self(.clientClosesConnection)
-        public static let clientClosedConnection = Self(.clientClosedConnection)
-        public static let failedToAddSSLHandler = Self(.failedToAddSSLHandler)
-        public static let failedToVerifyTLSCertificates =
-            Self(.failedToVerifyTLSCertificates)
-        public static let connectionError = Self(.connectionError)
-        public static let messageDecodingFailure = Self(.messageDecodingFailure)
-        public static let nationalCharsetNotSupported =
-            Self(.nationalCharsetNotSupported)
-        public static let uncleanShutdown = Self(.uncleanShutdown)
-        public static let unexpectedBackendMessage =
-            Self(.unexpectedBackendMessage)
-        public static let server = Self(.server)
-        public static let statementCancelled = Self(.statementCancelled)
-        public static let serverVersionNotSupported =
-            Self(.serverVersionNotSupported)
-        public static let sidNotSupported = Self(.sidNotSupported)
-        public static let missingParameter = Self(.missingParameter)
-        public static let unsupportedDataType = Self(.unsupportedDataType)
-        public static let missingStatement = Self(.missingStatement)
-        public static let malformedStatement = Self(.malformedStatement)
+        @inlinable
+        public static var clientClosesConnection: Self {
+            Self(.clientClosesConnection)
+        }
 
+        @inlinable
+        public static var clientClosedConnection: Self {
+            Self(.clientClosedConnection)
+        }
+
+        @inlinable
+        public static var failedToAddSSLHandler: Self {
+            Self(.failedToAddSSLHandler)
+        }
+
+        @inlinable
+        public static var failedToVerifyTLSCertificates: Self {
+            Self(.failedToVerifyTLSCertificates)
+        }
+
+        @inlinable
+        public static var connectionError: Self {
+            Self(.connectionError)
+        }
+
+        @inlinable
+        public static var messageDecodingFailure: Self {
+            Self(.messageDecodingFailure)
+        }
+
+        @inlinable
+        public static var nationalCharsetNotSupported: Self {
+            Self(.nationalCharsetNotSupported)
+        }
+
+        @inlinable
+        public static var uncleanShutdown: Self {
+            Self(.uncleanShutdown)
+        }
+
+        @inlinable
+        public static var unexpectedBackendMessage: Self {
+            Self(.unexpectedBackendMessage)
+        }
+
+        @inlinable
+        public static var server: Self {
+            Self(.server)
+        }
+
+        @inlinable
+        public static var statementCancelled: Self {
+            Self(.statementCancelled)
+        }
+
+        @inlinable
+        public static var serverVersionNotSupported: Self {
+            Self(.serverVersionNotSupported)
+        }
+
+        @inlinable
+        public static var sidNotSupported: Self {
+            Self(.sidNotSupported)
+        }
+
+        @inlinable
+        public static var missingParameter: Self {
+            Self(.missingParameter)
+        }
+
+        @inlinable
+        public static var unsupportedDataType: Self {
+            Self(.unsupportedDataType)
+        }
+
+        @inlinable
+        public static var missingStatement: Self {
+            Self(.missingStatement)
+        }
+
+        @inlinable
+        public static var malformedStatement: Self {
+            Self(.malformedStatement)
+        }
+
+        @inlinable
         public var description: String {
             switch self.base {
             case .clientClosesConnection:
@@ -114,15 +181,18 @@ public struct OracleSQLError: Sendable, Error {
         }
     }
 
-    private var backing: Backing
+    @usableFromInline
+    /* private */ var backing: Backing
 
-    private mutating func copyBackingStorageIfNecessary() {
+    @usableFromInline
+    mutating func copyBackingStorageIfNecessary() {
         if !isKnownUniquelyReferenced(&self.backing) {
             self.backing = self.backing.copy()
         }
     }
 
     /// The ``OracleSQLError/Code`` code.
+    @inlinable
     public internal(set) var code: Code {
         get { self.backing.code }
         set {
@@ -132,6 +202,7 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     /// The info that was received from the server.
+    @inlinable
     public internal(set) var serverInfo: ServerInfo? {
         get { self.backing.serverInfo }
         set {
@@ -141,6 +212,7 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     /// The underlying error.
+    @inlinable
     public internal(set) var underlying: Error? {
         get { self.backing.underlying }
         set {
@@ -150,6 +222,7 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     /// The file in which the Oracle operation was triggered that failed.
+    @inlinable
     public internal(set) var file: String? {
         get { self.backing.file }
         set {
@@ -159,6 +232,7 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     /// The line in which the Oracle operation was triggered that failed.
+    @inlinable
     public internal(set) var line: Int? {
         get { self.backing.line }
         set {
@@ -168,6 +242,7 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     /// The statement that failed.
+    @inlinable
     public internal(set) var statement: OracleStatement? {
         get { self.backing.statement }
         set {
@@ -186,6 +261,7 @@ public struct OracleSQLError: Sendable, Error {
         }
     }
 
+    @usableFromInline
     init(
         code: Code, statement: OracleStatement,
         file: String? = nil, line: Int? = nil
@@ -196,19 +272,28 @@ public struct OracleSQLError: Sendable, Error {
         self.line = line
     }
 
+    @usableFromInline
     init(code: Code) {
         self.backing = .init(code: code)
     }
 
-    private final class Backing: @unchecked Sendable {
-        fileprivate var code: Code
-        fileprivate var serverInfo: ServerInfo?
-        fileprivate var underlying: Error?
-        fileprivate var file: String?
-        fileprivate var line: Int?
-        fileprivate var statement: OracleStatement?
+    @usableFromInline
+    /* private */ final class Backing: @unchecked Sendable {
+        @usableFromInline
+        /* fileprivate */ var code: Code
+        @usableFromInline
+        /* fileprivate */ var serverInfo: ServerInfo?
+        @usableFromInline
+        /* fileprivate */ var underlying: Error?
+        @usableFromInline
+        /* fileprivate */ var file: String?
+        @usableFromInline
+        /* fileprivate */ var line: Int?
+        @usableFromInline
+        /* fileprivate */ var statement: OracleStatement?
         fileprivate var backendMessage: OracleBackendMessage?
 
+        @inlinable
         init(code: Code) {
             self.code = code
         }
@@ -226,14 +311,17 @@ public struct OracleSQLError: Sendable, Error {
     }
 
     public struct ServerInfo: Sendable, CustomStringConvertible {
-        let underlying: OracleBackendMessage.BackendError
+        @usableFromInline
+        let underlying: BackendError
 
         /// The error number/identifier.
+        @inlinable
         public var number: UInt32 {
             self.underlying.number
         }
 
         /// The error message, typically prefixed with `ORA-` & ``number``.
+        @inlinable
         public var message: String? {
             self.underlying.message
         }
@@ -247,31 +335,47 @@ public struct OracleSQLError: Sendable, Error {
         ///
         ///
         /// Defaults to `0`.
+        @inlinable
         public var affectedRows: Int {
-            Int(self.underlying.rowCount ?? 0)
+            self.underlying.rowCount
         }
 
-        init(_ underlying: OracleBackendMessage.BackendError) {
+        @inlinable
+        init(_ underlying: BackendError) {
             self.underlying = underlying
         }
 
+        @inlinable
         public var description: String {
             self.message ?? "ORA-\(String(self.number, padding: 5))"
         }
     }
 
     public struct BatchError: Sendable {
-        /// The index of the statement in which the error occurred.
-        public let statementIndex: Int
-        /// The error number/identifier.
-        public let number: Int
-        /// The error message, typically prefixed with `ORA-` & ``number``.
-        public let message: String
+        @usableFromInline
+        let base: OracleError
 
+        /// The index of the statement in which the error occurred.
+        @inlinable
+        public var statementIndex: Int {
+            self.base.offset
+        }
+
+        /// The error number/identifier.
+        @inlinable
+        public var number: Int {
+            self.base.code
+        }
+
+        /// The error message, typically prefixed with `ORA-` & ``number``.
+        @inlinable
+        public var message: String {
+            self.base.message
+        }
+
+        @usableFromInline
         init(_ error: OracleError) {
-            self.statementIndex = error.offset
-            self.number = error.code
-            self.message = error.message ?? ""
+            self.base = error
         }
     }
 
@@ -285,38 +389,45 @@ public struct OracleSQLError: Sendable, Error {
         return new
     }
 
+    @inlinable
     static func clientClosesConnection(underlying: Error?) -> OracleSQLError {
         var error = OracleSQLError(code: .clientClosesConnection)
         error.underlying = underlying
         return error
     }
 
+    @inlinable
     static func clientClosedConnection(underlying: Error?) -> OracleSQLError {
         var error = OracleSQLError(code: .clientClosedConnection)
         error.underlying = underlying
         return error
     }
 
+    @inlinable
     static var uncleanShutdown: OracleSQLError {
         OracleSQLError(code: .uncleanShutdown)
     }
 
+    @inlinable
     static func failedToAddSSLHandler(underlying: Error) -> OracleSQLError {
         var error = OracleSQLError(code: .failedToAddSSLHandler)
         error.underlying = underlying
         return error
     }
 
+    @inlinable
     static var failedToVerifyTLSCertificates: OracleSQLError {
         OracleSQLError(code: .failedToVerifyTLSCertificates)
     }
 
+    @inlinable
     static func connectionError(underlying: Error) -> OracleSQLError {
         var error = OracleSQLError(code: .connectionError)
         error.underlying = underlying
         return error
     }
 
+    @inlinable
     static func messageDecodingFailure(
         _ error: OracleMessageDecodingError
     ) -> OracleSQLError {
@@ -325,23 +436,34 @@ public struct OracleSQLError: Sendable, Error {
         return new
     }
 
+    @inlinable
     static func server(
-        _ error: OracleBackendMessage.BackendError
+        _ error: BackendError
     ) -> OracleSQLError {
         var new = OracleSQLError(code: .server)
         new.serverInfo = .init(error)
         return new
     }
 
-    static let nationalCharsetNotSupported =
+    @inlinable
+    static var nationalCharsetNotSupported: OracleSQLError {
         OracleSQLError(code: .nationalCharsetNotSupported)
+    }
 
-    static let statementCancelled = OracleSQLError(code: .statementCancelled)
+    @inlinable
+    static var statementCancelled: OracleSQLError {
+        OracleSQLError(code: .statementCancelled)
+    }
 
-    static let serverVersionNotSupported =
+    @inlinable
+    static var serverVersionNotSupported: OracleSQLError {
         OracleSQLError(code: .serverVersionNotSupported)
+    }
 
-    static let sidNotSupported = OracleSQLError(code: .sidNotSupported)
+    @inlinable
+    static var sidNotSupported: OracleSQLError {
+        OracleSQLError(code: .sidNotSupported)
+    }
 
     static func missingParameter(
         expected key: String,
@@ -354,10 +476,17 @@ public struct OracleSQLError: Sendable, Error {
         return error
     }
 
-    static let unsupportedDataType = OracleSQLError(code: .unsupportedDataType)
+    @inlinable
+    static var unsupportedDataType: OracleSQLError {
+        OracleSQLError(code: .unsupportedDataType)
+    }
 
-    static let missingStatement = OracleSQLError(code: .missingStatement)
+    @inlinable
+    static var missingStatement: OracleSQLError {
+        OracleSQLError(code: .missingStatement)
+    }
 
+    @inlinable
     static func malformedStatement(reason: MalformedStatementError) -> OracleSQLError {
         var error = OracleSQLError(code: .missingStatement)
         error.underlying = reason
@@ -463,6 +592,7 @@ extension OracleSQLError {
         var actualParameters: OracleBackendMessage.Parameter
     }
 
+    @usableFromInline
     enum MalformedStatementError: Error {
         case missingEndingSingleQuote
         case missingEndingDoubleQuote

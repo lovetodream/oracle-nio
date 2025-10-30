@@ -26,7 +26,7 @@ import Testing
         let queryContext = StatementContext(statement: query, promise: promise)
 
         let result = StatementResult(value: .noRows(affectedRows: 0, lastRowID: nil))
-        let backendError = OracleBackendMessage.BackendError(
+        let backendError = BackendError(
             number: 0, cursorID: 6, position: 0, rowCount: 0, isWarning: false, message: nil,
             rowID: nil, batchErrors: [])
 
@@ -108,7 +108,7 @@ import Testing
         ])
         let rowHeader = OracleBackendMessage.RowHeader()
         let result = StatementResult(value: .describeInfo(describeInfo.columns))
-        let backendError = OracleBackendMessage.BackendError(
+        let backendError = BackendError(
             number: 1013, cursorID: 3, position: 0, rowCount: 2, isWarning: false,
             message: "ORA-01013: user requested cancel of current operation\n", rowID: nil,
             batchErrors: [])

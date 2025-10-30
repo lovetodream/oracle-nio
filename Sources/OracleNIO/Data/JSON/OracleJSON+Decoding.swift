@@ -21,12 +21,14 @@ import NIOCore
 #endif
 
 extension OracleJSON: Decodable where Value: Decodable {
+    @inlinable
     public init(from decoder: any Decoder) throws {
         self.value = try .init(from: decoder)
     }
 }
 
 extension OracleJSON: OracleDecodable where Value: Decodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -37,23 +39,39 @@ extension OracleJSON: OracleDecodable where Value: Decodable {
     }
 }
 
+@usableFromInline
 struct OracleJSONDecoder {
+    @usableFromInline
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
+    @inlinable
     init() {}
 
+    @inlinable
     func decode<T: Decodable>(_: T.Type, from value: OracleJSONStorage) throws -> T {
         let decoder = _OracleJSONDecoder(codingPath: [], userInfo: self.userInfo, value: value)
         return try decoder.decode(T.self)
     }
 }
 
+@usableFromInline
 struct _OracleJSONDecoder: Decoder {
+    @usableFromInline
     let codingPath: [any CodingKey]
+    @usableFromInline
     let userInfo: [CodingUserInfoKey: Any]
 
+    @usableFromInline
     let value: OracleJSONStorage
 
+    @usableFromInline
+    init(codingPath: [any CodingKey], userInfo: [CodingUserInfoKey: Any], value: OracleJSONStorage) {
+        self.codingPath = codingPath
+        self.userInfo = userInfo
+        self.value = value
+    }
+
+    @usableFromInline
     func decode<T: Decodable>(_ type: T.Type) throws -> T {
         switch type {
         case is Date.Type:
@@ -81,6 +99,7 @@ struct _OracleJSONDecoder: Decoder {
         return try T(from: self)
     }
 
+    @usableFromInline
     func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key>
     where Key: CodingKey {
         guard case .container(let dictionary) = self.value else {
@@ -102,6 +121,7 @@ struct _OracleJSONDecoder: Decoder {
         return KeyedDecodingContainer(container)
     }
 
+    @usableFromInline
     func unkeyedContainer() throws -> any UnkeyedDecodingContainer {
         guard case .array(let array) = self.value else {
             throw DecodingError.typeMismatch(
@@ -121,6 +141,7 @@ struct _OracleJSONDecoder: Decoder {
         )
     }
 
+    @usableFromInline
     func singleValueContainer() throws -> any SingleValueDecodingContainer {
         OracleSingleValueDecodingContainer(
             decoder: self,

@@ -25,6 +25,11 @@ public struct OracleColumns: Sequence {
 
     var underlying: [DescribeInfo.Column]
 
+    @usableFromInline
+    init(underlying: [DescribeInfo.Column]) {
+        self.underlying = underlying
+    }
+
     public func makeIterator() -> Iterator {
         Iterator(underlying: self.underlying.makeIterator())
     }

@@ -16,6 +16,7 @@ import NIOCore
 
 /// Defining the capabilities (negotiated at connect time) that both
 /// the database server and the client are capable of.
+@usableFromInline
 struct Capabilities: Sendable, Hashable {
     var protocolVersion: UInt16 = 0
     var protocolOptions: UInt16 = 0
@@ -80,6 +81,7 @@ struct Capabilities: Sendable, Hashable {
     }
 
     /// Decodes Capabilities from a buffer created with ``encode(into:)``.
+    @usableFromInline
     init(from buffer: inout ByteBuffer) throws {
         self.protocolVersion = try buffer.throwingReadInteger()
         self.protocolOptions = try buffer.throwingReadInteger()

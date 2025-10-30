@@ -15,8 +15,10 @@
 import NIOCore
 
 extension Float: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .binaryFloat }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -43,6 +45,7 @@ extension Float: OracleEncodable {
 }
 
 extension Float: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

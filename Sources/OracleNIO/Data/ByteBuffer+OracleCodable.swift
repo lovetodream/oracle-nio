@@ -15,17 +15,11 @@
 import NIOCore
 
 extension ByteBuffer: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .raw }
 
+    @inlinable
     public func encode(
-        into buffer: inout ByteBuffer,
-        context: OracleEncodingContext
-    ) {
-        preconditionFailure("This should not be called")
-    }
-
-    /// Encodes `self` into wire data starting from `0` without modifying the `readerIndex`.
-    public func _encodeRaw(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
@@ -47,11 +41,22 @@ extension ByteBuffer: OracleEncodable {
             buffer.writeUB4(0)
         }
     }
+
+    /// Encodes `self` into wire data starting from `0` without modifying the `readerIndex`.
+    @inlinable
+    public func _encodeRaw(
+        into buffer: inout ByteBuffer,
+        context: OracleEncodingContext
+    ) {
+        self.encode(into: &buffer, context: context)
+    }
 }
 
 extension ByteBuffer: OracleDecodable {
+    @inlinable
     public var size: UInt32 { UInt32(self.readableBytes) }
 
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

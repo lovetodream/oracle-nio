@@ -50,15 +50,18 @@ extension LosslessStringConvertible {
 }
 
 extension Numeric where Self: LosslessStringConvertible {
+    @usableFromInline
     var ascii: [UInt8] { string.ascii }
 }
 
+@usableFromInline
 internal enum OracleNumeric {
 
     // MARK: Encode
 
     /// Encodes a numeric value to the Oracle `NUMBER` wire representation.
     /// - Returns: Bytes written to the buffer.
+    @usableFromInline
     @discardableResult
     static func encodeNumeric<T>(
         _ value: T, into buffer: inout ByteBuffer
@@ -68,6 +71,7 @@ internal enum OracleNumeric {
 
     /// Encodes a numeric value to the Oracle `NUMBER` wire representation.
     /// - Returns: Bytes written to the buffer.
+    @usableFromInline
     @discardableResult
     static func encodeNumeric(
         _ value: [UInt8], into buffer: inout ByteBuffer
@@ -249,6 +253,7 @@ internal enum OracleNumeric {
 
     // MARK: Decode
 
+    @usableFromInline
     static func parseInteger<T: FixedWidthInteger>(
         from buffer: inout ByteBuffer
     ) throws -> T {
@@ -306,6 +311,7 @@ internal enum OracleNumeric {
         }
     }
 
+    @usableFromInline
     static func parseFloat<T: BinaryFloatingPoint>(
         from buffer: inout ByteBuffer
     ) throws -> T {
@@ -371,6 +377,7 @@ internal enum OracleNumeric {
         }
     }
 
+    @usableFromInline
     static func parseBinaryFloat(
         from buffer: inout ByteBuffer
     ) throws -> Float {
@@ -391,6 +398,7 @@ internal enum OracleNumeric {
         return float
     }
 
+    @usableFromInline
     static func parseBinaryDouble(
         from buffer: inout ByteBuffer
     ) throws -> Double {

@@ -21,11 +21,12 @@ import NIOCore
 #endif
 
 extension String: OracleEncodable {
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
-        preconditionFailure("This should not be called")
+        ByteBuffer(string: self)._encodeRaw(into: &buffer, context: context)
     }
 
     @inlinable
@@ -33,12 +34,13 @@ extension String: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
-        ByteBuffer(string: self)
-            ._encodeRaw(into: &buffer, context: context)
+        self.encode(into: &buffer, context: context)
     }
 
+    @inlinable
     public static var defaultOracleType: OracleDataType { .varchar }
 
+    @inlinable
     public var size: UInt32 {
         // empty strings have a length of 1
         // (they're basically the same as null in a oracle db)
@@ -61,6 +63,7 @@ extension String: OracleDecodable {
         return try self.init(from: &buffer, type: type, context: context)
     }
 
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

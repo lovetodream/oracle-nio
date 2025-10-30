@@ -698,7 +698,7 @@ struct ConnectionStateMachine {
     }
 
     mutating func backendErrorReceived(
-        _ error: OracleBackendMessage.BackendError
+        _ error: BackendError
     ) -> ConnectionAction {
         switch self.state {
         case .statement(var statement):

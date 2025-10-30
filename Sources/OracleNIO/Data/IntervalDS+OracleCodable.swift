@@ -21,6 +21,7 @@ public struct IntervalDS: Sendable, Equatable, Hashable {
     public var seconds: Int
     public var fractionalSeconds: Int
 
+    @inlinable
     public init(days: Int, hours: Int, minutes: Int, seconds: Int, fractionalSeconds: Int) {
         self.days = days
         self.hours = hours
@@ -31,6 +32,7 @@ public struct IntervalDS: Sendable, Equatable, Hashable {
 }
 
 extension IntervalDS: ExpressibleByFloatLiteral {
+    @inlinable
     public init(floatLiteral value: Double) {
         var remaining = value
         let days = (remaining / (24 * 60 * 60)).rounded(.down)
@@ -50,6 +52,7 @@ extension IntervalDS: ExpressibleByFloatLiteral {
         )
     }
 
+    @inlinable
     public var double: Double {
         return (Double(days) * 24 * 60 * 60) + (Double(hours) * 60 * 60) + (Double(minutes) * 60)
             + Double(seconds) + (Double(fractionalSeconds) / 1000)
@@ -57,6 +60,7 @@ extension IntervalDS: ExpressibleByFloatLiteral {
 }
 
 extension IntervalDS: Encodable {
+    @inlinable
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         if encoder is _OracleJSONEncoder {
@@ -68,6 +72,7 @@ extension IntervalDS: Encodable {
 }
 
 extension IntervalDS: Decodable {
+    @inlinable
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         let value = try container.decode(Double.self)
@@ -76,8 +81,10 @@ extension IntervalDS: Decodable {
 }
 
 extension IntervalDS: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .intervalDS }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -97,6 +104,7 @@ extension IntervalDS: OracleEncodable {
 }
 
 extension IntervalDS: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

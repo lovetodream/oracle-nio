@@ -83,6 +83,7 @@ extension OracleXML: OracleDecodable {
 }
 
 extension OracleXML: CustomStringConvertible {
+    @inlinable
     public var description: String {
         switch self.value {
         case .string(let value):

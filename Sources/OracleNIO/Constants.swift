@@ -401,6 +401,7 @@ enum Constants {
     static let TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST: UInt32 = 0x0200_0000
 
     // MARK: Other constants
+    @usableFromInline
     static let TNS_MAX_SHORT_LENGTH = 252
     @usableFromInline
     static let TNS_ESCAPE_CHAR: UInt8 = 253
@@ -409,7 +410,9 @@ enum Constants {
     @usableFromInline
     static let TNS_NULL_LENGTH_INDICATOR: UInt8 = 255
     static let TNS_MAX_ROWID_LENGTH = 18
+    @usableFromInline
     static let TNS_DURATION_MID: UInt32 = 0x8000_0000
+    @usableFromInline
     static let TNS_DURATION_OFFSET: UInt8 = 60
     static let TNS_DURATION_SESSION: UInt64 = 10
     @usableFromInline
@@ -420,9 +423,11 @@ enum Constants {
     static let TNS_MAX_CURSORS_TO_CLOSE = 500
     static let TNS_TXN_IN_PROGRESS = 0x0000_0002
     static let TNS_MAX_CONNECT_DATA = 230
+    @usableFromInline
     static let TNS_CHUNK_SIZE = 32767
     static let TNS_MAX_UROWID_LENGTH: UInt32 = 5267
     static let TNS_SERVER_CONVERTS_CHARS: UInt8 = 0x01
+    @usableFromInline
     static let TNS_HAS_REGION_ID: UInt8 = 0x80
 
     // MARK: Base 64 encoding alphabet
@@ -431,7 +436,9 @@ enum Constants {
     static let TNS_EXTENT_OID = 0x0000_0000_0000_0000_0000_0000_0001_0001
 
     // MARK: Timezone offsets
+    @usableFromInline
     static let TZ_HOUR_OFFSET: UInt8 = 20
+    @usableFromInline
     static let TZ_MINUTE_OFFSET: UInt8 = 60
 
     // MARK: DRCP release mode

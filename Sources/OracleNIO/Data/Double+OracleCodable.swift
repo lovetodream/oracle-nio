@@ -15,10 +15,12 @@
 import NIOCore
 
 extension Double: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType {
         .binaryDouble
     }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -57,6 +59,7 @@ extension Double: OracleEncodable {
 }
 
 extension Double: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

@@ -198,6 +198,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         }
     }
 
+    @usableFromInline
     static func decode(
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context
@@ -206,6 +207,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         return try self._decode(from: &buffer, context: context)
     }
 
+    @usableFromInline
     static func _decode(
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context

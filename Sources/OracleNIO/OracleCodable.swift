@@ -260,23 +260,35 @@ extension OracleDynamicTypeEncodable {
 ///
 /// Used to pass further information to the encoding method.
 public struct OracleEncodingContext: Sendable {
+    @usableFromInline
     @TaskLocal static var jsonMaximumFieldNameSize: Int = 255
+
+    @usableFromInline
+    init() {}
 }
 
 extension OracleEncodingContext {
     /// A default ``OracleEncodingContext``.
-    public static let `default` =
+    @inlinable
+    public static var `default`: OracleEncodingContext {
         OracleEncodingContext()
+    }
 }
 
 /// A context that is passed to Swift objects that are decoded from the Oracle wire format.
 ///
 /// Used to pass further information to the decoding method.
-public struct OracleDecodingContext: Sendable {}
+public struct OracleDecodingContext: Sendable {
+    @usableFromInline
+    init() {}
+}
 
 extension OracleDecodingContext {
     /// A default ``OracleDecodingContext``.
-    public static let `default` = OracleDecodingContext()
+    @inlinable
+    public static var `default`: OracleDecodingContext {
+        OracleDecodingContext()
+    }
 }
 
 extension Optional: OracleDecodable

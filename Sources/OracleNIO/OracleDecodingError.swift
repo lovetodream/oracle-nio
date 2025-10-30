@@ -16,7 +16,8 @@ import NIOCore
 
 public struct OracleDecodingError: Error, Equatable {
     public struct Code: Hashable, Error, CustomStringConvertible {
-        enum Base {
+        @usableFromInline
+        enum Base: Sendable {
             case missingData
             case typeMismatch
             case decimalPointFound
@@ -24,14 +25,20 @@ public struct OracleDecodingError: Error, Equatable {
             case failure
         }
 
-        var base: Base
+        @usableFromInline
+        let base: Base
 
+        @inlinable
         init(_ base: Base) {
             self.base = base
         }
 
-        public static let missingData = Self(.missingData)
-        public static let typeMismatch = Self(.typeMismatch)
+        @inlinable
+        public static var missingData: Self { Self(.missingData) }
+
+        @inlinable
+        public static var typeMismatch: Self { Self(.typeMismatch) }
+
         /// Occurs if you're trying to decode a `FixedWidthInteger`, but the database sent a
         /// `BinaryFloatingPoint` with a decimal point.
         ///
@@ -41,7 +48,9 @@ public struct OracleDecodingError: Error, Equatable {
         ///
         /// - Tip: To fix this error you should either decode as `Float`, `Double` or `Decimal`,
         ///      depending on your needs.
-        public static let decimalPointFound = Self(.typeMismatch)
+        @inlinable
+        public static var decimalPointFound: Self { Self(.typeMismatch) }
+
         /// Occurs if you're trying to decode a negative signed `FixedWithInteger` to an
         /// `UnsignedInteger`.
         ///
@@ -50,9 +59,13 @@ public struct OracleDecodingError: Error, Equatable {
         ///
         /// - Tip: To fix this error, either change to an appropriate `SignedInteger` or handle such
         ///      cases within the database call.
-        public static let signedIntegerFound = Self(.signedIntegerFound)
-        public static let failure = Self(.failure)
+        @inlinable
+        public static var signedIntegerFound: Self { Self(.signedIntegerFound) }
 
+        @inlinable
+        public static var failure: Self { Self(.failure) }
+
+        @inlinable
         public var description: String {
             switch self.base {
             case .missingData:

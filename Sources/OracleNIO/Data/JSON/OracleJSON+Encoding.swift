@@ -21,14 +21,17 @@ import NIOCore
 #endif
 
 extension OracleJSON: Encodable where Value: Encodable {
+    @inlinable
     public func encode(to encoder: any Encoder) throws {
         try value.encode(to: encoder)
     }
 }
 
 extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .json }
 
+    @inlinable
     public func _encodeRaw(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -39,6 +42,7 @@ extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable 
         temp._encodeRaw(into: &buffer, context: context)
     }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -51,13 +55,17 @@ extension OracleJSON: OracleThrowingDynamicTypeEncodable where Value: Encodable 
         )
     }
 
+    @inlinable
     public init(_ value: Value) {
         self.value = value
     }
 }
 
+@usableFromInline
 final class _OracleJSONEncoder: Encoder {
+    @usableFromInline
     let codingPath: [any CodingKey]
+    @usableFromInline
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
     fileprivate var object: JSONObject?
@@ -74,6 +82,7 @@ final class _OracleJSONEncoder: Encoder {
         return self.singleValue
     }
 
+    @usableFromInline
     init() {
         self.codingPath = []
     }
@@ -92,6 +101,7 @@ final class _OracleJSONEncoder: Encoder {
         self.array = array
     }
 
+    @usableFromInline
     func encode(_ value: some Encodable) throws -> OracleJSONStorage {
         // workaround to prevent Date being transformed to Double
         if let value = value as? Date {
@@ -101,6 +111,7 @@ final class _OracleJSONEncoder: Encoder {
         return self.value ?? .none
     }
 
+    @usableFromInline
     func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> {
         if let object {
             let container = OracleKeyedEncodingContainer<Key>(
@@ -116,6 +127,7 @@ final class _OracleJSONEncoder: Encoder {
         return KeyedEncodingContainer(container)
     }
 
+    @usableFromInline
     func unkeyedContainer() -> any UnkeyedEncodingContainer {
         if let array {
             return OracleUnkeyedEncodingContainer(
@@ -128,6 +140,7 @@ final class _OracleJSONEncoder: Encoder {
         return OracleUnkeyedEncodingContainer(codingPath: codingPath, encoder: self, array: array!)
     }
 
+    @usableFromInline
     func singleValueContainer() -> any SingleValueEncodingContainer {
         precondition(array == nil && object == nil)
         return OracleSingleValueEncodingContainer(codingPath: codingPath, encoder: self)

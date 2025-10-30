@@ -19,6 +19,7 @@ import NIOCore
 ///
 /// If you encounter a `DecodingError` when using a trusted Oracle server please make sure to file an
 /// issue at: [https://github.com/lovetodream/oracle-nio/issues](https://github.com/lovetodream/oracle-nio/issues).
+@usableFromInline
 struct OracleMessageDecodingError: Error {
 
     /// The backend message packet ID byte.

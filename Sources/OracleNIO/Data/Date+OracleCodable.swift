@@ -29,8 +29,10 @@ import NIOCore
 #endif
 
 extension Date: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .timestampTZ }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
@@ -75,6 +77,7 @@ extension Date: OracleEncodable {
 }
 
 extension Date: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,

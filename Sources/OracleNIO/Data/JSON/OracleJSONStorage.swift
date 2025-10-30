@@ -18,6 +18,7 @@
     import Foundation
 #endif
 
+@usableFromInline
 enum OracleJSONStorage: Sendable, Equatable {
     /// Containers
     case container([String: OracleJSONStorage])

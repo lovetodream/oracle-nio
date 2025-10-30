@@ -110,6 +110,7 @@ extension RowID: OracleDecodable {
         )
     }
 
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -128,8 +129,10 @@ extension RowID: OracleDecodable {
 }
 
 extension RowID: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .rowID }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext

@@ -522,6 +522,7 @@ extension OracleConnection: OracleConnectionProtocol {
         return stream.map { try statement.decodeRow($0) }
     }
 
+    @usableFromInline
     func execute(
         cursor: consuming Cursor,
         options: StatementOptions = .init(),

@@ -41,17 +41,21 @@ public struct OracleNumber:
     ExpressibleByIntegerLiteral, ExpressibleByFloatLiteral,
     LosslessStringConvertible, Equatable, Hashable, Sendable
 {
+    @usableFromInline
     internal let value: ByteBuffer
     public let doubleValue: Double
 
+    @inlinable
     public var description: String {
         self.doubleValue.description
     }
 
+    @inlinable
     public var debugDescription: String {
         String(describing: value)
     }
 
+    @inlinable
     public init?(_ description: String) {
         guard let value = Double(description) else {
             return nil
@@ -59,32 +63,39 @@ public struct OracleNumber:
         self.init(value, ascii: value.ascii)
     }
 
+    @inlinable
     public init<T: FixedWidthInteger>(_ value: T) {
         self.init(.init(value), ascii: value.ascii)
     }
 
+    @inlinable
     public init(_ value: Float) {
         self.init(.init(value), ascii: value.ascii)
     }
 
+    @inlinable
     public init(_ value: Double) {
         self.init(.init(value), ascii: value.ascii)
     }
 
+    @inlinable
     public init(integerLiteral value: Int) {
         self.init(.init(value), ascii: value.ascii)
     }
 
+    @inlinable
     public init(floatLiteral value: Double) {
         self.init(value, ascii: value.ascii)
     }
 
     #if false  // currently unsupported: https://github.com/swiftlang/swift-foundation/issues/1285
+        @inlinable
         public init(decimal: Decimal) {
             self.init((decimal as NSDecimalNumber).doubleValue, ascii: decimal.description.ascii)
         }
     #endif
 
+    @inlinable
     internal init(_ numeric: Double, ascii: [UInt8]) {
         var buffer = ByteBuffer()
         OracleNumeric.encodeNumeric(ascii, into: &buffer)
@@ -92,16 +103,19 @@ public struct OracleNumber:
         self.doubleValue = numeric
     }
 
+    @inlinable
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.doubleValue == rhs.doubleValue
     }
 
+    @inlinable
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.doubleValue)
     }
 }
 
 extension OracleNumber: OracleDecodable {
+    @inlinable
     public init(
         from buffer: inout ByteBuffer,
         type: OracleDataType,
@@ -114,8 +128,10 @@ extension OracleNumber: OracleDecodable {
 }
 
 extension OracleNumber: OracleEncodable {
+    @inlinable
     public static var defaultOracleType: OracleDataType { .number }
 
+    @inlinable
     public func encode(
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext

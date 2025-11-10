@@ -18,14 +18,14 @@ import NIOCore
 import OracleMockServer
 import OracleNIO
 
-let port = env("ORA_PORT").flatMap(Int.init) ?? 6666
+let port = env("ORA_MOCK_SERVER_PORT").flatMap(Int.init) ?? 6666
 
 let config = OracleConnection.Configuration(
-    host: env("ORA_HOSTNAME") ?? "127.0.0.1",
+    host: "127.0.0.1",
     port: port,
-    service: .serviceName(env("ORA_SERVICE_NAME") ?? "FREEPDB1"),
-    username: env("ORA_USERNAME") ?? "my_user",
-    password: env("ORA_PASSWORD") ?? "my_passwor"
+    service: .serviceName("FREEPDB1"),
+    username: "my_user",
+    password: "my_passwor"
 )
 
 private func env(_ name: String) -> String? {

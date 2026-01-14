@@ -112,7 +112,7 @@ import Testing
         var state = ConnectionStateMachine.readyForStatement()
         #expect(
             state.enqueue(task: .statement(queryContext))
-            == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
         )
         #expect(state.describeInfoReceived(describeInfo) == .wait)
         #expect(state.rowHeaderReceived(rowHeader) == .succeedStatement(promise, result))
@@ -135,7 +135,7 @@ import Testing
         #expect(state.queryParameterReceived(.init()) == .wait)
         #expect(
             state.backendErrorReceived(.noData)
-            == .forwardStreamComplete([row1, row1], cursorID: 1, affectedRows: 1, lastRowID: nil))
+                == .forwardStreamComplete([row1, row1], cursorID: 1, affectedRows: 1, lastRowID: nil))
     }
 
     @Test func cancellationCompletesQueryOnlyOnce() throws {

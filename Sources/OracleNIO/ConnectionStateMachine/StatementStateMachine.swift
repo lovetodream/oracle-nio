@@ -229,9 +229,22 @@ struct StatementStateMachine {
                     out.writeBuffer(&buffer)
                 case .duplicate(let index):
                     var data = demandStateMachine.receivedDuplicate(at: index)
-                    try! out.writeLengthPrefixed(as: UInt8.self) { buffer in
-                        buffer.writeBuffer(&data)
-                    }  // must work
+                    if data.readableBytes <= Constants.TNS_MAX_SHORT_LENGTH {
+                        try! out.writeLengthPrefixed(as: UInt8.self) { buffer in
+                            buffer.writeBuffer(&data)
+                        }  // must work
+                    } else {
+                        var length = data.readableBytes
+                        out.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
+                        while data.readableBytes > 0 {
+                            let chunkLength = min(length, Constants.TNS_CHUNK_SIZE)
+                            out.writeInteger(UInt32(chunkLength))
+                            length -= chunkLength
+                            var part = data.readSlice(length: chunkLength)!
+                            out.writeBuffer(&part)
+                        }
+                        out.writeInteger(UInt32(0))
+                    }
                 }
             }
             let row = DataRow(columnCount: describeInfo.columns.count, bytes: out)

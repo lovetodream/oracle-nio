@@ -82,6 +82,62 @@ import Testing
                 == .forwardStreamComplete([row1], cursorID: 1, affectedRows: 1, lastRowID: nil))
     }
 
+    @Test func queryWithLargeDuplicateWorks() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
+        let query: OracleStatement = "SELECT 1 AS id FROM dual"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        let describeInfo = DescribeInfo(columns: [
+            .init(
+                name: "ID",
+                dataType: .number,
+                dataTypeSize: 0,
+                precision: 11,
+                scale: 127,
+                bufferSize: 2,
+                nullsAllowed: true,
+                typeScheme: nil,
+                typeName: nil,
+                domainSchema: nil,
+                domainName: nil,
+                annotations: [:],
+                vectorDimensions: nil,
+                vectorFormat: nil
+            )
+        ])
+        let rowHeader = OracleBackendMessage.RowHeader()
+        let result = StatementResult(value: .describeInfo(describeInfo.columns))
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+        #expect(state.describeInfoReceived(describeInfo) == .wait)
+        #expect(state.rowHeaderReceived(rowHeader) == .succeedStatement(promise, result))
+        var largeColumn = ByteBuffer(repeating: UInt8(1), count: Int(UInt8.max) + 25)
+        var out = ByteBuffer()
+        var length = largeColumn.readableBytes
+        out.writeInteger(Constants.TNS_LONG_LENGTH_INDICATOR)
+        while largeColumn.readableBytes > 0 {
+            let chunkLength = min(length, Constants.TNS_CHUNK_SIZE)
+            out.writeInteger(UInt32(chunkLength))
+            length -= chunkLength
+            var part = largeColumn.readSlice(length: chunkLength)!
+            out.writeBuffer(&part)
+        }
+        out.writeInteger(UInt32(0))
+        let row1 = DataRow(columnCount: 1, bytes: out)
+        #expect(state.rowDataReceived(.init(columns: [.data(out)]), capabilities: .init()) == .wait)
+        #expect(state.rowHeaderReceived(.init(bitVector: [])) == .wait)
+        #expect(state.rowDataReceived(.init(columns: [.duplicate(0)]), capabilities: .init()) == .wait)
+        #expect(state.queryParameterReceived(.init()) == .wait)
+        #expect(
+            state.backendErrorReceived(.noData)
+                == .forwardStreamComplete([row1, row1], cursorID: 1, affectedRows: 1, lastRowID: nil))
+    }
+
     @Test func cancellationCompletesQueryOnlyOnce() throws {
         let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
         promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.

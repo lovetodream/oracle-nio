@@ -181,7 +181,8 @@ public final class OracleConnection: Sendable {
                 // problems in the driver.
                 let tracer = OracleTraceHandler(
                     connectionID: connectionID,
-                    logger: Logger(label: "oracle-nio.network-tracing")
+                    logger: Logger(label: "oracle-nio.network-tracing"),
+                    shouldLog: configuration._ioTracingEnabled
                 )
                 try channel.pipeline.syncOperations.addHandler(tracer)
             #endif

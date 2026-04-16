@@ -37,6 +37,10 @@ import NIOSSL
     import Atomics
 #endif
 
+#if _IOTracing
+    import Atomics
+#endif
+
 /// An Oracle connection. Use it to run queries against an Oracle server.
 ///
 /// ## Creating a connection

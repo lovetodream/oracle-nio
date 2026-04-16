@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
     ],
     traits: [
+        .trait(name: "_IOTracing"),
         .trait(name: "DistributedTracingSupport"),
         .default(enabledTraits: ["DistributedTracingSupport"]),
     ],

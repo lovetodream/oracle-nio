@@ -33,6 +33,10 @@ import NIOSSL
     import Tracing
 #endif
 
+#if _IOTracing
+    import Atomics
+#endif
+
 /// An Oracle connection. Use it to run queries against an Oracle server.
 ///
 /// ## Creating a connection
@@ -666,7 +670,7 @@ extension OracleConnection {
 
 #if _IOTracing
     extension OracleConnection {
-        public func _ioTracing(enabled: Bool) async {
+        public func _ioTracing(enabled: Bool) async throws {
             try await self.channel.pipeline
                 .handler(type: OracleTraceHandler.self)
                 .get()

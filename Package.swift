@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "OracleNIOMacros", targets: ["OracleNIOMacros"]),
     ],
     traits: [
+        .trait(name: "_IOTracing"),
         .trait(name: "DistributedTracingSupport"),
         .default(enabledTraits: ["DistributedTracingSupport"]),
     ],
@@ -127,6 +128,7 @@ let package = Package(
 if Context.environment["ENABLE_ORACLE_BENCHMARKS"] != nil {
     package.platforms = [.macOS(.v14)]
     package.traits = [
+        .trait(name: "_IOTracing"),
         .trait(name: "DistributedTracingSupport"),
         .trait(name: "OracleBenchmarksEnabled"),
         .default(enabledTraits: ["DistributedTracingSupport", "OracleBenchmarksEnabled"]),

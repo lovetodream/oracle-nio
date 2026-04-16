@@ -12,9 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOPosix
-
 public import NIOCore
+import NIOPosix
 public import NIOSSL
 
 #if canImport(FoundationEssentials)
@@ -292,6 +291,11 @@ extension OracleConnection {
             public var tracing: OracleTracingConfiguration = .init()
         #endif
 
+        #if _IOTracing
+            /// Enables tracing for all I/O within the connection.
+            /// **Might be changed or removed any time**
+            public var _ioTracingEnabled: Bool? = nil
+        #endif
 
         // MARK: - Connection Pooling
         internal var purity: Purity = .default

@@ -13,12 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 @preconcurrency import Dispatch
+public import Logging
 import NIOConcurrencyHelpers
+public import NIOCore
 import NIOPosix
 import NIOSSL
-
-public import Logging
-public import NIOCore
 
 #if canImport(FoundationEssentials)
     import FoundationEssentials
@@ -32,6 +31,10 @@ public import NIOCore
 
 #if DistributedTracingSupport
     public import Tracing
+#endif
+
+#if _IOTracing
+    import Atomics
 #endif
 
 /// An Oracle connection. Use it to run queries against an Oracle server.
@@ -173,12 +176,13 @@ public final class OracleConnection: Sendable {
         // 2. add handlers
 
         do {
-            #if DEBUG
+            #if _IOTracing
                 // This is very useful for sending hex dumps to Oracle to analyze
                 // problems in the driver.
                 let tracer = OracleTraceHandler(
                     connectionID: connectionID,
-                    logger: Logger(label: "oracle-nio.network-tracing")
+                    logger: Logger(label: "oracle-nio.network-tracing"),
+                    shouldLog: configuration._ioTracingEnabled
                 )
                 try channel.pipeline.syncOperations.addHandler(tracer)
             #endif
@@ -656,6 +660,19 @@ extension OracleConnection {
             attributes[self.configuration.tracing.attributeNames.databaseQueryText] = queryText
             attributes[self.configuration.tracing.attributeNames.serverAddress] = configuration.host
             attributes[self.configuration.tracing.attributeNames.serverPort] = configuration.port
+        }
+    }
+#endif
+
+
+#if _IOTracing
+    extension OracleConnection {
+        public func _ioTracing(enabled: Bool) async throws {
+            try await self.channel.pipeline
+                .handler(type: OracleTraceHandler.self)
+                .get()
+                .shouldLog
+                .store(enabled, ordering: .relaxed)
         }
     }
 #endif

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 #if canImport(Darwin)
     import Darwin
@@ -23,9 +23,9 @@ import NIOCore
 #endif
 
 #if canImport(FoundationEssentials)
-    import FoundationEssentials
+    public import FoundationEssentials
 #else
-    import Foundation
+    public import Foundation
 #endif
 
 extension Date: OracleEncodable {

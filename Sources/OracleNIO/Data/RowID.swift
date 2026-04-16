@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 public struct RowID: CustomStringConvertible, Sendable, Equatable, Hashable {
     public let description: String

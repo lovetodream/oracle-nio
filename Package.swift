@@ -6,7 +6,8 @@ import CompilerPluginSupport
 import PackageDescription
 
 let swiftSettings: [SwiftSetting] = [
-    .enableUpcomingFeature("MemberImportVisibility")
+    .enableUpcomingFeature("MemberImportVisibility"),
+    .enableUpcomingFeature("InternalImportsByDefault"),
 ]
 
 let package = Package(
@@ -32,7 +33,7 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
         .package(
             url: "https://github.com/swiftlang/swift-syntax.git",
-            "601.0.0-latest"..."602.0.0-latest"),
+            "601.0.0-latest"..."603.0.0-latest"),
     ],
     targets: [
         .target(

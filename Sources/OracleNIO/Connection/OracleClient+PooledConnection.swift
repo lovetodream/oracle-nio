@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
+public import Logging
 
 extension OracleClient {
     /// A managed version of ``OracleConnection`` that can only be obtained from an ``OracleClient``.

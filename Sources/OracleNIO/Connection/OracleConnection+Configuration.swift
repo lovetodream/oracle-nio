@@ -12,18 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
 import NIOPosix
-import NIOSSL
+
+public import NIOCore
+public import NIOSSL
 
 #if canImport(FoundationEssentials)
-    import FoundationEssentials
+    public import FoundationEssentials
 #else
-    import Foundation
+    public import Foundation
 #endif
 
 #if DistributedTracingSupport
-    import Tracing
+    public import Tracing
 #endif
 
 extension OracleConnection {

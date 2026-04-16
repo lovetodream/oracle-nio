@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 @preconcurrency import Dispatch
-import Logging
 import NIOConcurrencyHelpers
-import NIOCore
 import NIOPosix
 import NIOSSL
+
+public import Logging
+public import NIOCore
 
 #if canImport(FoundationEssentials)
     import FoundationEssentials
@@ -30,7 +31,7 @@ import NIOSSL
 #endif
 
 #if DistributedTracingSupport
-    import Tracing
+    public import Tracing
 #endif
 
 /// An Oracle connection. Use it to run queries against an Oracle server.

@@ -117,10 +117,6 @@ public final class OracleConnection: Sendable {
         }
     #endif
 
-    #if _IOTracing
-        let ioTracer: OracleTraceHandler?
-    #endif
-
     private init(
         configuration: OracleConnection.Configuration,
         channel: Channel,

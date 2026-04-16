@@ -33,6 +33,10 @@ import NIOSSL
     import Tracing
 #endif
 
+#if _IOTracing
+    import Atomics
+#endif
+
 /// An Oracle connection. Use it to run queries against an Oracle server.
 ///
 /// ## Creating a connection
@@ -177,7 +181,8 @@ public final class OracleConnection: Sendable {
                 // problems in the driver.
                 let tracer = OracleTraceHandler(
                     connectionID: connectionID,
-                    logger: Logger(label: "oracle-nio.network-tracing")
+                    logger: Logger(label: "oracle-nio.network-tracing"),
+                    shouldLog: configuration._ioTracingEnabled
                 )
                 try channel.pipeline.syncOperations.addHandler(tracer)
             #endif
@@ -655,6 +660,19 @@ extension OracleConnection {
             attributes[self.configuration.tracing.attributeNames.databaseQueryText] = queryText
             attributes[self.configuration.tracing.attributeNames.serverAddress] = configuration.host
             attributes[self.configuration.tracing.attributeNames.serverPort] = configuration.port
+        }
+    }
+#endif
+
+
+#if _IOTracing
+    extension OracleConnection {
+        public func _ioTracing(enabled: Bool) async throws {
+            try await self.channel.pipeline
+                .handler(type: OracleTraceHandler.self)
+                .get()
+                .shouldLog
+                .store(enabled, ordering: .relaxed)
         }
     }
 #endif

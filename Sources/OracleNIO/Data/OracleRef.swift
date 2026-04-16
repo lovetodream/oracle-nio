@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
-import NIOCore
+public import NIOConcurrencyHelpers
+public import NIOCore
 
 /// A reference type used to capture `OUT` and `IN/OUT` binds in `DML` returning statements or
 /// `PL/SQL`.

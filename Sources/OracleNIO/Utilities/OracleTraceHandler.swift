@@ -14,10 +14,15 @@
 
 #if _IOTracing
     import Atomics
-    import Foundation
     import Logging
     import NIOCore
     import NIOPosix
+
+    #if canImport(FoundationEssentials)
+        import FoundationEssentials
+    #else
+        import Foundation
+    #endif
 
     final class OracleTraceHandler: ChannelDuplexHandler, Sendable {
         typealias InboundIn = ByteBuffer

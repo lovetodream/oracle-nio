@@ -16,9 +16,9 @@
 
 import SwiftCompilerPlugin
 import SwiftDiagnostics
-import SwiftSyntax
+public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 // db driver specifics
 private let domain = "OracleNIO"

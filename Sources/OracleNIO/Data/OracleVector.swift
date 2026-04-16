@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 enum VectorFormat: UInt8 {
     case float32 = 2

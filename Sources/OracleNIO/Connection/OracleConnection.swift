@@ -13,9 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 @preconcurrency import Dispatch
-import Logging
+public import Logging
 import NIOConcurrencyHelpers
-import NIOCore
+public import NIOCore
 import NIOPosix
 import NIOSSL
 
@@ -30,7 +30,11 @@ import NIOSSL
 #endif
 
 #if DistributedTracingSupport
-    import Tracing
+    public import Tracing
+#endif
+
+#if _IOTracing
+    import Atomics
 #endif
 
 #if _IOTracing

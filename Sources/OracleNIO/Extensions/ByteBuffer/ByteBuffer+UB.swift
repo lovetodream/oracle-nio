@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct NIOCore.ByteBuffer
+public import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
     mutating func throwingSkipUB1(file: String = #fileID, line: Int = #line) throws {

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 public struct OracleDecodingError: Error, Equatable {
     public struct Code: Hashable, Error, CustomStringConvertible {

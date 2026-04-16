@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
+public import Logging
 
 public protocol OracleConnectionProtocol {
     /// A Oracle connection ID, used exclusively for logging.

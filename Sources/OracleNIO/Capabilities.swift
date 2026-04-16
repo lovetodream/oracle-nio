@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// Defining the capabilities (negotiated at connect time) that both
 /// the database server and the client are capable of.

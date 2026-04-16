@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 extension OracleEncodable where Self: Collection, Self.Element == UInt8 {
     @inlinable

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
+public import Logging
 
 /// A special kind of ``OracleConnection`` that can only be obtained and used during the lifetime of a transaction.
 ///

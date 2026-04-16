@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// A representation of a cell value within a ``OracleRow`` and ``OracleRandomAccessRow``.
 public struct OracleCell: Sendable, Equatable {

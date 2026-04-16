@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
-import NIOCore
+public import NIOConcurrencyHelpers
+public import NIOCore
 
 struct OracleBindingsCollection {
     /// Metadata is shared by all bind rows.

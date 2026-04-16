@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOSSL
+public import NIOSSL
 
 extension TLSConfiguration {
     /// Creates a mutual TLS configuration for Oracle database connections.

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 public struct IntervalDS: Sendable, Equatable, Hashable {
     public var days: Int

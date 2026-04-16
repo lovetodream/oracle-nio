@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import OracleNIO
+public import OracleNIO
 
 /// Defines and implements conformance of the OraclePreparedStatement protocol for Structs.
 ///

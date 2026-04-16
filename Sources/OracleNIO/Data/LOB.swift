@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIOConcurrencyHelpers
-import NIOCore
+public import NIOCore
 
 /// A LOB holds a reference to CLOB/BLOB data on an Oracle connection.
 ///

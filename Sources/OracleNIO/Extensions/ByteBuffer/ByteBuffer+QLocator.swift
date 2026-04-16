@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct NIOCore.ByteBuffer
+public import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
     @usableFromInline

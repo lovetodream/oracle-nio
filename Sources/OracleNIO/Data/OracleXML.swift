@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 /// A type to decode `XMLTYPE` objects from an Oracle server.
 ///

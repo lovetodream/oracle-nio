@@ -148,7 +148,7 @@ jobs:
           key: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport,OracleBenchmarksEnabled
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4

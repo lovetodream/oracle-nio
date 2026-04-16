@@ -172,7 +172,7 @@ public final class OracleConnection: Sendable {
         // 2. add handlers
 
         do {
-            #if DEBUG
+            #if _IOTracing
                 // This is very useful for sending hex dumps to Oracle to analyze
                 // problems in the driver.
                 let tracer = OracleTraceHandler(

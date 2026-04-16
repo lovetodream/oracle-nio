@@ -66,7 +66,7 @@ jobs:
           key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage
+        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -80,7 +80,7 @@ jobs:
           echo "TEST_PRIVILEGED=true" >> "$GITHUB_ENV"
           echo "TEST_COMPRESSED_JSON=true" >> "$GITHUB_ENV"
       - name: Run tests
-        run: swift test --skip-build --enable-code-coverage
+        run: swift test --skip-build --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: oracle
           ORA_PORT: 1521
@@ -148,7 +148,7 @@ jobs:
           key: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage
+        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -162,7 +162,7 @@ jobs:
           echo "TEST_PRIVILEGED=true" >> "$GITHUB_ENV"
           echo "TEST_COMPRESSED_JSON=true" >> "$GITHUB_ENV"
       - name: Run tests
-        run: swift test --skip-build --enable-code-coverage
+        run: swift test --skip-build --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: oracle
           ORA_PORT: 1521
@@ -202,7 +202,7 @@ jobs:
           key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage
+        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -210,7 +210,7 @@ jobs:
           path: .build
           key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
       - name: Run tests
-        run: swift test --enable-code-coverage
+        run: swift test --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: adb.eu-frankfurt-1.oraclecloud.com
           ORA_PORT: 1522
@@ -261,7 +261,7 @@ jobs:
           key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage
+        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -269,7 +269,7 @@ jobs:
           path: .build
           key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
       - name: Run tests
-        run: swift test --skip-build --enable-code-coverage
+        run: swift test --skip-build --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: adb.eu-frankfurt-1.oraclecloud.com
           ORA_PORT: 1522

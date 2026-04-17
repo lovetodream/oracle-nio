@@ -639,7 +639,13 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 self.wrapOutboundOut(self.encoder.flush()), promise: nil
             )
         } catch {
-            context.fireErrorCaught(error)
+            let action =
+                if let error = error as? OracleSQLError {
+                    self.state.errorHappened(error)
+                } else {
+                    self.state.errorHappened(.connectionError(underlying: error))
+                }
+            self.run(action, with: context)
         }
     }
 

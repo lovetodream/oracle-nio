@@ -14,7 +14,7 @@ runs:
       shell: bash
       run: |
         LLVM_COV="$(dirname "$(realpath "$(which swift)")" 2>/dev/null)/llvm-cov"
-        [[ -x "$LLVM_COV" ]] || LLVM_COV="llvm-cov"
+        [[ -x "$LLVM_COV" ]] || LLVM_COV="$(xcrun --find llvm-cov 2>/dev/null || echo llvm-cov)"
 
         binpath="$(swift build --show-bin-path)"
         covpath="$(dirname "$(swift test --show-codecov-path)")"

@@ -1,0 +1,42 @@
+name: Prepare and Upload Code Coverage
+description: Export lcov and upload to Codecov, skipped on schedule events
+
+inputs:
+  codecov_token:
+    description: Codecov repository token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export lcov
+      if: github.event_name != 'schedule'
+      shell: bash
+      run: |
+        LLVM_COV="$(dirname "$(realpath "$(which swift)")" 2>/dev/null)/llvm-cov"
+        [[ -x "$LLVM_COV" ]] || LLVM_COV="llvm-cov"
+
+        binpath="$(swift build --show-bin-path)"
+        covpath="$(dirname "$(swift test --show-codecov-path)")"
+        pkgname="oracle-nio"
+
+        if [[ -d "${binpath}/${pkgname}PackageTests.xctest" ]]; then
+          covobjs="--object=${binpath}/${pkgname}PackageTests.xctest/Contents/macOS/${pkgname}PackageTests"
+        elif [[ -x "${binpath}/${pkgname}PackageTests.xctest" ]]; then
+          covobjs="--object=${binpath}/${pkgname}PackageTests.xctest"
+        else
+          covobjs=""
+          for runner in "${binpath}/"*"-test-runner"; do
+            so="${runner/-test-runner/.so}"
+            [[ -f "$so" ]] && covobjs+="--object=${so} "
+          done
+        fi
+
+        "${LLVM_COV}" export -format="lcov" --instr-profile="${covpath}/default.profdata" ${covobjs} > info.lcov
+
+    - name: Upload coverage to Codecov
+      if: github.event_name != 'schedule'
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ inputs.codecov_token }}
+        files: info.lcov

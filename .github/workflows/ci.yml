@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
   schedule:
     - cron: "0 15 * * 1"
 
@@ -36,9 +36,7 @@ jobs:
         ports:
           - 1521:1521
         options: >-
-          --health-cmd healthcheck.sh
-          --health-interval 10s
-          --health-timeout 5s
+          --health-cmd healthcheck.sh --health-interval 10s --health-timeout 5s
           --health-retries 10
 
     steps:
@@ -63,16 +61,19 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift build --build-tests --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
       - name: Set environment
         if: matrix.oracle-image != 'gvenzl/oracle-xe:21'
         run: |
@@ -80,21 +81,18 @@ jobs:
           echo "TEST_PRIVILEGED=true" >> "$GITHUB_ENV"
           echo "TEST_COMPRESSED_JSON=true" >> "$GITHUB_ENV"
       - name: Run tests
-        run: swift test --skip-build --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift test --skip-build --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: oracle
           ORA_PORT: 1521
           ORA_SERVICE_NAME: FREEPDB1
           ORA_USERNAME: my_user
           ORA_PASSWORD: my_password
-      - name: Prepare Code Coverage
-        run: |
-          "$(dirname "$(realpath "$(which swift)")")/llvm-cov" export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Prepare and Upload Code Coverage
+        uses: ./.github/actions/prepare-coverage
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: info.lcov
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   linux-bench:
     strategy:
@@ -116,9 +114,7 @@ jobs:
         ports:
           - 1521:1521
         options: >-
-          --health-cmd healthcheck.sh
-          --health-interval 10s
-          --health-timeout 5s
+          --health-cmd healthcheck.sh --health-interval 10s --health-timeout 5s
           --health-retries 10
 
     env:
@@ -145,16 +141,20 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
-          restore-keys: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-"
+          key: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
+          restore-keys: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os
+            }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport,OracleBenchmarksEnabled
+        run: swift build --build-tests --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport,OracleBenchmarksEnabled
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "bench-${{ matrix.swift-image }}-swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
       - name: Set environment
         if: matrix.oracle-image != 'gvenzl/oracle-xe:21'
         run: |
@@ -162,21 +162,18 @@ jobs:
           echo "TEST_PRIVILEGED=true" >> "$GITHUB_ENV"
           echo "TEST_COMPRESSED_JSON=true" >> "$GITHUB_ENV"
       - name: Run tests
-        run: swift test --skip-build --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift test --skip-build --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: oracle
           ORA_PORT: 1521
           ORA_SERVICE_NAME: FREEPDB1
           ORA_USERNAME: my_user
           ORA_PASSWORD: my_password
-      - name: Prepare Code Coverage
-        run: |
-          "$(dirname "$(realpath "$(which swift)")")/llvm-cov" export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Prepare and Upload Code Coverage
+        uses: ./.github/actions/prepare-coverage
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: info.lcov
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   linux-adb:
     container:
@@ -199,18 +196,22 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift build --build-tests --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
       - name: Run tests
-        run: swift test --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift test --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: adb.eu-frankfurt-1.oraclecloud.com
           ORA_PORT: 1522
@@ -221,15 +222,11 @@ jobs:
           ORA_TEST_WALLET_PASSWORD: ${{ secrets.ORA_TEST_WALLET_PASSWORD_CLOUD_23 }}
           SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
           TEST_VECTORS: true
-      - name: Prepare Code Coverage
-        if: github.event_name != 'schedule'
-        run: llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest -instr-profile .build/debug/codecov/default.profdata > info.lcov
-      - name: Upload coverage reports to Codecov
-        if: github.event_name != 'schedule'
-        uses: codecov/codecov-action@v3
+
+      - name: Prepare and Upload Code Coverage
+        uses: ./.github/actions/prepare-coverage
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: info.lcov
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
   macos-adb:
     strategy:
@@ -258,18 +255,22 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
           restore-keys: "swiftpm-tests-build-${{ runner.os }}-"
       - name: Build
-        run: swift build --build-tests --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift build --build-tests --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
       - name: Cache .build
         # if: steps.restore-build.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .build
-          key: "swiftpm-tests-build-${{ runner.os }}-${{ github.event.pull_request.base.sha || github.event.after }}"
+          key: "swiftpm-tests-build-${{ runner.os }}-${{
+            github.event.pull_request.base.sha || github.event.after }}"
       - name: Run tests
-        run: swift test --skip-build --enable-code-coverage --traits _IOTracing,DistributedTracingSupport
+        run: swift test --skip-build --enable-code-coverage --traits
+          _IOTracing,DistributedTracingSupport
         env:
           ORA_HOSTNAME: adb.eu-frankfurt-1.oraclecloud.com
           ORA_PORT: 1522
@@ -281,11 +282,7 @@ jobs:
           SMOKE_TEST_ONLY: 1 # we only want to know if connections work at all, we don't require the full suite
           TEST_VECTORS: true
           TEST_COMPRESSED_JSON: true
-      - name: Prepare Code Coverage
-        run: |
-          xcrun llvm-cov export -format="lcov" .build/debug/oracle-nioPackageTests.xctest/Contents/MacOS/oracle-nioPackageTests -instr-profile .build/debug/codecov/default.profdata > info.lcov
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Prepare and Upload Code Coverage
+        uses: ./.github/actions/prepare-coverage
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: info.lcov
+          codecov_token: ${{ secrets.CODECOV_TOKEN }}

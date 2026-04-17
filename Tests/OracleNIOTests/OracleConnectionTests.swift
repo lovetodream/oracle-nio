@@ -195,7 +195,7 @@ import Testing
     @Test func unsupportedVersionFires() async throws {
         let eventLoop = NIOAsyncTestingEventLoop()
         let protocolVersion =
-        OracleBackendMessageEncoder
+            OracleBackendMessageEncoder
             .ProtocolVersion(Int(Constants.TNS_VERSION_MINIMUM))
         let channel = try await NIOAsyncTestingChannel(loop: eventLoop) { channel in
             try channel.pipeline.syncOperations.addHandler(
@@ -246,7 +246,7 @@ import Testing
                         flags: 0),
                     "AUTH_VFR_DATA": .init(
                         value: "48EE55C6694386C5D6DCCC51343193E0",
-                        flags: 0x939), // 10g verifier
+                        flags: 0x939),  // 10g verifier
                     "AUTH_PBKDF2_VGEN_COUNT": .init(value: "4096", flags: 0),
                     "AUTH_PBKDF2_SDER_COUNT": .init(value: "3", flags: 0),
                     "AUTH_GLOBALLY_UNIQUE_DBID\0": .init(

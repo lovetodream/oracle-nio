@@ -20,6 +20,7 @@ jobs:
         swift-image:
           - swift:6.1-noble
           - swift:6.2-noble
+          - swift:6.3-noble
           - swiftlang/swift:nightly-main-noble
         oracle-image:
           - gvenzl/oracle-free:23
@@ -99,7 +100,7 @@ jobs:
       fail-fast: false
       matrix:
         swift-image:
-          - swift:6.2-noble
+          - swift:6.3-noble
         oracle-image:
           - gvenzl/oracle-free:23
     container: ${{ matrix.swift-image }}
@@ -177,7 +178,7 @@ jobs:
 
   linux-adb:
     container:
-      image: swift:6.2-noble
+      image: swift:6.3-noble
 
     runs-on: ubuntu-latest
 

@@ -26,7 +26,19 @@ It's like [PostgresNIO](https://github.com/vapor/postgres-nio), but written for 
 
 ## Supported Oracle Database versions
 
-Oracle Database 12.1 or later.
+Oracle Database 12.1 or later. 
+
+| Version | Release Name | Tested |
+|---|---|---|
+| 12.x | 12c Release | ⚠️ |
+| 18.x | 18c | ✅ |
+| 19.x | 19c Long Term Release | ✅ |
+| 21.x | 21c Innovation Release | ✅ |
+| 23.x | 23ai Long Term Release | ✅ |
+
+⚠️ Requires additional configuration.
+
+> **Note:** Oracle 12c requires Exclusive Mode (`SQLNET.ALLOWED_LOGON_VERSION_SERVER = 12`) to be enabled and all user passwords to be reset afterwards, so that the legacy 10G DES password verifier is removed. Without this, connections will fail with `serverVersionNotSupported`.
 
 ## Connection methods
 

@@ -25,6 +25,10 @@ jobs:
         oracle-image:
           - gvenzl/oracle-free:23
           - gvenzl/oracle-xe:21
+        include:
+          - swift-image: swiftlang/swift:nightly-main-noble
+            experimental: true
+    continue-on-error: ${{ matrix.experimental == true }}
     container: ${{ matrix.swift-image }}
     runs-on: ubuntu-latest
     services:

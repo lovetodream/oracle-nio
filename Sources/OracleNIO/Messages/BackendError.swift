@@ -39,17 +39,19 @@ struct BackendError: OracleBackendMessage.PayloadDecodable, Hashable, Sendable {
         context: OracleBackendMessageDecoder.Context
     ) throws -> BackendError {
         // Oracle's TNS warning packet uses the UB2 (variable-length) encoding
-        // for the error number, message length, and flags fields — same as
-        // every other UB2-shaped field in the protocol. Reading raw UInt16
-        // here was the bug that caused EXPIRED(GRACE) accounts to hang the
-        // connect: the decoder pulled garbage for `length`, ran past the end
-        // of the message, and threw a partial-decode that buffered forever.
+        // for the error number, message length, and flags fields, and the
+        // message itself uses Oracle's chunked length-prefixed string format
+        // (same as the regular error path below). Reading raw UInt16 here, or
+        // reading the message as a fixed-length string, both desynchronise the
+        // decoder by one or more bytes — the trailing newline of the warning
+        // string then surfaces as a bogus messageID (e.g. 10 = 0x0A) on the
+        // next decode pass. Matches python-oracledb's `_process_warning_info`.
         let number = try buffer.throwingReadUB2()
         let length = try buffer.throwingReadUB2()
         try buffer.throwingSkipUB2()  // flags
         let errorMessage: String? =
             if number != 0 && length > 0 {
-                try buffer.throwingReadString(length: Int(length)).replacing(/(^\s+|\s+$)/, with: "")
+                try buffer.readString().replacing(/(^\s+|\s+$)/, with: "")
             } else {
                 nil
             }

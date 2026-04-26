@@ -70,8 +70,8 @@ extension Date: OracleEncodable {
             let totalMinutes = seconds / 60
             let hours = totalMinutes / 60
             let minutes = totalMinutes % 60
-            buffer.writeInteger(UInt8(hours) + Constants.TZ_HOUR_OFFSET)
-            buffer.writeInteger(UInt8(minutes) + Constants.TZ_MINUTE_OFFSET)
+            buffer.writeInteger(UInt8(hours + Int(Constants.TZ_HOUR_OFFSET)))
+            buffer.writeInteger(UInt8(minutes + Int(Constants.TZ_MINUTE_OFFSET)))
         }
     }
 }
@@ -123,8 +123,8 @@ extension Date: OracleDecodable {
                     throw OracleDecodingError.Code.failure
                 }
 
-                let tzHour = Int(byte11 - Constants.TZ_HOUR_OFFSET)
-                let tzMinute = Int(byte12 - Constants.TZ_MINUTE_OFFSET)
+                let tzHour = Int(byte11) - Int(Constants.TZ_HOUR_OFFSET)
+                let tzMinute = Int(byte12) - Int(Constants.TZ_MINUTE_OFFSET)
                 if tzHour != 0 || tzMinute != 0 {
                     guard
                         let timeZone = TimeZone(

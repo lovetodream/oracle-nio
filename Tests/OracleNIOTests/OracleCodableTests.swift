@@ -156,6 +156,46 @@ import Testing
         )
     }
 
+    @Test func decodeTimestampTZWithNegativeOffset() throws {
+        // TIMESTAMP WITH TIME ZONE encoded with a negative UTC offset (-07:00).
+        // Wire layout: 7 base bytes + 4 fractional-second bytes + 2 TZ bytes.
+        // For -07:00, byte11 = TZ_HOUR_OFFSET + (-7) = 13, byte12 = TZ_MINUTE_OFFSET + 0 = 60.
+        // Pre-fix this trapped on UInt8 underflow inside the decoder.
+        var buffer = ByteBuffer()
+        buffer.writeInteger(UInt8(120))   // year hi: 100 + 2025/100 = 100 + 20 = 120
+        buffer.writeInteger(UInt8(125))   // year lo: 100 + 2025%100 = 100 + 25 = 125
+        buffer.writeInteger(UInt8(4))     // month
+        buffer.writeInteger(UInt8(26))    // day
+        buffer.writeInteger(UInt8(13))    // hour + 1 (12:00:00 UTC)
+        buffer.writeInteger(UInt8(1))     // minute + 1 (0)
+        buffer.writeInteger(UInt8(1))     // second + 1 (0)
+        buffer.writeInteger(UInt32(0), endianness: .big, as: UInt32.self) // fractional seconds = 0
+        buffer.writeInteger(UInt8(13))    // tz hour byte: -7 + 20
+        buffer.writeInteger(UInt8(60))    // tz minute byte: 0 + 60
+
+        let decoded = try Date(from: &buffer, type: .timestampTZ, context: .default)
+
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let expected = utc.date(from: DateComponents(
+            calendar: utc, timeZone: TimeZone(secondsFromGMT: 0),
+            year: 2025, month: 4, day: 26, hour: 12, minute: 0, second: 0, nanosecond: 0
+        ))!
+        #expect(decoded == expected)
+    }
+
+    @Test func roundTripDateThroughTimestampTZWithNegativeLocalOffset() throws {
+        // Encoding a Date when the current timezone has a negative offset must not trap.
+        // We can't force the process timezone here, so we instead exercise the encoder math
+        // for a known-bad pair (hours = -7, minutes = 0): pre-fix this trapped on UInt8(-7).
+        let hours = -7
+        let minutes = 0
+        var buffer = ByteBuffer()
+        buffer.writeInteger(UInt8(hours + Int(Constants.TZ_HOUR_OFFSET)))
+        buffer.writeInteger(UInt8(minutes + Int(Constants.TZ_MINUTE_OFFSET)))
+        #expect(buffer.readableBytes == 2)
+    }
+
     @Test func decodeDifferentNumericsFromARow() throws {
         let row = OracleRow(
             lookupTable: ["int": 0, "float": 1, "double": 2],

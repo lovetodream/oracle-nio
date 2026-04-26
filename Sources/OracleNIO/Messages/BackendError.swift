@@ -38,11 +38,15 @@ struct BackendError: OracleBackendMessage.PayloadDecodable, Hashable, Sendable {
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context
     ) throws -> BackendError {
-        let number = try buffer.throwingReadInteger(as: UInt16.self)
-        // error number
-        let length = try buffer.throwingReadInteger(as: UInt16.self)
-        // length of error message
-        try buffer.throwingMoveReaderIndex(forwardBy: 2)  // skip flags
+        // Oracle's TNS warning packet uses the UB2 (variable-length) encoding
+        // for the error number, message length, and flags fields — same as
+        // every other UB2-shaped field in the protocol. Reading raw UInt16
+        // here was the bug that caused EXPIRED(GRACE) accounts to hang the
+        // connect: the decoder pulled garbage for `length`, ran past the end
+        // of the message, and threw a partial-decode that buffered forever.
+        let number = try buffer.throwingReadUB2()
+        let length = try buffer.throwingReadUB2()
+        try buffer.throwingSkipUB2()  // flags
         let errorMessage: String? =
             if number != 0 && length > 0 {
                 try buffer.throwingReadString(length: Int(length)).replacing(/(^\s+|\s+$)/, with: "")

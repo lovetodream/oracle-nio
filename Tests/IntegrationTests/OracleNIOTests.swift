@@ -68,6 +68,48 @@ final class OracleNIOTests {
         #expect(throws: Never.self, performing: { try conn?.syncClose() })
     }
 
+    // Real-connection regression for the EXPIRED(GRACE) hang
+    // (https://github.com/lovetodream/oracle-nio/issues/113). Reuses the
+    // standard ORA_HOSTNAME / ORA_PORT / ORA_SERVICE_NAME env, but expects a
+    // separate user whose account_status is EXPIRED(GRACE). The test is
+    // skipped automatically when ORA_GRACE_USERNAME / ORA_GRACE_PASSWORD are
+    // not set, so it doesn't fail the suite on DBs that don't have the
+    // grace user provisioned.
+    //
+    // One-time setup against the target DB:
+    //   CREATE PROFILE temp_expire_1m LIMIT
+    //     PASSWORD_LIFE_TIME 1/1440 PASSWORD_GRACE_TIME 7;
+    //   CREATE USER testpwd IDENTIFIED BY testpwd;
+    //   GRANT CREATE SESSION TO testpwd;
+    //   ALTER USER testpwd PROFILE temp_expire_1m;
+    //   ALTER USER testpwd IDENTIFIED BY testpwd;
+    //   -- wait > 1 minute so account_status flips to EXPIRED(GRACE)
+    @Test(.enabled(if: env("ORA_GRACE_USERNAME") != nil || env("ORA_GRACE_PASSWORD") != nil))
+    func connectToGraceExpiredAccountDoesNotHang() async throws {
+        var config = OracleConnection.Configuration(
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            username: env("ORA_GRACE_USERNAME") ?? "testpwd",
+            password: env("ORA_GRACE_PASSWORD") ?? "testpwd"
+        )
+        // Tight connect timeout so a regression of the hang surfaces as a
+        // clear failure rather than blocking until the suite-level limit.
+        config.options.connectTimeout = .seconds(15)
+
+        let connection = try await OracleConnection.connect(
+            on: self.eventLoop, configuration: config, id: 0, logger: .oracleTest
+        )
+        defer { #expect(throws: Never.self, performing: { try connection.syncClose() }) }
+
+        // Prove the session is actually usable, not just past the auth hang.
+        let rows = try await connection.execute(
+            "SELECT 'grace-ok' FROM dual", logger: .oracleTest
+        ).collect()
+        #expect(rows.count == 1)
+        #expect(try rows.first?.decode(String.self) == "grace-ok")
+    }
+
     @Test func multipleFailingAttempts() async throws {
         var config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",

@@ -38,14 +38,20 @@ struct BackendError: OracleBackendMessage.PayloadDecodable, Hashable, Sendable {
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context
     ) throws -> BackendError {
-        let number = try buffer.throwingReadInteger(as: UInt16.self)
-        // error number
-        let length = try buffer.throwingReadInteger(as: UInt16.self)
-        // length of error message
-        try buffer.throwingMoveReaderIndex(forwardBy: 2)  // skip flags
+        // Oracle's TNS warning packet uses the UB2 (variable-length) encoding
+        // for the error number, message length, and flags fields, and the
+        // message itself uses Oracle's chunked length-prefixed string format
+        // (same as the regular error path below). Reading raw UInt16 here, or
+        // reading the message as a fixed-length string, both desynchronise the
+        // decoder by one or more bytes — the trailing newline of the warning
+        // string then surfaces as a bogus messageID (e.g. 10 = 0x0A) on the
+        // next decode pass. Matches python-oracledb's `_process_warning_info`.
+        let number = try buffer.throwingReadUB2()
+        let length = try buffer.throwingReadUB2()
+        try buffer.throwingSkipUB2()  // flags
         let errorMessage: String? =
             if number != 0 && length > 0 {
-                try buffer.throwingReadString(length: Int(length)).replacing(/(^\s+|\s+$)/, with: "")
+                try buffer.readString().replacing(/(^\s+|\s+$)/, with: "")
             } else {
                 nil
             }

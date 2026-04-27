@@ -202,6 +202,65 @@ final class BugReportTests: IntegrationTest {
             ).self)
         {}
     }
+
+    /// Regression test for the BitVector partial-decode crash.
+    ///
+    /// Adjacent rows share the leading column so the server emits a per-row
+    /// BitVector marking it duplicate. Payload length cycles 1..4000 so the
+    /// cumulative byte stream sweeps every alignment within the SDU window —
+    /// that guarantees at least one TNS packet boundary lands inside a
+    /// BitVector message. Pre-fix this crashes deep in `ByteBuffer.readUB2`
+    /// (`preconditionFailure`) because the bitVector content byte is left
+    /// at the head of the next packet and read as a fresh messageID.
+    /// Post-fix every row decodes cleanly.
+    @Test func selectWithBitVectorContentAcrossPacketBoundary() async throws {
+        _ = try? await connection.execute("DROP TABLE bv_repro", logger: .oracleTest)
+        try await connection.execute(
+            """
+            CREATE TABLE bv_repro (
+                grp varchar2(30),
+                seq number,
+                payload varchar2(4000)
+            )
+            """,
+            logger: .oracleTest
+        )
+
+        let totalRows = 20_000
+        try await connection.execute(
+            """
+            BEGIN
+                FOR i IN 0..\(unescaped: String(totalRows - 1)) LOOP
+                    INSERT INTO bv_repro VALUES (
+                        'grp_' || LPAD(TRUNC(i / 100), 3, '0'),
+                        i,
+                        RPAD('x', MOD(i, 4000) + 1, 'x')
+                    );
+                END LOOP;
+                COMMIT;
+            END;
+            """,
+            logger: .oracleTest
+        )
+
+        var options = StatementOptions()
+        options.prefetchRows = 100_000
+        options.arraySize = 1000
+        let stream = try await connection.execute(
+            "SELECT grp, seq, payload FROM bv_repro ORDER BY grp, seq",
+            options: options,
+            logger: .oracleTest
+        )
+
+        var seen = 0
+        for try await row in stream.decode((String, Int, String).self) {
+            #expect(row.0.hasPrefix("grp_"))
+            seen += 1
+        }
+        #expect(seen == totalRows)
+
+        try await connection.execute("DROP TABLE bv_repro", logger: .oracleTest)
+    }
 }
 
 /// A Oracle Timestamp which is equivalent to a `Date` without caring about its `TimeZone`.

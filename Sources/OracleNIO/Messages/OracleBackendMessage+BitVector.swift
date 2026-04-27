@@ -33,7 +33,16 @@ extension OracleBackendMessage {
             if columnsCount % 8 > 0 {
                 length += 1
             }
-            let bitVector = buffer.readBytes(length: length)
+            // The bitVector content can straddle a TNS packet boundary. When
+            // it does, `readBytes` returns nil — we must surface that as a
+            // partial-decode trigger so the decoder saves a partial and
+            // resumes once the next packet arrives. Returning silently with
+            // `bitVector = nil` leaves the unread content as the head of the
+            // next packet, where the decoder misreads it as a fresh
+            // messageID and crashes deep in QueryParameter.decode.
+            guard let bitVector = buffer.readBytes(length: length) else {
+                throw MissingDataDecodingError.Trigger()
+            }
             return .init(
                 columnsCountSent: UInt16(columnsCountSent),
                 bitVector: bitVector

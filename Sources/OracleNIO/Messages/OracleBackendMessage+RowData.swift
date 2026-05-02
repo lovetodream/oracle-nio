@@ -125,7 +125,7 @@ extension OracleBackendMessage {
             switch oracleType {
             case .varchar, .char, .long, .raw, .longRAW, .number, .date, .timestamp,
                 .timestampLTZ, .timestampTZ, .binaryDouble, .binaryFloat,
-                .binaryInteger, .boolean, .intervalDS:
+                .binaryInteger, .boolean, .intervalDS, .intervalYM:
                 switch buffer.readOracleSlice() {
                 case .some(let slice):
                     columnValue = slice
@@ -174,6 +174,14 @@ extension OracleBackendMessage {
                     return base.writerIndex - start
                 }
                 columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
+            case .bfile:
+                let length = try buffer.throwingReadUB4()
+                if length > 0 {
+                    if !buffer.skipRawBytesChunked() {
+                        throw MissingDataDecodingError.Trigger()
+                    }
+                }
+                columnValue = .init(bytes: [0])
             case .clob, .blob:
 
                 // LOB has a UB4 length indicator instead of the usual UInt8
@@ -255,8 +263,8 @@ extension OracleBackendMessage {
                 }
                 columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
             default:
-                fatalError(
-                    "\(String(reflecting: oracleType)) is not implemented, please file a bug report"
+                throw OraclePartialDecodingError.unsupportedDataType(
+                    type: oracleType ?? .undefined
                 )
             }
 
@@ -326,8 +334,9 @@ extension OracleBackendMessage {
             if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {
                 return ByteBuffer(bytes: [0])  // empty buffer
             } else if actualBytesCount != 0 && !columnData.oracleColumnIsEmpty {
-                // TODO: throw this as error?
-                preconditionFailure("column truncated, length: \(actualBytesCount)")
+                throw OraclePartialDecodingError.columnTruncated(
+                    length: Int(actualBytesCount)
+                )
             }
 
             return columnData

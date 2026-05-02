@@ -19,6 +19,7 @@ struct OraclePartialDecodingError: Error {
         case expectedAtLeastNRemainingBytes
         case fieldNotDecodable
         case unsupportedDataType
+        case columnTruncated
         case unknownMessageID
         case unknownControlType
     }
@@ -72,6 +73,16 @@ struct OraclePartialDecodingError: Error {
         OraclePartialDecodingError(
             category: .unsupportedDataType,
             description: "Could not process unsupported data type '\(type)'.",
+            file: file, line: line
+        )
+    }
+
+    static func columnTruncated(
+        length: Int, file: String = #fileID, line: Int = #line
+    ) -> Self {
+        OraclePartialDecodingError(
+            category: .columnTruncated,
+            description: "Column truncated, length: \(length).",
             file: file, line: line
         )
     }

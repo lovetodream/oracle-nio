@@ -23,6 +23,15 @@ import NIOCore
     import Foundation
 #endif
 
+/// The Oracle password verifier scheme negotiated during authentication.
+/// Determines hash derivation, AES key length, and which AUTH_PBKDF2_*
+/// parameters are required.
+enum VerifierKind: Sendable, Equatable {
+    case tenG
+    case elevenG
+    case twelveC
+}
+
 struct OracleFrontendMessageEncoder {
     static let headerSize = 8
 
@@ -294,11 +303,11 @@ struct OracleFrontendMessageEncoder {
             from: authContext.mode, method: authContext.method
         )
 
-        let verifier11g: Bool
+        let verifierKind: VerifierKind
         switch authContext.method.base {
         case .token(let token):
             numberOfPairs += 1
-            verifier11g = false  // ignored
+            verifierKind = .twelveC  // ignored for token auth
 
             switch token.base {
             case .oAuth2: break
@@ -309,16 +318,16 @@ struct OracleFrontendMessageEncoder {
             numberOfPairs += 2
             authMode |= Constants.TNS_AUTH_MODE_WITH_PASSWORD
 
-            if [
-                Constants.TNS_VERIFIER_TYPE_11G_1,
-                Constants.TNS_VERIFIER_TYPE_11G_2,
-            ].contains(verifierType) {
-                verifier11g = true
-            } else if verifierType != Constants.TNS_VERIFIER_TYPE_12C {
-                throw OracleSQLError.serverVersionNotSupported
-            } else {
-                verifier11g = false
+            switch verifierType {
+            case Constants.TNS_VERIFIER_TYPE_10G:
+                verifierKind = .tenG
+            case Constants.TNS_VERIFIER_TYPE_11G_1, Constants.TNS_VERIFIER_TYPE_11G_2:
+                verifierKind = .elevenG
+            case Constants.TNS_VERIFIER_TYPE_12C:
+                verifierKind = .twelveC
                 numberOfPairs += 1
+            default:
+                throw OracleSQLError.unsupportedVerifierType(verifierType ?? 0)
             }
 
             // determine which other key/value pairs to write
@@ -381,15 +390,16 @@ struct OracleFrontendMessageEncoder {
             }
             comboKey = nil
 
-        case .usernamePassword(_, let password, let newPassword):
+        case .usernamePassword(let username, let password, let newPassword):
 
             let (
                 sessionKey, speedyKey, encodedPassword, encodedNewPassword, _comboKey
             ) = try Self.generateVerifier(
+                username: username,
                 password: password,
                 newPassword: newPassword,
                 parameters: parameters,
-                verifier11g
+                kind: verifierKind
             )
             comboKey = _comboKey
 
@@ -397,7 +407,7 @@ struct OracleFrontendMessageEncoder {
                 key: "AUTH_SESSKEY", value: sessionKey, flags: 1
             )
             self.writeKeyValuePair(key: "AUTH_PASSWORD", value: encodedPassword)
-            if !verifier11g {
+            if verifierKind == .twelveC {
                 guard let speedyKey else {
                     preconditionFailure(
                         """
@@ -883,10 +893,11 @@ extension OracleFrontendMessageEncoder {
     }
 
     private static func generateVerifier(
+        username: String,
         password: String,
         newPassword: String?,
         parameters: OracleBackendMessage.Parameter,
-        _ verifier11g: Bool
+        kind: VerifierKind
     ) throws -> (
         sessionKey: String,
         speedyKey: String?,
@@ -912,14 +923,23 @@ extension OracleFrontendMessageEncoder {
         // create password hash
         let passwordHash: [UInt8]
         let passwordKey: [UInt8]?
-        if verifier11g {
+        switch kind {
+        case .tenG:
+            keyLength = 24
+            let tenGHash = Oracle10GHash.compute(
+                username: username,
+                password: String(decoding: password, as: UTF8.self)
+            )
+            passwordHash = tenGHash + [UInt8](repeating: 0, count: 16)
+            passwordKey = nil
+        case .elevenG:
             keyLength = 24
             var sha = Insecure.SHA1()
             sha.update(data: password)
             sha.update(data: verifierData)
             passwordHash = sha.finalize() + [UInt8](repeating: 0, count: 4)
             passwordKey = nil
-        } else {
+        case .twelveC:
             keyLength = 32
             guard
                 let vgenCountStr = parameters["AUTH_PBKDF2_VGEN_COUNT"],
@@ -982,8 +1002,8 @@ extension OracleFrontendMessageEncoder {
             salt: mixingSalt, length: keyLength, iterations: iterations
         )
 
-        // generate speedy key for 12c verifiers
-        if !verifier11g, let passwordKey {
+        // generate speedy key for 12c verifiers only
+        if kind == .twelveC, let passwordKey {
             let salt = [UInt8].random(count: 16)
             let speedyKeyCBC = try encryptCBC(comboKey, salt + passwordKey)
             speedyKey = speedyKeyCBC.prefix(80).hexString.uppercased()

@@ -306,6 +306,7 @@ enum Constants {
     static let TNS_CCAP_FEATURE_BACKPORT = 5
     static let TNS_CCAP_FIELD_VERSION = 7
     static let TNS_CCAP_SERVER_DEFINE_CONV = 8
+    static let TNS_CCAP_QUEUE_OPTIONS = 9
     static let TNS_CCAP_TTC1 = 15
     static let TNS_CCAP_OCI1 = 16
     static let TNS_CCAP_TDS_VERSION = 17
@@ -317,10 +318,13 @@ enum Constants {
     static let TNS_CCAP_UB2_DTY = 27
     static let TNS_CCAP_OCI2 = 31
     static let TNS_CCAP_CLIENT_FN = 34
+    static let TNS_CCAP_OCI3 = 35
     static let TNS_CCAP_TTC3 = 37
+    static let TNS_CCAP_SESS_SIGNATURE_INDEX = 39
     static let TNS_CCAP_TTC4 = 40
     static let TNS_CCAP_LOB2 = 42
     static let TNS_CCAP_TTC5 = 44
+    static let TNS_CCAP_FEATURE_BACKPORT2 = 45
     static let TNS_CCAP_VECTOR_FEATURES = 52
     static let TNS_CCAP_MAX = 53
 
@@ -392,13 +396,27 @@ enum Constants {
     static let TNS_RCAP_TTC_32K: UInt8 = 0x04
 
     // MARK: Verifier types
+    static let TNS_VERIFIER_TYPE_10G: UInt32 = 0x939
     static let TNS_VERIFIER_TYPE_11G_1: UInt32 = 0xb152
     static let TNS_VERIFIER_TYPE_11G_2: UInt32 = 0x1b25
     static let TNS_VERIFIER_TYPE_12C: UInt32 = 0x4815
 
     // MARK: Accept flags
+    static let TNS_ACCEPT_FLAG_CHECK_OOB: UInt32 = 0x0000_0001
     static let TNS_ACCEPT_FLAG_FAST_AUTH: UInt32 = 0x1000_0000
     static let TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST: UInt32 = 0x0200_0000
+
+    // MARK: 23ai compile capability flags
+    static let TNS_CCAP_DEQUEUE_WITH_SELECTOR: UInt8 = 0x01
+    static let TNS_CCAP_OCI3_OCSSYNC: UInt8 = 0x20
+    static let TNS_CCAP_TTC4_EXPLICIT_BOUNDARY: UInt8 = 0x40
+    static let TNS_CCAP_TOKEN_SUPPORTED: UInt8 = 0x02
+    static let TNS_CCAP_PIPELINING_SUPPORT: UInt8 = 0x04
+    static let TNS_CCAP_PIPELINING_BREAK: UInt8 = 0x08
+    static let TNS_CCAP_SESSIONLESS_TXNS: UInt8 = 0x10
+    static let TNS_CCAP_SESS_SIGNATURE_VERSION: UInt8 = 8
+    static let TNS_CCAP_END_USER_SEC_CTX_PIGGYBACK: UInt8 = 0x02
+    static let TNS_CCAP_VECTOR_FEATURE_SPARSE: UInt8 = 0x02
 
     // MARK: Other constants
     @usableFromInline

@@ -26,6 +26,7 @@ struct Capabilities: Sendable, Hashable {
     var runtimeCapabilities = [UInt8](repeating: 0, count: Constants.TNS_RCAP_MAX)
     var supportsFastAuth = false
     var supportsOOB = false
+    var supportsOOBCheck = false
     var supportsEndOfRequest = false
     var maxStringSize: UInt32 = 0
     var sdu: UInt32 = UInt32(Constants.TNS_SDU)
@@ -69,10 +70,21 @@ struct Capabilities: Sendable, Hashable {
         self.compileCapabilities[Constants.TNS_CCAP_TTC2] = Constants.TNS_CCAP_ZLNP
         self.compileCapabilities[Constants.TNS_CCAP_OCI2] = Constants.TNS_CCAP_DRCP
         self.compileCapabilities[Constants.TNS_CCAP_CLIENT_FN] = Constants.TNS_CCAP_CLIENT_FN_MAX
-        self.compileCapabilities[Constants.TNS_CCAP_TTC4] = Constants.TNS_CCAP_INBAND_NOTIFICATION
-        self.compileCapabilities[Constants.TNS_CCAP_TTC5] = Constants.TNS_CCAP_VECTOR_SUPPORT
+        self.compileCapabilities[Constants.TNS_CCAP_QUEUE_OPTIONS] =
+            Constants.TNS_CCAP_DEQUEUE_WITH_SELECTOR
+        self.compileCapabilities[Constants.TNS_CCAP_OCI3] = Constants.TNS_CCAP_OCI3_OCSSYNC
+        self.compileCapabilities[Constants.TNS_CCAP_SESS_SIGNATURE_INDEX] =
+            Constants.TNS_CCAP_SESS_SIGNATURE_VERSION
+        self.compileCapabilities[Constants.TNS_CCAP_TTC4] =
+            Constants.TNS_CCAP_INBAND_NOTIFICATION | Constants.TNS_CCAP_TTC4_EXPLICIT_BOUNDARY
+        self.compileCapabilities[Constants.TNS_CCAP_TTC5] =
+            Constants.TNS_CCAP_VECTOR_SUPPORT | Constants.TNS_CCAP_TOKEN_SUPPORTED
+            | Constants.TNS_CCAP_PIPELINING_SUPPORT | Constants.TNS_CCAP_PIPELINING_BREAK
+            | Constants.TNS_CCAP_SESSIONLESS_TXNS
+        self.compileCapabilities[Constants.TNS_CCAP_FEATURE_BACKPORT2] =
+            Constants.TNS_CCAP_END_USER_SEC_CTX_PIGGYBACK
         self.compileCapabilities[Constants.TNS_CCAP_VECTOR_FEATURES] =
-            Constants.TNS_CCAP_VECTOR_FEATURE_BINARY
+            Constants.TNS_CCAP_VECTOR_FEATURE_BINARY | Constants.TNS_CCAP_VECTOR_FEATURE_SPARSE
 
         // Runtime Capabilities
         self.runtimeCapabilities[Constants.TNS_RCAP_COMPAT] = Constants.TNS_RCAP_COMPAT_81
@@ -91,6 +103,7 @@ struct Capabilities: Sendable, Hashable {
         self.runtimeCapabilities = .init(repeating: 0, count: Constants.TNS_RCAP_MAX)
         self.supportsFastAuth = try buffer.throwingReadInteger(as: UInt8.self) == 1
         self.supportsOOB = try buffer.throwingReadInteger(as: UInt8.self) == 1
+        self.supportsOOBCheck = try buffer.throwingReadInteger(as: UInt8.self) == 1
         self.supportsEndOfRequest = try buffer.throwingReadInteger(as: UInt8.self) == 1
         self.maxStringSize = try buffer.throwingReadInteger()
         self.sdu = try buffer.throwingReadInteger()
@@ -105,6 +118,7 @@ struct Capabilities: Sendable, Hashable {
         buffer.writeInteger(self.nCharsetID)
         buffer.writeInteger(UInt8(self.supportsFastAuth ? 1 : 0))
         buffer.writeInteger(UInt8(self.supportsOOB ? 1 : 0))
+        buffer.writeInteger(UInt8(self.supportsOOBCheck ? 1 : 0))
         buffer.writeInteger(UInt8(self.supportsEndOfRequest ? 1 : 0))
         buffer.writeInteger(self.maxStringSize)
         buffer.writeInteger(self.sdu)
@@ -117,6 +131,9 @@ struct Capabilities: Sendable, Hashable {
         self.supportsOOB = options & Constants.TNS_GSO_CAN_RECV_ATTENTION != 0
         if (flags & Constants.TNS_ACCEPT_FLAG_FAST_AUTH) != 0 {
             self.supportsFastAuth = true
+        }
+        if (flags & Constants.TNS_ACCEPT_FLAG_CHECK_OOB) != 0 {
+            self.supportsOOBCheck = true
         }
         if self.protocolVersion >= Constants.TNS_VERSION_MIN_END_OF_RESPONSE
             && (flags & Constants.TNS_ACCEPT_FLAG_HAS_END_OF_REQUEST) != 0

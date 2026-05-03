@@ -45,6 +45,7 @@ public struct OracleSQLError: Sendable, Error {
             case unsupportedDataType
             case missingStatement
             case malformedStatement
+            case unsupportedVerifierType(UInt32)
         }
 
         @usableFromInline
@@ -141,6 +142,11 @@ public struct OracleSQLError: Sendable, Error {
         }
 
         @inlinable
+        public static func unsupportedVerifierType(_ flag: UInt32) -> Self {
+            Self(.unsupportedVerifierType(flag))
+        }
+
+        @inlinable
         public var description: String {
             switch self.base {
             case .clientClosesConnection:
@@ -177,6 +183,8 @@ public struct OracleSQLError: Sendable, Error {
                 return "missingStatement"
             case .malformedStatement:
                 return "malformedStatement"
+            case .unsupportedVerifierType(let flag):
+                return "unsupportedVerifierType(0x\(String(flag, radix: 16)))"
             }
         }
     }
@@ -458,6 +466,11 @@ public struct OracleSQLError: Sendable, Error {
     @inlinable
     static var serverVersionNotSupported: OracleSQLError {
         OracleSQLError(code: .serverVersionNotSupported)
+    }
+
+    @inlinable
+    static func unsupportedVerifierType(_ flag: UInt32) -> OracleSQLError {
+        OracleSQLError(code: .unsupportedVerifierType(flag))
     }
 
     @inlinable

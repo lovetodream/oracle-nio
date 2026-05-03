@@ -393,6 +393,7 @@ struct ConnectionStateMachine {
         let capabilities = accept.newCapabilities
 
         if capabilities.supportsOOB
+            && capabilities.supportsOOBCheck
             && capabilities.protocolVersion >= Constants.TNS_VERSION_MIN_OOB_CHECK
         {
             self.state = .oobCheckInProgress(fastAuth: capabilities.supportsOOB)
@@ -1057,7 +1058,8 @@ extension ConnectionStateMachine {
             .serverVersionNotSupported,
             .sidNotSupported,
             .uncleanShutdown,
-            .unsupportedDataType:
+            .unsupportedDataType,
+            .unsupportedVerifierType:
             return true
         case .statementCancelled, .nationalCharsetNotSupported, .missingStatement, .malformedStatement:
             return false

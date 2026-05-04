@@ -297,6 +297,51 @@ final class OracleNIOTests {
         try await conn.execute("DROP TABLE duplicate_every_row", logger: .oracleTest)
     }
 
+    @Test func duplicateColumnsAcrossPackets() async throws {
+        let conn = try await OracleConnection.test(on: self.eventLoop)
+        defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }
+        do {
+            try await conn.execute("DROP TABLE duplicate_across_packets", logger: .oracleTest)
+        } catch let error as OracleSQLError {
+            #expect(error.serverInfo?.number == 942)
+        }
+
+        try await conn.execute(
+            "CREATE TABLE duplicate_across_packets (grp varchar2(30), seq number, payload varchar2(4000))",
+            logger: .oracleTest
+        )
+
+        let totalRows = 20_000
+        try await conn.execute(
+            """
+            BEGIN
+                FOR i IN 0..\(unescaped: String(totalRows - 1)) LOOP
+                    INSERT INTO duplicate_across_packets VALUES (
+                        'grp_' || LPAD(TRUNC(i / 100), 3, '0'),
+                        i,
+                        RPAD('x', MOD(i, 4000) + 1, 'x')
+                    );
+                END LOOP;
+                COMMIT;
+            END;
+            """, logger: .oracleTest)
+
+        let stream = try await conn.execute(
+            "SELECT grp, seq, payload FROM duplicate_across_packets ORDER BY grp, seq",
+            options: StatementOptions(prefetchRows: 100_000, arraySize: 1_000),
+            logger: .oracleTest
+        )
+
+        var seen = 0
+        for try await row in stream.decode((String, Int, String).self) {
+            #expect(row.0.hasPrefix("grp_"))
+            seen += 1
+        }
+        #expect(seen == totalRows)
+
+        try await conn.execute("DROP TABLE duplicate_across_packets", logger: .oracleTest)
+    }
+
     @Test func noRowsQueryFromDual() async throws {
         let conn = try await OracleConnection.test(on: self.eventLoop)
         defer { #expect(throws: Never.self, performing: { try conn.syncClose() }) }

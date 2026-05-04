@@ -271,7 +271,7 @@ import Testing
             state.cancelStatementStream()
                 == .forwardStreamError(
                     .statementCancelled, read: false, cursorID: nil, clientCancelled: true))
-        #expect(state.bitVectorReceived(.init(columnsCountSent: 1, bitVector: nil)) == .wait)
+        #expect(state.bitVectorReceived(.init(columnsCountSent: 1, bitVector: [])) == .wait)
         #expect(state.statementStreamCancelled() == .sendMarker(read: true))
     }
 }

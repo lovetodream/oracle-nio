@@ -437,9 +437,9 @@ enum Constants {
 
     // MARK: Timezone offsets
     @usableFromInline
-    static let TZ_HOUR_OFFSET: UInt8 = 20
+    static let TZ_HOUR_OFFSET: Int = 20
     @usableFromInline
-    static let TZ_MINUTE_OFFSET: UInt8 = 60
+    static let TZ_MINUTE_OFFSET: Int = 60
 
     // MARK: DRCP release mode
     static let DRCP_DEAUTHENTICATE: UInt32 = 0x0000_0002

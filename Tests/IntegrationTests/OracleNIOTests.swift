@@ -582,6 +582,10 @@ final class OracleNIOTests {
             Calendar.current.compare(
                 date, to: try Date(datesHawaii.2, strategy: .iso8601), toGranularity: .second
             ) == .orderedSame)
+        let dateNegativeTZ = try await conn.execute(
+            #"SELECT TO_TIMESTAMP_TZ('2024-01-22T10:46:18-09:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM') FROM DUAL"#
+        ).collect().first?.decode(Date.self)
+        #expect(dateNegativeTZ != nil)
     }
 
     @Test func unusedBindDoesNotCrash() async throws {

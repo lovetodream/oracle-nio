@@ -1152,6 +1152,68 @@ final class OracleNIOTests {
         #expect(rowCount == 1)
     }
 
+    @Test(.disabled(if: env("TEST_PRIVILEGED")?.isEmpty != false)) func warning() async throws {
+        let testUsername = "NIO_GRACE_TEST"
+        let testPassword = "TestPwd_123"
+        let profileName = "NIO_GRACE_PROFILE"
+
+        let sysConn =
+            try await OracleConnection
+            .connect(on: self.eventLoop, configuration: .privilegedTest(), id: 1, logger: .oracleTest)
+        defer { #expect(throws: Never.self, performing: { try sysConn.syncClose() }) }
+
+        _ = try? await sysConn.execute("DROP USER \(unescaped: testUsername) CASCADE", logger: .oracleTest)
+        _ = try? await sysConn.execute("DROP PROFILE \(unescaped: profileName)", logger: .oracleTest)
+
+        try await sysConn.execute(
+            """
+            CREATE PROFILE \(unescaped: profileName) LIMIT
+                PASSWORD_LIFE_TIME 2/86400
+                PASSWORD_GRACE_TIME 7
+            """, logger: .oracleTest)
+
+        try await sysConn.execute(
+            "CREATE USER \(unescaped: testUsername) IDENTIFIED BY \(unescaped: testPassword)",
+            logger: .oracleTest
+        )
+        try await sysConn.execute("GRANT CREATE SESSION TO \(unescaped: testUsername)", logger: .oracleTest)
+        try await sysConn.execute(
+            "ALTER USER \(unescaped: testUsername) PROFILE \(unescaped: profileName)",
+            logger: .oracleTest
+        )
+        // Re-set the password so Oracle stamps PTIME; then backdate it via USER$
+        // so account_status immediately reads EXPIRED(GRACE) without waiting.
+        try await sysConn.execute(
+            "ALTER USER \(unescaped: testUsername) IDENTIFIED BY \(unescaped: testPassword)",
+            logger: .oracleTest
+        )
+
+        // Wait for the 2-second PASSWORD_LIFE_TIME to elapse
+        try await Task.sleep(for: .seconds(5))
+
+        let config = OracleConnection.Configuration(
+            host: env("ORA_HOSTNAME") ?? "192.168.1.24",
+            port: env("ORA_PORT").flatMap(Int.init) ?? 1521,
+            service: .serviceName(env("ORA_SERVICE_NAME") ?? "XEPDB1"),
+            username: testUsername,
+            password: testPassword
+        )
+
+        let connection = try await OracleConnection.connect(
+            on: self.eventLoop, configuration: config, id: 0, logger: .oracleTest
+        )
+        defer { #expect(throws: Never.self) { try connection.syncClose() } }
+
+        let rows = try await connection.execute(
+            "SELECT 'grace-ok' FROM dual", logger: .oracleTest
+        ).collect()
+        #expect(rows.count == 1)
+        #expect(try rows.first?.decode(String.self) == "grace-ok")
+
+        _ = try? await sysConn.execute("DROP USER \(unescaped: testUsername) CASCADE", logger: .oracleTest)
+        _ = try? await sysConn.execute("DROP PROFILE \(unescaped: profileName)", logger: .oracleTest)
+    }
+
 }
 
 let isLoggingConfigured: Bool = {

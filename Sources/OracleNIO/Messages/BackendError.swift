@@ -38,14 +38,14 @@ struct BackendError: OracleBackendMessage.PayloadDecodable, Hashable, Sendable {
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context
     ) throws -> BackendError {
-        let number = try buffer.throwingReadInteger(as: UInt16.self)
+        let number = try buffer.throwingReadUB2()
         // error number
-        let length = try buffer.throwingReadInteger(as: UInt16.self)
+        let length = try buffer.throwingReadUB2()
         // length of error message
-        try buffer.throwingMoveReaderIndex(forwardBy: 2)  // skip flags
+        try buffer.throwingSkipUB2()
         let errorMessage: String? =
             if number != 0 && length > 0 {
-                try buffer.throwingReadString(length: Int(length)).replacing(/(^\s+|\s+$)/, with: "")
+                try buffer.readString().replacing(/(^\s+|\s+$)/, with: "")
             } else {
                 nil
             }

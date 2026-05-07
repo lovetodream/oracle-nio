@@ -1168,7 +1168,7 @@ final class OracleNIOTests {
         try await sysConn.execute(
             """
             CREATE PROFILE \(unescaped: profileName) LIMIT
-                PASSWORD_LIFE_TIME 1/86400
+                PASSWORD_LIFE_TIME 2/86400
                 PASSWORD_GRACE_TIME 7
             """, logger: .oracleTest)
 
@@ -1188,9 +1188,8 @@ final class OracleNIOTests {
             logger: .oracleTest
         )
 
-        // Wait for the 1-second PASSWORD_LIFE_TIME to elapse; account_status will
-        // read EXPIRED(GRACE) at the next login without touching any SYS tables.
-        try await Task.sleep(for: .seconds(2))
+        // Wait for the 2-second PASSWORD_LIFE_TIME to elapse
+        try await Task.sleep(for: .seconds(5))
 
         let config = OracleConnection.Configuration(
             host: env("ORA_HOSTNAME") ?? "192.168.1.24",

@@ -1152,7 +1152,7 @@ final class OracleNIOTests {
         #expect(rowCount == 1)
     }
 
-    @Test(.disabled(if: env("TEST_PRIVILEGED")?.isEmpty != false))  func warning() async throws {
+    @Test(.disabled(if: env("TEST_PRIVILEGED")?.isEmpty != false)) func warning() async throws {
         let testUsername = "NIO_GRACE_TEST"
         let testPassword = "TestPwd_123"
         let profileName = "NIO_GRACE_PROFILE"

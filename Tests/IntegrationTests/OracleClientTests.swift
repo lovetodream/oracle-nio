@@ -36,7 +36,6 @@ import Testing
                             #expect(userID == 1)
                             #expect(name == "Timo")
                             #expect(age == 23)
-                            print("done: \(i)/10000")
                         }
                     }
                 }
@@ -68,7 +67,6 @@ import Testing
                             #expect(userID == 1)
                             #expect(name == "Timo")
                             #expect(age == 23)
-                            print("done: \(i)/10000")
                         }
                     }
                 }

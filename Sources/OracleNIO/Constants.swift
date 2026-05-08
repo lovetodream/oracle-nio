@@ -33,9 +33,9 @@ enum Constants {
     static let TNS_DATA_FLAGS_EOF: UInt16 = 0x0040
 
     // MARK: Marker types
-    static let TNS_MARKER_TYPE_BREAK = 1
+    static let TNS_MARKER_TYPE_BREAK: UInt8 = 1
     static let TNS_MARKER_TYPE_RESET: UInt8 = 2
-    static let TNS_MARKER_TYPE_INTERRUPT = 3
+    static let TNS_MARKER_TYPE_INTERRUPT: UInt8 = 3
 
     // MARK: Charset forms
     @usableFromInline

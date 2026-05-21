@@ -85,5 +85,7 @@ extension ByteBuffer {
         )
     }
 
-    mutating func skipSB4() { skipUB4() }
+    mutating func throwingSkipSB4(file: String = #fileID, line: Int = #line) throws {
+        try throwingSkipBytes(4, file: file, line: line)
+    }
 }

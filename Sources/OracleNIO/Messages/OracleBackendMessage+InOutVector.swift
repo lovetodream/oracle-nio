@@ -37,8 +37,8 @@ extension OracleBackendMessage {
             let temp16 = try buffer.throwingReadUB2()  // number of requests
             let temp32 = try buffer.throwingReadUB4()  // number of iterations
             let numberOfBinds = Int(temp32 * 256 + UInt32(temp16))
-            buffer.skipUB4()  // number of iterations this time
-            buffer.skipUB2()  // uac buffer length
+            try buffer.throwingSkipUB4()  // number of iterations this time
+            try buffer.throwingSkipUB2()  // uac buffer length
             let bytesCount = try buffer.throwingReadUB2()  // bit vector for fast fetch
             if bytesCount > 0 {
                 buffer.moveReaderIndex(forwardBy: Int(bytesCount))

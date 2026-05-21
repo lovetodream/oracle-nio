@@ -2,7 +2,7 @@
 //
 // This source file is part of the OracleNIO open source project
 //
-// Copyright (c) 2024 Timo Zacherl and the OracleNIO project authors
+// Copyright (c) 2026 Timo Zacherl and the OracleNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE for license information
@@ -12,19 +12,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
+public import NIOCore
 
 extension ByteBuffer {
+    @inlinable
     @inline(__always)
-    mutating func throwingMoveReaderIndex(forwardBy: Int, file: String = #fileID, line: Int = #line) throws {
-        if self.readableBytes < forwardBy {
+    mutating func throwingSkipBytes(
+        _ maxLength: Int,
+        file: String = #fileID,
+        line: Int = #line
+    ) throws(OraclePartialDecodingError) {
+        guard let length = readUBLength().flatMap(Int.init) else {
             throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                forwardBy,
+                MemoryLayout<UInt8>.size,
                 actual: self.readableBytes,
-                file: file,
-                line: line
+                file: file, line: line
             )
         }
-        self.moveReaderIndex(forwardBy: forwardBy)
+        guard length <= maxLength else { preconditionFailure() }
+        try self.throwingMoveReaderIndex(forwardBy: length, file: file, line: line)
     }
 }

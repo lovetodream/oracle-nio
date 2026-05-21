@@ -58,9 +58,9 @@ struct OracleObject: OracleDecodable {
                 if try buffer.throwingReadUB4() > 0 {
                     try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
                 } else { ByteBuffer() }
-            buffer.skipUB2()  // version
+            try buffer.throwingSkipUB2()  // version
             let dataLength = try buffer.throwingReadUB4()
-            buffer.skipUB2()  // flags
+            try buffer.throwingSkipUB2()  // flags
             let data =
                 if dataLength > 0 {
                     try buffer.throwingReadOracleSpecificLengthPrefixedSlice()

@@ -49,7 +49,7 @@ extension OracleBackendMessage {
             let numberOfParameters = buffer.readUB2() ?? 0
             var elements = [Key: Value]()
             for _ in 0..<numberOfParameters {
-                buffer.skipUB4()
+                try buffer.throwingSkipUB4()
                 let key = try buffer.readString()
                 let length = buffer.readUB4() ?? 0
                 let value =
@@ -72,7 +72,7 @@ extension OracleBackendMessage {
         ) throws -> OracleBackendMessage.QueryParameter {
             let parametersCount = buffer.readUB2() ?? 0  // al8o4l (ignored)
             for _ in 0..<parametersCount {
-                buffer.skipUB4()
+                try buffer.throwingSkipUB4()
             }
             if let bytesCount = buffer.readUB2()  // al8txl (ignored)
                 .flatMap(Int.init), bytesCount > 0
@@ -150,7 +150,7 @@ extension OracleBackendMessage {
             }
             let amount: Int64?
             if context.lobContext?.operation == .createTemp {
-                buffer.skipUB2()  // skip character set
+                try buffer.throwingSkipUB2()  // skip character set
                 // skip trailing flags, amount
                 buffer.moveReaderIndex(forwardBy: 3)
                 amount = nil

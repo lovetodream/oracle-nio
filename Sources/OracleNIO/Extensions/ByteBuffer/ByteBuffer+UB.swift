@@ -16,16 +16,14 @@ public import struct NIOCore.ByteBuffer
 
 extension ByteBuffer {
     mutating func throwingSkipUB1(file: String = #fileID, line: Int = #line) throws {
+        // this is different to all the other throwing skips
+        // as UB1 has a fixed length (1 byte)
         try self.throwingMoveReaderIndex(forwardBy: 1, file: file, line: line)
     }
 
     @inlinable
-    mutating func skipUB2() {
-        skipUB(2)
-    }
-
-    mutating func throwingSkipUB2(file: String = #fileID, line: Int = #line) throws {
-        try throwingSkipUB(4, file: file, line: line)
+    mutating func throwingSkipUB2(file: String = #fileID, line: Int = #line) throws(OraclePartialDecodingError) {
+        try throwingSkipBytes(2, file: file, line: line)
     }
 
     @inlinable
@@ -78,7 +76,7 @@ extension ByteBuffer {
     @inlinable
     mutating func throwingReadUB4(
         file: String = #fileID, line: Int = #line
-    ) throws -> UInt32 {
+    ) throws(OraclePartialDecodingError) -> UInt32 {
         try self.readUB4().value(
             or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
                 MemoryLayout<Int8>.size, actual: self.readableBytes,
@@ -87,12 +85,8 @@ extension ByteBuffer {
         )
     }
 
-    mutating func skipUB4() {
-        skipUB(4)
-    }
-
-    mutating func throwingSkipUB4(file: String = #fileID, line: Int = #line) throws {
-        try throwingSkipUB(4, file: file, line: line)
+    mutating func throwingSkipUB4(file: String = #fileID, line: Int = #line) throws(OraclePartialDecodingError) {
+        try throwingSkipBytes(4, file: file, line: line)
     }
 
     mutating func readUB8() -> UInt64? {
@@ -118,7 +112,7 @@ extension ByteBuffer {
 
     mutating func throwingReadUB8(
         file: String = #fileID, line: Int = #line
-    ) throws -> UInt64 {
+    ) throws(OraclePartialDecodingError) -> UInt64 {
         try self.readUB8().value(
             or: OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
                 MemoryLayout<UInt8>.size, actual: self.readableBytes,
@@ -127,12 +121,8 @@ extension ByteBuffer {
         )
     }
 
-    mutating func skipUB8() {
-        skipUB(8)
-    }
-
-    mutating func throwingSkipUB8(file: String = #fileID, line: Int = #line) throws {
-        try throwingSkipUB(8, file: file, line: line)
+    mutating func throwingSkipUB8(file: String = #fileID, line: Int = #line) throws(OraclePartialDecodingError) {
+        try throwingSkipBytes(8, file: file, line: line)
     }
 
     @inlinable
@@ -191,27 +181,6 @@ extension ByteBuffer {
             self.writeInteger(UInt8(8))
             self.writeInteger(integer)
         }
-    }
-
-    @inline(__always)
-    @inlinable
-    mutating func skipUB(_ maxLength: Int) {
-        guard let length = readUBLength() else { return }
-        guard length <= maxLength else { preconditionFailure() }
-        self.moveReaderIndex(forwardBy: Int(length))
-    }
-
-    @inline(__always)
-    private mutating func throwingSkipUB(_ maxLength: Int, file: String = #fileID, line: Int = #line) throws {
-        guard let length = readUBLength().flatMap(Int.init) else {
-            throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
-                MemoryLayout<UInt8>.size,
-                actual: self.readableBytes,
-                file: file, line: line
-            )
-        }
-        guard length <= maxLength else { preconditionFailure() }
-        try self.throwingMoveReaderIndex(forwardBy: length, file: file, line: line)
     }
 }
 

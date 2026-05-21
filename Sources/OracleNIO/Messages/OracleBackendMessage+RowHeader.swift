@@ -26,12 +26,12 @@ extension OracleBackendMessage {
         static func decode(
             from buffer: inout ByteBuffer,
             context: OracleBackendMessageDecoder.Context
-        ) throws -> OracleBackendMessage.RowHeader {
+        ) throws(OraclePartialDecodingError) -> OracleBackendMessage.RowHeader {
             buffer.moveReaderIndex(forwardBy: 1)  // flags
-            buffer.skipUB2()  // number of requests
-            buffer.skipUB4()  // iteration number
-            buffer.skipUB4()  // number of iterations
-            buffer.skipUB2()  // buffer length
+            try buffer.throwingSkipUB2()  // number of requests
+            try buffer.throwingSkipUB4()  // iteration number
+            try buffer.throwingSkipUB4()  // number of iterations
+            try buffer.throwingSkipUB2()  // buffer length
             var bitVector: [UInt8]? = nil
             if let bytesCount = buffer.readUB4(), bytesCount > 0 {
                 buffer.moveReaderIndex(forwardBy: 1)  // skip repeated length

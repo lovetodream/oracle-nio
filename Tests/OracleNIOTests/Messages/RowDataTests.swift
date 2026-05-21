@@ -176,4 +176,18 @@ private typealias RowData = OracleBackendMessage.RowData
         let result = try RowData.decode(from: &buffer, context: context)
         #expect(result == .init(columns: [.data(ByteBuffer(bytes: [0]))]))
     }
+
+    @Test func truncatedBufferThrows() {
+        var buffer = ByteBuffer(bytes: [
+            0,  // type oid (empty)
+            0,  // oid (empty)
+            0,  // snapshot (empty)
+            0,  // version (empty)
+            1, 5,  // data length = 5
+            1,  // flags: length byte = 1, value byte missing
+        ])
+        #expect(throws: OraclePartialDecodingError.self) {
+            try RowData.decode(from: &buffer, context: .init(columns: .object))
+        }
+    }
 }

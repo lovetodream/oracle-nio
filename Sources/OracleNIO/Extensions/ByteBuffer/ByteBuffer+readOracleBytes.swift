@@ -69,7 +69,7 @@ extension ByteBuffer {
     @inlinable
     mutating func throwingReadOracleSpecificLengthPrefixedSlice(
         file: String = #fileID, line: Int = #line
-    ) throws -> ByteBuffer {
+    ) throws(OraclePartialDecodingError) -> ByteBuffer {
         switch self._readOracleSpecificLengthPrefixedSlice(file: file, line: line) {
         case .buffer(let buffer):
             return buffer

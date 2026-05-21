@@ -91,8 +91,8 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let precision = try buffer.throwingReadInteger(as: Int8.self)
             let scale = try Int16(buffer.throwingReadInteger(as: Int8.self))
             let bufferSize = try buffer.throwingReadUB4()
-            buffer.skipUB4()  // max number of array elements
-            buffer.skipUB8()  // cont flags
+            try buffer.throwingSkipUB4()  // max number of array elements
+            try buffer.throwingSkipUB8()  // cont flags
 
             let oidByteCount = try buffer.throwingReadUB4()  // OID
             if oidByteCount > 0 {
@@ -100,8 +100,8 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
                 _ = try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
             }
 
-            buffer.skipUB2()  // version
-            buffer.skipUB2()  // character set id
+            try buffer.throwingSkipUB2()  // version
+            try buffer.throwingSkipUB2()  // character set id
 
             let csfrm = try buffer.throwingReadInteger(as: UInt8.self)
             // character set form
@@ -120,7 +120,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             }
 
             if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_12_2 {
-                buffer.skipUB4()  // oaccolid
+                try buffer.throwingSkipUB4()  // oaccolid
             }
 
             let nullsAllowed =
@@ -142,8 +142,8 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
                     try buffer.readString()  // name of intNamed
                 } else { nil }
 
-            buffer.skipUB2()  // column position
-            buffer.skipUB4()  // uds flag
+            try buffer.throwingSkipUB2()  // column position
+            try buffer.throwingSkipUB4()  // uds flag
 
             var domainSchema: String?
             var domainName: String?
@@ -164,14 +164,14 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
                     let actualCount = try buffer.throwingReadUB4()
                     buffer.moveReaderIndex(forwardBy: 1)
                     for _ in 0..<actualCount {
-                        buffer.skipUB4()  // length of key
+                        try buffer.throwingSkipUB4()  // length of key
                         let key = try buffer.readString()
                         let valueLength = try buffer.throwingReadUB4()
                         let value = if valueLength > 0 { try buffer.readString() } else { "" }
                         annotations[key] = value
-                        buffer.skipUB4()  // flags
+                        try buffer.throwingSkipUB4()  // flags
                     }
-                    buffer.skipUB4()  // flags
+                    try buffer.throwingSkipUB4()  // flags
                 }
             }
 
@@ -212,7 +212,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         from buffer: inout ByteBuffer,
         context: OracleBackendMessageDecoder.Context
     ) throws -> DescribeInfo {
-        buffer.skipUB4()  // max row size
+        try buffer.throwingSkipUB4()  // max row size
         let columnCount = try buffer.throwingReadUB4()
 
         if columnCount > 0 {
@@ -230,10 +230,10 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         if try buffer.throwingReadUB4() > 0 {
             buffer.skipRawBytesChunked()  // current date
         }
-        buffer.skipUB4()  // dcbflag
-        buffer.skipUB4()  // dcbmdbz
-        buffer.skipUB4()  // dcbmnpr
-        buffer.skipUB4()  // dcbmxpr
+        try buffer.throwingSkipUB4()  // dcbflag
+        try buffer.throwingSkipUB4()  // dcbmdbz
+        try buffer.throwingSkipUB4()  // dcbmnpr
+        try buffer.throwingSkipUB4()  // dcbmxpr
         if try buffer.throwingReadUB4() > 0 {
             buffer.skipRawBytesChunked()  // dcbqcky
         }

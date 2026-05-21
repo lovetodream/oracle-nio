@@ -25,7 +25,7 @@ import Testing
                 await client.run()
             }
 
-            for i in 0..<10000 {
+            for _ in 0..<10000 {
                 taskGroup.addTask {
                     try await client.withConnection { connection in
                         let rows = try await connection.execute(
@@ -56,7 +56,7 @@ import Testing
                 await client.run()
             }
 
-            for i in 0..<10000 {
+            for _ in 0..<10000 {
                 taskGroup.addTask {
                     try await client.withConnection { connection in
                         let rows = try await connection.execute(

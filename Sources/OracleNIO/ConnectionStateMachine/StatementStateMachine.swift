@@ -91,6 +91,68 @@ struct StatementStateMachine {
         )
     }
 
+    /// Result of ``markCancelledForBreak()`` — tells the connection
+    /// state machine which side-effect path to drive after marking
+    /// the statement cancelled.
+    enum BreakOutcome {
+        /// Pre-streaming state (`.initialized`, `.describeInfoReceived`,
+        /// `.rowCountsReceived`). Connection should send a TNS
+        /// `INTERRUPT` marker; the awaiting `execute` promise fails
+        /// once `ORA-01013` arrives.
+        case sendInterrupt
+        /// Mid-stream state. Connection should fail the row stream
+        /// locally and send a `RESET` marker — the existing client
+        /// cancel path. The forwarded action carries the
+        /// `.statementCancelled` error.
+        case forwardStreamError(Action)
+        /// Statement is already complete or already cancelled; no-op.
+        case wait
+    }
+
+    /// Mark the in-flight statement as cancelled by an external
+    /// ``OracleConnection/cancel()`` call. Returns the outcome that
+    /// tells the connection-level state machine which wire-level
+    /// handshake to perform.
+    mutating func markCancelledForBreak() -> BreakOutcome {
+        guard !self.isCancelled else { return .wait }
+
+        switch self.state {
+        case .commandComplete, .error, .drain:
+            return .wait
+
+        case .initialized, .describeInfoReceived, .rowCountsReceived:
+            // Substate is unchanged. The awaiting promise will be
+            // failed by ``errorReceived(_:)`` when `ORA-01013`
+            // arrives.
+            self.isCancelled = true
+            return .sendInterrupt
+
+        case .streaming(_, let describeInfo, _, var streamStateMachine):
+            // Mirror the existing in-flight-stream cancel path
+            // (``cancel()`` on `.streaming`): fail the row stream
+            // locally with `.statementCancelled`, transition to
+            // `.drain`, and let the connection emit its standard
+            // `sendMarker(RESET, read: true)` follow-up.
+            self.isCancelled = true
+            self.state = .drain(describeInfo.columns)
+            let action: Action
+            switch streamStateMachine.fail() {
+            case .wait:
+                action = .forwardStreamError(
+                    .statementCancelled, read: false, clientCancelled: true
+                )
+            case .read:
+                action = .forwardStreamError(
+                    .statementCancelled, read: true, clientCancelled: true
+                )
+            }
+            return .forwardStreamError(action)
+
+        case .modifying:
+            preconditionFailure("Invalid state: \(self.state)")
+        }
+    }
+
     mutating func cancel() -> Action {
         switch self.state {
         case .initialized:
@@ -383,8 +445,32 @@ struct StatementStateMachine {
                 preconditionFailure("Invalid state: \(self.state)")
             }
         } else if self.isCancelled && error.number == 1013 {
-            self.state = .commandComplete
-            action = .forwardCancelComplete
+            // ORA-01013 is the server's response to a client-initiated
+            // TNS BREAK marker (see ``OracleConnection/cancel()``). For
+            // pre-streaming states we still hold the awaiting `execute`
+            // promise; fail it with `.statementCancelled` so the
+            // awaiting Task throws the same error users see when the
+            // existing row-stream cancel path fires.
+            switch self.state {
+            case .initialized(let context),
+                .describeInfoReceived(let context, _),
+                .rowCountsReceived(let context, _):
+                self.state = .commandComplete
+                switch context.type {
+                case .ddl(let promise),
+                    .dml(let promise),
+                    .plsql(let promise),
+                    .query(let promise),
+                    .cursor(_, _, let promise),
+                    .plain(let promise):
+                    action = .failStatement(promise, with: .statementCancelled)
+                }
+            case .streaming, .drain, .commandComplete, .error:
+                self.state = .commandComplete
+                action = .forwardCancelComplete
+            case .modifying:
+                preconditionFailure("Invalid state: \(self.state)")
+            }
         } else if error.number == Constants.TNS_ERR_VAR_NOT_IN_SELECT_LIST,
             let cursor = error.cursorID
         {

@@ -146,6 +146,9 @@ extension ConnectionStateMachine.ConnectionAction: Equatable {
         case (.sendMarker, .sendMarker):
             return true
 
+        case (.sendBreak(let lhs), .sendBreak(let rhs)):
+            return lhs == rhs
+
         default:
             return false
         }

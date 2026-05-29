@@ -443,6 +443,34 @@ extension OracleConnection: OracleConnectionProtocol {
         try await self._rollback().get()
     }
 
+    /// Asynchronously interrupt an in-flight statement on the
+    /// connection by sending a TNS `BREAK` marker to the server.
+    ///
+    /// The server aborts the running operation and replies with
+    /// `ORA-01013` ("user requested cancel of current operation"),
+    /// which is surfaced as ``OracleSQLError/Code-swift.struct/statementCancelled``
+    /// to the awaiting caller of
+    /// ``execute(_:options:logger:file:line:)-9b3i9`` (or as a
+    /// `.failure` on the `OracleRowSequence` if the cancellation
+    /// happens mid-fetch). The connection is reusable for subsequent
+    /// statements once the break has been acknowledged.
+    ///
+    /// This is the oracle-nio equivalent of `OCIBreak()` /
+    /// `python-oracledb`'s `Connection.cancel()`. It is safe to call
+    /// from any task and is a no-op when no statement is in flight.
+    public func cancel() {
+        let channel = self.channel
+        channel.eventLoop.execute {
+            do {
+                let handler = try channel.pipeline.syncOperations
+                    .handler(type: OracleChannelHandler.self)
+                handler.triggerBreak()
+            } catch {
+                // Channel pipeline closed or handler removed — nothing to break.
+            }
+        }
+    }
+
     /// Run a statement on the Oracle server the connection is connected to.
     ///
     /// - Parameters:

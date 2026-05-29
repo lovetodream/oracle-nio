@@ -149,6 +149,12 @@ struct ConnectionStateMachine {
         )
 
         case sendMarker(read: Bool)
+        /// Triggered by ``OracleConnection/cancel()``. Instructs the
+        /// channel handler to write a TNS `BREAK` marker so the server
+        /// aborts the in-flight statement with `ORA-01013`. The
+        /// awaiting `execute` promise (or the row stream) is failed
+        /// once that error reaches ``StatementStateMachine``.
+        case sendBreak(read: Bool)
     }
 
     private var state: State
@@ -723,6 +729,69 @@ struct ConnectionStateMachine {
             return self.closeConnectionAndCleanup(
                 .unexpectedBackendMessage(.error(error))
             )
+        }
+    }
+
+    /// Trigger a server-side break of the in-flight statement.
+    ///
+    /// Drives the wire-level handshake invoked by
+    /// ``OracleConnection/cancel()``. When a statement is in flight,
+    /// marks it as cancelled and emits a ``ConnectionAction/sendBreak(read:)``
+    /// so the channel handler writes a TNS `BREAK` marker. The server
+    /// aborts the operation with `ORA-01013`, and the existing
+    /// cancellation branch in ``StatementStateMachine/errorReceived(_:)``
+    /// resolves the awaiting promise (or row stream).
+    ///
+    /// If no statement is in flight the call is a no-op and returns
+    /// ``ConnectionAction/wait``.
+    mutating func triggerBreak() -> ConnectionAction {
+        switch self.state {
+        case .statement(var statement):
+            return self.avoidingStateMachineCoW { machine in
+                let outcome = statement.markCancelledForBreak()
+                machine.state = .statement(statement)
+                switch outcome {
+                case .wait:
+                    return .wait
+                case .sendInterrupt:
+                    // Force `markerState = .noMarkerSent` so the
+                    // server's BREAK acknowledgment marker drives the
+                    // existing ``markerReceived`` toggle, which sends
+                    // a RESET marker back. That BREAK → ACK → RESET
+                    // handshake matches python-oracledb's
+                    // `_break_external` followed by `_reset`.
+                    // Resetting also clears any stale toggle left
+                    // over from a previous break exchange.
+                    machine.markerState = .noMarkerSent
+                    return .sendBreak(read: true)
+                case .forwardStreamError(let stmtAction):
+                    // Mid-stream — same end state as dropping the
+                    // iterator. ``.forwardStreamError(clientCancelled:
+                    // true)`` is bridged in ``modify`` to the standard
+                    // sendMarker(RESET) follow-up.
+                    return machine.modify(with: stmtAction)
+                }
+            }
+        case .initialized,
+            .connectMessageSent,
+            .protocolMessageSent,
+            .dataTypesMessageSent,
+            .waitingToStartAuthentication,
+            .authenticating,
+            .renegotiatingTLS,
+            .readyForStatement,
+            .ping,
+            .commit,
+            .rollback,
+            .lobOperation,
+            .readyToLogOff,
+            .loggingOff,
+            .closing,
+            .closed,
+            .oobCheckInProgress:
+            return .wait
+        case .modifying:
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 

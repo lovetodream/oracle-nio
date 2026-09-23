@@ -132,18 +132,18 @@ if Context.environment["ENABLE_ORACLE_BENCHMARKS"] != nil {
         .default(enabledTraits: ["DistributedTracingSupport", "OracleBenchmarksEnabled"]),
     ]
     package.dependencies.append(
-        .package(url: "https://github.com/ordo-one/package-benchmark", from: "1.0.0")
+        .package(url: "https://github.com/ordo-one/benchmark", from: "1.0.0")
     )
     package.targets.append(
         .executableTarget(
             name: "OracleBenchmarks",
             dependencies: [
-                .product(name: "Benchmark", package: "package-benchmark"),
+                .product(name: "Benchmark", package: "benchmark"),
                 "OracleMockServer", "OracleNIO",
             ],
             path: "Benchmarks/OracleBenchmarks",
             plugins: [
-                .plugin(name: "BenchmarkPlugin", package: "package-benchmark")
+                .plugin(name: "BenchmarkPlugin", package: "benchmark")
             ]
         )
     )

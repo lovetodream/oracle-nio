@@ -1152,6 +1152,7 @@ final class OracleNIOTests {
         #expect(rowCount == 1)
     }
 
+    // FIXME: for some reason this test is flacky in ci, revisit this later
     @Test(.disabled(if: env("TEST_PRIVILEGED")?.isEmpty != false)) func warning() async throws {
         let testUsername = "NIO_GRACE_TEST"
         let testPassword = "TestPwd_123"

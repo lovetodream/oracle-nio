@@ -51,7 +51,7 @@ extension Benchmark {
             server = Task {
                 try await OracleMockServer.run(port: port)
             }
-            await Task.sleep(nanoseconds: 100_000) // FIXME: hook up to server ready state instead
+            try await Task.sleep(nanoseconds: 100_000)  // FIXME: hook up to server ready state instead
             connection = try await OracleConnection.connect(
                 configuration: config,
                 id: 1
@@ -109,7 +109,7 @@ let benchmarks: @Sendable () -> Void = {
         server = Task {
             try await OracleMockServer.run(port: port)
         }
-        await Task.sleep(nanoseconds: 100_000) // FIXME: hook up to server ready state instead
+        try await Task.sleep(nanoseconds: 100_000)  // FIXME: hook up to server ready state instead
     } teardown: {
         server.cancel()
     }

@@ -299,6 +299,13 @@ public final class ConnectionPool<
         }
     }
 
+    public func triggerGracefulShutdown() {
+        let actions = self.stateBox.withLockedValue { state in
+            state.stateMachine.triggerGracefulShutdown()
+        }
+        self.runStateMachineActions(actions)
+    }
+
     public func triggerForceShutdown() {
         let actions = self.stateBox.withLockedValue { state in
             state.stateMachine.triggerForceShutdown()
@@ -616,6 +623,7 @@ extension DiscardingTaskGroup: TaskGroupProtocol {
     }
 }
 
+@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
 extension TaskGroup<Void>: TaskGroupProtocol {
     @inlinable
     mutating func addTask_(operation: @isolated(any) @escaping @Sendable () async -> Void) {

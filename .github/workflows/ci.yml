@@ -237,9 +237,9 @@ jobs:
       fail-fast: false
       matrix:
         macos-version:
-          - macos-15
+          - macos-26
         include:
-          - macos-version: macos-15
+          - macos-version: macos-26
             xcode-version: latest-stable
     runs-on: ${{ matrix.macos-version }}
     steps:

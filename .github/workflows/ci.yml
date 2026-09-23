@@ -18,9 +18,8 @@ jobs:
       fail-fast: false
       matrix:
         swift-image:
-          - swift:6.1-noble
-          - swift:6.2-noble
           - swift:6.3-noble
+          - swift:6.4-noble
           - swiftlang/swift:nightly-main-noble
         oracle-image:
           - gvenzl/oracle-free:23
@@ -104,7 +103,7 @@ jobs:
       fail-fast: false
       matrix:
         swift-image:
-          - swift:6.3-noble
+          - swift:6.4-noble
         oracle-image:
           - gvenzl/oracle-free:23
     container: ${{ matrix.swift-image }}
@@ -182,7 +181,7 @@ jobs:
 
   linux-adb:
     container:
-      image: swift:6.3-noble
+      image: swift:6.4-noble
 
     runs-on: ubuntu-latest
 
@@ -238,9 +237,9 @@ jobs:
       fail-fast: false
       matrix:
         macos-version:
-          - macos-15
+          - macos-26
         include:
-          - macos-version: macos-15
+          - macos-version: macos-26
             xcode-version: latest-stable
     runs-on: ${{ matrix.macos-version }}
     steps:

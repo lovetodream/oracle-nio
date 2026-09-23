@@ -260,8 +260,7 @@ extension OracleDynamicTypeEncodable {
 ///
 /// Used to pass further information to the encoding method.
 public struct OracleEncodingContext: Sendable {
-    @usableFromInline
-    @TaskLocal static var jsonMaximumFieldNameSize: Int = 255
+    @usableFromInline @TaskLocal nonisolated static var jsonMaximumFieldNameSize: Int = 255
 
     @usableFromInline
     init() {}

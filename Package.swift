@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3
 // Copyright 2024 Timo Zacherl
 // SPDX-License-Identifier: Apache-2.0
 
@@ -27,14 +27,12 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
         .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.23.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.29.0"),
-        .package(url: "https://github.com/apple/swift-crypto.git", "3.9.0"..<"5.0.0"),
-        .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.3"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.9.0"..<"6.0.0"),
+        .package(url: "https://github.com/apple/swift-collections.git", from: "1.7.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "1.3.0"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.6.0"),
-        .package(
-            url: "https://github.com/swiftlang/swift-syntax.git",
-            "601.0.0-latest"..."603.0.0-latest"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0"),
     ],
     targets: [
         .target(

@@ -25,36 +25,16 @@ extension Double: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
-        var b0: UInt8
-        var b1: UInt8
-        var b2: UInt8
-        var b3: UInt8
-        var b4: UInt8
-        var b5: UInt8
-        var b6: UInt8
-        var b7: UInt8
         let allBits = self.bitPattern
-        b7 = UInt8(allBits & 0xff)
-        b6 = UInt8((allBits >> 8) & 0xff)
-        b5 = UInt8((allBits >> 16) & 0xff)
-        b4 = UInt8((allBits >> 24) & 0xff)
-        b3 = UInt8((allBits >> 32) & 0xff)
-        b2 = UInt8((allBits >> 40) & 0xff)
-        b1 = UInt8((allBits >> 48) & 0xff)
-        b0 = UInt8((allBits >> 56) & 0xff)
-        if b0 & 0x80 == 0 {
-            b0 = b0 | 0x80
+        let transformed: UInt64
+        if allBits & 0x8000_0000_0000_0000 == 0 {
+            // positive: flip the sign bit
+            transformed = allBits | 0x8000_0000_0000_0000
         } else {
-            b0 = ~b0
-            b1 = ~b1
-            b2 = ~b2
-            b3 = ~b3
-            b4 = ~b4
-            b5 = ~b5
-            b6 = ~b6
-            b7 = ~b7
+            // negative: invert all bits
+            transformed = ~allBits
         }
-        buffer.writeBytes([b0, b1, b2, b3, b4, b5, b6, b7])
+        buffer.writeInteger(transformed, endianness: .big)
     }
 }
 

@@ -195,7 +195,7 @@ extension Int: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
-        OracleNumeric.encodeNumeric(self, into: &buffer)
+        OracleNumeric.encodeFixedWidthInteger(self, into: &buffer)
     }
 }
 

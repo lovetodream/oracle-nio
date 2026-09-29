@@ -65,7 +65,10 @@ public struct OracleNumber:
 
     @inlinable
     public init<T: FixedWidthInteger>(_ value: T) {
-        self.init(.init(value), ascii: value.ascii)
+        var buffer = ByteBuffer()
+        OracleNumeric.encodeFixedWidthInteger(value, into: &buffer)
+        self.value = buffer
+        self.doubleValue = .init(value)
     }
 
     @inlinable
@@ -98,7 +101,9 @@ public struct OracleNumber:
     @inlinable
     internal init(_ numeric: Double, ascii: [UInt8]) {
         var buffer = ByteBuffer()
-        OracleNumeric.encodeNumeric(ascii, into: &buffer)
+        ascii.withUnsafeBufferPointer { ascii in
+            OracleNumeric.encodeNumeric(Span(_unsafeElements: ascii), into: &buffer)
+        }
         self.value = buffer
         self.doubleValue = numeric
     }

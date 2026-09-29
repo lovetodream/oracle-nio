@@ -218,6 +218,34 @@ import Testing
         #expect(result.2 == 420.081500420)
     }
 
+    @Test func decodeNegativeBinaryDoubleFromARow() throws {
+        let row = OracleRow(
+            lookupTable: ["double": 0],
+            data: .makeTestDataRow(Double(-420.081500420)),
+            columns: [
+                .init(
+                    name: "double",
+                    dataType: .binaryDouble,
+                    dataTypeSize: 1,
+                    precision: 1,
+                    scale: 1,
+                    bufferSize: 1,
+                    nullsAllowed: true,
+                    typeScheme: nil,
+                    typeName: nil,
+                    domainSchema: nil,
+                    domainName: nil,
+                    annotations: [:],
+                    vectorDimensions: nil,
+                    vectorFormat: nil
+                )
+            ]
+        )
+
+        let result = try row.decode((Double?).self, context: .default)
+        #expect(result == -420.081500420)
+    }
+
     @Test func decodeMalformedRowFailsWithDetails() {
         let row = OracleRow(
             lookupTable: ["int": 0],

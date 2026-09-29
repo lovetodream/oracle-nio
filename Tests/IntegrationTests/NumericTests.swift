@@ -31,11 +31,11 @@ import Testing
 
     @Test func variousNumerics() async throws {
         try await client.withConnection { connection in
+            _ = try? await connection.execute("DROP TABLE sample_numeric_table")
             try await connection.execute(
                 """
-                CREATE TABLE IF NOT EXISTS sample_numeric_table(intv number)
+                CREATE TABLE sample_numeric_table(intv number)
                 """)
-            try await connection.execute("TRUNCATE TABLE sample_numeric_table")
             let insertRows: [OracleNumber] = [
                 OracleNumber(Int.min)
             ]

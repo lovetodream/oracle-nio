@@ -23,24 +23,16 @@ extension Float: OracleEncodable {
         into buffer: inout ByteBuffer,
         context: OracleEncodingContext
     ) {
-        var b0: UInt8
-        var b1: UInt8
-        var b2: UInt8
-        var b3: UInt8
         let allBits = self.bitPattern
-        b3 = UInt8(allBits & 0xff)
-        b2 = UInt8((allBits >> 8) & 0xff)
-        b1 = UInt8((allBits >> 16) & 0xff)
-        b0 = UInt8((allBits >> 24) & 0xff)
-        if b0 & 0x80 == 0 {
-            b0 = b0 | 0x80
+        let transformed: UInt32
+        if allBits & 0x8000_0000 == 0 {
+            // positive: flip the sign bit
+            transformed = allBits | 0x8000_0000
         } else {
-            b0 = ~b0
-            b1 = ~b1
-            b2 = ~b2
-            b3 = ~b3
+            // negative: invert all bits
+            transformed = ~allBits
         }
-        buffer.writeBytes([b0, b1, b2, b3])
+        buffer.writeInteger(transformed, endianness: .big)
     }
 }
 

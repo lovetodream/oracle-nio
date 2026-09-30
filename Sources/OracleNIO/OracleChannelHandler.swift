@@ -461,6 +461,21 @@ final class OracleChannelHandler: ChannelDuplexHandler {
                 context.read()
             }
 
+        case .sendBreak(let read):
+            // TNS INTERRUPT marker — instructs the server to abort
+            // the in-flight operation. The server replies with an
+            // acknowledgment marker; the existing ``markerReceived``
+            // toggle then sends a RESET marker back, completing the
+            // break/reset handshake (mirrors python-oracledb's
+            // `_break_external` followed by `_reset`).
+            self.encoder.marker(type: Constants.TNS_MARKER_TYPE_INTERRUPT)
+            context.writeAndFlush(
+                self.wrapOutboundOut(self.encoder.flush()), promise: nil
+            )
+            if read {
+                context.read()
+            }
+
         case .sendPing:
             self.encoder.ping()
             context.writeAndFlush(
@@ -868,6 +883,17 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             componentSpecificReleaseNumber: (fullVersionNumber >> 8) & 0x0f,
             platformSpecificReleaseNumber: fullVersionNumber & 0x0f
         )
+    }
+}
+
+extension OracleChannelHandler {
+    /// Trigger a server-side break of the in-flight statement.
+    /// Called from ``OracleConnection/cancel()``; must be dispatched
+    /// onto the channel's event loop by the caller.
+    func triggerBreak() {
+        guard let handlerContext else { return }
+        let action = self.state.triggerBreak()
+        self.run(action, with: handlerContext)
     }
 }
 

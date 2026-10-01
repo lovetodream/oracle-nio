@@ -18,7 +18,7 @@ extension ByteBuffer {
     mutating func throwingReadOSON() throws -> ByteBuffer? {
         let length = try self.throwingReadUB4()
         guard length > 0 else {
-            return ByteBuffer(bytes: [0])
+            return ByteBuffer(integer: 0, as: UInt8.self)
         }
         try self.throwingSkipUB8()  // size (unused)
         try self.throwingSkipUB4()  // chunk size (unused)

@@ -64,8 +64,11 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt32.init(_:))
         case 3:
-            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
-            return UInt32(bytes[0]) << 16 | UInt32(bytes[1]) << 8 | UInt32(bytes[2])
+            guard
+                let b01 = self.readInteger(as: UInt16.self),
+                let b2 = self.readInteger(as: UInt8.self)
+            else { fatalError() }
+            return UInt32(b01) << 8 | UInt32(b2)
         case 4:
             return self.readInteger(as: UInt32.self)
         default:
@@ -99,8 +102,11 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt64.init)
         case 3:
-            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
-            return UInt64(bytes[0]) << 16 | UInt64(bytes[1]) << 8 | UInt64(bytes[2])
+            guard
+                let b01 = self.readInteger(as: UInt16.self),
+                let b2 = self.readInteger(as: UInt8.self)
+            else { fatalError() }
+            return UInt64(b01) << 8 | UInt64(b2)
         case 4:
             return self.readInteger(as: UInt32.self).map(UInt64.init)
         case 8:
@@ -127,11 +133,7 @@ extension ByteBuffer {
 
     @inlinable
     mutating func readUBLength() -> UInt8? {
-        guard var length = self.readInteger(as: UInt8.self) else { return nil }
-        if length & 0x80 != 0 {
-            length = length & 0x7f
-        }
-        return length
+        self.readInteger(as: UInt8.self).map { $0 & 0x7f }
     }
 
     mutating func writeUB2(_ integer: UInt16) {

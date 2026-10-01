@@ -19,6 +19,7 @@ extension ByteBuffer {
         with charset: Int = Constants.TNS_CS_IMPLICIT
     ) throws -> String {
         checkPreconditions(charset: charset)
+        // TODO: can we remove the intermediate step? does it improve perf?
         var stringSlice = try self.throwingReadOracleSpecificLengthPrefixedSlice()
         return stringSlice.readString(length: stringSlice.readableBytes)!  // must work
     }

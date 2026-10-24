@@ -64,11 +64,8 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt32.init(_:))
         case 3:
-            guard
-                let b01 = self.readInteger(as: UInt16.self),
-                let b2 = self.readInteger(as: UInt8.self)
-            else { fatalError() }
-            return UInt32(b01) << 8 | UInt32(b2)
+            guard let b01 = self.readInteger(as: UInt16.self) else { return nil }
+            return self.readInteger(as: UInt8.self).map { UInt32(b01) << 8 | UInt32($0) }
         case 4:
             return self.readInteger(as: UInt32.self)
         default:
@@ -102,11 +99,8 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt64.init)
         case 3:
-            guard
-                let b01 = self.readInteger(as: UInt16.self),
-                let b2 = self.readInteger(as: UInt8.self)
-            else { fatalError() }
-            return UInt64(b01) << 8 | UInt64(b2)
+            guard let b01 = self.readInteger(as: UInt16.self) else { return nil }
+            return self.readInteger(as: UInt8.self).map { UInt64(b01) << 8 | UInt64($0) }
         case 4:
             return self.readInteger(as: UInt32.self).map(UInt64.init)
         case 8:

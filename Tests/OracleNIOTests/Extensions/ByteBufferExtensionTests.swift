@@ -164,4 +164,48 @@ import Testing
             performing: { try buffer.throwingSkipUB4() }
         )
     }
+
+    @Test func readUB8DecodesEveryLengthEncoding() {
+        var buffer = ByteBuffer(bytes: [0])
+        #expect(buffer.readUB8() == 0)
+
+        // high bit on the length byte is a no-op mask, not a sentinel
+        buffer = ByteBuffer(bytes: [0x80])
+        #expect(buffer.readUB8() == 0)
+
+        buffer = ByteBuffer(bytes: [1, 0x7A])
+        #expect(buffer.readUB8() == 0x7A)
+
+        buffer = ByteBuffer(bytes: [2, 0x12, 0x34])
+        #expect(buffer.readUB8() == 0x1234)
+
+        buffer = ByteBuffer(bytes: [3, 0x12, 0x34, 0x56])
+        #expect(buffer.readUB8() == 0x12_3456)
+
+        buffer = ByteBuffer(bytes: [4, 0x12, 0x34, 0x56, 0x78])
+        #expect(buffer.readUB8() == 0x1234_5678)
+
+        buffer = ByteBuffer(bytes: [8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+        #expect(buffer.readUB8() == 0x0102_0304_0506_0708)
+    }
+
+    @Test func readUB8ReturnsNilOnTruncatedInput() {
+        var buffer = ByteBuffer()
+        #expect(buffer.readUB8() == nil)
+
+        buffer = ByteBuffer(bytes: [1])
+        #expect(buffer.readUB8() == nil)
+
+        buffer = ByteBuffer(bytes: [2, 0x12])
+        #expect(buffer.readUB8() == nil)
+
+        buffer = ByteBuffer(bytes: [3, 0x12, 0x34])
+        #expect(buffer.readUB8() == nil)
+
+        buffer = ByteBuffer(bytes: [4, 0x12, 0x34, 0x56])
+        #expect(buffer.readUB8() == nil)
+
+        buffer = ByteBuffer(bytes: [8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07])
+        #expect(buffer.readUB8() == nil)
+    }
 }

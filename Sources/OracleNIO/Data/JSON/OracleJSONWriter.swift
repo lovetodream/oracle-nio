@@ -343,17 +343,17 @@ struct TreeSegment {
             value.encode(into: &buffer, context: .default)
 
         case .string(let value):
-            let bytes = Array(value.utf8)
-            switch bytes.count {
+            let utf8 = value.utf8
+            switch utf8.count {
             case ..<256:
                 buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT8)
-                try buffer.writeLengthPrefixed(as: UInt8.self) { $0.writeBytes(bytes) }
+                try buffer.writeLengthPrefixed(as: UInt8.self) { $0.writeBytes(utf8) }
             case ..<65536:
                 buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT16)
-                try buffer.writeLengthPrefixed(as: UInt16.self) { $0.writeBytes(bytes) }
+                try buffer.writeLengthPrefixed(as: UInt16.self) { $0.writeBytes(utf8) }
             default:
                 buffer.writeInteger(Constants.TNS_JSON_TYPE_STRING_LENGTH_UINT32)
-                try buffer.writeLengthPrefixed(as: UInt32.self) { $0.writeBytes(bytes) }
+                try buffer.writeLengthPrefixed(as: UInt32.self) { $0.writeBytes(utf8) }
             }
 
         case .vectorInt8(let vector):

@@ -74,14 +74,20 @@ extension String: OracleDecodable {
             if type.csfrm == Constants.TNS_CS_IMPLICIT || type.csfrm == 0 {
                 self = buffer.readString(length: buffer.readableBytes)!
             } else {
-                let bytes = buffer.readBytes(length: buffer.readableBytes).unsafelyUnwrapped
-                guard bytes.count % 2 == 0 else {
+                let byteCount = buffer.readableBytes
+                guard byteCount % 2 == 0 else {
                     throw OracleDecodingError.Code.failure
                 }
-                var utf16: [Unicode.UTF16.CodeUnit] = []
-                for index in stride(from: 0, to: bytes.count, by: 2) {
-                    let value = (UInt16(bytes[index]) << 8) | UInt16(bytes[index + 1])
-                    utf16.append(value)
+                var utf16 = [Unicode.UTF16.CodeUnit](repeating: 0, count: byteCount / 2)
+                buffer.readWithUnsafeReadableBytes { rawPointer in
+                    for i in 0..<utf16.count {
+                        utf16[i] = UInt16(
+                            bigEndian: rawPointer.loadUnaligned(
+                                fromByteOffset: i * 2, as: UInt16.self
+                            )
+                        )
+                    }
+                    return byteCount
                 }
                 self = String(decoding: utf16, as: UTF16.self)
             }

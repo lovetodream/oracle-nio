@@ -353,23 +353,31 @@ let benchmarks: @Sendable () -> Void = {
         return buffer
     }
 
-    let ubLengthTemplates: [ByteBuffer] = [
-        ubBuffer(length: 0x02) { _ in },  // high bit clear
-        ubBuffer(length: 0x82) { _ in },  // high bit set, masks to the same length
-    ]
+    // One buffer holding many length bytes (high bit alternating), rewound between
+    // passes, so the benchmark measures `readUBLength` itself rather than the
+    // retain/release of copying a `ByteBuffer` for every call.
+    let ubLengthCount = 8192
+    let ubLengthTemplate: ByteBuffer = {
+        var buffer = ByteBuffer()
+        for index in 0..<ubLengthCount {
+            buffer.writeInteger(index.isMultiple(of: 2) ? UInt8(0x02) : UInt8(0x82))
+        }
+        return buffer
+    }()
 
     Benchmark(
         "DECODING:UBLENGTH",
         configuration: .init(warmupIterations: 10)
     ) { benchmark in
+        var buffer = ubLengthTemplate
+        var sum: UInt = 0
         for _ in benchmark.scaledIterations {
-            for _ in 0..<25 {
-                for template in ubLengthTemplates {
-                    var buffer = template
-                    _ = buffer.readUBLength()
-                }
+            buffer.moveReaderIndex(to: 0)
+            for _ in 0..<ubLengthCount {
+                sum &+= UInt(buffer.readUBLength() ?? 0)
             }
         }
+        blackHole(sum)
     }
 
     let ub4Templates: [ByteBuffer] = [
@@ -421,6 +429,55 @@ let benchmarks: @Sendable () -> Void = {
         ByteBuffer(bytes: [Constants.TNS_NULL_LENGTH_INDICATOR]),
         ByteBuffer(bytes: [5]),
     ]
+
+    // NVARCHAR2 columns use the national charset (csfrm 2), which is sent as
+    // big-endian UTF-16 and takes a different decoding path than VARCHAR2.
+    let utf16StringTemplate: ByteBuffer = {
+        var buffer = ByteBuffer()
+        let text = String(repeating: "Hello, Wörld! こんにちは 🌍 ", count: 20)
+        for unit in text.utf16 {
+            buffer.writeInteger(unit)
+        }
+        return buffer
+    }()
+
+    Benchmark(
+        "DECODING:STRING:UTF16",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            for _ in 0..<25 {
+                var buffer = utf16StringTemplate
+                _ = try String(from: &buffer, type: .nVarchar, context: .default)
+            }
+        }
+    }
+
+    // Strings of different lengths cover the uint8 and uint16 length-prefix
+    // branches of the JSON writer.
+    struct BenchmarkJSONStringPayload: Codable {
+        var short: [String]
+        var medium: [String]
+    }
+
+    let jsonStringPayload = OracleJSON(
+        BenchmarkJSONStringPayload(
+            short: (0..<20).map { "short string \($0)" },
+            medium: (0..<20).map { _ in String(repeating: "abcdefghij", count: 30) }
+        )
+    )
+
+    Benchmark(
+        "ENCODING:JSON:STRINGS",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            for _ in 0..<25 {
+                var buffer = ByteBuffer()
+                try jsonStringPayload.encode(into: &buffer, context: .default)
+            }
+        }
+    }
 
     Benchmark(
         "DECODING:ORACLE_COLUMN_IS_EMPTY",

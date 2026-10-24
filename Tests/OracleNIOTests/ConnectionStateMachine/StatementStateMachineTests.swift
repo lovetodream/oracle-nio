@@ -232,6 +232,139 @@ import Testing
         #expect(state.statementStreamCancelled() == .sendMarker(read: true))
     }
 
+    // MARK: - OracleConnection.cancel() / triggerBreak
+
+    /// Cancel via ``OracleConnection/cancel()`` while the statement
+    /// is still in `.initialized` (server hasn't responded yet — the
+    /// `dbms_session.sleep` repro). The connection sends a TNS
+    /// INTERRUPT marker, the server's BREAK ack drives the existing
+    /// marker toggle into a follow-up RESET, and the awaiting
+    /// promise fails with `.statementCancelled` once `ORA-01013`
+    /// arrives.
+    @Test func breakCancellationFromInitialized() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)
+        let query: OracleStatement = "BEGIN dbms_session.sleep(10); END;"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+
+        // Trigger the break while still in `.initialized`.
+        #expect(state.triggerBreak() == .sendBreak(read: true))
+
+        // Server BREAK ack → existing marker toggle echoes a RESET back.
+        #expect(state.markerReceived() == .sendMarker(read: false))
+
+        // ORA-01013 arrives; promise fails with `.statementCancelled`.
+        let cancel = state.backendErrorReceived(.userRequestedCancel(cursorID: 0))
+        #expect(cancel == .failStatement(promise, with: .statementCancelled, cleanupContext: nil))
+    }
+
+    /// Cancel after the server has already streamed `describeInfo`
+    /// but before any rows arrived. Same wire-level handshake as the
+    /// `.initialized` case.
+    @Test func breakCancellationFromDescribeInfoReceived() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)
+        let query: OracleStatement = "SELECT 1 AS id FROM dual"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        let describeInfo = DescribeInfo(columns: [
+            .init(
+                name: "ID", dataType: .number, dataTypeSize: 0,
+                precision: 11, scale: 0, bufferSize: 22,
+                nullsAllowed: true, typeScheme: nil, typeName: nil,
+                domainSchema: nil, domainName: nil,
+                annotations: [:], vectorDimensions: nil, vectorFormat: nil
+            )
+        ])
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+        #expect(state.describeInfoReceived(describeInfo) == .wait)
+
+        #expect(state.triggerBreak() == .sendBreak(read: true))
+        #expect(state.markerReceived() == .sendMarker(read: false))
+        let cancel = state.backendErrorReceived(.userRequestedCancel(cursorID: 1))
+        #expect(cancel == .failStatement(promise, with: .statementCancelled, cleanupContext: nil))
+    }
+
+    /// Cancel via ``OracleConnection/cancel()`` while a row stream
+    /// is mid-flight delegates to the existing
+    /// ``cancelStatementStream``-equivalent path — the row stream is
+    /// failed locally and a single TNS RESET marker is sent.
+    @Test func breakCancellationFromStreaming() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)
+        let query: OracleStatement = "SELECT level FROM dual CONNECT BY level <= 10000000"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        let describeInfo = DescribeInfo(columns: [
+            .init(
+                name: "LEVEL", dataType: .number, dataTypeSize: 0,
+                precision: 11, scale: 0, bufferSize: 22,
+                nullsAllowed: true, typeScheme: nil, typeName: nil,
+                domainSchema: nil, domainName: nil,
+                annotations: [:], vectorDimensions: nil, vectorFormat: nil
+            )
+        ])
+        let rowHeader = OracleBackendMessage.RowHeader()
+        let result = StatementResult(value: .describeInfo(describeInfo.columns))
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+        #expect(state.describeInfoReceived(describeInfo) == .wait)
+        #expect(state.rowHeaderReceived(rowHeader) == .succeedStatement(promise, result))
+        #expect(state.rowDataReceived(.init(1), capabilities: .init()) == .wait)
+
+        // Trigger break mid-stream — should fail the stream with
+        // `.statementCancelled` and `clientCancelled: true`.
+        #expect(
+            state.triggerBreak()
+                == .forwardStreamError(
+                    .statementCancelled, read: false, cursorID: nil, clientCancelled: true
+                )
+        )
+        // Connection-level follow-up sends a single RESET marker.
+        #expect(state.statementStreamCancelled() == .sendMarker(read: true))
+    }
+
+    /// `triggerBreak()` is a no-op when no statement is in flight
+    /// (e.g. `.readyForStatement`). The follow-up command can run
+    /// immediately.
+    @Test func breakOnIdleConnectionIsNoOp() throws {
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(state.triggerBreak() == .wait)
+    }
+
+    /// A second ``triggerBreak`` while the first is still in flight
+    /// is idempotent — it does not double-send markers.
+    @Test func breakIsIdempotent() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)
+        let query: OracleStatement = "BEGIN dbms_session.sleep(10); END;"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+        #expect(state.triggerBreak() == .sendBreak(read: true))
+        // Second trigger before the server reply must be a no-op.
+        #expect(state.triggerBreak() == .wait)
+    }
+
     @Test func cancellationDoesNotCrashOnBitVector() throws {
         let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
         promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.

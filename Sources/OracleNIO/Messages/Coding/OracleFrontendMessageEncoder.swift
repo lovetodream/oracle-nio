@@ -47,12 +47,12 @@ struct OracleFrontendMessageEncoder {
         return self.buffer
     }
 
-    mutating func marker() {
+    mutating func marker(type: UInt8 = Constants.TNS_MARKER_TYPE_RESET) {
         self.clearIfNeeded()
 
         self.startRequest(packetType: .marker)
         self.buffer.writeMultipleIntegers(
-            UInt8(1), UInt8(0), Constants.TNS_MARKER_TYPE_RESET
+            UInt8(1), UInt8(0), type
         )
         self.endRequest(packetType: .marker)
     }

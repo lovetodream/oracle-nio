@@ -50,4 +50,17 @@ extension BackendError {
         rowID: nil,
         batchErrors: []
     )
+
+    static func userRequestedCancel(cursorID: UInt16 = 1) -> BackendError {
+        BackendError(
+            number: 1013,
+            cursorID: cursorID,
+            position: 0,
+            rowCount: 0,
+            isWarning: false,
+            message: "ORA-01013: User requested cancel of current operation.",
+            rowID: nil,
+            batchErrors: []
+        )
+    }
 }

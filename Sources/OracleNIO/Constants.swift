@@ -23,7 +23,7 @@ import Musl
 #endif
 
 @usableFromInline
-enum Constants {
+package enum Constants {
 
     // MARK: Packet flags
     static let TNS_PACKET_FLAG_TLS_RENEG: UInt8 = 0x08
@@ -408,7 +408,7 @@ enum Constants {
     @usableFromInline
     static let TNS_LONG_LENGTH_INDICATOR: UInt8 = 254
     @usableFromInline
-    static let TNS_NULL_LENGTH_INDICATOR: UInt8 = 255
+    package static let TNS_NULL_LENGTH_INDICATOR: UInt8 = 255
     static let TNS_MAX_ROWID_LENGTH = 18
     @usableFromInline
     static let TNS_DURATION_MID: UInt32 = 0x8000_0000

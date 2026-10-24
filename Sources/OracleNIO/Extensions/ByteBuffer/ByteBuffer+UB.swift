@@ -54,7 +54,7 @@ extension ByteBuffer {
     }
 
     @inlinable
-    mutating func readUB4() -> UInt32? {
+    package mutating func readUB4() -> UInt32? {
         guard let length = readUBLength() else { return nil }
         switch length {
         case 0:
@@ -92,7 +92,7 @@ extension ByteBuffer {
         try throwingSkipBytes(4, file: file, line: line)
     }
 
-    mutating func readUB8() -> UInt64? {
+    package mutating func readUB8() -> UInt64? {
         guard let length = readUBLength() else { return nil }
         switch length {
         case 0:
@@ -132,7 +132,7 @@ extension ByteBuffer {
     }
 
     @inlinable
-    mutating func readUBLength() -> UInt8? {
+    package mutating func readUBLength() -> UInt8? {
         self.readInteger(as: UInt8.self).map { $0 & 0x7f }
     }
 

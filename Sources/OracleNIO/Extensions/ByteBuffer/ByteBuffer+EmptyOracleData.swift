@@ -15,7 +15,7 @@
 import NIOCore
 
 extension ByteBuffer {
-    var oracleColumnIsEmpty: Bool {
+    package var oracleColumnIsEmpty: Bool {
         guard self.readableBytes == 1 else { return false }
         let byte = self.getInteger(at: self.readerIndex, as: UInt8.self)
         return byte == 0 || byte == Constants.TNS_NULL_LENGTH_INDICATOR

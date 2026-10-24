@@ -376,7 +376,10 @@ let benchmarks: @Sendable () -> Void = {
         ubBuffer(length: 0) { _ in },
         ubBuffer(length: 1) { $0.writeInteger(UInt8(0x7A)) },
         ubBuffer(length: 2) { $0.writeInteger(UInt16(0x1234)) },
-        ubBuffer(length: 3) { $0.writeInteger(UInt16(0x1234)); $0.writeInteger(UInt8(0x56)) },
+        ubBuffer(length: 3) {
+            $0.writeInteger(UInt16(0x1234))
+            $0.writeInteger(UInt8(0x56))
+        },
         ubBuffer(length: 4) { $0.writeInteger(UInt32(0x1234_5678)) },
     ]
 

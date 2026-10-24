@@ -54,7 +54,7 @@ extension ByteBuffer {
     }
 
     @inlinable
-    mutating func readUB4() -> UInt32? {
+    package mutating func readUB4() -> UInt32? {
         guard let length = readUBLength() else { return nil }
         switch length {
         case 0:
@@ -64,8 +64,8 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt32.init(_:))
         case 3:
-            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
-            return UInt32(bytes[0]) << 16 | UInt32(bytes[1]) << 8 | UInt32(bytes[2])
+            guard let b01 = self.readInteger(as: UInt16.self) else { return nil }
+            return self.readInteger(as: UInt8.self).map { UInt32(b01) << 8 | UInt32($0) }
         case 4:
             return self.readInteger(as: UInt32.self)
         default:
@@ -89,7 +89,7 @@ extension ByteBuffer {
         try throwingSkipBytes(4, file: file, line: line)
     }
 
-    mutating func readUB8() -> UInt64? {
+    package mutating func readUB8() -> UInt64? {
         guard let length = readUBLength() else { return nil }
         switch length {
         case 0:
@@ -99,8 +99,8 @@ extension ByteBuffer {
         case 2:
             return self.readInteger(as: UInt16.self).map(UInt64.init)
         case 3:
-            guard let bytes = readBytes(length: Int(length)) else { fatalError() }
-            return UInt64(bytes[0]) << 16 | UInt64(bytes[1]) << 8 | UInt64(bytes[2])
+            guard let b01 = self.readInteger(as: UInt16.self) else { return nil }
+            return self.readInteger(as: UInt8.self).map { UInt64(b01) << 8 | UInt64($0) }
         case 4:
             return self.readInteger(as: UInt32.self).map(UInt64.init)
         case 8:
@@ -126,12 +126,8 @@ extension ByteBuffer {
     }
 
     @inlinable
-    mutating func readUBLength() -> UInt8? {
-        guard var length = self.readInteger(as: UInt8.self) else { return nil }
-        if length & 0x80 != 0 {
-            length = length & 0x7f
-        }
-        return length
+    package mutating func readUBLength() -> UInt8? {
+        self.readInteger(as: UInt8.self).map { $0 & 0x7f }
     }
 
     mutating func writeUB2(_ integer: UInt16) {

@@ -342,4 +342,96 @@ let benchmarks: @Sendable () -> Void = {
             }
         }
     }
+
+    // Builds a raw UB-encoded buffer by hand (length byte + value bytes)
+    // rather than going through `writeUB4`/`writeUB8`, since those never
+    // choose the 3-byte length encoding themselves.
+    func ubBuffer(length: UInt8, _ writeValue: (inout ByteBuffer) -> Void) -> ByteBuffer {
+        var buffer = ByteBuffer()
+        buffer.writeInteger(length)
+        writeValue(&buffer)
+        return buffer
+    }
+
+    let ubLengthTemplates: [ByteBuffer] = [
+        ubBuffer(length: 0x02) { _ in },  // high bit clear
+        ubBuffer(length: 0x82) { _ in },  // high bit set, masks to the same length
+    ]
+
+    Benchmark(
+        "DECODING:UBLENGTH",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            for _ in 0..<25 {
+                for template in ubLengthTemplates {
+                    var buffer = template
+                    _ = buffer.readUBLength()
+                }
+            }
+        }
+    }
+
+    let ub4Templates: [ByteBuffer] = [
+        ubBuffer(length: 0) { _ in },
+        ubBuffer(length: 1) { $0.writeInteger(UInt8(0x7A)) },
+        ubBuffer(length: 2) { $0.writeInteger(UInt16(0x1234)) },
+        ubBuffer(length: 3) {
+            $0.writeInteger(UInt16(0x1234))
+            $0.writeInteger(UInt8(0x56))
+        },
+        ubBuffer(length: 4) { $0.writeInteger(UInt32(0x1234_5678)) },
+    ]
+
+    Benchmark(
+        "DECODING:UB4",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            for _ in 0..<25 {
+                for template in ub4Templates {
+                    var buffer = template
+                    _ = buffer.readUB4()
+                }
+            }
+        }
+    }
+
+    let ub8Templates: [ByteBuffer] =
+        ub4Templates + [
+            ubBuffer(length: 8) { $0.writeInteger(UInt64(0x0102_0304_0506_0708)) }
+        ]
+
+    Benchmark(
+        "DECODING:UB8",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            for _ in 0..<25 {
+                for template in ub8Templates {
+                    var buffer = template
+                    _ = buffer.readUB8()
+                }
+            }
+        }
+    }
+
+    let columnIsEmptyTemplates: [ByteBuffer] = [
+        ByteBuffer(bytes: [0]),
+        ByteBuffer(bytes: [Constants.TNS_NULL_LENGTH_INDICATOR]),
+        ByteBuffer(bytes: [5]),
+    ]
+
+    Benchmark(
+        "DECODING:ORACLE_COLUMN_IS_EMPTY",
+        configuration: .init(warmupIterations: 10)
+    ) { benchmark in
+        for _ in benchmark.scaledIterations {
+            for _ in 0..<25 {
+                for template in columnIsEmptyTemplates {
+                    _ = template.oracleColumnIsEmpty
+                }
+            }
+        }
+    }
 }

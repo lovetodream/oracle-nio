@@ -16,26 +16,26 @@ import NIOCore
 
 extension OracleBackendMessage {
     struct BitVector: PayloadDecodable, Sendable, Hashable {
-        let columnsCountSent: UInt16
+        let columnCountSent: UInt16
         let bitVector: [UInt8]
 
         static func decode(
             from buffer: inout ByteBuffer,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.BitVector {
-            let columnsCountSent = try buffer.throwingReadUB2()
-            guard let columnsCount = context.describeInfo?.columns.count else {
+            let columnCountSent = try buffer.throwingReadUB2()
+            guard let columnCount = context.describeInfo?.columns.count else {
                 preconditionFailure(
                     "How can we receive a bit vector without an active statement?"
                 )
             }
-            var length = Int((Double(columnsCount) / 8.0).rounded(.down))
-            if columnsCount % 8 > 0 {
+            var length = Int((Double(columnCount) / 8.0).rounded(.down))
+            if columnCount % 8 > 0 {
                 length += 1
             }
             let bitVector = try buffer.throwingReadBytes(length: length)
             return .init(
-                columnsCountSent: UInt16(columnsCountSent),
+                columnCountSent: UInt16(columnCountSent),
                 bitVector: bitVector
             )
         }

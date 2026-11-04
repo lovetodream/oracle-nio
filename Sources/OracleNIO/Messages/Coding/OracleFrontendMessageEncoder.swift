@@ -257,7 +257,7 @@ struct OracleFrontendMessageEncoder {
             authContext: authContext,
             authPhase: .authPhaseOne,
             authMode: authMode,
-            pairsCount: numberOfPairs
+            pairCount: numberOfPairs
         )
 
         // 3. write key/value pairs
@@ -344,7 +344,7 @@ struct OracleFrontendMessageEncoder {
             authContext: authContext,
             authPhase: .authPhaseTwo,
             authMode: authMode,
-            pairsCount: numberOfPairs
+            pairCount: numberOfPairs
         )
 
 
@@ -459,13 +459,13 @@ struct OracleFrontendMessageEncoder {
         // 1. options
         var options: UInt32 = 0
         var dmlOptions: UInt32 = 0
-        var parametersCount: UInt32 = 0
-        var iterationsCount: UInt32 = 1
+        var parameterCount: UInt32 = 0
+        var iterationCount: UInt32 = 1
 
         let cursorID = cursorID ?? statementContext.cursorID
 
         if !requiresDefine && statementContext.binds.count != 0 {
-            parametersCount = .init(statementContext.binds.count)
+            parameterCount = .init(statementContext.binds.count)
         }
         if requiresDefine {
             options |= Constants.TNS_EXEC_OPTION_DEFINE
@@ -478,20 +478,20 @@ struct OracleFrontendMessageEncoder {
         }
         if statementContext.type.isQuery {
             if cursorID == 0 || requiresDefine {
-                iterationsCount = UInt32(statementOptions.prefetchRows)
+                iterationCount = UInt32(statementOptions.prefetchRows)
             } else {
-                iterationsCount = UInt32(statementOptions.arraySize)
+                iterationCount = UInt32(statementOptions.arraySize)
             }
-            if iterationsCount > 0 && !noPrefetch {
+            if iterationCount > 0 && !noPrefetch {
                 options |= Constants.TNS_EXEC_OPTION_FETCH
             }
         }
         if !statementContext.type.isPlSQL {
             options |= Constants.TNS_EXEC_OPTION_NOT_PLSQL
-        } else if statementContext.type.isPlSQL && parametersCount > 0 {
+        } else if statementContext.type.isPlSQL && parameterCount > 0 {
             options |= Constants.TNS_EXEC_OPTION_PLSQL_BIND
         }
-        if parametersCount > 0 {
+        if parameterCount > 0 {
             options |= Constants.TNS_EXEC_OPTION_BIND
         }
         if statementContext.options.batchErrors {
@@ -530,14 +530,14 @@ struct OracleFrontendMessageEncoder {
         self.buffer.writeInteger(UInt8(0))  // pointer (al8o4)
         self.buffer.writeInteger(UInt8(0))  // pointer (al8o4l)
         self.buffer.writeUB4(0)  // prefetch buffer size
-        self.buffer.writeUB4(iterationsCount)  // prefetch number of rows
+        self.buffer.writeUB4(iterationCount)  // prefetch number of rows
         self.buffer.writeUB4(Constants.TNS_MAX_LONG_LENGTH)  // maximum long size
-        if parametersCount == 0 {
+        if parameterCount == 0 {
             self.buffer.writeInteger(UInt8(0))  // pointer (binds)
             self.buffer.writeUB4(0)  // number of binds
         } else {
             self.buffer.writeInteger(UInt8(1))  // pointer (binds)
-            self.buffer.writeUB4(parametersCount)  // number of binds
+            self.buffer.writeUB4(parameterCount)  // number of binds
         }
         self.buffer.writeInteger(UInt8(0))  // pointer (al8app)
         self.buffer.writeInteger(UInt8(0))  // pointer (al8txn)
@@ -595,7 +595,7 @@ struct OracleFrontendMessageEncoder {
             if cursorID == 0 {
                 self.buffer.writeUB4(0)  // al8i4[1] execution count
             } else {
-                self.buffer.writeUB4(iterationsCount)
+                self.buffer.writeUB4(iterationCount)
             }
         } else {
             self.buffer.writeUB4(statementContext.executionCount)  // al8i4[1] execution count
@@ -617,7 +617,7 @@ struct OracleFrontendMessageEncoder {
             }
 
             self.writeColumnMetadata(columns)
-        } else if parametersCount > 0 {
+        } else if parameterCount > 0 {
             self.writeBindParameters(statementContext.binds)
         }
 
@@ -1029,7 +1029,7 @@ extension OracleFrontendMessageEncoder {
         authContext: AuthContext,
         authPhase: Constants.FunctionCode,
         authMode: UInt32,
-        pairsCount: UInt32
+        pairCount: UInt32
     ) {
         let username: String
         let usernameLength: Int
@@ -1054,7 +1054,7 @@ extension OracleFrontendMessageEncoder {
         self.buffer.writeUB4(UInt32(usernameLength))
         self.buffer.writeUB4(authMode)  // authentication mode
         self.buffer.writeInteger(UInt8(1))  // pointer (authiv1)
-        self.buffer.writeUB4(pairsCount)  // number of key/value pairs
+        self.buffer.writeUB4(pairCount)  // number of key/value pairs
         self.buffer.writeInteger(UInt8(1))  // pointer (authovl)
         self.buffer.writeInteger(UInt8(1))  // pointer (authovln)
         if hasUser != 0 {

@@ -166,13 +166,13 @@ struct OracleJSONWriter {
 
 
         // determine remaining flags and field id size
-        let fieldNamesCount =
+        let fieldNameCount =
             (shortFieldNamesSegment?.names.count ?? 0) + (longFieldNamesSegment?.names.count ?? 0)
         flags |= Constants.TNS_JSON_FLAG_HASH_ID_UINT8 | Constants.TNS_JSON_FLAG_TINY_NODES_STAT
-        if fieldNamesCount > 65535 {
+        if fieldNameCount > 65535 {
             flags |= Constants.TNS_JSON_FLAG_NUM_FNAMES_UINT32
             self.fieldIDSize = 4
-        } else if fieldNamesCount > 255 {
+        } else if fieldNameCount > 255 {
             flags |= Constants.TNS_JSON_FLAG_NUM_FNAMES_UINT16
             self.fieldIDSize = 2
         } else {

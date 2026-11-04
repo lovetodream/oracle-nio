@@ -19,7 +19,7 @@ extension ByteBuffer {
         length: Int,
         file: String = #fileID,
         line: Int = #line
-    ) throws -> [UInt8] {
+    ) throws(OraclePartialDecodingError) -> [UInt8] {
         guard let result = self.readBytes(length: length) else {
             throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
                 MemoryLayout<UInt8>.size * length,

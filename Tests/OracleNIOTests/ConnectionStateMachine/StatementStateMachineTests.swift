@@ -271,7 +271,73 @@ import Testing
             state.cancelStatementStream()
                 == .forwardStreamError(
                     .statementCancelled, read: false, cursorID: nil, clientCancelled: true))
-        #expect(state.bitVectorReceived(.init(columnsCountSent: 1, bitVector: [])) == .wait)
+        #expect(state.bitVectorReceived(.init(columnCountSent: 1, bitVector: [])) == .wait)
         #expect(state.statementStreamCancelled() == .sendMarker(read: true))
+    }
+
+    /// Regression test for a crash seen in CI: after a decoding error while rows were streaming,
+    /// the channel handler runs `readyForStatementReceived()`, which trapped with
+    /// "readyForStatement received when statement is still being executed".
+    ///
+    /// `ConnectionStateMachine.errorHappened` used to fail the statement on a copy and never
+    /// stored it back into `state`, unlike the other `.statement(var statement)` handlers.
+    @Test func errorWhileStreamingDoesNotLeaveStatementIncomplete() throws {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
+        let query: OracleStatement = "SELECT 1 AS id FROM dual"
+        let queryContext = StatementContext(statement: query, promise: promise)
+
+        let describeInfo = DescribeInfo(columns: [
+            .init(
+                name: "ID",
+                dataType: .number,
+                dataTypeSize: 0,
+                precision: 11,
+                scale: 127,
+                bufferSize: 2,
+                nullsAllowed: true,
+                typeScheme: nil,
+                typeName: nil,
+                domainSchema: nil,
+                domainName: nil,
+                annotations: [:],
+                vectorDimensions: nil,
+                vectorFormat: nil
+            )
+        ])
+        let result = StatementResult(value: .describeInfo(describeInfo.columns))
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+        #expect(state.describeInfoReceived(describeInfo) == .wait)
+        #expect(state.rowHeaderReceived(.init()) == .succeedStatement(promise, result))
+
+        // rows are streaming now, and a message fails to decode
+        guard case .forwardStreamError = state.errorHappened(.uncleanShutdown) else {
+            Issue.record("Expected the stream to be failed")
+            return
+        }
+        // this is what `OracleChannelHandler` does with a `.forwardStreamError`
+        _ = state.readyForStatementReceived()
+    }
+
+    /// Same as above, for an error that happens before the server responded to the statement.
+    @Test func errorBeforeAnyResponseDoesNotLeaveStatementIncomplete() throws {
+        let queryContext = StatementContext(statement: "SELECT 1 AS id FROM dual")
+
+        var state = ConnectionStateMachine.readyForStatement()
+        #expect(
+            state.enqueue(task: .statement(queryContext))
+                == .sendExecute(queryContext, nil, cursorID: 0, requiresDefine: false, noPrefetch: false)
+        )
+        guard case .failStatement = state.errorHappened(.uncleanShutdown) else {
+            Issue.record("Expected the statement to be failed")
+            return
+        }
+        // this is what `OracleChannelHandler` does with a `.failStatement`
+        _ = state.readyForStatementReceived()
     }
 }

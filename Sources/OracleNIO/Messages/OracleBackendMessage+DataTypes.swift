@@ -26,7 +26,7 @@ extension OracleBackendMessage {
                 }
 
                 if try buffer.throwingReadInteger(as: UInt16.self) != 0 {
-                    buffer.moveReaderIndex(forwardBy: 4)
+                    try buffer.throwingMoveReaderIndex(forwardBy: 4)
                 }
             }
 

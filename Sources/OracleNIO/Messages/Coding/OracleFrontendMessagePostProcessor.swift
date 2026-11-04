@@ -19,7 +19,7 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
     typealias OutboundOut = ByteBuffer
 
     private let headerSize = OracleFrontendMessageEncoder.headerSize
-    private let dataFlagsSize = MemoryLayout<UInt16>.size
+    private let dataFlagSize = MemoryLayout<UInt16>.size
 
     var protocolVersion: UInt16 = 0
     var maxSize = Int(Constants.TNS_SDU)
@@ -48,14 +48,14 @@ final class OracleFrontendMessagePostProcessor: ChannelOutboundHandler {
 
 
             let maxContentSize =
-                self.maxSize - self.headerSize - self.dataFlagsSize
+                self.maxSize - self.headerSize - self.dataFlagSize
             var first = true
             while buffer.readableBytes > 0 {
                 var slice: ByteBuffer
                 let final: Bool
                 if buffer.readableBytes > maxContentSize {
                     slice = buffer.readSlice(
-                        length: first ? maxContentSize + dataFlagsSize : maxContentSize
+                        length: first ? maxContentSize + dataFlagSize : maxContentSize
                     )!
                     final = false
                 } else {

@@ -193,20 +193,20 @@ public final class OracleMockServer {
 
             // read all bytes until we find SELECT, go back by one byte and grab the length, then cut the select out
             let select = Array("SELECT".utf8)
-            var matchingBytesCount = 0
+            var matchingByteCount = 0
             var statement: String?
             loop: while let byte = buffer.readInteger(as: UInt8.self) {
                 switch byte {
-                case select[matchingBytesCount]:
-                    matchingBytesCount += 1
-                    if matchingBytesCount == select.count - 1 {
-                        buffer.moveReaderIndex(to: buffer.readerIndex - matchingBytesCount - 1)
+                case select[matchingByteCount]:
+                    matchingByteCount += 1
+                    if matchingByteCount == select.count - 1 {
+                        buffer.moveReaderIndex(to: buffer.readerIndex - matchingByteCount - 1)
                         let length = buffer.readInteger(as: UInt8.self).unsafelyUnwrapped
                         statement = buffer.readString(length: Int(length))
                         break loop
                     }
                 default:
-                    matchingBytesCount = 0
+                    matchingByteCount = 0
                 }
             }
 

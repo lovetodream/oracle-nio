@@ -157,7 +157,7 @@ extension OracleBackendMessage {
                     }
                 }
             case .cursor:
-                buffer.moveReaderIndex(forwardBy: 1)  // length (fixed value)
+                try buffer.throwingMoveReaderIndex(forwardBy: 1)  // length (fixed value)
 
                 let readerIndex = buffer.readerIndex
                 _ = try DescribeInfo._decode(
@@ -322,12 +322,12 @@ extension OracleBackendMessage {
                 capabilities: capabilities
             )
 
-            let actualBytesCount = buffer.readSB4() ?? 0
-            if actualBytesCount < 0 && metadata.dataType._oracleType == .boolean {
+            let actualByteCount = buffer.readSB4() ?? 0
+            if actualByteCount < 0 && metadata.dataType._oracleType == .boolean {
                 return ByteBuffer(bytes: [0])  // empty buffer
-            } else if actualBytesCount != 0 && !columnData.oracleColumnIsEmpty {
+            } else if actualByteCount != 0 && !columnData.oracleColumnIsEmpty {
                 // TODO: throw this as error?
-                preconditionFailure("column truncated, length: \(actualBytesCount)")
+                preconditionFailure("column truncated, length: \(actualByteCount)")
             }
 
             return columnData

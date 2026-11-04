@@ -99,7 +99,7 @@ extension RowID: OracleDecodable {
     init?(fromWire buffer: inout ByteBuffer) throws {
         let rba = try buffer.throwingReadUB4()
         let partitionID = try buffer.throwingReadUB2()
-        buffer.moveReaderIndex(forwardBy: 1)
+        try buffer.throwingMoveReaderIndex(forwardBy: 1)
         let blockNumber = try buffer.throwingReadUB4()
         let slotNumber = try buffer.throwingReadUB2()
         self.init(

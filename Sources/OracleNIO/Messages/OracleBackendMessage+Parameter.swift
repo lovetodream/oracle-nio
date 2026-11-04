@@ -70,29 +70,30 @@ extension OracleBackendMessage {
             from buffer: inout ByteBuffer,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.QueryParameter {
-            let parametersCount = buffer.readUB2() ?? 0  // al8o4l (ignored)
-            for _ in 0..<parametersCount {
+            let parameterCount = try buffer.throwingReadUB2()  // al8o4l (ignored)
+            for _ in 0..<parameterCount {
                 try buffer.throwingSkipUB4()
             }
-            if let bytesCount = buffer.readUB2()  // al8txl (ignored)
-                .flatMap(Int.init), bytesCount > 0
-            {
-                buffer.moveReaderIndex(forwardBy: bytesCount)
+            let al8txlCount = try buffer.throwingReadUB2()  // al8txl (ignored)
+            if al8txlCount > 0 {
+                try buffer.throwingMoveReaderIndex(forwardBy: numericCast(al8txlCount))
             }
-            let pairsCount = buffer.readUB2() ?? 0  // number of key/value pairs
+            let pairCount = try buffer.throwingReadUB2()  // number of key/value pairs
             var schema: String? = nil
             var edition: String? = nil
             var rowCounts: [UInt64]? = nil
-            for _ in 0..<pairsCount {
+            for _ in 0..<pairCount {
                 var keyValue: ByteBuffer? = nil
-                if let bytesCount = buffer.readUB2(), bytesCount > 0 {  // key
+                let keyCount = try buffer.throwingReadUB2()  // key
+                if keyCount > 0 {
                     keyValue =
                         try buffer.throwingReadOracleSpecificLengthPrefixedSlice()
                 }
-                if let bytesCount = buffer.readUB2(), bytesCount > 0 {  // value
+                let valueCount = try buffer.throwingReadUB2()  // value
+                if valueCount > 0 {
                     buffer.skipRawBytesChunked()
                 }
-                let keywordNumber = buffer.readUB2() ?? 0  // keyword number
+                let keywordNumber = try buffer.throwingReadUB2()  // keyword number
                 if keywordNumber == Constants.TNS_KEYWORD_NUM_CURRENT_SCHEMA,
                     let keyValue
                 {
@@ -107,16 +108,15 @@ extension OracleBackendMessage {
                     )
                 }
             }
-            if let bytesCount = buffer.readUB2().flatMap(Int.init),
-                bytesCount > 0
-            {
-                buffer.moveReaderIndex(forwardBy: bytesCount)
+            let byteCount = try buffer.throwingReadUB2()
+            if byteCount > 0 {
+                try buffer.throwingMoveReaderIndex(forwardBy: numericCast(byteCount))
             }
             if context.statementContext!.options.arrayDMLRowCounts == true {
-                let numberOfRows = buffer.readUB4() ?? 0
+                let numberOfRows = try buffer.throwingReadUB4()
                 rowCounts = []
                 for _ in 0..<numberOfRows {
-                    let rowCount = buffer.readUB8() ?? 0
+                    let rowCount = try buffer.throwingReadUB8()
                     rowCounts?.append(rowCount)
                 }
             }
@@ -152,7 +152,7 @@ extension OracleBackendMessage {
             if context.lobContext?.operation == .createTemp {
                 try buffer.throwingSkipUB2()  // skip character set
                 // skip trailing flags, amount
-                buffer.moveReaderIndex(forwardBy: 3)
+                try buffer.throwingMoveReaderIndex(forwardBy: 3)
                 amount = nil
             } else if context.lobContext?.sendAmount == true {
                 amount = try buffer.throwingReadSB8()

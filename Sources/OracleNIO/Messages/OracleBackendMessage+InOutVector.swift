@@ -33,19 +33,19 @@ extension OracleBackendMessage {
             from buffer: inout ByteBuffer,
             context: OracleBackendMessageDecoder.Context
         ) throws -> OracleBackendMessage.InOutVector {
-            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt8>.size)  // flag
+            try buffer.throwingMoveReaderIndex(forwardBy: MemoryLayout<UInt8>.size)  // flag
             let temp16 = try buffer.throwingReadUB2()  // number of requests
             let temp32 = try buffer.throwingReadUB4()  // number of iterations
             let numberOfBinds = Int(temp32 * 256 + UInt32(temp16))
             try buffer.throwingSkipUB4()  // number of iterations this time
             try buffer.throwingSkipUB2()  // uac buffer length
-            let bytesCount = try buffer.throwingReadUB2()  // bit vector for fast fetch
-            if bytesCount > 0 {
-                buffer.moveReaderIndex(forwardBy: Int(bytesCount))
+            let byteCount = try buffer.throwingReadUB2()  // bit vector for fast fetch
+            if byteCount > 0 {
+                try buffer.throwingMoveReaderIndex(forwardBy: Int(byteCount))
             }
             let rowIDLength = try buffer.throwingReadUB2()
             if rowIDLength > 0 {
-                buffer.moveReaderIndex(forwardBy: Int(rowIDLength))
+                try buffer.throwingMoveReaderIndex(forwardBy: Int(rowIDLength))
             }
             var metadata = [BindMetadatum]()
             metadata.reserveCapacity(numberOfBinds)

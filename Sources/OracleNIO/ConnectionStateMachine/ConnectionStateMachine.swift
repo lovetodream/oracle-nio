@@ -249,8 +249,11 @@ struct ConnectionStateMachine {
             if statement.isComplete {
                 return self.closeConnectionAndCleanup(error)
             } else {
-                let action = statement.errorHappened(error)
-                return self.modify(with: action)
+                return self.avoidingStateMachineCoW { machine in
+                    let action = statement.errorHappened(error)
+                    machine.state = .statement(statement)
+                    return machine.modify(with: action)
+                }
             }
         case .readyToLogOff, .loggingOff, .closing:
             // If the state machine is in state `.closing`, the connection

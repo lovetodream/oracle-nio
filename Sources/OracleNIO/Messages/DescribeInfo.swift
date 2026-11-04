@@ -87,7 +87,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             context: OracleBackendMessageDecoder.Context
         ) throws -> Column {
             let dataType = try buffer.throwingReadInteger(as: UInt8.self)
-            buffer.moveReaderIndex(forwardBy: 1)  // flags
+            try buffer.throwingMoveReaderIndex(forwardBy: 1)  // flags
             let precision = try buffer.throwingReadInteger(as: Int8.self)
             let scale = try Int16(buffer.throwingReadInteger(as: Int8.self))
             let bufferSize = try buffer.throwingReadUB4()
@@ -126,7 +126,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
             let nullsAllowed =
                 try buffer.throwingReadInteger(as: UInt8.self) != 0
 
-            buffer.moveReaderIndex(forwardBy: 1)  // v7 length of name
+            try buffer.throwingMoveReaderIndex(forwardBy: 1)  // v7 length of name
 
             guard try buffer.throwingReadUB4() > 0 else {
                 throw OraclePartialDecodingError.fieldNotDecodable(type: String.self)
@@ -158,11 +158,11 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             var annotations: [String: String] = [:]
             if context.capabilities.ttcFieldVersion >= Constants.TNS_CCAP_FIELD_VERSION_23_1_EXT_3 {
-                let annotationsCount = try buffer.throwingReadUB4()
-                if annotationsCount > 0 {
-                    buffer.moveReaderIndex(forwardBy: 1)
+                let annotationCount = try buffer.throwingReadUB4()
+                if annotationCount > 0 {
+                    try buffer.throwingMoveReaderIndex(forwardBy: 1)
                     let actualCount = try buffer.throwingReadUB4()
-                    buffer.moveReaderIndex(forwardBy: 1)
+                    try buffer.throwingMoveReaderIndex(forwardBy: 1)
                     for _ in 0..<actualCount {
                         try buffer.throwingSkipUB4()  // length of key
                         let key = try buffer.readString()
@@ -216,7 +216,7 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
         let columnCount = try buffer.throwingReadUB4()
 
         if columnCount > 0 {
-            buffer.moveReaderIndex(forwardBy: 1)
+            try buffer.throwingMoveReaderIndex(forwardBy: 1)
         }
 
         var result = [Column]()

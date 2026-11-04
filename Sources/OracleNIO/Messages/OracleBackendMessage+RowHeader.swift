@@ -27,18 +27,25 @@ extension OracleBackendMessage {
             from buffer: inout ByteBuffer,
             context: OracleBackendMessageDecoder.Context
         ) throws(OraclePartialDecodingError) -> OracleBackendMessage.RowHeader {
-            buffer.moveReaderIndex(forwardBy: 1)  // flags
+            try buffer.throwingMoveReaderIndex(forwardBy: 1)  // flags
             try buffer.throwingSkipUB2()  // number of requests
             try buffer.throwingSkipUB4()  // iteration number
             try buffer.throwingSkipUB4()  // number of iterations
             try buffer.throwingSkipUB2()  // buffer length
             var bitVector: [UInt8]? = nil
-            if let bytesCount = buffer.readUB4(), bytesCount > 0 {
-                buffer.moveReaderIndex(forwardBy: 1)  // skip repeated length
-                bitVector = buffer.readBytes(length: Int(bytesCount))
+            let byteCount = try buffer.throwingReadUB4()
+            if byteCount > 0 {
+                try buffer.throwingMoveReaderIndex(forwardBy: 1)  // skip repeated length
+                bitVector = try buffer.throwingReadBytes(length: Int(byteCount))
             }
-            if let numberOfBytes = buffer.readUB4(), numberOfBytes > 0 {
-                buffer.skipRawBytesChunked()  // rxhrid
+            let numberOfBytes = try buffer.throwingReadUB4()
+            if numberOfBytes > 0 {
+                // rxhrid
+                guard buffer.skipRawBytesChunked() else {
+                    throw OraclePartialDecodingError.expectedAtLeastNRemainingBytes(
+                        MemoryLayout<UInt8>.size, actual: buffer.readableBytes
+                    )
+                }
             }
             return .init(bitVector: bitVector)
         }

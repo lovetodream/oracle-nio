@@ -28,10 +28,10 @@ public struct OracleXML: Sendable {
     @inlinable
     init(from buffer: inout ByteBuffer) throws {
         _ = try Self.readHeader(from: &buffer)
-        buffer.moveReaderIndex(forwardBy: 1)  // xml version
+        try buffer.throwingMoveReaderIndex(forwardBy: 1)  // xml version
         let xmlFlag = try buffer.throwingReadInteger(as: UInt32.self)
         if (xmlFlag & Constants.TNS_XML_TYPE_FLAG_SKIP_NEXT_4) != 0 {
-            buffer.moveReaderIndex(forwardBy: 4)
+            try buffer.throwingMoveReaderIndex(forwardBy: 4)
         }
         var slice = buffer.slice()
         if (xmlFlag & Constants.TNS_XML_TYPE_STRING) != 0 {
@@ -53,7 +53,7 @@ public struct OracleXML: Sendable {
             return (flags, version)
         }
         let prefixSegmentLength = try self.readLength(from: &buffer)
-        buffer.moveReaderIndex(forwardBy: Int(prefixSegmentLength))
+        try buffer.throwingMoveReaderIndex(forwardBy: Int(prefixSegmentLength))
         return (flags, version)
     }
 
@@ -69,7 +69,7 @@ public struct OracleXML: Sendable {
     @inlinable
     static func skipLength(from buffer: inout ByteBuffer) throws {
         if try buffer.throwingReadInteger(as: UInt8.self) == Constants.TNS_LONG_LENGTH_INDICATOR {
-            buffer.moveReaderIndex(forwardBy: 4)
+            try buffer.throwingMoveReaderIndex(forwardBy: 4)
         }
     }
 }

@@ -58,81 +58,81 @@ struct OracleJSONParser {
         self.relativeOffsets = self.flags & Constants.TNS_JSON_FLAG_REL_OFFSET_MODE != 0
         if self.flags & Constants.TNS_JSON_FLAG_IS_SCALAR != 0 {
             if self.flags & Constants.TNS_JSON_FLAG_TREE_SEG_UINT32 != 0 {
-                buffer.moveReaderIndex(forwardBy: 4)
+                try buffer.throwingMoveReaderIndex(forwardBy: 4)
             } else {
-                buffer.moveReaderIndex(forwardBy: 2)
+                try buffer.throwingMoveReaderIndex(forwardBy: 2)
             }
             return try decodeNode(from: &buffer)
         }
 
         // determine the number of field names
-        let shortFieldNamesCount: Int
+        let shortFieldNameCount: Int
         if self.flags & Constants.TNS_JSON_FLAG_NUM_FNAMES_UINT32 != 0 {
-            shortFieldNamesCount = try Int(buffer.throwingReadInteger(as: UInt32.self))
+            shortFieldNameCount = try Int(buffer.throwingReadInteger(as: UInt32.self))
             self.fieldIDLength = 4
         } else if self.flags & Constants.TNS_JSON_FLAG_NUM_FNAMES_UINT16 != 0 {
-            shortFieldNamesCount = try Int(buffer.throwingReadInteger(as: UInt16.self))
+            shortFieldNameCount = try Int(buffer.throwingReadInteger(as: UInt16.self))
             self.fieldIDLength = 2
         } else {
-            shortFieldNamesCount = try Int(buffer.throwingReadInteger(as: UInt8.self))
+            shortFieldNameCount = try Int(buffer.throwingReadInteger(as: UInt8.self))
             self.fieldIDLength = 1
         }
 
         // determine the size of the field names segment
-        let shortFieldNameOffsetsSize: Int
+        let shortFieldNameOffsetSize: Int
         let shortFieldNamesSegSize: Int
         if self.flags & Constants.TNS_JSON_FLAG_FNAMES_SEG_UINT32 != 0 {
-            shortFieldNameOffsetsSize = 4
+            shortFieldNameOffsetSize = 4
             shortFieldNamesSegSize = try Int(buffer.throwingReadInteger(as: UInt32.self))
         } else {
-            shortFieldNameOffsetsSize = 2
+            shortFieldNameOffsetSize = 2
             shortFieldNamesSegSize = try Int(buffer.throwingReadInteger(as: UInt16.self))
         }
 
-        let longFieldNameOffsetsSize: Int
-        let longFieldNamesCount: Int
+        let longFieldNameOffsetSize: Int
+        let longFieldNameCount: Int
         let longFieldNamesSegSize: Int
         if version == Constants.TNS_JSON_VERSION_MAX_FNAME_65535 {
             let secondaryFlags = try buffer.throwingReadInteger(as: UInt16.self)
             if secondaryFlags & Constants.TNS_JSON_FLAG_SEC_FNAMES_SEG_UINT16 != 0 {
-                longFieldNameOffsetsSize = 2
+                longFieldNameOffsetSize = 2
             } else {
-                longFieldNameOffsetsSize = 4
+                longFieldNameOffsetSize = 4
             }
-            longFieldNamesCount = try Int(buffer.throwingReadInteger(as: UInt32.self))
+            longFieldNameCount = try Int(buffer.throwingReadInteger(as: UInt32.self))
             longFieldNamesSegSize = try Int(buffer.throwingReadInteger(as: UInt32.self))
         } else {
-            longFieldNameOffsetsSize = 0
-            longFieldNamesCount = 0
+            longFieldNameOffsetSize = 0
+            longFieldNameCount = 0
             longFieldNamesSegSize = 0
         }
 
         // determine the size of the tree segment - unused
         if self.flags & Constants.TNS_JSON_FLAG_TREE_SEG_UINT32 != 0 {
-            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt32>.size)
+            try buffer.throwingMoveReaderIndex(forwardBy: MemoryLayout<UInt32>.size)
         } else {
-            buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt16>.size)
+            try buffer.throwingMoveReaderIndex(forwardBy: MemoryLayout<UInt16>.size)
         }
 
         // determine the number of "tiny" nodes - unused
-        buffer.moveReaderIndex(forwardBy: MemoryLayout<UInt16>.size)
+        try buffer.throwingMoveReaderIndex(forwardBy: MemoryLayout<UInt16>.size)
 
         // if there are any short names, read them now
-        if shortFieldNamesCount > 0 {
+        if shortFieldNameCount > 0 {
             try self.getShortFieldNames(
                 from: &buffer,
-                fieldsCount: shortFieldNamesCount,
-                offsetsSize: shortFieldNameOffsetsSize,
+                fieldCount: shortFieldNameCount,
+                offsetSize: shortFieldNameOffsetSize,
                 segmentSize: shortFieldNamesSegSize
             )
         }
 
         // if there are any long names, read them now
-        if longFieldNamesCount > 0 {
+        if longFieldNameCount > 0 {
             try self.getLongFieldNames(
                 from: &buffer,
-                fieldsCount: longFieldNamesCount,
-                offsetsSize: longFieldNameOffsetsSize,
+                fieldCount: longFieldNameCount,
+                offsetSize: longFieldNameOffsetSize,
                 segmentSize: longFieldNamesSegSize
             )
         }
@@ -145,25 +145,25 @@ struct OracleJSONParser {
 
     mutating func getShortFieldNames(
         from buffer: inout ByteBuffer,
-        fieldsCount: Int,
-        offsetsSize: Int,
+        fieldCount: Int,
+        offsetSize: Int,
         segmentSize: Int
     ) throws {
         // skip the hash id array (1 byte for each field)
-        buffer.moveReaderIndex(forwardBy: fieldsCount)
+        try buffer.throwingMoveReaderIndex(forwardBy: fieldCount)
 
         // skip the field name offsets array for now
         let offsetsPosition = buffer.readerIndex
-        buffer.moveReaderIndex(forwardBy: fieldsCount * offsetsSize)
+        try buffer.throwingMoveReaderIndex(forwardBy: fieldCount * offsetSize)
         let slice = try buffer.throwingReadSlice(length: segmentSize)
         let finalPosition = buffer.readerIndex
 
         // determine the names of the fields
         buffer.moveReaderIndex(to: offsetsPosition)
-        self.fieldNames.reserveCapacity(fieldsCount)
-        for _ in 0..<fieldsCount {
+        self.fieldNames.reserveCapacity(fieldCount)
+        for _ in 0..<fieldCount {
             let offset =
-                if offsetsSize == 2 {
+                if offsetSize == 2 {
                     try Int(buffer.throwingReadInteger(as: UInt16.self))
                 } else {
                     try Int(buffer.throwingReadInteger(as: UInt32.self))
@@ -179,20 +179,20 @@ struct OracleJSONParser {
 
     mutating func getLongFieldNames(
         from buffer: inout ByteBuffer,
-        fieldsCount: Int,
-        offsetsSize: Int,
+        fieldCount: Int,
+        offsetSize: Int,
         segmentSize: Int
     ) throws {
         // skip the hash id array (2 bytes for each field)
-        buffer.moveReaderIndex(forwardBy: fieldsCount * 2)
+        try buffer.throwingMoveReaderIndex(forwardBy: fieldCount * 2)
 
         // skip the field name offsets array for now
-        buffer.moveReaderIndex(forwardBy: fieldsCount * offsetsSize)
+        try buffer.throwingMoveReaderIndex(forwardBy: fieldCount * offsetSize)
         var slice = try buffer.throwingReadSlice(length: segmentSize)
 
         // determine the names of the fields
-        self.fieldNames.reserveCapacity(fieldsCount)
-        for _ in 0..<fieldsCount {
+        self.fieldNames.reserveCapacity(fieldCount)
+        for _ in 0..<fieldCount {
             let length = try Int(slice.throwingReadInteger(as: UInt16.self))
             let name = try slice.throwingReadString(length: length)
             self.fieldNames.append(name)

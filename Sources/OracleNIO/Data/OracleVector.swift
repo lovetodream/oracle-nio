@@ -445,7 +445,7 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
         throw OracleDecodingError.Code.typeMismatch
     }
 
-    let elementsCount =
+    let elementCount =
         if vectorFormat == .binary {
             Int(try buffer.throwingReadInteger(as: UInt32.self) / 8)
         } else {
@@ -455,10 +455,10 @@ func _decodeOracleVectorMetadata(from buffer: inout ByteBuffer) throws -> (
     if (flags & Constants.TNS_VECTOR_FLAG_NORM_RESERVED) != 0
         || (flags & Constants.TNS_VECTOR_FLAG_NORM) != 0
     {
-        buffer.moveReaderIndex(forwardBy: 8)
+        try buffer.throwingMoveReaderIndex(forwardBy: 8)
     }
 
-    return (vectorFormat, elementsCount)
+    return (vectorFormat, elementCount)
 }
 
 func _encodeOracleVectorHeader(

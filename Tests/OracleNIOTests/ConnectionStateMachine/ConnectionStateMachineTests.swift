@@ -129,4 +129,23 @@ import Testing
         #expect(state.enqueue(task: .lobOperation(context)) == .sendLOBOperation(context))
         #expect(state.resendReceived() == .sendLOBOperation(context))
     }
+
+    @Test func decodingFailureDuringStatementFailsItAndClosesTheConnection() {
+        let promise = EmbeddedEventLoop().makePromise(of: OracleRowStream.self)
+        promise.fail(OracleSQLError.uncleanShutdown)  // we don't care about the error at all.
+        let queryContext = StatementContext(statement: "SELECT 1 FROM dual", promise: promise)
+        var state = ConnectionStateMachine.readyForStatement()
+        _ = state.enqueue(task: .statement(queryContext))
+
+        let error = OracleSQLError.messageDecodingFailure(
+            .withPartialError(.unsupportedDataType(type: .intRef), packetID: 6, messageBytes: ByteBuffer())
+        )
+        guard case .failStatement(_, _, let cleanupContext) = state.errorHappened(error) else {
+            Issue.record("expected the statement to fail")
+            return
+        }
+        #expect(cleanupContext?.action == .closeWithoutLogoff)
+        // Previously a `preconditionFailure`: the state still held the statement as running.
+        #expect(state.readyForStatementReceived() == .wait)
+    }
 }

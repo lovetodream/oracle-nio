@@ -190,4 +190,12 @@ private typealias RowData = OracleBackendMessage.RowData
             try RowData.decode(from: &buffer, context: .init(columns: .object))
         }
     }
+
+    @Test func unsupportedColumnTypeFailsDecodingInsteadOfCrashing() {
+        // INTERVAL YEAR TO MONTH has no row decoder yet: an error for the message, not a `fatalError`.
+        var buffer = ByteBuffer(bytes: [5, 0x80, 0x00, 0x00, 0x01, 0x3e])
+        #expect(throws: OraclePartialDecodingError.self) {
+            try RowData.decode(from: &buffer, context: .init(columns: OracleDataType.intervalYM))
+        }
+    }
 }

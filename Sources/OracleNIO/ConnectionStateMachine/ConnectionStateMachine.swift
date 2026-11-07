@@ -63,6 +63,8 @@ struct ConnectionStateMachine {
             enum Action {
                 case close
                 case fireChannelInactive
+                /// Close the channel without a logoff, the protocol is out of sync after a decoding failure.
+                case closeWithoutLogoff
             }
 
             let action: Action
@@ -147,6 +149,8 @@ struct ConnectionStateMachine {
         case forwardStreamError(
             OracleSQLError, read: Bool, cursorID: UInt16?, clientCancelled: Bool
         )
+        /// A connection-closing error while rows are streamed: fail the stream, then close and clean up.
+        case failStreamAndClose(OracleSQLError, cleanupContext: CleanUpContext)
 
         case sendMarker(read: Bool)
     }
@@ -250,7 +254,21 @@ struct ConnectionStateMachine {
                 return self.closeConnectionAndCleanup(error)
             } else {
                 let action = statement.errorHappened(error)
-                return self.modify(with: action)
+                // Keep the failed statement state, a `readyForStatementReceived` for the still "running" copy ended in
+                // a `preconditionFailure`. Errors that break the connection (e.g. a decoding failure) close it.
+                self.state = .statement(statement)
+                guard self.shouldCloseConnection(reason: error) else { return self.modify(with: action) }
+                switch action {
+                case .failStatement(let promise, let statementError):
+                    return .failStatement(
+                        promise, with: statementError,
+                        cleanupContext: self.setErrorAndCreateCleanupContext(error))
+                case .forwardStreamError(let streamError, _, _, _):
+                    return .failStreamAndClose(
+                        streamError, cleanupContext: self.setErrorAndCreateCleanupContext(error))
+                default:
+                    return self.closeConnectionAndCleanup(error)
+                }
             }
         case .readyToLogOff, .loggingOff, .closing:
             // If the state machine is in state `.closing`, the connection
@@ -778,9 +796,9 @@ struct ConnectionStateMachine {
             self.state = .readyForStatement
             return self.executeNextStatementFromQueue()
 
-        case .loggingOff, .closing, .closed:
+        case .readyToLogOff, .loggingOff, .closing, .closed:
             // Might happen if the connection is getting closed immediately
-            // after a ping. In that case the ping's success or failure response
+            // after a ping, or after a statement failed with a connection-closing error. In that case the ping's success or failure response
             // triggers a readyForStatementReceived, while we are already closing.
             // (This race might not be exclusive to ping's)
             return .wait
@@ -1105,6 +1123,8 @@ extension ConnectionStateMachine {
         var action = ConnectionAction.CleanUpContext.Action.close
         if case .uncleanShutdown = error.code.base {
             action = .fireChannelInactive
+        } else if case .messageDecodingFailure = error.code.base {
+            action = .closeWithoutLogoff
         }
 
         return .init(

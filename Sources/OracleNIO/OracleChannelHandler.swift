@@ -135,6 +135,8 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         let action =
             if let error = error as? OracleSQLError {
                 self.state.errorHappened(error)
+            } else if let error = error as? OracleMessageDecodingError {
+                self.state.errorHappened(.messageDecodingFailure(error))
             } else {
                 self.state.errorHappened(.connectionError(underlying: error))
             }
@@ -434,6 +436,11 @@ final class OracleChannelHandler: ChannelDuplexHandler {
             }
 
             self.run(self.state.readyForStatementReceived(), with: context)
+
+        case .failStreamAndClose(let error, let cleanupContext):
+            self.rowStream?.receive(completion: .failure(error))
+            self.rowStream = nil
+            self.closeConnectionAndCleanup(cleanupContext, context: context)
 
         case .forwardStreamError(
             let error, let read, let cursorID, let clientCancelled
@@ -801,6 +808,10 @@ final class OracleChannelHandler: ChannelDuplexHandler {
         case .fireChannelInactive:
             cleanup.closePromise?.succeed()
             context.fireChannelInactive()
+        case .closeWithoutLogoff:
+            // The protocol is out of sync, a logoff response would never arrive. Close from this handler's context
+            // so the close does not come back through `close(context:mode:promise:)`.
+            context.close(mode: .all, promise: cleanup.closePromise)
         }
     }
 

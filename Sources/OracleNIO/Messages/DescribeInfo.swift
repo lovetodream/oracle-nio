@@ -105,9 +105,17 @@ struct DescribeInfo: OracleBackendMessage.PayloadDecodable, Sendable, Hashable {
 
             let csfrm = try buffer.throwingReadInteger(as: UInt8.self)
             // character set form
-            let dbType = try OracleDataType.fromORATypeAndCSFRM(
-                typeNumber: dataType, csfrm: csfrm
-            )
+            // An unsupported column type (e.g. REF) must surface as a partial decoding error: any other error type
+            // reaching `OracleBackendMessageDecoder` ends in a `preconditionFailure`.
+            let dbType: OracleDataType
+            do {
+                dbType = try OracleDataType.fromORATypeAndCSFRM(typeNumber: dataType, csfrm: csfrm)
+            } catch {
+                if let type = _TNSDataType(rawValue: UInt16(dataType)) {
+                    throw OraclePartialDecodingError.unsupportedDataType(type: type)
+                }
+                throw OraclePartialDecodingError.fieldNotDecodable(type: OracleDataType.self)
+            }
             guard dbType._oracleType != nil else {
                 throw
                     OraclePartialDecodingError

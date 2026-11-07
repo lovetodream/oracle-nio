@@ -202,6 +202,27 @@ final class BugReportTests: IntegrationTest {
             ).self)
         {}
     }
+
+    @Test func unsupportedColumnTypeFailsTheConnectionInsteadOfCrashing() async throws {
+        _ = try? await connection.execute("DROP TABLE nio_ref_table PURGE")
+        _ = try? await connection.execute("DROP TYPE nio_ref_type FORCE")
+        try await connection.execute("CREATE TYPE nio_ref_type AS OBJECT (n NUMBER)")
+        try await connection.execute("CREATE TABLE nio_ref_table OF nio_ref_type")
+        try await connection.execute("INSERT INTO nio_ref_table VALUES (nio_ref_type(1))")
+
+        let failing = try await OracleConnection.test()
+        do {
+            let rows = try await failing.execute("SELECT REF(t) FROM nio_ref_table t")
+            for try await _ in rows {}
+            Issue.record("selecting a REF column should fail")
+        } catch let error as OracleSQLError {
+            #expect(error.code == .messageDecodingFailure)
+        }
+        try? await failing.close()
+
+        try await connection.execute("DROP TABLE nio_ref_table PURGE")
+        try await connection.execute("DROP TYPE nio_ref_type FORCE")
+    }
 }
 
 /// A Oracle Timestamp which is equivalent to a `Date` without caring about its `TimeZone`.
@@ -298,4 +319,5 @@ private struct Timestamp: Sendable, OracleCodable {
     }
 
     static var defaultOracleType: OracleDataType { .timestamp }
+
 }

@@ -209,9 +209,18 @@ struct OracleBackendMessageDecoder: ByteToMessageDecoder {
                     messageBytes: completeMessage
                 )
         } catch {
-            preconditionFailure(
-                "Expected to only see `OraclePartialDecodingError`s here."
-            )
+            // Unexpected error type: fail the connection with a decoding error instead of crashing the process.
+            buffer.moveReaderIndex(to: startReaderIndex)
+            let completeMessage = buffer.readSlice(length: length) ?? ByteBuffer()
+            throw
+                OracleMessageDecodingError
+                .withPartialError(
+                    OraclePartialDecodingError(
+                        category: .fieldNotDecodable, description: String(describing: error),
+                        file: #fileID, line: #line),
+                    packetID: type.rawValue,
+                    messageBytes: completeMessage
+                )
         }
     }
 }

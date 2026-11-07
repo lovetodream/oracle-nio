@@ -255,9 +255,11 @@ extension OracleBackendMessage {
                 }
                 columnValue.writeInteger(0, as: UInt32.self)  // chunk length of zero
             default:
-                fatalError(
-                    "\(String(reflecting: oracleType)) is not implemented, please file a bug report"
-                )
+                // Fail the message instead of the process: the connection is closed and the caller gets an error.
+                guard let oracleType else {
+                    throw OraclePartialDecodingError.fieldNotDecodable(type: _TNSDataType.self)
+                }
+                throw OraclePartialDecodingError.unsupportedDataType(type: oracleType)
             }
 
             if [.long, .longRAW].contains(oracleType) {

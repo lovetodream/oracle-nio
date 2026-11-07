@@ -16,17 +16,7 @@ import NIOCore
 
 extension ByteBuffer {
     mutating func readSB2() -> Int16? {
-        guard let length = readUBLength() else { return nil }
-        switch length {
-        case 0:
-            return 0
-        case 1:
-            return readInteger(as: Int8.self).map(Int16.init)
-        case 2:
-            return readInteger(as: Int16.self)
-        default:
-            preconditionFailure()
-        }
+        self.readSignedMagnitude(maxLength: 2).map { Int16(truncatingIfNeeded: $0) }
     }
 
     mutating func throwingReadSB2(
@@ -41,37 +31,31 @@ extension ByteBuffer {
     }
 
     mutating func readSB4() -> Int32? {
-        guard let length = readUBLength() else { return nil }
-        switch length {
-        case 0:
-            return 0
-        case 1:
-            return readInteger(as: Int8.self).map(Int32.init)
-        case 2:
-            return readInteger(as: Int16.self).map(Int32.init)
-        case 4:
-            return readInteger(as: Int32.self)
-        default:
-            preconditionFailure()
-        }
+        self.readSignedMagnitude(maxLength: 4).map { Int32(truncatingIfNeeded: $0) }
     }
 
     mutating func readSB8() -> Int64? {
-        guard let length = readUBLength() else { return nil }
-        switch length {
-        case 0:
-            return 0
-        case 1:
-            return readInteger(as: Int8.self).map(Int64.init)
-        case 2:
-            return readInteger(as: Int16.self).map(Int64.init)
-        case 4:
-            return readInteger(as: Int32.self).map(Int64.init)
-        case 8:
-            return readInteger(as: Int64.self)
-        default:
-            preconditionFailure()
+        self.readSignedMagnitude(maxLength: 8)
+    }
+
+    /// Reads a signed integer in Oracle's variable-length encoding: a length byte whose high bit (`0x80`) marks
+    /// a negative value, followed by the magnitude in big-endian order in as many bytes as the length says
+    /// (any length up to `maxLength`, see `_get_int_length_and_sign` in python-oracledb).
+    ///
+    /// - Returns: `nil` if more data is required to decode the value.
+    private mutating func readSignedMagnitude(maxLength: UInt8) -> Int64? {
+        guard let lengthByte = self.readInteger(as: UInt8.self) else { return nil }
+        let length = lengthByte & 0x7f
+        guard length <= maxLength else {
+            preconditionFailure("Invalid length \(length) for a signed integer of at most \(maxLength) bytes")
         }
+        guard self.readableBytes >= Int(length) else { return nil }
+        var magnitude: UInt64 = 0
+        for _ in 0..<length {
+            magnitude = magnitude << 8 | UInt64(self.readInteger(as: UInt8.self).unsafelyUnwrapped)
+        }
+        let value = Int64(truncatingIfNeeded: magnitude)
+        return lengthByte & 0x80 != 0 ? 0 &- value : value
     }
 
     mutating func throwingReadSB8(

@@ -208,4 +208,69 @@ import Testing
         buffer = ByteBuffer(bytes: [8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07])
         #expect(buffer.readUB8() == nil)
     }
+
+    @Test(
+        arguments: [
+            ([0x00], 0),
+            ([0x01, 0x7f], 127),
+            ([0x01, 0xc8], 200),
+            ([0x81, 0x01], -1),
+            ([0x02, 0x9c, 0x40], 40_000),
+            ([0x03, 0x11, 0xf8, 0x00], 1_177_600),
+            ([0x83, 0x11, 0xf8, 0x00], -1_177_600),
+            ([0x05, 0x01, 0x00, 0x00, 0x00, 0x00], 4_294_967_296),
+            ([0x08, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff], Int64.max),
+        ] as [([UInt8], Int64)]
+    )
+    func readSB8(bytes: [UInt8], expected: Int64) {
+        var buffer = ByteBuffer(bytes: bytes)
+        #expect(buffer.readSB8() == expected)
+        #expect(buffer.readableBytes == 0)
+    }
+
+    @Test(
+        arguments: [
+            ([0x01, 0xc8], 200),
+            ([0x81, 0x01], -1),
+            ([0x03, 0x01, 0x00, 0x00], 65_536),
+            ([0x84, 0x7f, 0xff, 0xff, 0xff], -Int32.max),
+        ] as [([UInt8], Int32)]
+    )
+    func readSB4(bytes: [UInt8], expected: Int32) {
+        var buffer = ByteBuffer(bytes: bytes)
+        #expect(buffer.readSB4() == expected)
+        #expect(buffer.readableBytes == 0)
+    }
+
+    @Test(arguments: [([0x01, 0xff], 255), ([0x82, 0x01, 0x00], -256)] as [([UInt8], Int16)])
+    func readSB2(bytes: [UInt8], expected: Int16) {
+        var buffer = ByteBuffer(bytes: bytes)
+        #expect(buffer.readSB2() == expected)
+        #expect(buffer.readableBytes == 0)
+    }
+
+    @Test func readSignedIntegerMissingBytes() {
+        var buffer = ByteBuffer(bytes: [0x03, 0x11])
+        #expect(buffer.readSB8() == nil)
+        buffer = ByteBuffer(bytes: [0x83])
+        #expect(buffer.readSB4() == nil)
+    }
+
+    @Test(
+        arguments: [
+            ([0x05, 0x01, 0x00, 0x00, 0x00, 0x00], 4_294_967_296),
+            ([0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01], 1_099_511_627_777),
+            ([0x07, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07], 0x01_0203_0405_0607),
+        ] as [([UInt8], UInt64)]
+    )
+    func readUB8(bytes: [UInt8], expected: UInt64) {
+        var buffer = ByteBuffer(bytes: bytes)
+        #expect(buffer.readUB8() == expected)
+        #expect(buffer.readableBytes == 0)
+    }
+
+    @Test func readUB8MissingBytes() {
+        var buffer = ByteBuffer(bytes: [0x06, 0x01, 0x00])
+        #expect(buffer.readUB8() == nil)
+    }
 }

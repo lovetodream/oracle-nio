@@ -103,6 +103,13 @@ extension ByteBuffer {
             return self.readInteger(as: UInt8.self).map { UInt64(b01) << 8 | UInt64($0) }
         case 4:
             return self.readInteger(as: UInt32.self).map(UInt64.init)
+        case 5, 6, 7:
+            guard self.readableBytes >= Int(length) else { return nil }
+            var value: UInt64 = 0
+            for _ in 0..<length {
+                value = value << 8 | UInt64(self.readInteger(as: UInt8.self).unsafelyUnwrapped)
+            }
+            return value
         case 8:
             return self.readInteger(as: UInt64.self)
         default:
